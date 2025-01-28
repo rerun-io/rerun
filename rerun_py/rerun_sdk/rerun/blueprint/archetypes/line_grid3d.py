@@ -86,10 +86,10 @@ class LineGrid3D(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         visible: datatypes.BoolLike | None = None,
         spacing: datatypes.Float32Like | None = None,
         plane: datatypes.Plane3DLike | None = None,
@@ -101,7 +101,7 @@ class LineGrid3D(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         visible:
             Whether the grid is visible.
@@ -138,7 +138,7 @@ class LineGrid3D(Archetype):
                 "color": color,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -148,17 +148,9 @@ class LineGrid3D(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> LineGrid3D:
+    def cleared(cls) -> LineGrid3D:
         """Clear all the fields of a `LineGrid3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            visible=[],
-            spacing=[],
-            plane=[],
-            stroke_width=[],
-            color=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": True},

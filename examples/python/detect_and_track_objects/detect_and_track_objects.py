@@ -213,7 +213,7 @@ class Tracker:
                 ),
             )
         else:
-            rr.log(f"video/tracked/{self.tracking_id}", rr.Boxes2D.clear_fields())
+            rr.log(f"video/tracked/{self.tracking_id}", rr.Boxes2D.cleared())
 
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0

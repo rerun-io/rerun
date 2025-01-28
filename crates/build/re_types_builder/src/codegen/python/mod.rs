@@ -2537,7 +2537,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
         doc_string_lines.push("----------".to_owned());
-        doc_string_lines.push("clear:".to_owned());
+        doc_string_lines.push("clear_unset:".to_owned());
         doc_string_lines
             .push("    If true, all unspecified fields will be explicitly cleared.".to_owned());
         for doc in parameter_docs {
@@ -2546,24 +2546,13 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    let field_clears = obj
-        .fields
-        .iter()
-        .map(|field| {
-            let field_name = field.snake_case_name();
-            format!("{field_name}=[],")
-        })
-        .collect_vec()
-        .join("\n");
-    let field_clears = indent::indent_by(12, field_clears);
-
     unindent(&format!(
         r#"
         @classmethod
-        def update_fields(
+        def from_fields(
             cls,
             *,
-            clear: bool = False,
+            clear_unset: bool = False,
             {parameters},
         ) -> {name}:
             {doc_block}
@@ -2573,7 +2562,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
                     {kwargs},
                 }}
 
-                if clear:
+                if clear_unset:
                     kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
 
                 inst.__attrs_init__(**kwargs)
@@ -2583,13 +2572,9 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             return inst
 
         @classmethod
-        def clear_fields(cls) -> {name}:
+        def cleared(cls) -> {name}:
             """Clear all the fields of a `{name}`."""
-            inst = cls.__new__(cls)
-            inst.__attrs_init__(
-                {field_clears}
-            )
-            return inst
+            return cls.from_fields(clear_unset=True)
         "#
     ))
 }

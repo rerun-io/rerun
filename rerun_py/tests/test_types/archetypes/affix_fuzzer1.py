@@ -114,10 +114,10 @@ class AffixFuzzer1(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         fuzz1001: datatypes.AffixFuzzer1Like | None = None,
         fuzz1002: datatypes.AffixFuzzer1Like | None = None,
         fuzz1003: datatypes.AffixFuzzer1Like | None = None,
@@ -170,7 +170,7 @@ class AffixFuzzer1(Archetype):
                 "fuzz1022": fuzz1022,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -180,34 +180,9 @@ class AffixFuzzer1(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AffixFuzzer1:
+    def cleared(cls) -> AffixFuzzer1:
         """Clear all the fields of a `AffixFuzzer1`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            fuzz1001=[],
-            fuzz1002=[],
-            fuzz1003=[],
-            fuzz1004=[],
-            fuzz1005=[],
-            fuzz1006=[],
-            fuzz1007=[],
-            fuzz1008=[],
-            fuzz1009=[],
-            fuzz1010=[],
-            fuzz1011=[],
-            fuzz1012=[],
-            fuzz1013=[],
-            fuzz1014=[],
-            fuzz1015=[],
-            fuzz1016=[],
-            fuzz1017=[],
-            fuzz1018=[],
-            fuzz1019=[],
-            fuzz1020=[],
-            fuzz1021=[],
-            fuzz1022=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

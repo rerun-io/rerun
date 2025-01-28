@@ -93,10 +93,10 @@ class Pinhole(PinholeExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         image_from_camera: datatypes.Mat3x3Like | None = None,
         resolution: datatypes.Vec2DLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
@@ -107,7 +107,7 @@ class Pinhole(PinholeExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         image_from_camera:
             Camera projection, from image coordinates to view coordinates.
@@ -164,7 +164,7 @@ class Pinhole(PinholeExt, Archetype):
                 "image_plane_distance": image_plane_distance,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -174,16 +174,9 @@ class Pinhole(PinholeExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Pinhole:
+    def cleared(cls) -> Pinhole:
         """Clear all the fields of a `Pinhole`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            image_from_camera=[],
-            resolution=[],
-            camera_xyz=[],
-            image_plane_distance=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

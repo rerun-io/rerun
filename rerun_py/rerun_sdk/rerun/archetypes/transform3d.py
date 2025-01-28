@@ -161,10 +161,10 @@ class Transform3D(Transform3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         translation: datatypes.Vec3DLike | None = None,
         rotation_axis_angle: datatypes.RotationAxisAngleLike | None = None,
         quaternion: datatypes.QuaternionLike | None = None,
@@ -178,7 +178,7 @@ class Transform3D(Transform3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         translation:
             Translation vector.
@@ -212,7 +212,7 @@ class Transform3D(Transform3DExt, Archetype):
                 "axis_length": axis_length,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -222,19 +222,9 @@ class Transform3D(Transform3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Transform3D:
+    def cleared(cls) -> Transform3D:
         """Clear all the fields of a `Transform3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            translation=[],
-            rotation_axis_angle=[],
-            quaternion=[],
-            scale=[],
-            mat3x3=[],
-            relation=[],
-            axis_length=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

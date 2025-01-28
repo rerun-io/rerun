@@ -77,10 +77,10 @@ class Asset3D(Asset3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         blob: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
@@ -90,7 +90,7 @@ class Asset3D(Asset3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         blob:
             The asset's bytes.
@@ -121,7 +121,7 @@ class Asset3D(Asset3DExt, Archetype):
                 "albedo_factor": albedo_factor,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -131,15 +131,9 @@ class Asset3D(Asset3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Asset3D:
+    def cleared(cls) -> Asset3D:
         """Clear all the fields of a `Asset3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            blob=[],
-            media_type=[],
-            albedo_factor=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
