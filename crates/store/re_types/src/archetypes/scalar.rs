@@ -249,9 +249,12 @@ impl Scalar {
             .scalar
             .map(|scalar| scalar.partitioned(_lengths.clone()))
             .transpose()?];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
+        Ok(columns
+            .into_iter()
+            .flatten()
+            .chain([::re_types_core::indicator_column::<Self>(
+                _lengths.into_iter().count(),
+            )?]))
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
