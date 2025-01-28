@@ -114,8 +114,6 @@ impl UiLayout {
         let mut layout_job =
             egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
 
-        let mut needs_scroll_area = false;
-
         match self {
             Self::List => {
                 layout_job.wrap.max_rows = 1; // We must fit on one line
@@ -130,20 +128,11 @@ impl UiLayout {
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
             }
-            Self::SelectionPanel => {
-                needs_scroll_area = false;
-            }
+            Self::SelectionPanel => {}
         }
 
         let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        // TODO: When ever true?
-        if needs_scroll_area {
-            egui::ScrollArea::vertical()
-                .show(ui, |ui| Self::decorate_url(ui, string, galley))
-                .inner
-        } else {
-            Self::decorate_url(ui, string, galley)
-        }
+        Self::decorate_url(ui, string, galley)
     }
 }
