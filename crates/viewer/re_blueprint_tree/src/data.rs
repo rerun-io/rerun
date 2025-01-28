@@ -291,7 +291,7 @@ pub struct DataResultData {
 
     /// The sections within the label that correspond to a filter match and should thus be
     /// highlighted.
-    pub highlight_sections: SmallVec<[Range<usize>; 2]>,
+    pub highlight_sections: SmallVec<[Range<usize>; 1]>,
 
     pub default_open: bool,
     pub children: Vec<DataResultData>,
