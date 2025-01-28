@@ -280,7 +280,7 @@ impl PyStorageNodeClient {
                 .schema
                 .ok_or_else(|| PyRuntimeError::new_err("Missing shcema"))?;
 
-            let arrow_schema = ArrowSchema::try_from(schema)
+            let arrow_schema = ArrowSchema::try_from(&schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let column_descriptors =
