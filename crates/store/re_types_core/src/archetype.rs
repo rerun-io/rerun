@@ -1,8 +1,8 @@
 use std::{borrow::Cow, sync::Arc};
 
 use crate::{
-    ComponentBatch, ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName,
-    DeserializationResult, SerializationResult, _Backtrace,
+    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
+    SerializedComponentBatch, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -51,12 +51,7 @@ pub trait Archetype {
     ///
     /// This allows for associating arbitrary indicator components with arbitrary data.
     /// Check out the `manual_indicator` API example to see what's possible.
-    #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        ComponentBatchCowWithDescriptor::new(
-            Box::<<Self as Archetype>::Indicator>::default() as Box<dyn ComponentBatch>
-        )
-    }
+    fn indicator() -> SerializedComponentBatch;
 
     /// Returns all component descriptors that _must_ be provided by the user when constructing this archetype.
     fn required_components() -> std::borrow::Cow<'static, [ComponentDescriptor]>;
@@ -64,7 +59,7 @@ pub trait Archetype {
     /// Returns all component descriptors that _should_ be provided by the user when constructing this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
-        std::borrow::Cow::Owned(vec![Self::indicator().descriptor().into_owned()])
+        std::borrow::Cow::Owned(vec![Self::indicator().descriptor.clone()])
     }
 
     /// Returns all component descriptors that _may_ be provided by the user when constructing this archetype.
@@ -285,18 +280,6 @@ impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
 /// [indicator component]: [`Archetype::Indicator`]
 #[derive(Debug, Clone, Copy)]
 pub struct NamedIndicatorComponent(pub ComponentName);
-
-impl NamedIndicatorComponent {
-    #[inline]
-    pub fn as_batch(&self) -> ComponentBatchCowWithDescriptor<'_> {
-        ComponentBatchCowWithDescriptor::new(self as &dyn crate::ComponentBatch)
-    }
-
-    #[inline]
-    pub fn to_batch(self) -> ComponentBatchCowWithDescriptor<'static> {
-        ComponentBatchCowWithDescriptor::new(Box::new(self) as Box<dyn crate::ComponentBatch>)
-    }
-}
 
 impl crate::LoggableBatch for NamedIndicatorComponent {
     #[inline]

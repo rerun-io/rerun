@@ -44,8 +44,8 @@ impl VisualizerSystem for SeriesLineSystem {
                 .map(|descr| descr.component_name),
         );
 
-        use re_types::ComponentBatch as _;
-        query_info.indicators = std::iter::once(SeriesLine::indicator().name()).collect();
+        query_info.indicators =
+            std::iter::once(SeriesLine::descriptor_indicator().component_name).collect();
 
         query_info
     }

@@ -14,7 +14,7 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use crate::{ComponentBatch, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
@@ -139,9 +139,9 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn crate::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        ClearIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -184,7 +184,7 @@ impl crate::AsComponents for Clear {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use crate::Archetype as _;
-        [Self::indicator().serialized(), self.is_recursive.clone()]
+        [Some(Self::indicator()), self.is_recursive.clone()]
             .into_iter()
             .flatten()
             .collect()
@@ -242,8 +242,12 @@ impl Clear {
             .is_recursive
             .map(|is_recursive| is_recursive.partitioned(_lengths.clone()))
             .transpose()?];
-        let indicator_column = crate::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
+        Ok(columns
+            .into_iter()
+            .flatten()
+            .chain([crate::indicator_column::<Self>(
+                _lengths.into_iter().count(),
+            )?]))
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

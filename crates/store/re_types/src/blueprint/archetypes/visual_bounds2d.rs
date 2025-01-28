@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -94,9 +94,9 @@ impl ::re_types_core::Archetype for VisualBounds2D {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: VisualBounds2DIndicator = VisualBounds2DIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        VisualBounds2DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -137,7 +137,7 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Self::indicator().serialized(), self.range.clone()]
+        [Some(Self::indicator()), self.range.clone()]
             .into_iter()
             .flatten()
             .collect()

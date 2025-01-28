@@ -220,7 +220,7 @@ fn load_video(
                 std::iter::once((video_timeline, time_column)).collect(),
                 [
                     (
-                        VideoFrameReference::indicator().descriptor().into_owned(),
+                        VideoFrameReference::indicator().descriptor.clone(),
                         video_frame_reference_indicators_list_array,
                     ),
                     (

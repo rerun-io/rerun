@@ -185,7 +185,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
     code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
-    code.push_str("use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};\n");
+    code.push_str("use ::re_types_core::{ComponentBatch, SerializedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -1174,7 +1174,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     let all_component_batches = {
         std::iter::once(quote! {
-            Self::indicator().serialized()
+            Some(Self::indicator())
         })
         .chain(obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
@@ -1244,9 +1244,9 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             }
 
             #[inline]
-            fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-                static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+            fn indicator() -> SerializedComponentBatch {
+                #[allow(clippy::unwrap_used)] // There is no such thing as failing to serialize an indicator.
+                #quoted_indicator_name::DEFAULT.serialized().unwrap()
             }
 
             #[inline]
@@ -1665,8 +1665,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                let indicator_column = #indicator_column;
-                Ok(columns.into_iter().chain([indicator_column]).flatten())
+                Ok(columns.into_iter().flatten().chain([#indicator_column]))
             }
 
             #columns_unary_doc
