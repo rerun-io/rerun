@@ -171,7 +171,7 @@ impl ViewData {
         let result_tree = &query_result.tree;
 
         //
-        // In origin tree data results
+        // Data results within the view origin subtree
         //
 
         let mut hierarchy = Vec::with_capacity(10);
@@ -190,7 +190,7 @@ impl ViewData {
         hierarchy.clear();
 
         //
-        // Projection data results
+        // Data results outside the view origin subtree (a.k.a projections)
         //
 
         let mut projections = Vec::new();
