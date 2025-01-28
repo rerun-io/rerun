@@ -4,7 +4,9 @@ impl TryFrom<crate::common::v0::Schema> for ArrowSchema {
     type Error = ArrowError;
 
     fn try_from(value: crate::common::v0::Schema) -> Result<Self, Self::Error> {
-        re_sorbet::schema_from_ipc(&value.arrow_schema)
+        Ok(Self::clone(
+            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
+        ))
     }
 }
 

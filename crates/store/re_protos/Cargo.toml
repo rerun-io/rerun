@@ -20,6 +20,7 @@ re_sorbet.workspace = true
 re_tuid.workspace = true
 
 # External
+arrow.workspace = true
 prost.workspace = true
 thiserror.workspace = true
 

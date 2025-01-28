@@ -6227,6 +6227,7 @@ dependencies = [
 name = "re_protos"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "prost",
  "re_build_info",
  "re_byte_size",
