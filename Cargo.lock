@@ -6163,7 +6163,6 @@ dependencies = [
  "re_byte_size",
  "re_format",
  "re_log",
- "re_protos",
  "re_string_interner",
  "re_tracing",
  "re_tuid",
@@ -6229,7 +6228,10 @@ name = "re_protos"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "prost",
+ "re_build_info",
  "re_byte_size",
+ "re_log_types",
+ "re_tuid",
  "thiserror 1.0.65",
  "tonic",
  "tonic-web-wasm-client",
@@ -6538,7 +6540,6 @@ dependencies = [
  "getrandom",
  "once_cell",
  "re_byte_size",
- "re_protos",
  "serde",
  "web-time",
 ]
