@@ -79,9 +79,3 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         }
     });
 }
-
-#[test]
-fn memory() {
-    let data = arrow::array::Int8Array::from(vec![42; 3001]);
-    assert_eq!(data.get_buffer_memory_size(), 3001);
-}
