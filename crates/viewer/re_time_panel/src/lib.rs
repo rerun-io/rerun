@@ -657,6 +657,8 @@ impl TimePanel {
         entity_data: &EntityData,
         ui: &mut egui::Ui,
     ) {
+        re_tracing::profile_function!();
+
         let entity_path = &entity_data.entity_path;
         let item = TimePanelItem::entity_path(entity_path.clone());
         let is_selected = ctx.selection().contains_item(&item.to_item());
@@ -819,6 +821,8 @@ impl TimePanel {
         entity_data: &EntityData,
         ui: &mut egui::Ui,
     ) {
+        re_tracing::profile_function!();
+
         for child in &entity_data.children {
             self.show_entity(
                 ctx,
@@ -845,13 +849,6 @@ impl TimePanel {
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
                 let timeline = time_ctrl.timeline();
-
-                let component_has_data_in_current_timeline = store
-                    .entity_has_component_on_timeline(
-                        time_ctrl.timeline(),
-                        entity_path,
-                        &component_name,
-                    );
 
                 let response = ui
                     .list_item()
@@ -957,32 +954,48 @@ impl TimePanel {
                 );
 
                 let is_visible = ui.is_rect_visible(full_width_rect);
-                if is_visible && component_has_data_in_current_timeline {
-                    // show the data in the time area:
-                    let row_rect = Rect::from_x_y_ranges(
-                        time_area_response.rect.x_range(),
-                        response_rect.y_range(),
-                    );
 
-                    highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
+                if is_visible {
+                    let component_has_data_in_current_timeline = store
+                        .entity_has_component_on_timeline(
+                            time_ctrl.timeline(),
+                            entity_path,
+                            &component_name,
+                        );
 
-                    let db = match self.source {
-                        TimePanelSource::Recording => ctx.recording(),
-                        TimePanelSource::Blueprint => ctx.store_context.blueprint,
-                    };
+                    if component_has_data_in_current_timeline {
+                        // show the data in the time area:
+                        let row_rect = Rect::from_x_y_ranges(
+                            time_area_response.rect.x_range(),
+                            response_rect.y_range(),
+                        );
 
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_painter,
-                        ui,
-                        &self.time_ranges_ui,
-                        row_rect,
-                        &item,
-                        true,
-                    );
+                        highlight_timeline_row(
+                            ui,
+                            ctx,
+                            time_area_painter,
+                            &item.to_item(),
+                            &row_rect,
+                        );
+
+                        let db = match self.source {
+                            TimePanelSource::Recording => ctx.recording(),
+                            TimePanelSource::Blueprint => ctx.store_context.blueprint,
+                        };
+
+                        data_density_graph::data_density_graph_ui(
+                            &mut self.data_density_graph_painter,
+                            ctx,
+                            time_ctrl,
+                            db,
+                            time_area_painter,
+                            ui,
+                            &self.time_ranges_ui,
+                            row_rect,
+                            &item,
+                            true,
+                        );
+                    }
                 }
             }
         }
