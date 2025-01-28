@@ -51,7 +51,7 @@ namespace rerun {
         }
     };
 
-    /// `AsComponents` for a `Collection<ComponentBatch>` wrapped in a `Result`.
+    /// `AsComponents` for a `Collection<ComponentBatch>` wrapped in a `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Result<Collection<ComponentBatch>>> {
         static Result<std::vector<ComponentBatch>> serialize(
@@ -62,7 +62,7 @@ namespace rerun {
         }
     };
 
-    /// `AsComponents` for a single `ComponentBatch` wrapped in a `Result`.
+    /// `AsComponents` for a single `ComponentBatch` wrapped in a `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Result<ComponentBatch>> {
         static Result<std::vector<ComponentBatch>> serialize(Result<ComponentBatch> components) {
