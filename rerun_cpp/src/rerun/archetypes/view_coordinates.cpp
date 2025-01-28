@@ -49,8 +49,7 @@ namespace rerun {
             cells.push_back(archetype.xyz.value());
         }
         {
-            auto indicator = ViewCoordinates::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<ViewCoordinates>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

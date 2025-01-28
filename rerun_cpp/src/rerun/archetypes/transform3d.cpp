@@ -135,8 +135,7 @@ namespace rerun {
             cells.push_back(archetype.axis_length.value());
         }
         {
-            auto indicator = Transform3D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Transform3D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

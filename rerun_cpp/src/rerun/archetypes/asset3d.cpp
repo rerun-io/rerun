@@ -77,8 +77,7 @@ namespace rerun {
             cells.push_back(archetype.albedo_factor.value());
         }
         {
-            auto indicator = Asset3D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Asset3D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

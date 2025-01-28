@@ -62,8 +62,7 @@ namespace rerun {
             cells.push_back(archetype.media_type.value());
         }
         {
-            auto indicator = AssetVideo::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<AssetVideo>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

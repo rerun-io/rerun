@@ -38,8 +38,7 @@ struct rerun::AsComponents<CustomPoints3D> {
     static Result<std::vector<ComponentBatch>> serialize(const CustomPoints3D& archetype) {
         std::vector<rerun::ComponentBatch> batches;
 
-        CustomPoints3D::IndicatorComponent indicator;
-        batches.push_back(ComponentBatch::from_loggable(indicator).value_or_throw());
+        batches.push_back(ComponentBatch::from_indicator<CustomPoints3D>().value_or_throw());
 
         auto positions_descr = rerun::Loggable<CustomPosition3D>::Descriptor
                                    .or_with_archetype_name("user.CustomPoints3D")
