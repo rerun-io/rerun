@@ -240,7 +240,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
+"archetypes/text_log_integration" = [ # The entity path will differ because the integrations work differently
   "cpp",
   "py",
   "rust",
