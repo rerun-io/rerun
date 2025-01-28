@@ -27,7 +27,7 @@ pub struct IndexCollectionRequest {
     /// what kind of index do we want to create and what are
     /// its index specific properties
     #[prost(message, optional, tag = "2")]
-    pub index_type: ::core::option::Option<IndexType>,
+    pub properties: ::core::option::Option<IndexProperties>,
     /// Component / column we want to index
     #[prost(message, optional, tag = "3")]
     pub column: ::core::option::Option<super::super::common::v0::ComponentColumnDescriptor>,
@@ -47,14 +47,14 @@ impl ::prost::Name for IndexCollectionRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IndexType {
-    #[prost(oneof = "index_type::Typ", tags = "1, 2, 3")]
-    pub typ: ::core::option::Option<index_type::Typ>,
+pub struct IndexProperties {
+    #[prost(oneof = "index_properties::Props", tags = "1, 2, 3")]
+    pub props: ::core::option::Option<index_properties::Props>,
 }
-/// Nested message and enum types in `IndexType`.
-pub mod index_type {
+/// Nested message and enum types in `IndexProperties`.
+pub mod index_properties {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Typ {
+    pub enum Props {
         #[prost(message, tag = "1")]
         Inverted(super::InvertedIndex),
         #[prost(message, tag = "2")]
@@ -63,14 +63,14 @@ pub mod index_type {
         Btree(super::BTreeIndex),
     }
 }
-impl ::prost::Name for IndexType {
-    const NAME: &'static str = "IndexType";
+impl ::prost::Name for IndexProperties {
+    const NAME: &'static str = "IndexProperties";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.IndexType".into()
+        "rerun.remote_store.v0.IndexProperties".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.IndexType".into()
+        "/rerun.remote_store.v0.IndexProperties".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -110,6 +110,7 @@ impl ::prost::Name for VectorIvfPqIndex {
         "/rerun.remote_store.v0.VectorIvfPqIndex".into()
     }
 }
+/// TODO(zehiko) as properties as needed
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct BTreeIndex {}
 impl ::prost::Name for BTreeIndex {
@@ -142,7 +143,7 @@ pub struct QueryCollectionIndexRequest {
     pub collection: ::core::option::Option<Collection>,
     /// Index type specific query properties
     #[prost(message, optional, tag = "2")]
-    pub index: ::core::option::Option<IndexQueryData>,
+    pub query: ::core::option::Option<IndexQuery>,
 }
 impl ::prost::Name for QueryCollectionIndexRequest {
     const NAME: &'static str = "QueryCollectionIndexRequest";
@@ -155,16 +156,16 @@ impl ::prost::Name for QueryCollectionIndexRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IndexQueryData {
-    /// specific index properties based on the index type
-    #[prost(oneof = "index_query_data::IndexQuery", tags = "1, 2, 3")]
-    pub index_query: ::core::option::Option<index_query_data::IndexQuery>,
+pub struct IndexQuery {
+    /// specific index query properties based on the index type
+    #[prost(oneof = "index_query::Query", tags = "1, 2, 3")]
+    pub query: ::core::option::Option<index_query::Query>,
 }
-/// Nested message and enum types in `IndexQueryData`.
-pub mod index_query_data {
-    /// specific index properties based on the index type
+/// Nested message and enum types in `IndexQuery`.
+pub mod index_query {
+    /// specific index query properties based on the index type
     #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum IndexQuery {
+    pub enum Query {
         #[prost(message, tag = "1")]
         Inverted(super::InvertedIndexQuery),
         #[prost(message, tag = "2")]
@@ -173,14 +174,14 @@ pub mod index_query_data {
         Btree(super::BTreeIndexQuery),
     }
 }
-impl ::prost::Name for IndexQueryData {
-    const NAME: &'static str = "IndexQueryData";
+impl ::prost::Name for IndexQuery {
+    const NAME: &'static str = "IndexQuery";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.IndexQueryData".into()
+        "rerun.remote_store.v0.IndexQuery".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.IndexQueryData".into()
+        "/rerun.remote_store.v0.IndexQuery".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
