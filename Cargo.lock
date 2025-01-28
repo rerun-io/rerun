@@ -6231,6 +6231,7 @@ dependencies = [
  "re_build_info",
  "re_byte_size",
  "re_log_types",
+ "re_sorbet",
  "re_tuid",
  "thiserror 1.0.65",
  "tonic",
