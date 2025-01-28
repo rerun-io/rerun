@@ -11,7 +11,7 @@ use re_blueprint_tree::data::BlueprintTreeData;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
-use re_log_types::{build_frame_nr, EntityPath};
+use re_log_types::{build_frame_nr, EntityPath, Timeline};
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::test_context::TestContext;
@@ -170,6 +170,9 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     if let Some(filter_query) = filter_query {
         blueprint_tree.activate_filter(filter_query);
     }
+
+    // set the current timeline to the timeline where data was logged to
+    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
