@@ -757,8 +757,6 @@ namespace rerun {
         /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
         /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
         ///
-        /// Any failures that may occur during serialization are handled with `Error::handle`.
-        ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param time_columns The time columns to send.
         /// \param component_columns The columns of components to send. Both individual `ComponentColumn`s and `Collection<ComponentColumn>`s are accepted.
