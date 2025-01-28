@@ -36,10 +36,10 @@ namespace rerun {
         template <typename T>
         [[deprecated(
             "Use from_loggable_with_lengths(components, lengths, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentColumn> from_loggable_with_lengths(
-            const Collection<T>& components, const Collection<uint32_t>& lengths
-        ) {
+        )]] static Result<ComponentColumn>
+            from_loggable_with_lengths(
+                const Collection<T>& components, const Collection<uint32_t>& lengths
+            ) {
             return from_loggable_with_lengths(components, lengths, Loggable<T>::Descriptor);
         }
 
@@ -74,8 +74,8 @@ namespace rerun {
         /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
         template <typename T>
         [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentColumn> from_loggable(const Collection<T>& components) {
+        )]] static Result<ComponentColumn>
+            from_loggable(const Collection<T>& components) {
             return from_loggable(components, Loggable<T>::Descriptor);
         }
 

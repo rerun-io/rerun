@@ -40,8 +40,8 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentBatch> from_loggable(const rerun::Collection<T>& components) {
+        )]] static Result<ComponentBatch>
+            from_loggable(const rerun::Collection<T>& components) {
             return from_loggable(components, Loggable<T>::Descriptor);
         }
 
@@ -96,8 +96,8 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentBatch> from_loggable(const T& component) {
+        )]] static Result<ComponentBatch>
+            from_loggable(const T& component) {
             // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
             const auto collection = Collection<T>::borrow(&component, 1);
             return from_loggable(collection);
@@ -122,8 +122,8 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentBatch> from_loggable(const std::optional<T>& component) {
+        )]] static Result<ComponentBatch>
+            from_loggable(const std::optional<T>& component) {
             if (component.has_value()) {
                 return from_loggable(component.value());
             } else {
@@ -154,10 +154,8 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]]
-        static Result<ComponentBatch> from_loggable(
-            const std::optional<rerun::Collection<T>>& components
-        ) {
+        )]] static Result<ComponentBatch>
+            from_loggable(const std::optional<rerun::Collection<T>>& components) {
             if (components.has_value()) {
                 return from_loggable(components.value());
             } else {
