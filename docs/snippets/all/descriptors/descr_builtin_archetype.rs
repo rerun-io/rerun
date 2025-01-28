@@ -44,36 +44,53 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let store = stores.into_values().next().unwrap();
         let chunks = store.iter_chunks().collect::<Vec<_>>();
-        assert_eq!(1, chunks.len());
+        assert_eq!(2, chunks.len());
 
-        let chunk = chunks.into_iter().next().unwrap();
+        {
+            let chunk = &chunks[0];
 
-        let mut descriptors = chunk
-            .components()
-            .values()
-            .flat_map(|per_desc| per_desc.keys())
-            .cloned()
-            .collect::<Vec<_>>();
-        descriptors.sort();
+            let mut descriptors = chunk
+                .components()
+                .values()
+                .flat_map(|per_desc| per_desc.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            descriptors.sort();
 
-        let expected = vec![
-            ComponentDescriptor {
+            let expected = vec![
+                ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Points3D".into()),
+                    archetype_field_name: Some("positions".into()),
+                    component_name: "rerun.components.Position3D".into(),
+                },
+                ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Points3D".into()),
+                    archetype_field_name: Some("radii".into()),
+                    component_name: "rerun.components.Radius".into(),
+                },
+            ];
+
+            similar_asserts::assert_eq!(expected, descriptors);
+        }
+
+        {
+            let chunk = &chunks[1];
+
+            let mut descriptors = chunk
+                .components()
+                .values()
+                .flat_map(|per_desc| per_desc.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            descriptors.sort();
+
+            let expected = vec![ComponentDescriptor {
                 archetype_name: None,
                 archetype_field_name: None,
                 component_name: "rerun.components.Points3DIndicator".into(),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Points3D".into()),
-                archetype_field_name: Some("positions".into()),
-                component_name: "rerun.components.Position3D".into(),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Points3D".into()),
-                archetype_field_name: Some("radii".into()),
-                component_name: "rerun.components.Radius".into(),
-            },
-        ];
+            }];
 
-        similar_asserts::assert_eq!(expected, descriptors);
+            similar_asserts::assert_eq!(expected, descriptors);
+        }
     }
 }

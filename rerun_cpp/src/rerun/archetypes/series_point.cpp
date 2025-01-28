@@ -19,6 +19,53 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> SeriesPoint::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (color.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
+            );
+        }
+        if (marker.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(marker.value(), lengths_).value_or_throw()
+            );
+        }
+        if (name.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(name.value(), lengths_).value_or_throw()
+            );
+        }
+        if (marker_size.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(marker_size.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<SeriesPoint>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> SeriesPoint::columns() {
+        if (color.has_value()) {
+            return columns(std::vector<uint32_t>(color.value().length(), 1));
+        }
+        if (marker.has_value()) {
+            return columns(std::vector<uint32_t>(marker.value().length(), 1));
+        }
+        if (name.has_value()) {
+            return columns(std::vector<uint32_t>(name.value().length(), 1));
+        }
+        if (marker_size.has_value()) {
+            return columns(std::vector<uint32_t>(marker_size.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

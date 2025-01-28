@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
-use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
-use re_types::components::MediaType;
+use re_renderer::{mesh::GpuMesh, RenderContext};
+use re_types::{components::MediaType, datatypes};
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 
 use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
@@ -17,15 +17,15 @@ pub struct NativeAsset3D<'a> {
 pub struct NativeMesh3D<'a> {
     pub vertex_positions: &'a [glam::Vec3],
     pub vertex_normals: Option<&'a [glam::Vec3]>,
-    pub vertex_colors: Option<&'a [re_renderer::Rgba32Unmul]>,
+    pub vertex_colors: Option<&'a [datatypes::Rgba32]>,
     pub vertex_texcoords: Option<&'a [glam::Vec2]>,
 
     pub triangle_indices: Option<&'a [glam::UVec3]>,
 
-    pub albedo_factor: Option<re_renderer::Color32>,
+    pub albedo_factor: Option<datatypes::Rgba32>,
 
-    pub albedo_texture_buffer: Option<re_types::datatypes::Blob>,
-    pub albedo_texture_format: Option<re_types::datatypes::ImageFormat>,
+    pub albedo_texture_buffer: Option<datatypes::Blob>,
+    pub albedo_texture_format: Option<datatypes::ImageFormat>,
 }
 
 pub struct LoadedMesh {
@@ -133,9 +133,14 @@ impl LoadedMesh {
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
             re_tracing::profile_scope!("copy_colors");
-            clamped_vec_or(vertex_colors, num_positions, &Rgba32Unmul::WHITE)
+            vertex_colors
+                .iter()
+                .map(|c| re_renderer::Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
+                .chain(std::iter::repeat(re_renderer::Rgba32Unmul::WHITE))
+                .take(num_positions)
+                .collect::<Vec<_>>()
         } else {
-            vec![Rgba32Unmul::WHITE; num_positions]
+            vec![re_renderer::Rgba32Unmul::WHITE; num_positions]
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
@@ -183,7 +188,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_factor: albedo_factor.unwrap_or(re_renderer::Color32::WHITE).into(),
+                albedo_factor: albedo_factor.unwrap_or(datatypes::Rgba32::WHITE).into(),
             }],
         };
 
@@ -209,8 +214,8 @@ impl LoadedMesh {
 }
 
 fn try_get_or_create_albedo_texture(
-    albedo_texture_buffer: &Option<re_types::datatypes::Blob>,
-    albedo_texture_format: &Option<re_types::datatypes::ImageFormat>,
+    albedo_texture_buffer: &Option<datatypes::Blob>,
+    albedo_texture_format: &Option<datatypes::ImageFormat>,
     render_ctx: &RenderContext,
     texture_key: u64,
     name: &str,

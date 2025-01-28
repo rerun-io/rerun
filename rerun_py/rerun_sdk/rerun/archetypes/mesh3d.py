@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .mesh3d_ext import Mesh3DExt
@@ -122,10 +125,10 @@ class Mesh3D(Mesh3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         vertex_positions: datatypes.Vec3DArrayLike | None = None,
         triangle_indices: datatypes.UVec3DArrayLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
@@ -141,7 +144,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         vertex_positions:
             The positions of each vertex.
@@ -187,7 +190,7 @@ class Mesh3D(Mesh3DExt, Archetype):
                 "class_ids": class_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -197,21 +200,89 @@ class Mesh3D(Mesh3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Mesh3D:
+    def cleared(cls) -> Mesh3D:
         """Clear all the fields of a `Mesh3D`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        vertex_positions: datatypes.Vec3DArrayLike | None = None,
+        triangle_indices: datatypes.UVec3DArrayLike | None = None,
+        vertex_normals: datatypes.Vec3DArrayLike | None = None,
+        vertex_colors: datatypes.Rgba32ArrayLike | None = None,
+        vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
+        albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        vertex_positions:
+            The positions of each vertex.
+
+            If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
+        triangle_indices:
+            Optional indices for the triangles that make up the mesh.
+        vertex_normals:
+            An optional normal for each vertex.
+        vertex_colors:
+            An optional color for each vertex.
+        vertex_texcoords:
+            An optional uv texture coordinate for each vertex.
+        albedo_factor:
+            A color multiplier applied to the whole mesh.
+        albedo_texture_buffer:
+            Optional albedo texture.
+
+            Used with the [`components.Texcoord2D`][rerun.components.Texcoord2D] of the mesh.
+
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        albedo_texture_format:
+            The format of the `albedo_texture_buffer`, if any.
+        class_ids:
+            Optional class Ids for the vertices.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            vertex_positions=[],
-            triangle_indices=[],
-            vertex_normals=[],
-            vertex_colors=[],
-            vertex_texcoords=[],
-            albedo_factor=[],
-            albedo_texture_buffer=[],
-            albedo_texture_format=[],
-            class_ids=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                vertex_positions=vertex_positions,
+                triangle_indices=triangle_indices,
+                vertex_normals=vertex_normals,
+                vertex_colors=vertex_colors,
+                vertex_texcoords=vertex_texcoords,
+                albedo_factor=albedo_factor,
+                albedo_texture_buffer=albedo_texture_buffer,
+                albedo_texture_format=albedo_texture_format,
+                class_ids=class_ids,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     vertex_positions: components.Position3DBatch | None = field(
         metadata={"component": True},

@@ -9,15 +9,8 @@
 #include <arrow/c/bridge.h>
 
 namespace rerun {
-    std::shared_ptr<arrow::DataType> ComponentColumn::list_array_type_for(
-        std::shared_ptr<arrow::DataType> inner_type
-    ) {
-        return arrow::list(inner_type);
-    }
-
     Result<ComponentColumn> ComponentColumn::from_batch_with_lengths(
-        ComponentBatch batch, const Collection<uint32_t>& lengths,
-        std::shared_ptr<arrow::DataType> list_array_type
+        ComponentBatch batch, const Collection<uint32_t>& lengths
     ) {
         // Convert lengths into offsets.
         std::vector<uint32_t> offsets(lengths.size() + 1);
@@ -31,17 +24,16 @@ namespace rerun {
             offsets[i + 1] = offsets[i] + lengths[i];
         }
 
-        return ComponentColumn::from_batch_with_offsets(batch, std::move(offsets), list_array_type);
+        return ComponentColumn::from_batch_with_offsets(batch, std::move(offsets));
     }
 
     Result<ComponentColumn> ComponentColumn::from_batch_with_offsets(
-        ComponentBatch batch, Collection<uint32_t> offsets,
-        std::shared_ptr<arrow::DataType> list_array_type
+        ComponentBatch batch, Collection<uint32_t> offsets
     ) {
         auto length = offsets.size() - 1;
         auto offset_buffer = arrow_buffer_from_vector(std::move(offsets).to_vector());
         auto list_array = std::make_shared<arrow::ListArray>(
-            list_array_type,
+            arrow::list(batch.array->type()),
             length,
             offset_buffer,
             std::move(batch.array)

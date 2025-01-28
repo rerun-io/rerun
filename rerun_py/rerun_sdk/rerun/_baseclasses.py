@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generic, Iterable, Protocol, TypeVar
+from typing import Generic, Iterable, Iterator, Protocol, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -132,6 +132,29 @@ class DescribedComponentBatch:
         Part of the `ComponentBatchLike` logging interface.
         """
         return self._batch.as_arrow_array()
+
+    def partition(self, lengths: npt.ArrayLike | None = None) -> ComponentColumn:
+        """
+        Partitions the component batch into multiple sub-batches, forming a column.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumn.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        lengths:
+            The offsets to partition the component at.
+            If specified, `lengths` must sum to the total length of the component batch.
+            If left unspecified, it will default to unit-length batches.
+
+        Returns
+        -------
+        The partitioned component batch as a column.
+
+        """
+        return ComponentColumn(self, lengths=lengths)
 
 
 class ComponentBatchLike(Protocol):
@@ -332,25 +355,47 @@ class ComponentColumn:
     """
     A column of components that can be sent using `send_columns`.
 
-    This is represented by a ComponentBatch array that has been repartitioned into multiple segments.
+    This is represented by a ComponentBatch array that has been partitioned into multiple segments.
     This is useful for reinterpreting a single contiguous batch as multiple sub-batches
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
-    def __init__(self, component_batch: ComponentBatchLike, lengths: npt.ArrayLike):
+    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None):
         """
         Construct a new component column.
 
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned column will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumn.partition` to repartition the data as needed.
+
         Parameters
         ----------
-        component_batch : ComponentBatchLike
+        component_batch:
             The component batch to partition into a column.
-        lengths : npt.ArrayLike
-            The lengths of the partitions.
+
+        lengths:
+            The offsets to partition the component at.
+            If specified, `lengths` must sum to the total length of the component batch.
+            If left unspecified, it will default to unit-length batches.
 
         """
         self.component_batch = component_batch
-        self.lengths = lengths
+
+        if "Indicator" in component_batch.component_descriptor().component_name:
+            if lengths is None:
+                # Indicator component, no lengths -> zero-sized batches by default
+                self.lengths = np.zeros(len(component_batch.as_arrow_array()))
+            else:
+                # Normal component, lengths specified -> respect outer length, but enforce zero-sized batches still
+                self.lengths = np.zeros(len(np.array(lengths)))
+        else:
+            if lengths is None:
+                # Normal component, no lengths -> unit-sized batches by default
+                self.lengths = np.ones(len(component_batch.as_arrow_array()))
+            else:
+                # Normal component, lengths specified -> follow instructions
+                self.lengths = np.array(lengths)
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
@@ -369,6 +414,67 @@ class ComponentColumn:
         array = self.component_batch.as_arrow_array()
         offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
         return pa.ListArray.from_arrays(offsets, array)
+
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+        """
+        (Re)Partitions the column.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumn.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        lengths:
+            The offsets to partition the component at.
+
+        Returns
+        -------
+        The (re)partitioned column.
+
+        """
+        return ComponentColumn(self.component_batch, lengths=lengths)
+
+
+class ComponentColumnList(Iterable[ComponentColumn]):
+    """
+    A collection of [ComponentColumn][]s.
+
+    Useful to partition and log multiple columns at once.
+    """
+
+    def __init__(self, columns: Iterable[ComponentColumn]):
+        self._columns = list(columns)
+
+    def __iter__(self) -> Iterator[ComponentColumn]:
+        return iter(self._columns)
+
+    def __len__(self) -> int:
+        return len(self._columns)
+
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumnList:
+        """
+        (Re)Partitions the columns.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumn.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        lengths:
+            The offsets to partition the component at.
+            If specified, `lengths` must sum to the total length of the component batch.
+            If left unspecified, it will default to unit-length batches.
+
+        Returns
+        -------
+        The partitioned component batch as a column.
+
+        """
+        return ComponentColumnList([col.partition(lengths) for col in self._columns])
 
 
 class ComponentBatchMixin(ComponentBatchLike):
@@ -418,24 +524,28 @@ class ComponentBatchMixin(ComponentBatchLike):
             ),
         )
 
-    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+    def partition(self, lengths: npt.ArrayLike | None = None) -> ComponentColumn:
         """
-        Partitions the component into multiple sub-batches. This wraps the inner arrow
-        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+        Partitions the component batch into multiple sub-batches, forming a column.
 
-        Lengths must sum to the total length of the component batch.
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
-        lengths : npt.ArrayLike
+        lengths:
             The offsets to partition the component at.
+            If specified, `lengths` must sum to the total length of the component batch.
+            If left unspecified, it will default to unit-length batches.
 
         Returns
         -------
-        The partitioned component.
+        The partitioned component batch as a column.
 
-        """  # noqa: D205
-        return ComponentColumn(self, lengths)
+        """
+        return ComponentColumn(self, lengths=lengths)
 
 
 class ComponentMixin(ComponentBatchLike):

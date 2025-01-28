@@ -292,6 +292,47 @@ impl Chunk {
             && self.same_datatypes(rhs)
             && self.same_descriptors(rhs)
     }
+
+    /// Moves all indicator components from `self` into a new, dedicated chunk.
+    ///
+    /// The new chunk contains only the first index from each index column, and all the indicators,
+    /// packed in a single row.
+    /// Beware: `self` might be left with no component columns at all after this operation.
+    ///
+    /// This greatly reduces the overhead of indicators, both in the row-oriented and
+    /// column-oriented APIs.
+    /// See <https://github.com/rerun-io/rerun/issues/8768> for further rationale.
+    pub fn split_indicators(&mut self) -> Option<Self> {
+        let indicators: ChunkComponents = self
+            .components
+            .iter_flattened()
+            .filter(|&(descr, _list_array)| descr.component_name.is_indicator_component())
+            .filter(|&(_descr, list_array)| (!list_array.is_empty()))
+            .map(|(descr, list_array)| (descr.clone(), list_array.slice(0, 1)))
+            .collect();
+        if indicators.is_empty() {
+            return None;
+        }
+
+        let timelines = self
+            .timelines
+            .iter()
+            .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(0, 1)))
+            .collect();
+
+        if let Ok(chunk) = Self::from_auto_row_ids(
+            ChunkId::new(),
+            self.entity_path.clone(),
+            timelines,
+            indicators,
+        ) {
+            self.components
+                .retain(|component_name, _per_desc| !component_name.is_indicator_component());
+            return Some(chunk);
+        }
+
+        None
+    }
 }
 
 impl TimeColumn {

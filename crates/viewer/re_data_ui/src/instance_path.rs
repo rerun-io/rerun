@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Archetype, Component, ComponentName,
+    Component, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -301,13 +301,13 @@ fn preview_if_image_ui(
         .ok()?;
 
     // TODO(#8129): it's ugly but indicators are going away next anyway.
-    let kind = if component_map.contains_key(&re_types_core::ComponentBatch::name(
-        &archetypes::DepthImage::indicator(),
-    )) {
+    let kind = if component_map
+        .contains_key(&archetypes::DepthImage::descriptor_indicator().component_name)
+    {
         ImageKind::Depth
-    } else if component_map.contains_key(&re_types_core::ComponentBatch::name(
-        &archetypes::SegmentationImage::indicator(),
-    )) {
+    } else if component_map
+        .contains_key(&archetypes::SegmentationImage::descriptor_indicator().component_name)
+    {
         ImageKind::Segmentation
     } else {
         ImageKind::Color

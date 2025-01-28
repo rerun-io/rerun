@@ -180,6 +180,9 @@ namespace rerun {
             }
         }
 
+        /// Size in the number of elements the underlying arrow array contains.
+        size_t length() const;
+
         /// To rerun C API component batch.
         ///
         /// The resulting `rr_component_batch` keeps the `arrow::Array` alive until it is released.

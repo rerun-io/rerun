@@ -43,6 +43,8 @@ class ViewerWidget {
 
     model.on("msg:custom", this.on_custom_message);
 
+    model.on("change:_time_ctrl", (_, [timeline, time, play]) => this.on_time_ctrl(null, timeline, time, play));
+
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
 
@@ -122,6 +124,33 @@ class ViewerWidget {
       console.log("unknown message type", msg, buffers);
     }
   };
+
+  on_time_ctrl = (_: unknown, timeline: string | null, time: number | null, play: boolean) => {
+    let recording_id = this.viewer.get_active_recording_id();
+    if (recording_id === null) {
+      return;
+    }
+
+    let active_timeline = this.viewer.get_active_timeline(recording_id);
+
+    if (timeline === null) {
+      timeline = active_timeline;
+    }
+
+    if (timeline === null) {
+      return;
+    }
+
+    if (timeline !== active_timeline) {
+      this.viewer.set_active_timeline(recording_id, timeline);
+    }
+
+    this.viewer.set_playing(recording_id, play);
+
+    if (time !== null) {
+      this.viewer.set_current_time(recording_id, timeline, time);
+    }
+  }
 }
 
 const render: Render<WidgetModel> = ({ model, el }) => {

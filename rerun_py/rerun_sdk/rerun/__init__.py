@@ -35,6 +35,7 @@ from . import (
 from ._baseclasses import (
     ComponentBatchMixin as ComponentBatchMixin,
     ComponentColumn as ComponentColumn,
+    ComponentColumnList as ComponentColumnList,
     ComponentDescriptor as ComponentDescriptor,
     DescribedComponentBatch as DescribedComponentBatch,
 )

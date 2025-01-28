@@ -1088,53 +1088,6 @@ impl RecordingStream {
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component batches
-    /// must match. All data that occurs at the same index across the different time and components
-    /// arrays will act as a single logical row.
-    ///
-    /// Note that this API ignores any stateful time set on the log stream via the
-    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
-    /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
-    ///
-    /// TODO(#7167): Unlike Python and C++, this API does not yet support arbitrary partitions of the incoming
-    /// component arrays. Each component will be individually associated with a single timepoint, rather
-    /// than offering how big the component arrays are that are associated with each timepoint.
-    #[inline]
-    pub fn send_columns<'a>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        timelines: impl IntoIterator<Item = TimeColumn>,
-        components: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
-    ) -> RecordingStreamResult<()> {
-        let id = ChunkId::new();
-
-        let timelines = timelines
-            .into_iter()
-            .map(|timeline| (*timeline.timeline(), timeline))
-            .collect::<IntMap<_, _>>();
-
-        let components: Result<Vec<_>, ChunkError> = components
-            .into_iter()
-            .map(|batch| {
-                Ok((
-                    batch.descriptor().into_owned(),
-                    batch.to_arrow_list_array()?,
-                ))
-            })
-            .collect();
-
-        let components: ChunkComponents = components?.into_iter().collect();
-
-        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
-
-        self.send_chunk(chunk);
-
-        Ok(())
-    }
-
-    /// Lower-level logging API to provide data spanning multiple timepoints.
-    ///
-    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
@@ -1142,7 +1095,7 @@ impl RecordingStream {
     /// Note that this API ignores any stateful time set on the log stream via the
     /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
-    pub fn send_columns_v2(
+    pub fn send_columns(
         &self,
         ent_path: impl Into<EntityPath>,
         indexes: impl IntoIterator<Item = TimeColumn>,
@@ -1233,79 +1186,6 @@ impl RecordingStream {
             static_,
             as_components.as_serialized_batches(),
         )
-    }
-
-    /// Logs a set of [`re_types_core::ComponentBatch`]es into Rerun.
-    ///
-    /// If `static_` is set to `true`, all timestamp data associated with this message will be
-    /// dropped right before sending it to Rerun.
-    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
-    /// any temporal data of the same type.
-    ///
-    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
-    /// internal clock.
-    /// See `RecordingStream::set_time_*` family of methods for more information.
-    ///
-    /// The number of instances will be determined by the longest batch in the bundle.
-    ///
-    /// The entity path can either be a string
-    /// (with special characters escaped, split on unescaped slashes)
-    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
-    ///
-    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
-    /// transport.
-    /// See [SDK Micro Batching] for more information.
-    ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
-    #[deprecated(since = "0.22.0", note = "use log_serialized_batches instead")]
-    pub fn log_component_batches<'a>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
-    ) -> RecordingStreamResult<()> {
-        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(row_id, ent_path, static_, comp_batches)
-    }
-
-    fn log_component_batches_impl<'a>(
-        &self,
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
-    ) -> RecordingStreamResult<()> {
-        if !self.is_enabled() {
-            return Ok(()); // silently drop the message
-        }
-
-        let entity_path = entity_path.into();
-
-        let comp_batches: Result<Vec<_>, _> = comp_batches
-            .into_iter()
-            .map(|comp_batch| {
-                comp_batch
-                    .to_arrow()
-                    .map(|array| (comp_batch.descriptor().into_owned(), array))
-            })
-            .collect();
-        let components: IntMap<_, _> = comp_batches?.into_iter().collect();
-
-        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
-        // internal clock.
-        let timepoint = TimePoint::default();
-
-        if !components.is_empty() {
-            let row = PendingRow {
-                row_id,
-                timepoint,
-                components,
-            };
-            self.record_row(entity_path, row, !static_);
-        }
-
-        Ok(())
     }
 
     /// Logs a set of [`SerializedComponentBatch`]es into Rerun.
@@ -2886,7 +2766,8 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        rec.log("labels", &labels as &dyn crate::ComponentBatch)
+        use re_types_core::ComponentBatch as _;
+        rec.log("labels", &labels.try_serialized().unwrap())
             .unwrap();
     }
 }

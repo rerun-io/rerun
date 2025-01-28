@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .transform3d_ext import Transform3DExt
@@ -158,10 +161,10 @@ class Transform3D(Transform3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         translation: datatypes.Vec3DLike | None = None,
         rotation_axis_angle: datatypes.RotationAxisAngleLike | None = None,
         quaternion: datatypes.QuaternionLike | None = None,
@@ -175,7 +178,7 @@ class Transform3D(Transform3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         translation:
             Translation vector.
@@ -209,7 +212,7 @@ class Transform3D(Transform3DExt, Archetype):
                 "axis_length": axis_length,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -219,19 +222,75 @@ class Transform3D(Transform3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Transform3D:
+    def cleared(cls) -> Transform3D:
         """Clear all the fields of a `Transform3D`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        translation: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angle: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternion: datatypes.QuaternionArrayLike | None = None,
+        scale: datatypes.Vec3DArrayLike | None = None,
+        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+        relation: components.TransformRelationArrayLike | None = None,
+        axis_length: datatypes.Float32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        translation:
+            Translation vector.
+        rotation_axis_angle:
+            Rotation via axis + angle.
+        quaternion:
+            Rotation via quaternion.
+        scale:
+            Scaling factor.
+        mat3x3:
+            3x3 transformation matrix.
+        relation:
+            Specifies the relation this transform establishes between this entity and its parent.
+        axis_length:
+            Visual length of the 3 axes.
+
+            The length is interpreted in the local coordinate system of the transform.
+            If the transform is scaled, the axes will be scaled accordingly.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            translation=[],
-            rotation_axis_angle=[],
-            quaternion=[],
-            scale=[],
-            mat3x3=[],
-            relation=[],
-            axis_length=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                translation=translation,
+                rotation_axis_angle=rotation_axis_angle,
+                quaternion=quaternion,
+                scale=scale,
+                mat3x3=mat3x3,
+                relation=relation,
+                axis_length=axis_length,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     translation: components.Translation3DBatch | None = field(
         metadata={"component": True},

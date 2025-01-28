@@ -67,7 +67,7 @@ class LineStrip3DExt:
                         else:
                             if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 3):
                                 raise ValueError(
-                                    "Expected a sequence of 3D vectors, instead got array with shape {strip.shape}."
+                                    f"Expected a sequence of 3D vectors, instead got array with shape {strip.shape}."
                                 )
                             return Vec3DBatch(strip)
 

@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
@@ -133,6 +134,34 @@ namespace rerun::archetypes {
                                .value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `is_recursive` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_is_recursive` should
+        /// be used when logging a single row's worth of data.
+        Clear with_many_is_recursive(
+            const Collection<rerun::components::ClearIsRecursive>& _is_recursive
+        ) && {
+            is_recursive = ComponentBatch::from_loggable(_is_recursive, Descriptor_is_recursive)
+                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

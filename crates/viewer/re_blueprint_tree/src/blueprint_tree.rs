@@ -1,25 +1,23 @@
 use egui::{Response, Ui};
-use itertools::Itertools;
 use smallvec::SmallVec;
 
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath};
-use re_types::blueprint::components::Visible;
+use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
-    DataQueryResult, DataResultNode, DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item,
-    ItemContext, SystemCommandSender, ViewId, ViewerContext,
+    DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
+    SystemCommandSender, ViewId, ViewerContext,
 };
-use re_viewport_blueprint::{
-    ui::show_add_view_or_container_modal, ViewBlueprint, ViewportBlueprint,
-};
+use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 
-use crate::data_result_node_or_path::DataResultNodeOrPath;
+use crate::data::BlueprintTreeData;
+use crate::data::{ContainerData, ContentsData, DataResultData, DataResultKind, ViewData};
 
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
@@ -37,7 +35,7 @@ pub struct BlueprintTree {
     /// See [`Self::is_candidate_drop_parent_container`] for details.
     candidate_drop_parent_container_id: Option<ContainerId>,
 
-    /// Candidate parent container to be drawn on next frame.
+    /// Candidate parent container to be drawn on the next frame.
     ///
     /// We double-buffer this value to deal with ordering constraints.
     next_candidate_drop_parent_container_id: Option<ContainerId>,
@@ -62,9 +60,11 @@ impl BlueprintTree {
     pub fn show(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
+        re_tracing::profile_function!();
+
         // Invalidate the filter widget if the store id has changed.
         if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
             self.filter_state = Default::default();
@@ -90,9 +90,9 @@ impl BlueprintTree {
                         }
                     })
                     .menu_button(&re_ui::icons::MORE, |ui| {
-                        add_new_view_or_container_menu_button(ctx, viewport, ui);
+                        add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
                         set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, viewport, ui);
+                        set_blueprint_to_auto_menu_button(ctx, viewport_blueprint, ui);
                     }),
                 );
             });
@@ -102,14 +102,14 @@ impl BlueprintTree {
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
         // inset. Instead, it calls panel_content itself inside the ScrollArea.
-        self.tree_ui(ctx, viewport, ui);
+        self.tree_ui(ctx, viewport_blueprint, ui);
     }
 
     /// Show the blueprint panel tree view.
     fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
@@ -118,20 +118,26 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id = self.next_candidate_drop_parent_container_id;
         self.next_candidate_drop_parent_container_id = None;
 
-        let filter_matcher = self.filter_state.filter();
+        let blueprint_tree_data = BlueprintTreeData::from_blueprint_and_filter(
+            ctx,
+            viewport_blueprint,
+            &self.filter_state.filter(),
+        );
 
         egui::ScrollArea::both()
             .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
-                    self.blueprint_tree_scroll_to_item = ctx
-                        .focused_item
-                        .as_ref()
-                        .and_then(|item| self.handle_focused_item(ctx, viewport, ui, item));
+                    self.blueprint_tree_scroll_to_item =
+                        ctx.focused_item.as_ref().and_then(|item| {
+                            self.handle_focused_item(ctx, viewport_blueprint, ui, item)
+                        });
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
-                        self.root_container_ui(ctx, viewport, ui, &filter_matcher);
+                        if let Some(root_container) = blueprint_tree_data.root_container {
+                            self.root_container_ui(ctx, viewport_blueprint, ui, &root_container);
+                        }
                     });
 
                     let empty_space_response =
@@ -145,56 +151,12 @@ impl BlueprintTree {
                     // handle drag and drop interaction on empty space
                     self.handle_empty_space_drag_and_drop_interaction(
                         ctx,
-                        viewport,
+                        viewport_blueprint,
                         ui,
                         empty_space_response.rect,
                     );
                 });
             });
-    }
-
-    /// Check if the provided item should be scrolled to.
-    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
-        if Some(item) == self.blueprint_tree_scroll_to_item.as_ref() {
-            // Scroll only if the entity isn't already visible. This is important because that's what
-            // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
-            // annoying to induce a scroll motion.
-            if !ui.clip_rect().contains_rect(response.rect) {
-                response.scroll_to_me(Some(egui::Align::Center));
-            }
-        }
-    }
-
-    /// If a group or view has a total of this number of elements, show its subtree by default?
-    fn default_open_for_data_result(group: &DataResultNode) -> bool {
-        let num_children = group.children.len();
-        2 <= num_children && num_children <= 3
-    }
-
-    fn contents_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
-        ui: &mut egui::Ui,
-        contents: &Contents,
-        parent_visible: bool,
-        filter_matcher: &filter_widget::FilterMatcher,
-    ) {
-        match contents {
-            Contents::Container(container_id) => {
-                self.container_ui(
-                    ctx,
-                    viewport,
-                    ui,
-                    container_id,
-                    parent_visible,
-                    filter_matcher,
-                );
-            }
-            Contents::View(view_id) => {
-                self.view_ui(ctx, viewport, ui, view_id, parent_visible, filter_matcher);
-            }
-        };
     }
 
     /// Display the root container.
@@ -204,42 +166,35 @@ impl BlueprintTree {
     fn root_container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
-        filter_matcher: &filter_widget::FilterMatcher,
+        container_data: &ContainerData,
     ) {
-        let container_id = viewport.root_container;
-        if !match_container(ctx, viewport, &container_id, filter_matcher) {
-            return;
-        }
-
-        let Some(container_blueprint) = viewport.container(&container_id) else {
-            re_log::warn!("Failed to find root container {container_id} in ViewportBlueprint");
-            return;
-        };
-
-        let item = Item::Container(container_id);
-        let container_name = container_blueprint.display_name_or_default();
+        let item = Item::Container(container_data.id);
 
         let item_response = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true) // allowed for consistency but results in an invalid drag
-            .drop_target_style(self.is_candidate_drop_parent_container(&container_id))
+            .drop_target_style(self.is_candidate_drop_parent_container(&container_data.id))
             .show_flat(
                 ui,
-                list_item::LabelContent::new(format!("Viewport ({})", container_name.as_ref()))
-                    .label_style(contents_name_style(&container_name))
-                    .with_icon(icon_for_container_kind(&container_blueprint.container_kind)),
+                list_item::LabelContent::new(format!(
+                    "Viewport ({})",
+                    container_data.name.as_ref()
+                ))
+                .label_style(contents_name_style(&container_data.name))
+                .with_icon(icon_for_container_kind(&container_data.kind)),
             );
 
-        for child in &container_blueprint.contents {
-            self.contents_ui(ctx, viewport, ui, child, true, filter_matcher);
+        for child in &container_data.children {
+            self.contents_ui(ctx, viewport_blueprint, ui, child, true);
         }
 
         context_menu_ui_for_item_with_context(
             ctx,
-            viewport,
+            viewport_blueprint,
             &item,
             // expand/collapse context menu actions need this information
             ItemContext::BlueprintTree {
@@ -253,11 +208,29 @@ impl BlueprintTree {
 
         self.handle_root_container_drag_and_drop_interaction(
             ctx,
-            viewport,
+            viewport_blueprint,
             ui,
-            Contents::Container(container_id),
+            Contents::Container(container_data.id),
             &item_response,
         );
+    }
+
+    fn contents_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
+        ui: &mut egui::Ui,
+        contents_data: &ContentsData,
+        parent_visible: bool,
+    ) {
+        match contents_data {
+            ContentsData::Container(container_data) => {
+                self.container_ui(ctx, viewport_blueprint, ui, container_data, parent_visible);
+            }
+            ContentsData::View(view_data) => {
+                self.view_ui(ctx, viewport_blueprint, ui, view_data, parent_visible);
+            }
+        };
     }
 
     fn container_ui(
@@ -265,33 +238,19 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
-        container_id: &ContainerId,
+        container_data: &ContainerData,
         parent_visible: bool,
-        filter_matcher: &filter_widget::FilterMatcher,
     ) {
-        if !match_container(ctx, viewport, container_id, filter_matcher) {
-            return;
-        }
+        let item = Item::Container(container_data.id);
+        let content = Contents::Container(container_data.id);
 
-        let item = Item::Container(*container_id);
-        let content = Contents::Container(*container_id);
-
-        let Some(container_blueprint) = viewport.container(container_id) else {
-            re_log::warn_once!("Ignoring unknown container {container_id}");
-            return;
-        };
-
-        let mut visible = container_blueprint.visible;
+        let mut visible = container_data.visible;
         let container_visible = visible && parent_visible;
 
-        let default_open = true;
-
-        let container_name = container_blueprint.display_name_or_default();
-
-        let item_content = list_item::LabelContent::new(container_name.as_ref())
+        let item_content = list_item::LabelContent::new(container_data.name.as_ref())
             .subdued(!container_visible)
-            .label_style(contents_name_style(&container_name))
-            .with_icon(icon_for_container_kind(&container_blueprint.container_kind))
+            .label_style(contents_name_style(&container_data.name))
+            .with_icon(icon_for_container_kind(&container_data.kind))
             .with_buttons(|ui| {
                 let vis_response = visibility_button_ui(ui, parent_visible, &mut visible);
 
@@ -306,7 +265,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(self.collapse_scope().container(*container_id));
+        let id = egui::Id::new(self.collapse_scope().container(container_data.id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -314,19 +273,23 @@ impl BlueprintTree {
             ..
         } = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
-            .drop_target_style(self.is_candidate_drop_parent_container(container_id))
-            .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
-                for child in &container_blueprint.contents {
-                    self.contents_ui(ctx, viewport, ui, child, container_visible, filter_matcher);
-                }
-            });
+            .drop_target_style(self.is_candidate_drop_parent_container(&container_data.id))
+            .show_hierarchical_with_children(
+                ui,
+                id,
+                container_data.default_open,
+                item_content,
+                |ui| {
+                    for child in &container_data.children {
+                        self.contents_ui(ctx, viewport, ui, child, container_visible);
+                    }
+                },
+            );
 
-        let response = response.on_hover_text(format!(
-            "{:?} container",
-            container_blueprint.container_kind
-        ));
+        let response = response.on_hover_text(format!("{:?} container", container_data.kind));
 
         context_menu_ui_for_item_with_context(
             ctx,
@@ -357,43 +320,24 @@ impl BlueprintTree {
     fn view_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
-        view_id: &ViewId,
+        view_data: &ViewData,
         container_visible: bool,
-        filter_matcher: &filter_widget::FilterMatcher,
     ) {
-        if !match_view(ctx, view_id, filter_matcher) {
-            return;
-        }
-
-        let Some(view) = viewport.view(view_id) else {
-            re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
-            return;
-        };
-        debug_assert_eq!(view.id, *view_id);
-
-        let query_result = ctx.lookup_query_result(view.id);
-        let result_tree = &query_result.tree;
-
-        let mut visible = view.visible;
+        let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
-        let item = Item::View(view.id);
+        let item = Item::View(view_data.id);
 
-        let root_node = result_tree.root_node();
-
-        // empty views should display as open by default to highlight the fact that they are empty
-        let default_open = self.filter_state.is_active()
-            || root_node.map_or(true, Self::default_open_for_data_result);
+        let class = ctx
+            .view_class_registry
+            .get_class_or_log_error(view_data.class_identifier);
 
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let class = &view.class(ctx.view_class_registry);
-        let view_name = view.display_name_or_default();
-
-        let item_content = list_item::LabelContent::new(view_name.as_ref())
-            .label_style(contents_name_style(&view_name))
+        let item_content = list_item::LabelContent::new(view_data.name.as_ref())
+            .label_style(contents_name_style(&view_data.name))
             .with_icon(class.icon())
             .subdued(!view_visible)
             .with_buttons(|ui| {
@@ -401,8 +345,8 @@ impl BlueprintTree {
 
                 let response = remove_button_ui(ui, "Remove view from the viewport");
                 if response.clicked() {
-                    viewport.mark_user_interaction(ctx);
-                    viewport.remove_contents(Contents::View(*view_id));
+                    viewport_blueprint.mark_user_interaction(ctx);
+                    viewport_blueprint.remove_contents(Contents::View(view_data.id));
                 }
 
                 response | vis_response
@@ -410,7 +354,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(self.collapse_scope().view(*view_id));
+        let id = egui::Id::new(self.collapse_scope().view(view_data.id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -418,69 +362,32 @@ impl BlueprintTree {
             ..
         } = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .force_hovered(is_item_hovered)
-            .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
-                // Always show the origin hierarchy first.
-                self.data_result_ui(
-                    ctx,
-                    viewport,
-                    ui,
-                    query_result,
-                    &DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin),
-                    view,
-                    view_visible,
-                    false,
-                    filter_matcher,
-                );
-
-                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
-                let mut projections = Vec::new();
-                result_tree.visit(&mut |node| {
-                    if node.data_result.entity_path.starts_with(&view.space_origin) {
-                        false // If it's under the origin, we're not interested, stop recursing.
-                    } else if node.data_result.tree_prefix_only {
-                        true // Keep recursing until we find a projection.
-                    } else {
-                        // We found a projection, but we must check if it is ruled out by the
-                        // filter.
-                        if self.match_data_result(
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(node),
-                            view,
-                            true,
-                            filter_matcher,
-                        ) {
-                            projections.push(node);
-                        }
-
-                        // No further recursion needed in this branch, everything below is included
-                        // in the projection (or shouldn't be included if the projection has already
-                        // been filtered out).
-                        false
-                    }
-                });
-
-                if !projections.is_empty() {
-                    ui.list_item().interactive(false).show_flat(
+            .show_hierarchical_with_children(ui, id, view_data.default_open, item_content, |ui| {
+                if let Some(data_result_data) = &view_data.origin_tree {
+                    self.data_result_ui(
+                        ctx,
+                        viewport_blueprint,
                         ui,
-                        list_item::LabelContent::new("Projections:").italics(true),
+                        data_result_data,
+                        view_visible,
                     );
+                }
 
-                    for projection in projections {
-                        self.data_result_ui(
-                            ctx,
-                            viewport,
+                if !view_data.projection_trees.is_empty() {
+                    ui.list_item()
+                        .render_offscreen(false)
+                        .interactive(false)
+                        .show_flat(
                             ui,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(projection),
-                            view,
-                            view_visible,
-                            true,
-                            filter_matcher,
+                            list_item::LabelContent::new("Projections:").italics(true),
                         );
+
+                    for projection in &view_data.projection_trees {
+                        self.data_result_ui(ctx, viewport_blueprint, ui, projection, view_visible);
                     }
                 }
             });
@@ -488,12 +395,12 @@ impl BlueprintTree {
         let response = response.on_hover_text(format!("{} view", class.display_name()));
 
         if response.clicked() {
-            viewport.focus_tab(view.id);
+            viewport_blueprint.focus_tab(view_data.id);
         }
 
         context_menu_ui_for_item_with_context(
             ctx,
-            viewport,
+            viewport_blueprint,
             &item,
             // expand/collapse context menu actions need this information
             ItemContext::BlueprintTree {
@@ -505,12 +412,12 @@ impl BlueprintTree {
         self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.handle_select_hover_drag_interactions(&response, item, true);
 
-        let content = Contents::View(*view_id);
+        let content = Contents::View(view_data.id);
 
-        viewport.set_content_visibility(ctx, &content, visible);
+        viewport_blueprint.set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
             ctx,
-            viewport,
+            viewport_blueprint,
             ui,
             content,
             &response,
@@ -522,162 +429,118 @@ impl BlueprintTree {
     fn data_result_ui(
         &self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
-        query_result: &DataQueryResult,
-        node_or_path: &DataResultNodeOrPath<'_>,
-        view: &ViewBlueprint,
+        data_result_data: &DataResultData,
         view_visible: bool,
-        projection_mode: bool,
-        filter_matcher: &filter_widget::FilterMatcher,
     ) {
-        if !self.match_data_result(
-            query_result,
-            node_or_path,
-            view,
-            projection_mode,
-            filter_matcher,
-        ) {
-            return;
-        }
+        let item = Item::DataResult(
+            data_result_data.view_id,
+            data_result_data.entity_path.clone().into(),
+        );
 
-        let entity_path = node_or_path.path();
-        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
-        if display_origin_placeholder {
-            if ui
-                .list_item()
-                .show_hierarchical(
-                    ui,
-                    list_item::LabelContent::new("$origin")
-                        .subdued(true)
-                        .italics(true)
-                        .with_icon(&re_ui::icons::INTERNAL_LINK),
-                )
-                .on_hover_text(
-                    "This subtree corresponds to the View's origin, and is displayed above \
-                    the 'Projections' section. Click to select it.",
-                )
-                .clicked()
-            {
-                ctx.selection_state().set_selection(Item::DataResult(
-                    view.id,
-                    InstancePath::entity_all(entity_path.clone()),
+        let item_content = match data_result_data.kind {
+            DataResultKind::EmptyOriginPlaceholder | DataResultKind::EntityPart => {
+                let is_empty_origin_placeholder = matches!(
+                    data_result_data.kind,
+                    DataResultKind::EmptyOriginPlaceholder
+                );
+
+                let item_content = list_item::LabelContent::new(format_matching_text(
+                    ctx.egui_ctx,
+                    &data_result_data.label,
+                    data_result_data.highlight_sections.iter().cloned(),
+                    is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
+                ))
+                .with_icon(guess_instance_path_icon(
+                    ctx,
+                    &data_result_data.instance_path(),
                 ));
+
+                if is_empty_origin_placeholder {
+                    item_content.subdued(true)
+                } else {
+                    item_content
+                        .subdued(!view_visible || !data_result_data.visible)
+                        .with_buttons(|ui: &mut egui::Ui| {
+                            let mut visible_after = data_result_data.visible;
+                            let vis_response =
+                                visibility_button_ui(ui, view_visible, &mut visible_after);
+                            if visible_after != data_result_data.visible {
+                                data_result_data.update_visibility(ctx, visible_after);
+                            }
+
+                            let response = remove_button_ui(
+                                ui,
+                                "Remove this entity and all its children from the view",
+                            );
+                            if response.clicked() {
+                                data_result_data
+                                    .remove_data_result_from_view(ctx, viewport_blueprint);
+                            }
+
+                            response | vis_response
+                        })
+                }
             }
-            return;
-        }
 
-        let data_result_node = node_or_path.data_result_node();
+            DataResultKind::OriginProjectionPlaceholder => {
+                if ui
+                    .list_item()
+                    .render_offscreen(false)
+                    .show_hierarchical(
+                        ui,
+                        list_item::LabelContent::new("$origin")
+                            .subdued(true)
+                            .italics(true)
+                            .with_icon(&re_ui::icons::INTERNAL_LINK),
+                    )
+                    .on_hover_text(
+                        "This subtree corresponds to the view's origin, and is displayed above \
+                        the 'Projections' section. Click to select it.",
+                    )
+                    .clicked()
+                {
+                    ctx.selection_state().set_selection(item);
+                }
 
-        let item = Item::DataResult(view.id, entity_path.clone().into());
+                return;
+            }
+        };
+
         let is_selected = ctx.selection().contains_item(&item);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let visible = data_result_node.is_some_and(|n| n.data_result.is_visible(ctx));
-        let empty_origin = entity_path == &view.space_origin && data_result_node.is_none();
-
-        let item_label = if entity_path.is_root() {
-            "/ (root)".to_owned()
-        } else {
-            entity_path
-                .iter()
-                .last()
-                .map_or("unknown".to_owned(), |e| e.ui_string())
-        };
-        let item_label = if ctx.recording().is_known_entity(entity_path) {
-            filter_matcher
-                .matches_formatted(ui.ctx(), &item_label)
-                .unwrap_or_else(|| item_label.into())
-        } else {
-            ui.ctx().warning_text(item_label).into()
-        };
-
-        let subdued = !view_visible || !visible;
-
-        let mut item_content = list_item::LabelContent::new(item_label)
-            .with_icon(guess_instance_path_icon(
-                ctx,
-                &InstancePath::from(entity_path.clone()),
-            ))
-            .subdued(subdued);
-
         let list_item = ui
             .list_item()
+            .render_offscreen(false)
             .draggable(true)
             .selected(is_selected)
             .force_hovered(is_item_hovered);
 
-        // We force the origin to be displayed, even if it's fully empty, in which case it can be
-        // neither shown/hidden nor removed.
-        if !empty_origin {
-            item_content = item_content.with_buttons(|ui: &mut egui::Ui| {
-                let mut visible_after = visible;
-                let vis_response = visibility_button_ui(ui, view_visible, &mut visible_after);
-                if visible_after != visible {
-                    if let Some(data_result_node) = data_result_node {
-                        data_result_node
-                            .data_result
-                            .save_recursive_override_or_clear_if_redundant(
-                                ctx,
-                                &query_result.tree,
-                                &Visible::from(visible_after),
-                            );
-                    }
-                }
-
-                let response =
-                    remove_button_ui(ui, "Remove this entity and all its children from the view");
-                if response.clicked() {
-                    view.contents
-                        .remove_subtree_and_matching_rules(ctx, entity_path.clone());
-                }
-
-                response | vis_response
-            });
-        }
-
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
-        let has_children = data_result_node.is_some_and(|n| !n.children.is_empty());
-        let response = if let (true, Some(node)) = (has_children, data_result_node) {
-            // Don't default open projections.
-            let default_open = self.filter_state.is_active()
-                || (entity_path.starts_with(&view.space_origin)
-                    && Self::default_open_for_data_result(node));
-
+        let has_children = !data_result_data.children.is_empty(); //data_result_node.is_some_and(|n| !n.children.is_empty());
+        let response = if has_children {
             // Globally unique id - should only be one of these in view at one time.
             // We do this so that we can support "collapse/expand all" command.
-            let id = egui::Id::new(
-                self.collapse_scope()
-                    .data_result(view.id, entity_path.clone()),
-            );
+            let id = egui::Id::new(self.collapse_scope().data_result(
+                data_result_data.view_id,
+                data_result_data.entity_path.clone(),
+            ));
 
             list_item
-                .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
-                    for child in node.children.iter().sorted_by_key(|c| {
-                        query_result
-                            .tree
-                            .lookup_result(**c)
-                            .map_or(&view.space_origin, |c| &c.entity_path)
-                    }) {
-                        let Some(child_node) = query_result.tree.lookup_node(*child) else {
-                            debug_assert!(false, "DataResultNode {node:?} has an invalid child");
-                            continue;
-                        };
-
-                        self.data_result_ui(
-                            ctx,
-                            viewport,
-                            ui,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(child_node),
-                            view,
-                            view_visible,
-                            projection_mode,
-                            filter_matcher,
-                        );
-                    }
-                })
+                .show_hierarchical_with_children(
+                    ui,
+                    id,
+                    data_result_data.default_open,
+                    item_content,
+                    |ui| {
+                        for child in &data_result_data.children {
+                            self.data_result_ui(ctx, viewport_blueprint, ui, child, view_visible);
+                        }
+                    },
+                )
                 .item_response
         } else {
             list_item.show_hierarchical(ui, item_content)
@@ -691,11 +554,14 @@ impl BlueprintTree {
                 ctx,
                 &query,
                 ctx.recording(),
-                entity_path,
+                &data_result_data.entity_path,
                 include_subtree,
             );
 
-            if empty_origin {
+            if matches!(
+                data_result_data.kind,
+                DataResultKind::EmptyOriginPlaceholder
+            ) {
                 ui.label(ui.ctx().warning_text(
                     "This view's query did not match any data under the space origin",
                 ));
@@ -704,7 +570,7 @@ impl BlueprintTree {
 
         context_menu_ui_for_item_with_context(
             ctx,
-            viewport,
+            viewport_blueprint,
             &item,
             // expand/collapse context menu actions need this information
             ItemContext::BlueprintTree {
@@ -717,80 +583,16 @@ impl BlueprintTree {
         ctx.handle_select_hover_drag_interactions(&response, item, true);
     }
 
-    /// Should this data result (and its children) be displayed?
-    fn match_data_result(
-        &self,
-        query_result: &DataQueryResult,
-        node_or_path: &DataResultNodeOrPath<'_>,
-        view: &ViewBlueprint,
-        projection_mode: bool,
-        filter_matcher: &filter_widget::FilterMatcher,
-    ) -> bool {
-        let entity_path = node_or_path.path();
-        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
-
-        if filter_matcher.matches_nothing() {
-            return false;
-        }
-
-        // Filter is inactive or otherwise whitelisting everything.
-        if filter_matcher.matches_everything() {
-            return true;
-        }
-
-        // We never display the origin placeholder if the filter is active, because if the
-        // `$origin` subtree matched something, it would be visible in the non-projected
-        // data-results.
-        if display_origin_placeholder && self.filter_state.is_active() {
-            return false;
-        }
-
-        // Is the current path a match?
-        //
-        // This is subtle! If we are in projection mode, we check for all parts starting at the
-        // root for a match. However, if we are _not_ in projection mode, we skip checking the
-        // origin part (which is always the first part of the entity path in this case), because
-        // that part is not displayed and, as such, should not trigger a match.
-        if entity_path
-            .iter()
-            .skip(
-                if !projection_mode && entity_path.starts_with(&view.space_origin) {
-                    view.space_origin.len()
-                } else {
-                    0
-                },
-            )
-            .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-        {
-            return true;
-        }
-
-        // Our subtree contains a match.
-        if let Some(node) = node_or_path.data_result_node() {
-            if query_result
-                .tree
-                .find_node_by(Some(node), |node| {
-                    // If are in projection mode, we must reject anything that is the origin or
-                    // its child. If there was a match there, then it would be displayed in the
-                    // non-projected data results.
-                    if projection_mode
-                        && node.data_result.entity_path.starts_with(&view.space_origin)
-                    {
-                        return false;
-                    }
-
-                    node.data_result
-                        .entity_path
-                        .last()
-                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-                })
-                .is_some()
-            {
-                return true;
+    /// Check if the provided item should be scrolled to.
+    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+        if Some(item) == self.blueprint_tree_scroll_to_item.as_ref() {
+            // Scroll only if the entity isn't already visible. This is important because that's what
+            // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
+            // annoying to induce a scroll motion.
+            if !ui.clip_rect().contains_rect(response.rect) {
+                response.scroll_to_me(Some(egui::Align::Center));
             }
         }
-
-        false
     }
 
     // ----------------------------------------------------------------------------
@@ -1030,7 +832,7 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
 
-    fn collapse_scope(&self) -> CollapseScope {
+    pub fn collapse_scope(&self) -> CollapseScope {
         match self.filter_state.session_id() {
             None => CollapseScope::BlueprintTree,
             Some(session_id) => CollapseScope::BlueprintTreeFiltered { session_id },
@@ -1153,69 +955,6 @@ impl BlueprintTree {
             }
         }
     }
-}
-
-// ----------------------------------------------------------------------------
-
-fn match_container(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    container_id: &ContainerId,
-    filter_matcher: &filter_widget::FilterMatcher,
-) -> bool {
-    if filter_matcher.matches_everything() {
-        return true;
-    }
-
-    if filter_matcher.matches_nothing() {
-        return false;
-    }
-
-    viewport
-        .find_contents_in_container_by(
-            &|content| {
-                // dont recurse infinitely
-                if content == &Contents::Container(*container_id) {
-                    return false;
-                }
-
-                match content {
-                    Contents::Container(container_id) => {
-                        match_container(ctx, viewport, container_id, filter_matcher)
-                    }
-                    Contents::View(view_id) => match_view(ctx, view_id, filter_matcher),
-                }
-            },
-            container_id,
-        )
-        .is_some()
-}
-
-/// Does this view match the provided filter?
-fn match_view(
-    ctx: &ViewerContext<'_>,
-    view_id: &ViewId,
-    filter_matcher: &filter_widget::FilterMatcher,
-) -> bool {
-    if filter_matcher.matches_everything() {
-        return true;
-    }
-
-    if filter_matcher.matches_nothing() {
-        return false;
-    };
-
-    let query_result = ctx.lookup_query_result(*view_id);
-    let result_tree = &query_result.tree;
-
-    result_tree
-        .find_node_by(None, |node| {
-            node.data_result
-                .entity_path
-                .last()
-                .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-        })
-        .is_some()
 }
 
 // ----------------------------------------------------------------------------

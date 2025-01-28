@@ -7,11 +7,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -98,10 +101,10 @@ class TextLog(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         text: datatypes.Utf8Like | None = None,
         level: datatypes.Utf8Like | None = None,
         color: datatypes.Rgba32Like | None = None,
@@ -111,7 +114,7 @@ class TextLog(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         text:
             The body of the message.
@@ -132,7 +135,7 @@ class TextLog(Archetype):
                 "color": color,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -142,15 +145,58 @@ class TextLog(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> TextLog:
+    def cleared(cls) -> TextLog:
         """Clear all the fields of a `TextLog`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        text: datatypes.Utf8ArrayLike | None = None,
+        level: datatypes.Utf8ArrayLike | None = None,
+        color: datatypes.Rgba32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        text:
+            The body of the message.
+        level:
+            The verbosity level of the message.
+
+            This can be used to filter the log messages in the Rerun Viewer.
+        color:
+            Optional color to use for the log line in the Rerun Viewer.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            text=[],
-            level=[],
-            color=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                text=text,
+                level=level,
+                color=color,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     text: components.TextBatch | None = field(
         metadata={"component": True},

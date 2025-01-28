@@ -37,10 +37,10 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         scaling: blueprint_components.ViewFitLike | None = None,
     ) -> TensorViewFit:
         """
@@ -48,7 +48,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         scaling:
             How the image is scaled to fit the view.
@@ -61,7 +61,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
                 "scaling": scaling,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -71,13 +71,9 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> TensorViewFit:
+    def cleared(cls) -> TensorViewFit:
         """Clear all the fields of a `TensorViewFit`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            scaling=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     scaling: blueprint_components.ViewFitBatch | None = field(
         metadata={"component": True},

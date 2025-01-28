@@ -45,6 +45,6 @@ int main() {
     rec.send_columns(
         "images",
         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
-        rerun::borrow(image_data)
+        rerun::Image().with_many_buffer(std::move(image_data)).columns()
     );
 }

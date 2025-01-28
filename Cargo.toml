@@ -61,6 +61,7 @@ re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.22.0-al
 re_log_types = { path = "crates/store/re_log_types", version = "=0.22.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.22.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.22.0-alpha.1", default-features = false }
+re_sorbet = { path = "crates/store/re_sorbet", version = "=0.22.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.22.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.22.0-alpha.1", default-features = false }
 re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.22.0-alpha.1", default-features = false }
@@ -155,7 +156,6 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "53.4", default-features = false }
-arrow-schema = { version = "53.4", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.18.2", features = ["arrow"] }
 async-executor = "1.0"
 async-stream = "0.3"

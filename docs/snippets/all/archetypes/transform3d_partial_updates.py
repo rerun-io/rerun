@@ -23,7 +23,7 @@ for deg in range(46):
     rad = truncated_radians(deg * 4)
     rr.log(
         "box",
-        rr.Transform3D.update_fields(
+        rr.Transform3D.from_fields(
             # TODO(cmc): we should have access to all the fields of the extended constructor too.
             rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
         ),
@@ -33,7 +33,7 @@ for deg in range(46):
 for t in range(51):
     rr.log(
         "box",
-        rr.Transform3D.update_fields(translation=[0, 0, t / 10.0]),
+        rr.Transform3D.from_fields(translation=[0, 0, t / 10.0]),
     )
 
 # Update only the rotation of the box.
@@ -41,7 +41,7 @@ for deg in range(46):
     rad = truncated_radians((deg + 45) * 4)
     rr.log(
         "box",
-        rr.Transform3D.update_fields(
+        rr.Transform3D.from_fields(
             # TODO(cmc): we should have access to all the fields of the extended constructor too.
             rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
         ),
@@ -50,5 +50,5 @@ for deg in range(46):
 # Clear all of the box's attributes, and reset its axis length.
 rr.log(
     "box",
-    rr.Transform3D.update_fields(clear=True, axis_length=15),
+    rr.Transform3D.from_fields(clear_unset=True, axis_length=15),
 )

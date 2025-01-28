@@ -102,10 +102,10 @@
   "rust", # Missing examples
 ]
 "howto/any_batch_value_send_columns" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
 ]
 "howto/any_values_send_columns" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
@@ -236,10 +236,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/points3d_send_columns" = [
-  "py",  # TODO(#8752): needs tagged columnar APIs
-  "cpp", # TODO(#8754): needs tagged columnar APIs
-]
 "archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -247,10 +243,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
   "cpp",
-]
-"archetypes/scalar_send_columns" = [
-  "py",  # TODO(#8752): needs tagged columnar APIs
-  "cpp", # TODO(#8754): needs tagged columnar APIs
 ]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
@@ -287,7 +279,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/image_send_columns" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
   "cpp",
-  "py",
   "rust",
 ]
 "archetypes/mesh3d_instancing" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.

@@ -51,7 +51,7 @@ def log_image(image: np.ndarray, num_log_calls: int) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
-    for i in range(num_log_calls):
+    for _ in range(num_log_calls):
         rr.log("test_image", rr.Tensor(image))
 
 
@@ -96,13 +96,12 @@ def test_bench_transforms_over_time_batched(
 
         rr.send_columns(
             "test_transform",
-            times=[rr.TimeSequenceBatch("frame", times)],
-            components=[
-                rr.Transform3D.indicator(),
-                rr.components.Translation3DBatch(rand_trans[start:end]),
-                rr.components.RotationQuatBatch(rand_quats[start:end]),
-                rr.components.Scale3DBatch(rand_scales[start:end]),
-            ],
+            indexes=[rr.TimeSequenceColumn("frame", times)],
+            columns=rr.Transform3D.columns(
+                translation=rand_trans[start:end],
+                quaternion=rand_quats[start:end],
+                scale=rand_scales[start:end],
+            ),
         )
 
 

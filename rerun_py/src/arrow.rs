@@ -107,15 +107,11 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(timeline_names)
         .map(|(array, timeline_name)| {
-            let timeline = match array.data_type() {
-                arrow::datatypes::DataType::Int64 => Ok(Timeline::new_sequence(timeline_name)),
-                arrow::datatypes::DataType::Timestamp(_, _) => {
-                    Ok(Timeline::new_temporal(timeline_name))
-                }
-                _ => Err(ChunkError::Malformed {
+            let time_type = re_log_types::TimeType::from_arrow_datatype(array.data_type())
+                .ok_or_else(|| ChunkError::Malformed {
                     reason: format!("Invalid data_type for timeline: {timeline_name}"),
-                }),
-            }?;
+                })?;
+            let timeline = Timeline::new(timeline_name, time_type);
             let timeline_data =
                 TimeColumn::read_array(&ArrowArrayRef::from(array)).map_err(|err| {
                     ChunkError::Malformed {

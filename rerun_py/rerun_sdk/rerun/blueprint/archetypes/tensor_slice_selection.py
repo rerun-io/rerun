@@ -80,10 +80,10 @@ class TensorSliceSelection(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         width: datatypes.TensorDimensionSelectionLike | None = None,
         height: datatypes.TensorDimensionSelectionLike | None = None,
         indices: datatypes.TensorDimensionIndexSelectionArrayLike | None = None,
@@ -94,7 +94,7 @@ class TensorSliceSelection(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         width:
             Which dimension to map to width.
@@ -126,7 +126,7 @@ class TensorSliceSelection(Archetype):
                 "slider": slider,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -136,16 +136,9 @@ class TensorSliceSelection(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> TensorSliceSelection:
+    def cleared(cls) -> TensorSliceSelection:
         """Clear all the fields of a `TensorSliceSelection`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            width=[],
-            height=[],
-            indices=[],
-            slider=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     width: components.TensorWidthDimensionBatch | None = field(
         metadata={"component": True},

@@ -17,6 +17,35 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ScalarAxis::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(3);
+        if (range.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(range.value(), lengths_).value_or_throw()
+            );
+        }
+        if (zoom_lock.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(zoom_lock.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<ScalarAxis>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> ScalarAxis::columns() {
+        if (range.has_value()) {
+            return columns(std::vector<uint32_t>(range.value().length(), 1));
+        }
+        if (zoom_lock.has_value()) {
+            return columns(std::vector<uint32_t>(zoom_lock.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

@@ -17,6 +17,45 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> GeoLineStrings::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (line_strings.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(line_strings.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (radii.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
+            );
+        }
+        if (colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<GeoLineStrings>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> GeoLineStrings::columns() {
+        if (line_strings.has_value()) {
+            return columns(std::vector<uint32_t>(line_strings.value().length(), 1));
+        }
+        if (radii.has_value()) {
+            return columns(std::vector<uint32_t>(radii.value().length(), 1));
+        }
+        if (colors.has_value()) {
+            return columns(std::vector<uint32_t>(colors.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

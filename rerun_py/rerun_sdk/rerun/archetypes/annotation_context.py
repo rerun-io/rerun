@@ -7,11 +7,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -93,10 +96,10 @@ class AnnotationContext(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         context: components.AnnotationContextLike | None = None,
     ) -> AnnotationContext:
         """
@@ -104,7 +107,7 @@ class AnnotationContext(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         context:
             List of class descriptions, mapping class indices to class names, colors etc.
@@ -117,7 +120,7 @@ class AnnotationContext(Archetype):
                 "context": context,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -127,13 +130,48 @@ class AnnotationContext(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AnnotationContext:
+    def cleared(cls) -> AnnotationContext:
         """Clear all the fields of a `AnnotationContext`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        context: components.AnnotationContextArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        context:
+            List of class descriptions, mapping class indices to class names, colors etc.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            context=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                context=context,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     context: components.AnnotationContextBatch | None = field(
         metadata={"component": True},

@@ -68,6 +68,13 @@ class Viewer(anywidget.AnyWidget):
     _ready = False
     _data_queue: list[bytes]
 
+    _time_ctrl = traitlets.Tuple(
+        traitlets.Unicode(allow_none=True),
+        traitlets.Int(allow_none=True),
+        traitlets.Bool(),
+        allow_none=True,
+    ).tag(sync=True)
+
     def __init__(
         self,
         *,
@@ -122,3 +129,6 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                     return
                 poll(1)
                 time.sleep(0.1)
+
+    def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
+        self._time_ctrl = (timeline, time, play)
