@@ -130,7 +130,7 @@ impl DataSource {
             re_log::debug!("Assuming gRPC endpoint");
             if !uri.contains("://") {
                 // TODO(jan): this should be `https` if it's not localhost, anything hosted over public network
-                //            should be going through https, anyway...
+                //            should be going through https, anyway.
                 uri = format!("http://{uri}");
             }
             Self::MessageProxy { url: uri }
