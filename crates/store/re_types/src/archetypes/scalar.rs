@@ -247,9 +247,10 @@ impl Scalar {
     {
         let columns = [self
             .scalar
-            .map(|scalar| scalar.partitioned(_lengths.into_iter()))
+            .map(|scalar| scalar.partitioned(_lengths.clone()))
             .transpose()?];
-        let indicator_column = None;
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 

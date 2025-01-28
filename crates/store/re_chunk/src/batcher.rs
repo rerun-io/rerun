@@ -561,7 +561,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         let chunks =
             PendingRow::many_into_chunks(acc.entity_path.clone(), chunk_max_rows_if_unsorted, rows);
         for chunk in chunks {
-            let chunk = match chunk {
+            let mut chunk = match chunk {
                 Ok(chunk) => chunk,
                 Err(err) => {
                     re_log::error!(%err, "corrupt chunk detected, dropping");
@@ -571,7 +571,15 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
-            tx_chunk.send(chunk).ok();
+
+            let split_indicators = chunk.split_indicators();
+            if !chunk.components.is_empty() {
+                // make sure the chunk didn't contain *only* indicators!
+                tx_chunk.send(chunk).ok();
+            }
+            if let Some(split_indicators) = split_indicators {
+                tx_chunk.send(split_indicators).ok();
+            }
         }
 
         acc.reset();
@@ -600,10 +608,18 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
 
                 match cmd {
-                    Command::AppendChunk(chunk) => {
+                    Command::AppendChunk(mut chunk) => {
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
-                        tx_chunk.send(chunk).ok();
+
+                        let split_indicators = chunk.split_indicators();
+                        if !chunk.components.is_empty() {
+                            // make sure the chunk didn't contain *only* indicators!
+                            tx_chunk.send(chunk).ok();
+                        }
+                        if let Some(split_indicators) = split_indicators {
+                            tx_chunk.send(split_indicators).ok();
+                        }
                     },
                     Command::AppendRow(entity_path, row) => {
                         let acc = accs.entry(entity_path.clone())

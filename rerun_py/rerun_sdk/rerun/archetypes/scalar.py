@@ -196,7 +196,10 @@ class Scalar(Archetype):
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        return ComponentColumnList(columns)
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     scalar: components.ScalarBatch | None = field(
         metadata={"component": True},
