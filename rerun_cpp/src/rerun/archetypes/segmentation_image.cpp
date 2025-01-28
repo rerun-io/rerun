@@ -19,6 +19,51 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> SegmentationImage::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (buffer.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(buffer.value(), lengths_).value_or_throw()
+            );
+        }
+        if (format.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(format.value(), lengths_).value_or_throw()
+            );
+        }
+        if (opacity.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(opacity.value(), lengths_).value_or_throw()
+            );
+        }
+        if (draw_order.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(draw_order.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(ComponentColumn::from_indicators<SegmentationImage>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
+        return columns;
+    }
+
+    Collection<ComponentColumn> SegmentationImage::columns() {
+        if (buffer.has_value()) {
+            return columns(std::vector<uint32_t>(buffer.value().length(), 1));
+        }
+        if (format.has_value()) {
+            return columns(std::vector<uint32_t>(format.value().length(), 1));
+        }
+        if (opacity.has_value()) {
+            return columns(std::vector<uint32_t>(opacity.value().length(), 1));
+        }
+        if (draw_order.has_value()) {
+            return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

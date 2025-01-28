@@ -23,6 +23,61 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> LineGrid3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(6);
+        if (visible.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
+            );
+        }
+        if (spacing.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(spacing.value(), lengths_).value_or_throw()
+            );
+        }
+        if (plane.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(plane.value(), lengths_).value_or_throw()
+            );
+        }
+        if (stroke_width.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(stroke_width.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (color.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<LineGrid3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> LineGrid3D::columns() {
+        if (visible.has_value()) {
+            return columns(std::vector<uint32_t>(visible.value().length(), 1));
+        }
+        if (spacing.has_value()) {
+            return columns(std::vector<uint32_t>(spacing.value().length(), 1));
+        }
+        if (plane.has_value()) {
+            return columns(std::vector<uint32_t>(plane.value().length(), 1));
+        }
+        if (stroke_width.has_value()) {
+            return columns(std::vector<uint32_t>(stroke_width.value().length(), 1));
+        }
+        if (color.has_value()) {
+            return columns(std::vector<uint32_t>(color.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

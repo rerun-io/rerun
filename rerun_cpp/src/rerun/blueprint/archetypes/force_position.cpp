@@ -19,6 +19,42 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ForcePosition::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (enabled.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(enabled.value(), lengths_).value_or_throw()
+            );
+        }
+        if (strength.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(strength.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (position.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(position.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<ForcePosition>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> ForcePosition::columns() {
+        if (enabled.has_value()) {
+            return columns(std::vector<uint32_t>(enabled.value().length(), 1));
+        }
+        if (strength.has_value()) {
+            return columns(std::vector<uint32_t>(strength.value().length(), 1));
+        }
+        if (position.has_value()) {
+            return columns(std::vector<uint32_t>(position.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

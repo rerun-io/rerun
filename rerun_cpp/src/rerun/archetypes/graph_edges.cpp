@@ -15,6 +15,35 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> GraphEdges::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(3);
+        if (edges.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(edges.value(), lengths_).value_or_throw()
+            );
+        }
+        if (graph_type.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(graph_type.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<GraphEdges>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> GraphEdges::columns() {
+        if (edges.has_value()) {
+            return columns(std::vector<uint32_t>(edges.value().length(), 1));
+        }
+        if (graph_type.has_value()) {
+            return columns(std::vector<uint32_t>(graph_type.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

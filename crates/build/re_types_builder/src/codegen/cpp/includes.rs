@@ -89,6 +89,12 @@ impl Includes {
             self.insert_rerun(&format!("{path}/{typname}.hpp"));
         }
     }
+
+    /// Remove all includes that are also in `other`.
+    pub fn remove_includes(&mut self, other: &Self) {
+        self.system.retain(|name| !other.system.contains(name));
+        self.local.retain(|name| !other.local.contains(name));
+    }
 }
 
 impl quote::ToTokens for Includes {
