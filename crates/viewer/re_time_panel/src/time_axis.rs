@@ -1,3 +1,6 @@
+// TODO(#6330): remove unwrap()
+#![expect(clippy::unwrap_used)]
+
 use re_entity_db::TimeHistogram;
 use re_log_types::{ResolvedTimeRange, TimeInt, TimeType};
 
