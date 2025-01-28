@@ -34,8 +34,6 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     --------
     ### Video with automatically determined frames:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr
@@ -56,8 +54,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+        indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
     )
     ```
     <center>
@@ -131,10 +129,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         timestamp: datatypes.VideoTimestampLike | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
     ) -> VideoFrameReference:
@@ -143,7 +141,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         timestamp:
             References the closest video frame to this timestamp.
@@ -174,7 +172,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
                 "video_reference": video_reference,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -184,14 +182,9 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> VideoFrameReference:
+    def cleared(cls) -> VideoFrameReference:
         """Clear all the fields of a `VideoFrameReference`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            timestamp=[],
-            video_reference=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

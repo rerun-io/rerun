@@ -84,10 +84,10 @@ class BarChart(BarChartExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         values: datatypes.TensorDataLike | None = None,
         color: datatypes.Rgba32Like | None = None,
     ) -> BarChart:
@@ -96,7 +96,7 @@ class BarChart(BarChartExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         values:
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
@@ -112,7 +112,7 @@ class BarChart(BarChartExt, Archetype):
                 "color": color,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -122,14 +122,9 @@ class BarChart(BarChartExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> BarChart:
+    def cleared(cls) -> BarChart:
         """Clear all the fields of a `BarChart`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            values=[],
-            color=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

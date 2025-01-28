@@ -59,7 +59,6 @@ from ._send_columns import (
     TimeSecondsColumn as TimeSecondsColumn,
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
-    send_columns_v2 as send_columns_v2,
 )
 from .any_value import (
     AnyBatchValue as AnyBatchValue,

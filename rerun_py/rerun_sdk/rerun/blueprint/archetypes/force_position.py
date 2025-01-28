@@ -68,10 +68,10 @@ class ForcePosition(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         enabled: datatypes.BoolLike | None = None,
         strength: datatypes.Float64Like | None = None,
         position: datatypes.Vec2DLike | None = None,
@@ -81,7 +81,7 @@ class ForcePosition(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         enabled:
             Whether the position force is enabled.
@@ -102,7 +102,7 @@ class ForcePosition(Archetype):
                 "position": position,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -112,15 +112,9 @@ class ForcePosition(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ForcePosition:
+    def cleared(cls) -> ForcePosition:
         """Clear all the fields of a `ForcePosition`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            enabled=[],
-            strength=[],
-            position=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": True},

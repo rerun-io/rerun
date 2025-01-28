@@ -46,10 +46,10 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         range: datatypes.Range2DLike | None = None,
     ) -> VisualBounds2D:
         """
@@ -57,7 +57,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         range:
             Controls the visible range of a 2D view.
@@ -72,7 +72,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
                 "range": range,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -82,13 +82,9 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> VisualBounds2D:
+    def cleared(cls) -> VisualBounds2D:
         """Clear all the fields of a `VisualBounds2D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            range=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     range: blueprint_components.VisualBounds2DBatch | None = field(
         metadata={"component": True},

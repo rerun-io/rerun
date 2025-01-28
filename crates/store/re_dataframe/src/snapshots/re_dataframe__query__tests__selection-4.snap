@@ -1,8 +1,6 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-assertion_line: 1977
-expression: dataframe
-snapshot_kind: text
+expression: "TransportChunk::from(dataframe)"
 ---
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ CHUNK METADATA:                                                                                                                                                                              │
@@ -12,15 +10,15 @@ snapshot_kind: text
 │ │ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ /this/that:exa │ │
 │ │ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ mple.MyLabel   │ │
 │ │ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ type: "i64"    ┆ ---            │ │
-│ │ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ sorbet.index_n ┆ type:          │ │
-│ │ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ ame:           ┆ "List[Utf8]"   │ │
-│ │ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ sorbet.is_stat │ │
-│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ ic: "yes"      │ │
-│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ sorbet.path:   │ │
+│ │ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ type:          │ │
+│ │ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "frame_nr"     ┆ "List[Utf8]"   │ │
+│ │ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ kind: "index"  ┆ component: "ex │ │
+│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ ample.MyLabel" │ │
+│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ entity_path:   │ │
 │ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ "/this/that"   │ │
-│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ sorbet.semanti │ │
-│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ c_type: "examp │ │
-│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ le.MyLabel"    │ │
+│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ is_static:     │ │
+│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ "yes"          │ │
+│ │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ kind: "data"   │ │
 │ ╞════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╡ │
 │ │ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ 10             ┆ [c]            │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │

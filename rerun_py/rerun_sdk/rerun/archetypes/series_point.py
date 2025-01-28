@@ -132,10 +132,10 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
@@ -146,7 +146,7 @@ class SeriesPoint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         color:
             Color for the corresponding series.
@@ -170,7 +170,7 @@ class SeriesPoint(Archetype):
                 "marker_size": marker_size,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -180,16 +180,9 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> SeriesPoint:
+    def cleared(cls) -> SeriesPoint:
         """Clear all the fields of a `SeriesPoint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            color=[],
-            marker=[],
-            name=[],
-            marker_size=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

@@ -56,10 +56,10 @@ class NearClipPlane(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         near_clip_plane: datatypes.Float32Like | None = None,
     ) -> NearClipPlane:
         """
@@ -67,7 +67,7 @@ class NearClipPlane(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         near_clip_plane:
             Controls the distance to the near clip plane in 3D scene units.
@@ -82,7 +82,7 @@ class NearClipPlane(Archetype):
                 "near_clip_plane": near_clip_plane,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -92,13 +92,9 @@ class NearClipPlane(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> NearClipPlane:
+    def cleared(cls) -> NearClipPlane:
         """Clear all the fields of a `NearClipPlane`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            near_clip_plane=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     near_clip_plane: blueprint_components.NearClipPlaneBatch | None = field(
         metadata={"component": True},

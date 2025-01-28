@@ -61,10 +61,10 @@ class ForceCenter(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         enabled: datatypes.BoolLike | None = None,
         strength: datatypes.Float64Like | None = None,
     ) -> ForceCenter:
@@ -73,7 +73,7 @@ class ForceCenter(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         enabled:
             Whether the center force is enabled.
@@ -91,7 +91,7 @@ class ForceCenter(Archetype):
                 "strength": strength,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -101,14 +101,9 @@ class ForceCenter(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ForceCenter:
+    def cleared(cls) -> ForceCenter:
         """Clear all the fields of a `ForceCenter`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            enabled=[],
-            strength=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": True},

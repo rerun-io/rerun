@@ -174,10 +174,10 @@ class LineStrips2D(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         strips: components.LineStrip2DArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -191,7 +191,7 @@ class LineStrips2D(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         strips:
             All the actual 2D line strips that make up the batch.
@@ -229,7 +229,7 @@ class LineStrips2D(Archetype):
                 "class_ids": class_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -239,19 +239,9 @@ class LineStrips2D(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> LineStrips2D:
+    def cleared(cls) -> LineStrips2D:
         """Clear all the fields of a `LineStrips2D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            strips=[],
-            radii=[],
-            colors=[],
-            labels=[],
-            show_labels=[],
-            draw_order=[],
-            class_ids=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

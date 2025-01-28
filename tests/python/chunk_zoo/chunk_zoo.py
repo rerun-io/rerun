@@ -33,39 +33,17 @@ def set_frame_time(t: int) -> None:
 def specimen_two_rows_span_two_chunks():
     """Two rows spanning two chunks."""
 
-    rr.send_columns(
-        "/rows_span_two_chunks",
-        frame_times(0, 2),
-        [
-            rrc.Position2DBatch([(0, 1), (2, 3)]),
-        ],
-    )
-    rr.send_columns(
-        "/rows_span_two_chunks",
-        frame_times(0, 2),
-        [
-            rrc.RadiusBatch([10, 11]),
-        ],
-    )
+    rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(positions=[(0, 1), (2, 3)]))
+    rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(radii=[10, 11]))
 
 
 def specimen_two_rows_span_two_chunks_sparse():
     """Two rows spanning two chunks with partially matching timestamps (so sparse results)."""
 
     rr.send_columns(
-        "/rows_span_two_chunks_sparse",
-        frame_times(0, 2, 3),
-        [
-            rrc.Position2DBatch([(0, 1), (2, 3), (4, 5)]),
-        ],
+        "/rows_span_two_chunks_sparse", frame_times(0, 2, 3), rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)])
     )
-    rr.send_columns(
-        "/rows_span_two_chunks_sparse",
-        frame_times(0, 2, 4),
-        [
-            rrc.RadiusBatch([10, 11, 12]),
-        ],
-    )
+    rr.send_columns("/rows_span_two_chunks_sparse", frame_times(0, 2, 4), rr.Points2D.columns(radii=[10, 11, 12]))
 
 
 def specimen_archetype_with_clamp_join_semantics():
@@ -74,9 +52,8 @@ def specimen_archetype_with_clamp_join_semantics():
         "/archetype_with_clamp_join_semantics",
         frame_times(0),
         [
-            rrc.Position2DBatch([(i, i) for i in range(10)]).partition([10]),
-            rrc.RadiusBatch([2]),
-            rr.Points2D.indicator(),
+            *rr.Points2D.columns(positions=[(i, i) for i in range(10)], _lengths=[10]),
+            *rr.Points2D.columns(radii=2),
         ],
     )
 
@@ -86,10 +63,7 @@ def specimen_archetype_with_latest_at_semantics():
     rr.send_columns(
         "/archetype_chunk_with_latest_at_semantics",
         frame_times(range(10)),
-        [
-            rrc.Position2DBatch([(i, i) for i in range(10)]),
-            rrc.ClassIdBatch(range(10)),
-        ],
+        rr.Points2D.columns(positions=[(i, i) for i in range(10)], class_ids=range(10)),
     )
 
     set_frame_time(0)
@@ -104,18 +78,13 @@ def specimen_archetype_with_clamp_join_semantics_two_chunks():
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
         frame_times(0),
-        [
-            rrc.Position2DBatch([(i, i) for i in range(10)]).partition([10]),
-        ],
+        rr.Points2D.columns(positions=[(i, i) for i in range(10)], _lengths=[10]),
     )
 
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
         frame_times(0),
-        [
-            rrc.RadiusBatch([2]),
-            rr.Points2D.indicator(),
-        ],
+        rr.Points2D.columns(radii=2),
     )
 
 
@@ -125,10 +94,12 @@ def specimen_archetype_without_clamp_join_semantics():
         "/archetype_without_clamp_join_semantics",
         frame_times(0),
         [
-            rrc.Position3DBatch([(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]).partition([4]),
-            rrc.TriangleIndicesBatch([(0, 1, 2), (0, 2, 3)]).partition([2]),
-            rrc.ColorBatch([(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]).partition([4]),
-            rr.Mesh3D.indicator(),
+            *rr.Mesh3D.columns(
+                vertex_positions=[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)],
+                vertex_colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)],
+                _lengths=[4],
+            ),
+            *rr.Mesh3D.columns(triangle_indices=[(0, 1, 2), (0, 2, 3)], _lengths=[2]),
         ],
     )
 
@@ -157,8 +128,8 @@ def specimen_many_rows_with_mismatched_instance_count():
         "/many_rows_with_mismatched_instance_count",
         frame_times(range(len(positions_partitions))),
         [
-            rrc.Position2DBatch(positions).partition(positions_partitions),
-            rrc.ColorBatch(colors).partition(colors_partitions),
+            *rr.Points2D.columns(positions=positions, _lengths=positions_partitions),
+            *rr.Points2D.columns(colors=colors, _lengths=colors_partitions),
         ],
     )
     rr.log("/many_rows_with_mismatched_instance_count", [rr.Points2D.indicator()], static=True)
@@ -170,16 +141,12 @@ def specimen_scalars_interlaced_in_two_chunks():
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(0, 2, 5, 6, 8),
-        [
-            rrc.ScalarBatch([0, 2, 5, 6, 8]),
-        ],
+        rr.Scalar.columns(scalar=[0, 2, 5, 6, 8]),
     )
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(1, 3, 7),
-        [
-            rrc.ScalarBatch([1, 3, 7]),
-        ],
+        rr.Scalar.columns(scalar=[1, 3, 7]),
     )
 
 
@@ -188,10 +155,7 @@ def specimen_archetype_chunk_with_clear():
     rr.send_columns(
         "/archetype_chunk_with_clear",
         frame_times(range(10)),
-        [
-            rrc.Position2DBatch([(i, i) for i in range(10)]),
-            rrc.ClassIdBatch(range(10)),
-        ],
+        rr.Points2D.columns(positions=[(i, i) for i in range(10)], class_ids=range(10)),
     )
 
     set_frame_time(0)

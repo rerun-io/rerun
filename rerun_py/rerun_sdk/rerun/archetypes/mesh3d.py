@@ -125,10 +125,10 @@ class Mesh3D(Mesh3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         vertex_positions: datatypes.Vec3DArrayLike | None = None,
         triangle_indices: datatypes.UVec3DArrayLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
@@ -144,7 +144,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         vertex_positions:
             The positions of each vertex.
@@ -190,7 +190,7 @@ class Mesh3D(Mesh3DExt, Archetype):
                 "class_ids": class_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -200,21 +200,9 @@ class Mesh3D(Mesh3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Mesh3D:
+    def cleared(cls) -> Mesh3D:
         """Clear all the fields of a `Mesh3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            vertex_positions=[],
-            triangle_indices=[],
-            vertex_normals=[],
-            vertex_colors=[],
-            vertex_texcoords=[],
-            albedo_factor=[],
-            albedo_texture_buffer=[],
-            albedo_texture_format=[],
-            class_ids=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

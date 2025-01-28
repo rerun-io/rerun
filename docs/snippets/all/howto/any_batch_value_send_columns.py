@@ -12,7 +12,7 @@ timestamps = np.arange(0, N)
 one_per_timestamp = np.sin(timestamps / 10.0)
 ten_per_timestamp = np.cos(np.arange(0, N * 10) / 100.0)
 
-rr.send_columns_v2(
+rr.send_columns(
     "/",
     indexes=[rr.TimeSequenceColumn("step", timestamps)],
     columns=[

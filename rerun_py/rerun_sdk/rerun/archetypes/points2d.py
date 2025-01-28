@@ -124,10 +124,10 @@ class Points2D(Points2DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         positions: datatypes.Vec2DArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -142,7 +142,7 @@ class Points2D(Points2DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         positions:
             All the 2D positions at which the point cloud shows points.
@@ -193,7 +193,7 @@ class Points2D(Points2DExt, Archetype):
                 "keypoint_ids": keypoint_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -203,20 +203,9 @@ class Points2D(Points2DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Points2D:
+    def cleared(cls) -> Points2D:
         """Clear all the fields of a `Points2D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            positions=[],
-            radii=[],
-            colors=[],
-            labels=[],
-            show_labels=[],
-            draw_order=[],
-            class_ids=[],
-            keypoint_ids=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

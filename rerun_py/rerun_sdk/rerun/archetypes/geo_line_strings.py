@@ -80,10 +80,10 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         line_strings: components.GeoLineStringArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -93,7 +93,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         line_strings:
             The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
@@ -118,7 +118,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
                 "colors": colors,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -128,15 +128,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> GeoLineStrings:
+    def cleared(cls) -> GeoLineStrings:
         """Clear all the fields of a `GeoLineStrings`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            line_strings=[],
-            radii=[],
-            colors=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
