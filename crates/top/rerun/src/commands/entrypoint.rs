@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
 
@@ -85,7 +87,7 @@ struct Args {
 
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
-    bind: String,
+    bind: IpAddr,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -691,6 +693,7 @@ fn run_impl(
         }
     };
 
+    let server_addr = std::net::SocketAddr::new(args.bind, args.port);
     #[cfg(feature = "server")]
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
@@ -711,7 +714,7 @@ fn run_impl(
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
 
                 WebViewerConfig {
-                    bind_ip: args.bind,
+                    bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
                     source_url: Some(rerun_server_ws_url),
                     force_wgpu_backend: args.renderer,
@@ -734,19 +737,15 @@ fn run_impl(
         {
             // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
-            let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-            if TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(1)).is_ok() {
+            if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
                 re_log::info!(
-                    %addr,
+                    %server_addr,
                     "A process is already listening at this address. Assuming it's a Rerun Viewer."
                 );
                 is_another_viewer_running = true;
             } else {
-                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
-                    args.bind.parse()?,
-                    args.port,
-                    server_memory_limit,
-                );
+                let server: Receiver<LogMsg> =
+                    re_grpc_server::spawn_with_recv(server_addr, server_memory_limit);
                 rxs.push(server);
             }
         }
@@ -793,7 +792,7 @@ fn run_impl(
             // This is the server which the web viewer will talk to:
             let _ws_server = re_ws_comms::RerunServer::new(
                 ReceiveSet::new(rxs),
-                &args.bind,
+                &args.bind.to_string(),
                 args.ws_server_port,
                 server_memory_limit,
             )?;
@@ -807,7 +806,7 @@ fn run_impl(
 
                 // This is the server that serves the Wasm+HTML:
                 WebViewerConfig {
-                    bind_ip: args.bind,
+                    bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
                     source_url: Some(_ws_server.server_url()),
                     force_wgpu_backend: args.renderer,
@@ -827,10 +826,11 @@ fn run_impl(
             return Ok(());
         }
     } else if is_another_viewer_running {
-        let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-        re_log::info!(%addr, "Another viewer is already running, streaming data to it.");
+        // Another viewer is already running on the specified address
+        let url = format!("http://{server_addr}");
+        re_log::info!(%url, "Another viewer is already running, streaming data to it.");
 
-        let sink = re_sdk::sink::TcpSink::new(addr, re_sdk::default_flush_timeout());
+        let sink = re_sdk::sink::GrpcSink::new(url);
 
         for rx in rxs {
             while rx.is_connected() {
