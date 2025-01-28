@@ -176,19 +176,9 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
         .unwrap()
         .is_empty());
 
-    // According to the docstring, it should "returns `None` if the entity doesn't exist at all on
-    // this `timeline`". So far it's not the case, which is why this line is commented out.
-
-    // assert!(store
-    //     .all_components_on_timeline(&timeline2, &entity_path2)
-    //     .is_none());
-
-    // Regardless of the previous remark, there is no component on timeline2 for entity2. So this
-    // should be empty. Yet it is not…
     assert!(store
         .all_components_on_timeline(&timeline2, &entity_path2)
-        .unwrap()
-        .is_empty());
+        .is_none());
 
     Ok(())
 }
