@@ -183,7 +183,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: VideoTimestamp in a single component batch.
+        /// This method makes it possible to pack multiple `timestamp` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_timestamp` should
         /// be used when logging a single row's worth of data.
@@ -213,7 +213,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: EntityPath in a single component batch.
+        /// This method makes it possible to pack multiple `video_reference` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_video_reference` should
         /// be used when logging a single row's worth of data.

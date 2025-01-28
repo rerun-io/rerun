@@ -609,11 +609,11 @@ impl QuotedObject {
             if !obj_field.typ.is_plural() && !is_blueprint_type(obj) {
                 let method_ident_many = format_ident!("with_many_{}", obj_field.name);
                 let docstring_many = unindent::unindent(&format!("\
-                This method makes it possible to pack multiple `{field_type} in a single component batch.
+                This method makes it possible to pack multiple `{}` in a single component batch.
 
                 This only makes sense when used in conjunction with `columns`. `{method_ident}` should
                 be used when logging a single row's worth of data.
-                "));
+                ", obj_field.name));
 
                 methods.push(Method {
                     docs: docstring_many.into(),

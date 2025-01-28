@@ -220,7 +220,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ShowLabels in a single component batch.
+        /// This method makes it possible to pack multiple `show_labels` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
         /// be used when logging a single row's worth of data.
@@ -242,7 +242,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: DrawOrder in a single component batch.
+        /// This method makes it possible to pack multiple `draw_order` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
         /// be used when logging a single row's worth of data.

@@ -120,7 +120,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Scalar in a single component batch.
+        /// This method makes it possible to pack multiple `scalar` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_scalar` should
         /// be used when logging a single row's worth of data.

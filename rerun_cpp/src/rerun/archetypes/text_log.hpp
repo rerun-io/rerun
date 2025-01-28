@@ -137,7 +137,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Text in a single component batch.
+        /// This method makes it possible to pack multiple `text` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_text` should
         /// be used when logging a single row's worth of data.
@@ -154,7 +154,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: TextLogLevel in a single component batch.
+        /// This method makes it possible to pack multiple `level` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_level` should
         /// be used when logging a single row's worth of data.
@@ -169,7 +169,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Color in a single component batch.
+        /// This method makes it possible to pack multiple `color` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_color` should
         /// be used when logging a single row's worth of data.

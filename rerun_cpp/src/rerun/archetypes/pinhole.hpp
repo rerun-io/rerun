@@ -237,7 +237,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: PinholeProjection in a single component batch.
+        /// This method makes it possible to pack multiple `image_from_camera` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_image_from_camera` should
         /// be used when logging a single row's worth of data.
@@ -264,7 +264,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Resolution in a single component batch.
+        /// This method makes it possible to pack multiple `resolution` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_resolution` should
         /// be used when logging a single row's worth of data.
@@ -308,7 +308,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ViewCoordinates in a single component batch.
+        /// This method makes it possible to pack multiple `camera_xyz` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_camera_xyz` should
         /// be used when logging a single row's worth of data.
@@ -334,7 +334,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ImagePlaneDistance in a single component batch.
+        /// This method makes it possible to pack multiple `image_plane_distance` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_image_plane_distance` should
         /// be used when logging a single row's worth of data.

@@ -281,7 +281,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer1 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1001` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1001` should
         /// be used when logging a single row's worth of data.
@@ -298,7 +298,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer2 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1002` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1002` should
         /// be used when logging a single row's worth of data.
@@ -315,7 +315,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer3 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1003` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1003` should
         /// be used when logging a single row's worth of data.
@@ -332,7 +332,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer4 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1004` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1004` should
         /// be used when logging a single row's worth of data.
@@ -349,7 +349,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer5 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1005` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1005` should
         /// be used when logging a single row's worth of data.
@@ -366,7 +366,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer6 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1006` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1006` should
         /// be used when logging a single row's worth of data.
@@ -383,7 +383,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer7 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1007` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1007` should
         /// be used when logging a single row's worth of data.
@@ -400,7 +400,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer8 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1008` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1008` should
         /// be used when logging a single row's worth of data.
@@ -417,7 +417,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer9 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1009` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1009` should
         /// be used when logging a single row's worth of data.
@@ -434,7 +434,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer10 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1010` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1010` should
         /// be used when logging a single row's worth of data.
@@ -452,7 +452,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer11 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1011` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1011` should
         /// be used when logging a single row's worth of data.
@@ -470,7 +470,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer12 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1012` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1012` should
         /// be used when logging a single row's worth of data.
@@ -488,7 +488,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer13 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1013` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1013` should
         /// be used when logging a single row's worth of data.
@@ -506,7 +506,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer14 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1014` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1014` should
         /// be used when logging a single row's worth of data.
@@ -524,7 +524,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer15 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1015` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1015` should
         /// be used when logging a single row's worth of data.
@@ -542,7 +542,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer16 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1016` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1016` should
         /// be used when logging a single row's worth of data.
@@ -560,7 +560,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer17 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1017` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1017` should
         /// be used when logging a single row's worth of data.
@@ -578,7 +578,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer18 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1018` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1018` should
         /// be used when logging a single row's worth of data.
@@ -596,7 +596,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer19 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1019` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1019` should
         /// be used when logging a single row's worth of data.
@@ -614,7 +614,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer20 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1020` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1020` should
         /// be used when logging a single row's worth of data.
@@ -632,7 +632,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer21 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1021` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1021` should
         /// be used when logging a single row's worth of data.
@@ -650,7 +650,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AffixFuzzer22 in a single component batch.
+        /// This method makes it possible to pack multiple `fuzz1022` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1022` should
         /// be used when logging a single row's worth of data.

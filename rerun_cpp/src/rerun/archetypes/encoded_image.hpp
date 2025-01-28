@@ -142,7 +142,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Blob in a single component batch.
+        /// This method makes it possible to pack multiple `blob` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_blob` should
         /// be used when logging a single row's worth of data.
@@ -165,7 +165,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: MediaType in a single component batch.
+        /// This method makes it possible to pack multiple `media_type` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
         /// be used when logging a single row's worth of data.
@@ -185,7 +185,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Opacity in a single component batch.
+        /// This method makes it possible to pack multiple `opacity` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
         /// be used when logging a single row's worth of data.
@@ -203,7 +203,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: DrawOrder in a single component batch.
+        /// This method makes it possible to pack multiple `draw_order` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
         /// be used when logging a single row's worth of data.

@@ -274,7 +274,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AlbedoFactor in a single component batch.
+        /// This method makes it possible to pack multiple `albedo_factor` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
         /// be used when logging a single row's worth of data.
@@ -303,7 +303,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ImageBuffer in a single component batch.
+        /// This method makes it possible to pack multiple `albedo_texture_buffer` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_buffer` should
         /// be used when logging a single row's worth of data.
@@ -330,7 +330,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ImageFormat in a single component batch.
+        /// This method makes it possible to pack multiple `albedo_texture_format` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_format` should
         /// be used when logging a single row's worth of data.

@@ -615,7 +615,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Translation3D in a single component batch.
+        /// This method makes it possible to pack multiple `translation` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_translation` should
         /// be used when logging a single row's worth of data.
@@ -637,7 +637,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: RotationAxisAngle in a single component batch.
+        /// This method makes it possible to pack multiple `rotation_axis_angle` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_rotation_axis_angle` should
         /// be used when logging a single row's worth of data.
@@ -657,7 +657,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: RotationQuat in a single component batch.
+        /// This method makes it possible to pack multiple `quaternion` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_quaternion` should
         /// be used when logging a single row's worth of data.
@@ -675,7 +675,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Scale3D in a single component batch.
+        /// This method makes it possible to pack multiple `scale` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_scale` should
         /// be used when logging a single row's worth of data.
@@ -690,7 +690,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: TransformMat3x3 in a single component batch.
+        /// This method makes it possible to pack multiple `mat3x3` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_mat3x3` should
         /// be used when logging a single row's worth of data.
@@ -707,7 +707,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: TransformRelation in a single component batch.
+        /// This method makes it possible to pack multiple `relation` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_relation` should
         /// be used when logging a single row's worth of data.
@@ -729,7 +729,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: AxisLength in a single component batch.
+        /// This method makes it possible to pack multiple `axis_length` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_axis_length` should
         /// be used when logging a single row's worth of data.

@@ -143,7 +143,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: TensorData in a single component batch.
+        /// This method makes it possible to pack multiple `data` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_data` should
         /// be used when logging a single row's worth of data.
@@ -169,7 +169,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ValueRange in a single component batch.
+        /// This method makes it possible to pack multiple `value_range` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_value_range` should
         /// be used when logging a single row's worth of data.

@@ -249,7 +249,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ImageBuffer in a single component batch.
+        /// This method makes it possible to pack multiple `buffer` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_buffer` should
         /// be used when logging a single row's worth of data.
@@ -264,7 +264,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ImageFormat in a single component batch.
+        /// This method makes it possible to pack multiple `format` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_format` should
         /// be used when logging a single row's worth of data.
@@ -285,7 +285,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: DepthMeter in a single component batch.
+        /// This method makes it possible to pack multiple `meter` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_meter` should
         /// be used when logging a single row's worth of data.
@@ -303,7 +303,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: Colormap in a single component batch.
+        /// This method makes it possible to pack multiple `colormap` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_colormap` should
         /// be used when logging a single row's worth of data.
@@ -330,7 +330,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: ValueRange in a single component batch.
+        /// This method makes it possible to pack multiple `depth_range` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_depth_range` should
         /// be used when logging a single row's worth of data.
@@ -356,7 +356,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: FillRatio in a single component batch.
+        /// This method makes it possible to pack multiple `point_fill_ratio` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_point_fill_ratio` should
         /// be used when logging a single row's worth of data.
@@ -378,7 +378,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `rerun:: components:: DrawOrder in a single component batch.
+        /// This method makes it possible to pack multiple `draw_order` in a single component batch.
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
         /// be used when logging a single row's worth of data.
