@@ -100,10 +100,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
 
     // Text components:
-    registry.add_legacy_display_ui(Text::name(), Box::new(display_text_ui)); // TODO(andreas): Why is there a display ui?
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
-    registry.add_legacy_display_ui(Name::name(), Box::new(display_name_ui)); // TODO(andreas): Why is there a display ui?
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 

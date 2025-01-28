@@ -1,4 +1,7 @@
-use arrow::util::display::{ArrayFormatter, FormatOptions};
+use arrow::{
+    array::Array,
+    util::display::{ArrayFormatter, FormatOptions},
+};
 use itertools::Itertools as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -18,16 +21,16 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 
         // Special-treat text.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(utf8) = array.downcast_array_ref::<StringArray>() {
-            if utf8.values().len() == 1 {
-                let string = utf8.value(0);
+        if let Some(entries) = array.downcast_array_ref::<StringArray>() {
+            if entries.len() == 1 {
+                let string = entries.value(0);
                 ui_layout.data_label(ui, string);
                 return;
             }
         }
-        if let Some(utf8) = array.downcast_array_ref::<LargeStringArray>() {
-            if utf8.values().len() == 1 {
-                let string = utf8.value(0);
+        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>() {
+            if entries.len() == 1 {
+                let string = entries.value(0);
                 ui_layout.data_label(ui, string);
                 return;
             }
@@ -75,4 +78,10 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             ui_layout.label(ui, format!("{bytes} of data"));
         }
     });
+}
+
+#[test]
+fn memory() {
+    let data = arrow::array::Int8Array::from(vec![42; 3001]);
+    assert_eq!(data.get_buffer_memory_size(), 3001);
 }
