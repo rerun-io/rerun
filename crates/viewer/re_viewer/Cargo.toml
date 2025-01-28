@@ -90,7 +90,6 @@ re_video.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
-re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
