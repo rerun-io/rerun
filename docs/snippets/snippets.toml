@@ -258,10 +258,8 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/mesh3d_instancing" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.
-  "cpp",
+"archetypes/mesh3d_instancing" = [ # Python uses doubles
   "py",
-  "rust",
 ]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
