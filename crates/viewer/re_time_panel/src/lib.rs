@@ -704,7 +704,6 @@ impl TimePanel {
                     entity_data.highlight_sections.iter().cloned(),
                     None,
                 ))
-                //TODO: this is slow
                 .with_icon(guess_instance_path_icon(
                     ctx,
                     &InstancePath::from(entity_path.clone()),
