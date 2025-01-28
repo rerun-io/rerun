@@ -92,7 +92,7 @@ class VideoFrameReferenceExt:
         return VideoFrameReference.columns(timestamp=nanoseconds)
 
     @classmethod
-    def milliseconds(
+    def columns_milliseconds(
         cls,
         milliseconds: npt.ArrayLike,
     ) -> ComponentColumnList:
@@ -111,7 +111,7 @@ class VideoFrameReferenceExt:
         return VideoFrameReference.columns(timestamp=nanoseconds)
 
     @classmethod
-    def nanoseconds(
+    def columns_nanoseconds(
         cls,
         nanoseconds: npt.ArrayLike,
     ) -> ComponentColumnList:
