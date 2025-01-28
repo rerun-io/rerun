@@ -174,6 +174,7 @@ impl BlueprintTree {
 
         let item_response = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true) // allowed for consistency but results in an invalid drag
             .drop_target_style(self.is_candidate_drop_parent_container(&container_data.id))
@@ -272,6 +273,7 @@ impl BlueprintTree {
             ..
         } = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .drop_target_style(self.is_candidate_drop_parent_container(&container_data.id))
@@ -360,6 +362,7 @@ impl BlueprintTree {
             ..
         } = ui
             .list_item()
+            .render_offscreen(false)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .force_hovered(is_item_hovered)
@@ -375,10 +378,13 @@ impl BlueprintTree {
                 }
 
                 if !view_data.projection_trees.is_empty() {
-                    ui.list_item().interactive(false).show_flat(
-                        ui,
-                        list_item::LabelContent::new("Projections:").italics(true),
-                    );
+                    ui.list_item()
+                        .render_offscreen(false)
+                        .interactive(false)
+                        .show_flat(
+                            ui,
+                            list_item::LabelContent::new("Projections:").italics(true),
+                        );
 
                     for projection in &view_data.projection_trees {
                         self.data_result_ui(ctx, viewport_blueprint, ui, projection, view_visible);
@@ -481,6 +487,7 @@ impl BlueprintTree {
             DataResultKind::OriginProjectionPlaceholder => {
                 if ui
                     .list_item()
+                    .render_offscreen(false)
                     .show_hierarchical(
                         ui,
                         list_item::LabelContent::new("$origin")
@@ -507,6 +514,7 @@ impl BlueprintTree {
 
         let list_item = ui
             .list_item()
+            .render_offscreen(false)
             .draggable(true)
             .selected(is_selected)
             .force_hovered(is_item_hovered);
