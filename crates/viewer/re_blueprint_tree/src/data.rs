@@ -186,11 +186,8 @@ impl ViewData {
             false,
         );
 
-        if cfg!(debug_assertions) {
-            debug_assert!(hierarchy.is_empty());
-        } else {
-            hierarchy.clear();
-        }
+        debug_assert!(hierarchy.is_empty());
+        hierarchy.clear();
 
         //
         // Projection data results
