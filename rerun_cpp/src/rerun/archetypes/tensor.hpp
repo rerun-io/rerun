@@ -143,6 +143,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `data` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_data` should
+        /// be used when logging a single row's worth of data.
+        Tensor with_many_data(const Collection<rerun::components::TensorData>& _data) && {
+            data = ComponentBatch::from_loggable(_data, Descriptor_data).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The expected range of values.
         ///
         /// This is typically the expected range of valid values.
@@ -155,6 +164,17 @@ namespace rerun::archetypes {
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
         Tensor with_value_range(const rerun::components::ValueRange& _value_range) && {
+            value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `value_range` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_value_range` should
+        /// be used when logging a single row's worth of data.
+        Tensor with_many_value_range(const Collection<rerun::components::ValueRange>& _value_range
+        ) && {
             value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
                               .value_or_throw();
             return std::move(*this);

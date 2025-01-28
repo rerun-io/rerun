@@ -278,6 +278,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `show_labels` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
+        /// be used when logging a single row's worth of data.
+        Capsules3D with_many_show_labels(
+            const Collection<rerun::components::ShowLabels>& _show_labels
+        ) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional class ID for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.

@@ -274,6 +274,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `albedo_factor` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_factor(
+            const Collection<rerun::components::AlbedoFactor>& _albedo_factor
+        ) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional albedo texture.
         ///
         /// Used with the `components::Texcoord2D` of the mesh.
@@ -291,9 +303,39 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `albedo_texture_buffer` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_buffer` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_texture_buffer(
+            const Collection<rerun::components::ImageBuffer>& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
         /// The format of the `albedo_texture_buffer`, if any.
         Mesh3D with_albedo_texture_format(
             const rerun::components::ImageFormat& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_format` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_format` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_texture_format(
+            const Collection<rerun::components::ImageFormat>& _albedo_texture_format
         ) && {
             albedo_texture_format = ComponentBatch::from_loggable(
                                         _albedo_texture_format,

@@ -134,12 +134,10 @@ namespace rerun::archetypes {
     ///     auto time_column = rerun::TimeColumn::from_times("time", std::move(times));
     ///
     ///     // Partition our data as expected across the 5 timesteps.
-    ///     auto position =
-    ///         rerun::Points3D::update_fields().with_positions(positions).columns({2, 4, 4, 3, 4});
-    ///     auto color_and_radius =
-    ///         rerun::Points3D::update_fields().with_colors(colors).with_radii(radii).columns();
+    ///     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
+    ///     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
     ///
-    ///     rec.send_columns2("points", time_column, position, color_and_radius);
+    ///     rec.send_columns("points", time_column, position, color_and_radius);
     /// }
     /// ```
     struct Points3D {
@@ -266,6 +264,17 @@ namespace rerun::archetypes {
 
         /// Optional choice of whether the text labels should be shown by default.
         Points3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `show_labels` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
+        /// be used when logging a single row's worth of data.
+        Points3D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
+        ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
             return std::move(*this);

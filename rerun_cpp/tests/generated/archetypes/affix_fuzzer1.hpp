@@ -281,7 +281,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1001` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1001` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1001(const Collection<rerun::components::AffixFuzzer1>& _fuzz1001
+        ) && {
+            fuzz1001 =
+                ComponentBatch::from_loggable(_fuzz1001, Descriptor_fuzz1001).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1002(const rerun::components::AffixFuzzer2& _fuzz1002) && {
+            fuzz1002 =
+                ComponentBatch::from_loggable(_fuzz1002, Descriptor_fuzz1002).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1002` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1002` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1002(const Collection<rerun::components::AffixFuzzer2>& _fuzz1002
+        ) && {
             fuzz1002 =
                 ComponentBatch::from_loggable(_fuzz1002, Descriptor_fuzz1002).value_or_throw();
             return std::move(*this);
@@ -293,7 +315,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1003` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1003` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1003(const Collection<rerun::components::AffixFuzzer3>& _fuzz1003
+        ) && {
+            fuzz1003 =
+                ComponentBatch::from_loggable(_fuzz1003, Descriptor_fuzz1003).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1004(const rerun::components::AffixFuzzer4& _fuzz1004) && {
+            fuzz1004 =
+                ComponentBatch::from_loggable(_fuzz1004, Descriptor_fuzz1004).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1004` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1004` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1004(const Collection<rerun::components::AffixFuzzer4>& _fuzz1004
+        ) && {
             fuzz1004 =
                 ComponentBatch::from_loggable(_fuzz1004, Descriptor_fuzz1004).value_or_throw();
             return std::move(*this);
@@ -305,7 +349,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1005` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1005` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1005(const Collection<rerun::components::AffixFuzzer5>& _fuzz1005
+        ) && {
+            fuzz1005 =
+                ComponentBatch::from_loggable(_fuzz1005, Descriptor_fuzz1005).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1006(const rerun::components::AffixFuzzer6& _fuzz1006) && {
+            fuzz1006 =
+                ComponentBatch::from_loggable(_fuzz1006, Descriptor_fuzz1006).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1006` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1006` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1006(const Collection<rerun::components::AffixFuzzer6>& _fuzz1006
+        ) && {
             fuzz1006 =
                 ComponentBatch::from_loggable(_fuzz1006, Descriptor_fuzz1006).value_or_throw();
             return std::move(*this);
@@ -317,7 +383,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1007` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1007` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1007(const Collection<rerun::components::AffixFuzzer7>& _fuzz1007
+        ) && {
+            fuzz1007 =
+                ComponentBatch::from_loggable(_fuzz1007, Descriptor_fuzz1007).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1008(const rerun::components::AffixFuzzer8& _fuzz1008) && {
+            fuzz1008 =
+                ComponentBatch::from_loggable(_fuzz1008, Descriptor_fuzz1008).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1008` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1008` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1008(const Collection<rerun::components::AffixFuzzer8>& _fuzz1008
+        ) && {
             fuzz1008 =
                 ComponentBatch::from_loggable(_fuzz1008, Descriptor_fuzz1008).value_or_throw();
             return std::move(*this);
@@ -329,7 +417,30 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1009` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1009` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1009(const Collection<rerun::components::AffixFuzzer9>& _fuzz1009
+        ) && {
+            fuzz1009 =
+                ComponentBatch::from_loggable(_fuzz1009, Descriptor_fuzz1009).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1010(const rerun::components::AffixFuzzer10& _fuzz1010) && {
+            fuzz1010 =
+                ComponentBatch::from_loggable(_fuzz1010, Descriptor_fuzz1010).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1010` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1010` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1010(
+            const Collection<rerun::components::AffixFuzzer10>& _fuzz1010
+        ) && {
             fuzz1010 =
                 ComponentBatch::from_loggable(_fuzz1010, Descriptor_fuzz1010).value_or_throw();
             return std::move(*this);
@@ -341,7 +452,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1011` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1011` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1011(
+            const Collection<rerun::components::AffixFuzzer11>& _fuzz1011
+        ) && {
+            fuzz1011 =
+                ComponentBatch::from_loggable(_fuzz1011, Descriptor_fuzz1011).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1012(const rerun::components::AffixFuzzer12& _fuzz1012) && {
+            fuzz1012 =
+                ComponentBatch::from_loggable(_fuzz1012, Descriptor_fuzz1012).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1012` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1012` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1012(
+            const Collection<rerun::components::AffixFuzzer12>& _fuzz1012
+        ) && {
             fuzz1012 =
                 ComponentBatch::from_loggable(_fuzz1012, Descriptor_fuzz1012).value_or_throw();
             return std::move(*this);
@@ -353,7 +488,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1013` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1013` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1013(
+            const Collection<rerun::components::AffixFuzzer13>& _fuzz1013
+        ) && {
+            fuzz1013 =
+                ComponentBatch::from_loggable(_fuzz1013, Descriptor_fuzz1013).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1014(const rerun::components::AffixFuzzer14& _fuzz1014) && {
+            fuzz1014 =
+                ComponentBatch::from_loggable(_fuzz1014, Descriptor_fuzz1014).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1014` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1014` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1014(
+            const Collection<rerun::components::AffixFuzzer14>& _fuzz1014
+        ) && {
             fuzz1014 =
                 ComponentBatch::from_loggable(_fuzz1014, Descriptor_fuzz1014).value_or_throw();
             return std::move(*this);
@@ -365,7 +524,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1015` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1015` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1015(
+            const Collection<rerun::components::AffixFuzzer15>& _fuzz1015
+        ) && {
+            fuzz1015 =
+                ComponentBatch::from_loggable(_fuzz1015, Descriptor_fuzz1015).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1016(const rerun::components::AffixFuzzer16& _fuzz1016) && {
+            fuzz1016 =
+                ComponentBatch::from_loggable(_fuzz1016, Descriptor_fuzz1016).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1016` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1016` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1016(
+            const Collection<rerun::components::AffixFuzzer16>& _fuzz1016
+        ) && {
             fuzz1016 =
                 ComponentBatch::from_loggable(_fuzz1016, Descriptor_fuzz1016).value_or_throw();
             return std::move(*this);
@@ -377,7 +560,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1017` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1017` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1017(
+            const Collection<rerun::components::AffixFuzzer17>& _fuzz1017
+        ) && {
+            fuzz1017 =
+                ComponentBatch::from_loggable(_fuzz1017, Descriptor_fuzz1017).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1018(const rerun::components::AffixFuzzer18& _fuzz1018) && {
+            fuzz1018 =
+                ComponentBatch::from_loggable(_fuzz1018, Descriptor_fuzz1018).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1018` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1018` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1018(
+            const Collection<rerun::components::AffixFuzzer18>& _fuzz1018
+        ) && {
             fuzz1018 =
                 ComponentBatch::from_loggable(_fuzz1018, Descriptor_fuzz1018).value_or_throw();
             return std::move(*this);
@@ -389,7 +596,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1019` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1019` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1019(
+            const Collection<rerun::components::AffixFuzzer19>& _fuzz1019
+        ) && {
+            fuzz1019 =
+                ComponentBatch::from_loggable(_fuzz1019, Descriptor_fuzz1019).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1020(const rerun::components::AffixFuzzer20& _fuzz1020) && {
+            fuzz1020 =
+                ComponentBatch::from_loggable(_fuzz1020, Descriptor_fuzz1020).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1020` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1020` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1020(
+            const Collection<rerun::components::AffixFuzzer20>& _fuzz1020
+        ) && {
             fuzz1020 =
                 ComponentBatch::from_loggable(_fuzz1020, Descriptor_fuzz1020).value_or_throw();
             return std::move(*this);
@@ -401,7 +632,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `fuzz1021` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1021` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1021(
+            const Collection<rerun::components::AffixFuzzer21>& _fuzz1021
+        ) && {
+            fuzz1021 =
+                ComponentBatch::from_loggable(_fuzz1021, Descriptor_fuzz1021).value_or_throw();
+            return std::move(*this);
+        }
+
         AffixFuzzer1 with_fuzz1022(const rerun::components::AffixFuzzer22& _fuzz1022) && {
+            fuzz1022 =
+                ComponentBatch::from_loggable(_fuzz1022, Descriptor_fuzz1022).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fuzz1022` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fuzz1022` should
+        /// be used when logging a single row's worth of data.
+        AffixFuzzer1 with_many_fuzz1022(
+            const Collection<rerun::components::AffixFuzzer22>& _fuzz1022
+        ) && {
             fuzz1022 =
                 ComponentBatch::from_loggable(_fuzz1022, Descriptor_fuzz1022).value_or_throw();
             return std::move(*this);

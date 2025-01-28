@@ -75,10 +75,7 @@ namespace rerun::archetypes {
     ///     rec.send_columns(
     ///         "video",
     ///         time_column,
-    ///         {
-    ///             video_frame_reference_indicators.value_or_throw(),
-    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
-    ///         }
+    ///         rerun::VideoFrameReference().with_many_timestamp(rerun::borrow(video_timestamps)).columns()
     ///     );
     /// }
     /// ```
@@ -204,6 +201,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `blob` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_blob` should
+        /// be used when logging a single row's worth of data.
+        AssetVideo with_many_blob(const Collection<rerun::components::Blob>& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The Media Type of the asset.
         ///
         /// Supported values:
@@ -212,6 +218,17 @@ namespace rerun::archetypes {
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
         AssetVideo with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `media_type` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
+        /// be used when logging a single row's worth of data.
+        AssetVideo with_many_media_type(const Collection<rerun::components::MediaType>& _media_type
+        ) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             return std::move(*this);

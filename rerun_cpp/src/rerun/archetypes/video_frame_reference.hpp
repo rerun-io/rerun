@@ -71,10 +71,7 @@ namespace rerun::archetypes {
     ///     rec.send_columns(
     ///         "video",
     ///         time_column,
-    ///         {
-    ///             video_frame_reference_indicators.value_or_throw(),
-    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
-    ///         }
+    ///         rerun::VideoFrameReference().with_many_timestamp(rerun::borrow(video_timestamps)).columns()
     ///     );
     /// }
     /// ```
@@ -186,6 +183,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `timestamp` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_timestamp` should
+        /// be used when logging a single row's worth of data.
+        VideoFrameReference with_many_timestamp(
+            const Collection<rerun::components::VideoTimestamp>& _timestamp
+        ) && {
+            timestamp =
+                ComponentBatch::from_loggable(_timestamp, Descriptor_timestamp).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
         ///
         /// If none is specified, the video is assumed to be at the same entity.
@@ -197,6 +206,19 @@ namespace rerun::archetypes {
         /// keep the video reference active.
         VideoFrameReference with_video_reference(
             const rerun::components::EntityPath& _video_reference
+        ) && {
+            video_reference =
+                ComponentBatch::from_loggable(_video_reference, Descriptor_video_reference)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `video_reference` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_video_reference` should
+        /// be used when logging a single row's worth of data.
+        VideoFrameReference with_many_video_reference(
+            const Collection<rerun::components::EntityPath>& _video_reference
         ) && {
             video_reference =
                 ComponentBatch::from_loggable(_video_reference, Descriptor_video_reference)
