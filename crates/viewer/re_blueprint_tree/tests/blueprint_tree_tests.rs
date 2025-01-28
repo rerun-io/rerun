@@ -5,7 +5,7 @@ use egui::Vec2;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
-use re_log_types::build_frame_nr;
+use re_log_types::{build_frame_nr, Timeline};
 use re_types::archetypes::Points3D;
 use re_viewer_context::{
     test_context::TestContext, CollapseScope, RecommendedView, ViewClass, ViewId,
@@ -71,6 +71,9 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         });
 
         let mut blueprint_tree = BlueprintTree::default();
+
+        // set the current timeline to the timeline where data was logged to
+        test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
 
         let mut harness = test_context
             .setup_kittest_for_rendering()
@@ -191,6 +194,9 @@ fn run_blueprint_panel_and_save_snapshot(
     mut blueprint_tree: BlueprintTree,
     snapshot_name: &str,
 ) {
+    // set the current timeline to the timeline where data was logged to
+    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(Vec2::new(400.0, 800.0))

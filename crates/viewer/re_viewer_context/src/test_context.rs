@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
 use re_types_core::reflection::Reflection;
 
 use crate::{
@@ -199,6 +199,13 @@ impl TestContext {
     /// Timeline the recording config is using by default.
     pub fn active_timeline(&self) -> re_chunk::Timeline {
         *self.recording_config.time_ctrl.read().timeline()
+    }
+
+    pub fn set_active_timeline(&self, timeline: Timeline) {
+        self.recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(timeline);
     }
 
     pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
