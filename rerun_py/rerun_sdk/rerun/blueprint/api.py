@@ -724,7 +724,6 @@ class Blueprint:
         self.connect_grpc(application_id=application_id, url=f"http://127.0.0.1:{port}")
 
 
-
 BlueprintLike = Union[Blueprint, View, Container]
 """
 A type that can be converted to a blueprint.
