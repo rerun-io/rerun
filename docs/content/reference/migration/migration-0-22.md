@@ -43,7 +43,7 @@ However, it is still possible to do so with the `TensorData` component.
 
 Previously, `RecordingStream::send_column` accepted raw component collections.
 
-This is no longer the case and only `rerun::ComponentColumn` and anything else from from which
+This is no longer the case and only `rerun::ComponentColumn` and anything else from which
 a `Collection<ComponentColumn>` can be constructed is accepted.
 The preferred way to create `rerun::ComponentColumn`s is to use the new `columns` method on archetypes.
 
@@ -53,4 +53,4 @@ rec.send_columns("scalars", time_column,
     rerun::Scalar().with_many_scalar(scalar_data).columns()
 );
 ```
-All [example snippets](https://rerun.io/docs/snippets/all) have been updated accordingly.
+All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) have been updated accordingly.
