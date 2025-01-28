@@ -201,11 +201,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/arrows3d_simple" = [ # Python uses doubles
   "py",
 ]
-"archetypes/asset3d_out_of_tree" = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
-  "cpp",
-  "py",
-  "rust",
-]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
