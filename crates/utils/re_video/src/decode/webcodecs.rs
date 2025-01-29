@@ -206,10 +206,9 @@ impl AsyncDecoder for WebVideoDecoder {
 }
 
 const IS_SAFARI: Lazy<bool> = Lazy::new(|| {
-    web_sys::window()
-        .and_then(|w| w.navigator().user_agent().ok())
-        .map(|ua| ua.contains("Safari"))
-        .unwrap_or(false)
+    web_sys::window().map_or(false, |w| {
+        w.has_own_property(&wasm_bindgen::JsValue::from("safari"))
+    })
 });
 
 fn init_video_decoder(
