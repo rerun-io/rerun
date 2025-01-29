@@ -93,6 +93,18 @@ impl VideoChunkDecoder {
         Ok(())
     }
 
+    /// Minimum number of samples the decoder requests to stay head of the currently requested sample.
+    ///
+    /// I.e. if sample N is requested, then the encoder would like to see at least all the samples from
+    /// [start of N's GOP] until [N + `min_num_samples_to_enqueue_ahead`].
+    /// Codec specific constraints regarding what samples can be decoded (samples may depend on other samples in their GOP)
+    /// still apply independently of this.
+    ///
+    /// This can be used as a workaround for decoders that are known to need additional samples to produce outputs.
+    pub fn min_num_samples_to_enqueue_ahead(&self) -> usize {
+        self.decoder.min_num_samples_to_enqueue_ahead()
+    }
+
     /// Get the latest decoded frame at the given time
     /// and copy it to the given texture.
     ///

@@ -882,6 +882,11 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         )?;
         Ok(())
     }
+
+    fn min_num_samples_to_enqueue_ahead(&self) -> usize {
+        // TODO: describe this and add ticket.
+        16
+    }
 }
 
 #[derive(Default)]

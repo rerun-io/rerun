@@ -236,6 +236,8 @@ impl VideoPlayer {
             }
         }
 
+        // Check all cases in which we have to reset the decoder.
+        // This is everything that goes backwards or jumps a GOP.
         if requested_gop_idx != self.last_requested_gop_idx {
             // Backward seeks or seeks across many GOPs trigger a reset of the decoder,
             // because decoding all the samples between the previous sample and the requested
@@ -244,39 +246,45 @@ impl VideoPlayer {
                 self.reset()?;
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
-            // special case: handle seeking backwards within a single GOP
-            // this is super inefficient, but it's the only way to handle it
-            // while maintaining a buffer of only 2 GOPs
-            //
-            // Note that due to sample reordering (in the presence of b-frames), if can happen
-            // that `self.current_sample_idx` is *behind* the `requested_sample_idx` even if we're
-            // seeking backwards!
-            // Therefore, it's important to compare presentation timestamps instead of sample indices.
-            // (comparing decode timestamps should be equivalent to comparing sample indices)
             let current_pts =
                 self.data.samples[self.last_requested_sample_idx].presentation_timestamp;
             let requested_sample = &self.data.samples[requested_sample_idx];
 
-            re_log::trace!(
-                "Seeking to sample {requested_sample_idx} (frame_nr {})",
-                requested_sample.frame_nr
-            );
-
             if requested_sample.presentation_timestamp < current_pts {
+                re_log::trace!(
+                    "Seeking backwards to sample {requested_sample_idx} (frame_nr {})",
+                    requested_sample.frame_nr
+                );
+
+                // special case: handle seeking backwards within a single GOP
+                // this is super inefficient, but it's the only way to handle it
+                // while maintaining a buffer of only 2 GOPs
+                //
+                // Note that due to sample reordering (in the presence of b-frames), if can happen
+                // that `self.current_sample_idx` is *behind* the `requested_sample_idx` even if we're
+                // seeking backwards!
+                // Therefore, it's important to compare presentation timestamps instead of sample indices.
+                // (comparing decode timestamps should be equivalent to comparing sample indices)
                 self.reset()?;
             }
         }
 
-        // Ensure that we have as many GOPs enqueued currently as needed in order to..
+        // Ensure that we have as many GOPs enqueued currently as needed in order to...
         // * cover the GOP of the requested sample _plus one_ so we can always smoothly transition to the next GOP
-        // * cover at least the `min_end_sample_idx` to work around issues with some decoders
+        // * cover at least `min_num_samples_to_enqueue_ahead` samples to work around issues with some decoders
         //   (note that for large GOPs this is usually irrelevant)
-        let min_end_sample_idx = requested_sample_idx + 18; // TODO:
+        //
+        // (potentially related to:) TODO(#7327, #7595): We don't necessarily have to enqueue full GOPs always.
+        // In particulary beyond `requested_gop_idx` this can be overkill.
+        let min_end_sample_idx =
+            requested_sample_idx + self.chunk_decoder.min_num_samples_to_enqueue_ahead();
         loop {
             let next_gop_idx = if let Some(last_enqueued_gop_idx) = self.last_enqueued_gop_idx {
-                let last_enqueued_sample_idx = self.data.gops[last_enqueued_gop_idx]
-                    .sample_range_usize()
-                    .end;
+                let last_enqueued_gop = self.data.gops.get(last_enqueued_gop_idx);
+                let last_enqueued_sample_idx = last_enqueued_gop
+                    .map(|gop| gop.sample_range_usize().end)
+                    .unwrap_or(0);
+
                 if last_enqueued_gop_idx > requested_gop_idx // Enqueue the next GOP after requested as well.
                     && last_enqueued_sample_idx >= min_end_sample_idx
                 {
