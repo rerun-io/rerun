@@ -37,8 +37,8 @@ use crate::{ViewBlueprint, ViewProperty};
 pub struct ViewContents {
     pub blueprint_entity_path: EntityPath,
 
-    pub view_class_identifier: ViewClassIdentifier,
-    pub entity_path_filter: ResolvedEntityPathFilter,
+    view_class_identifier: ViewClassIdentifier,
+    entity_path_filter: ResolvedEntityPathFilter,
 }
 
 impl ViewContents {
@@ -140,6 +140,10 @@ impl ViewContents {
                 self.entity_path_filter.iter_unresolved_expressions(),
             ),
         );
+    }
+
+    pub fn entity_path_filter(&self) -> &ResolvedEntityPathFilter {
+        &self.entity_path_filter
     }
 
     /// Set the entity path filter. WARNING: a single mutation is allowed per frame, or data will be

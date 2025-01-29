@@ -383,7 +383,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                         ctx,
                         ui,
                         *view_id,
-                        &view.contents.entity_path_filter,
+                        view.contents.entity_path_filter(),
                         &view.space_origin,
                     ) {
                         view.contents
