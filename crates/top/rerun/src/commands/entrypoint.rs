@@ -23,7 +23,7 @@ use crate::commands::AnalyticsCommands;
 const LONG_ABOUT: &str = r#"
 The Rerun command-line interface:
 * Spawn viewers to visualize Rerun recordings and other supported formats.
-* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Start a gRPC server to share recordings over the network, on native or web.
 * Inspect, edit and filter Rerun recordings.
 "#;
 
@@ -56,7 +56,7 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun TCP server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and serves the results over WebSockets:
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serves the results:
         rerun --serve-web
 
     Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
@@ -150,12 +150,9 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve: bool,
 
-    /// Serve the recordings over WebSocket to one or more Rerun Viewers.
+    /// This will host a web-viewer over HTTP, and a gRPC server.
     ///
-    /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
-    /// but you can also connect with the native binary.
-    ///
-    /// `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from
+    /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
     serve_web: bool,

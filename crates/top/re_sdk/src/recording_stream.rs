@@ -444,7 +444,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
-    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over gRPC.
     ///
     /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
     /// that viewer instead of starting a new one.
@@ -463,7 +463,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
-    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over gRPC.
     ///
     /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
     /// that viewer instead of starting a new one.
@@ -1566,7 +1566,7 @@ impl RecordingStream {
     ///
     /// ## Data loss
     ///
-    /// If the current sink is in a broken state (e.g. a TCP sink with a broken connection that
+    /// If the current sink is in a broken state (e.g. a gRPC sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
         if self.is_forked_child() {

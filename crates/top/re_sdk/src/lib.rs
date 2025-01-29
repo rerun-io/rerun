@@ -59,7 +59,7 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// Different destinations for log messages.
 ///
 /// This is how you select whether the log stream ends up
-/// sent over TCP, written to file, etc.
+/// sent over gRPC, written to file, etc.
 pub mod sink {
     pub use crate::binary_stream_sink::{
         BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
