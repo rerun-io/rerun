@@ -76,19 +76,24 @@ impl CompareCommand {
             re_format::format_uint(chunks2.len()),
         );
 
+        let mut unordered_failed = false;
         if *unordered {
-            let mut chunks2: Vec<Option<Arc<Chunk>>> = chunks2.into_iter().map(Some).collect_vec();
-            'outer: for chunk1 in chunks1 {
-                for chunk2 in chunks2.iter_mut().filter(|c| c.is_some()) {
+            let mut chunks2_opt: Vec<Option<Arc<Chunk>>> =
+                chunks2.clone().into_iter().map(Some).collect_vec();
+            'outer: for chunk1 in &chunks1 {
+                for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
                     #[allow(clippy::unwrap_used)]
-                    if re_chunk::Chunk::are_similar(&chunk1, chunk2.as_ref().unwrap()) {
+                    if re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
                         *chunk2 = None;
                         continue 'outer;
                     }
                 }
-                anyhow::bail!("Couldn't find a match for the following chunk:\n{chunk1}");
+                unordered_failed = true;
+                break;
             }
-        } else {
+        }
+
+        if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 anyhow::ensure!(
                     re_chunk::Chunk::are_similar(&chunk1, &chunk2),
