@@ -38,7 +38,6 @@ class CustomPoints3D(rr.AsComponents):
     def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
         return (
             list(self.points3d.as_component_batches())  # The components from Points3D
-            + [rr.IndicatorComponentBatch("user.CustomPoints3D")]  # Our custom indicator
             + [self.confidences]  # Custom confidence data
         )
 

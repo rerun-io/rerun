@@ -29,9 +29,6 @@ struct rerun::Loggable<Confidence> {
 
 /// A custom archetype that extends Rerun's builtin `rerun::Points3D` archetype with a custom component.
 struct CustomPoints3D {
-    static constexpr const char IndicatorComponentName[] = "user.CustomPoints3DIndicator";
-    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
-
     rerun::Points3D points;
     // Using a rerun::Collection is not strictly necessary, you could also use an std::vector for example,
     // but useful for avoiding allocations since `rerun::Collection` can borrow data from other containers.
@@ -42,9 +39,6 @@ template <>
 struct rerun::AsComponents<CustomPoints3D> {
     static Result<std::vector<ComponentBatch>> serialize(const CustomPoints3D& archetype) {
         auto batches = AsComponents<rerun::Points3D>::serialize(archetype.points).value_or_throw();
-
-        // Add a custom indicator component.
-        batches.push_back(ComponentBatch::from_indicator<CustomPoints3D>().value_or_throw());
 
         // Add custom confidence components if present.
         if (archetype.confidences) {
