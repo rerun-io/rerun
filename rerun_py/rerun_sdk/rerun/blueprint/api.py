@@ -686,7 +686,7 @@ class Blueprint:
 
         """
         _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
-        self.connect(application_id=application_id, addr=f"127.0.0.1:{port}")
+        self.connect(application_id=application_id, url=f"http://127.0.0.1:{port}")
 
     def spawn_grpc(
         self, application_id: str, port: int = 9876, memory_limit: str = "75%", hide_welcome_screen: bool = False
