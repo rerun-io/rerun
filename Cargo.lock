@@ -1740,6 +1740,7 @@ dependencies = [
  "parking_lot",
  "re_crash_handler",
  "re_error",
+ "re_grpc_server",
  "rerun",
  "serde",
  "tokio",
@@ -1767,8 +1768,9 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
- "re_sdk_comms",
+ "re_grpc_server",
  "re_viewer",
+ "tokio",
 ]
 
 [[package]]
@@ -2391,8 +2393,9 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
- "re_sdk_comms",
+ "re_grpc_server",
  "re_viewer",
+ "tokio",
 ]
 
 [[package]]
@@ -6438,7 +6441,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_sdk_comms",
  "re_smart_channel",
  "re_types_core",
  "re_web_viewer_server",
@@ -7022,7 +7024,6 @@ dependencies = [
  "re_memory",
  "re_query",
  "re_renderer",
- "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
  "re_time_panel",

@@ -104,6 +104,20 @@ namespace rerun {
         }
     }
 
+    Error RecordingStream::connect(std::string_view url) const {
+        return connect_grpc(url);
+    }
+
+    Error RecordingStream::connect_grpc(std::string_view url) const {
+        rr_error status = {};
+        rr_recording_stream_connect_grpc(_id, detail::to_rr_string(url), &status);
+        return status;
+    }
+
+    Error RecordingStream::spawn(const SpawnOptions& options) const {
+        return spawn_grpc(options);
+    }
+
     Error RecordingStream::spawn_grpc(const SpawnOptions& options) const {
         rr_spawn_options rerun_c_options = {};
         options.fill_rerun_c_struct(rerun_c_options);

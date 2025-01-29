@@ -111,7 +111,7 @@ impl RerunArgs {
             )),
 
             RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
+                RecordingStreamBuilder::new(application_id).connect_opts(url)?,
                 Default::default(),
             )),
 

@@ -133,33 +133,12 @@ namespace rerun {
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
 
-        /// Connect to a remote Rerun Viewer on the given ip:port.
+        /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// This function returns immediately.
-        [[deprecated("Use `connect_tcp` instead")]] Error connect(
-            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
-        ) const;
-
-        /// Connect to a remote Rerun Viewer on the given ip:port.
-        ///
-        /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
-        ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
-        /// This function returns immediately.
-        Error connect_tcp(
-            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
-        ) const;
+        Error connect(std::string_view url = "http://127.0.0.1:1852") const;
 
         /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
         ///
@@ -169,20 +148,15 @@ namespace rerun {
         Error connect_grpc(std::string_view url = "http://127.0.0.1:1852") const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
-        /// over TCP.
+        /// over gRPC.
         ///
-        /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+        /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
         /// ## Parameters
         /// options:
         /// See `rerun::SpawnOptions` for more information.
-        ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
+        Error spawn(const SpawnOptions& options = {}) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.

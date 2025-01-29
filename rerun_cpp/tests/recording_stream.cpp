@@ -381,7 +381,7 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
         THEN("then the save call fails") {
             CHECK(
                 stream.connect_grpc("definitely not valid!").code ==
-                rerun::ErrorCode::InvalidSocketAddress
+                rerun::ErrorCode::InvalidServerUrl
             );
         }
     }

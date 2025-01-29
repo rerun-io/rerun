@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
     // TODO(#4602): need common rerun args helper library
     if (args["spawn"].as<bool>()) {
-        rec.spawn().exit_on_failure();
+        rec.spawn_grpc().exit_on_failure();
     } else if (args["connect"].as<bool>()) {
         rec.connect_grpc().exit_on_failure();
     } else if (args["stdout"].as<bool>()) {
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
     } else if (args.count("save")) {
         rec.save(args["save"].as<std::string>()).exit_on_failure();
     } else {
-        rec.spawn().exit_on_failure();
+        rec.spawn_grpc().exit_on_failure();
     }
 
     const auto num_plots = args["num-plots"].as<uint64_t>();
