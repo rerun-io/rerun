@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +35,7 @@ class CustomPoints3D(rr.AsComponents):
             archetype_name="user.CustomPoints3D", archetype_field_name="confidences"
         )
 
-    def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
+    def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
         return (
             list(self.points3d.as_component_batches())  # The components from Points3D
             + [self.confidences]  # Custom confidence data

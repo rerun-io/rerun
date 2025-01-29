@@ -37,7 +37,7 @@ class LabeledPoints:
     points: np.ndarray
     labels: List[str]
 
-    def as_component_batches(self) -> Iterable[rr.ComponentBatch]:
+    def as_component_batches(self) -> list[rr.ComponentBatch]:
         return rr.Points3D(positions=self.points,
                            labels=self.labels).as_component_batches()
 …

@@ -12,7 +12,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from rerun.error_utils import catch_and_log_exceptions
 
@@ -220,15 +219,14 @@ class AffixFuzzer3(Archetype):
                 fuzz2018=fuzz2018,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 
