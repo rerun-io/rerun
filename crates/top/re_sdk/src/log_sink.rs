@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use re_grpc_client::message_proxy::write::Client as MessageProxyClient;
+use re_grpc_client::message_proxy::MessageProxyUrl;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
@@ -345,7 +346,7 @@ impl GrpcSink {
     /// GrpcSink::new("http://127.0.0.1:9434");
     /// ```
     #[inline]
-    pub fn new(url: impl Into<String>) -> Self {
+    pub fn new(url: MessageProxyUrl) -> Self {
         Self {
             client: MessageProxyClient::new(url, Default::default()),
         }

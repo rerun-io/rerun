@@ -680,17 +680,20 @@ fn connect_grpc(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
-) {
+) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
 
     use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url.unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"));
+    let url = url
+        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
+        .parse::<re_grpc_client::MessageProxyUrl>()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
-        return;
+        return Ok(());
     }
 
     py.allow_threads(|| {
@@ -704,6 +707,8 @@ fn connect_grpc(
 
         flush_garbage_queue();
     });
+
+    Ok(())
 }
 
 #[pyfunction]
@@ -717,7 +722,10 @@ fn connect_grpc_blueprint(
     py: Python<'_>,
 ) -> PyResult<()> {
     use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url.unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"));
+    let url = url
+        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
+        .parse::<re_grpc_client::MessageProxyUrl>()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.

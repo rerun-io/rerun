@@ -38,7 +38,7 @@ namespace rerun {
         InvalidStringArgument,
         InvalidEnumValue,
         InvalidRecordingStreamHandle,
-        InvalidSocketAddress,
+        InvalidServerUrl,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
         InvalidArchetypeField,

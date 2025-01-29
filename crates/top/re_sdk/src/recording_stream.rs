@@ -86,6 +86,10 @@ pub enum RecordingStreamError {
     #[cfg(feature = "data_loaders")]
     #[error(transparent)]
     DataLoaderError(#[from] re_data_loader::DataLoaderError),
+
+    /// Invalid gRPC server address.
+    #[error(transparent)]
+    InvalidGrpcUrl(#[from] re_grpc_client::message_proxy::read::InvalidMessageProxyUrl),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -334,7 +338,7 @@ impl RecordingStreamBuilder {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::GrpcSink::new(url)),
+                Box::new(crate::log_sink::GrpcSink::new(url.into().parse()?)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -1639,10 +1643,11 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect_grpc(&self) {
-        self.connect_grpc_opts(format!(
-            "http://127.0.0.1:{}",
-            re_grpc_server::DEFAULT_SERVER_PORT
-        ));
+        self.connect_grpc_opts(
+            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT)
+                .parse()
+                .expect("should always be valid"),
+        );
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
@@ -1651,7 +1656,7 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect_grpc_opts(&self, url: impl Into<String>) {
+    pub fn connect_grpc_opts(&self, url: re_grpc_client::MessageProxyUrl) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
             return;
@@ -1698,13 +1703,17 @@ impl RecordingStream {
             return Ok(());
         }
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
+            re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(format!("http://{}", opts.connect_addr()));
+        self.connect_grpc_opts(
+            format!("http://{}", opts.connect_addr())
+                .parse()
+                .expect("should always be valid"),
+        );
 
         Ok(())
     }

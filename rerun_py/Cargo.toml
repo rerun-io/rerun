@@ -38,11 +38,11 @@ nasm = ["re_video/nasm"]
 remote = [
   "dep:object_store",
   "dep:re_protos",
-  "dep:re_grpc_client",
   "dep:tokio",
   "dep:tokio-stream",
   "dep:tonic",
   "dep:url",
+  "re_grpc_client/redap",
   "re_sdk/grpc",
 ]
 
@@ -63,7 +63,7 @@ re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
-re_grpc_client = { workspace = true, optional = true }
+re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true }

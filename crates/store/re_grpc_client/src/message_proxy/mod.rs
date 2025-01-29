@@ -1,5 +1,5 @@
 pub mod read;
-pub use read::{stream, MessageProxyAddress};
+pub use read::{stream, MessageProxyUrl};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod write;

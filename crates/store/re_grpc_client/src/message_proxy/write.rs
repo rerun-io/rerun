@@ -13,6 +13,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tonic::transport::Endpoint;
 
+use super::MessageProxyUrl;
+
 enum Cmd {
     LogMsg(LogMsg),
     Flush(oneshot::Sender<()>),
@@ -38,10 +40,8 @@ pub struct Client {
 }
 
 impl Client {
-    /// `url` should be the `http://` or `https://` URL of the server.
     #[expect(clippy::needless_pass_by_value)]
-    pub fn new(url: impl Into<String>, options: Options) -> Self {
-        let url: String = url.into();
+    pub fn new(url: MessageProxyUrl, options: Options) -> Self {
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
@@ -54,7 +54,7 @@ impl Client {
                     .build()
                     .expect("Failed to build tokio runtime")
                     .block_on(message_proxy_client(
-                        url,
+                        url.to_http(),
                         cmd_rx,
                         shutdown_rx,
                         options.compression,

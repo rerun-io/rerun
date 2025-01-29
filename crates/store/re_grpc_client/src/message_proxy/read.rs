@@ -13,10 +13,10 @@ use crate::TonicStatusError;
 pub fn stream(
     url: &str,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidMessageProxyAddress> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidMessageProxyUrl> {
     re_log::debug!("Loading {url} via gRPC…");
 
-    let parsed_url = MessageProxyAddress::parse(url)?;
+    let parsed_url = MessageProxyUrl::parse(url)?;
 
     let url = url.to_owned();
     let (tx, rx) = re_smart_channel::smart_channel(
@@ -33,13 +33,24 @@ pub fn stream(
     Ok(rx)
 }
 
-pub struct MessageProxyAddress(String);
+/// Represents a URL to a gRPC server.
+pub struct MessageProxyUrl(String);
 
-impl MessageProxyAddress {
-    pub fn parse(url: &str) -> Result<Self, InvalidMessageProxyAddress> {
+impl MessageProxyUrl {
+    /// Parses as a regular URL, the protocol must be `temp://`, `http://`, or `https://`.
+    pub fn parse(url: &str) -> Result<Self, InvalidMessageProxyUrl> {
+        if let Some(url) = url.strip_prefix("http") {
+            let _ = Url::parse(url).map_err(|err| InvalidMessageProxyUrl {
+                url: url.to_owned(),
+                msg: err.to_string(),
+            })?;
+
+            return Ok(Self(url.to_owned()));
+        }
+
         let Some(url) = url.strip_prefix("temp") else {
             let scheme = url.split_once("://").map(|(a, _)| a).ok_or("unknown");
-            return Err(InvalidMessageProxyAddress {
+            return Err(InvalidMessageProxyUrl {
                 url: url.to_owned(),
                 msg: format!(
                     "Invalid scheme {scheme:?}, expected {:?}",
@@ -50,7 +61,7 @@ impl MessageProxyAddress {
         };
         let url = format!("http{url}");
 
-        let _ = Url::parse(&url).map_err(|err| InvalidMessageProxyAddress {
+        let _ = Url::parse(&url).map_err(|err| InvalidMessageProxyUrl {
             url: url.clone(),
             msg: err.to_string(),
         })?;
@@ -58,19 +69,19 @@ impl MessageProxyAddress {
         Ok(Self(url))
     }
 
-    fn to_http(&self) -> String {
+    pub fn to_http(&self) -> String {
         self.0.clone()
     }
 }
 
-impl Display for MessageProxyAddress {
+impl Display for MessageProxyUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.0, f)
     }
 }
 
-impl std::str::FromStr for MessageProxyAddress {
-    type Err = InvalidMessageProxyAddress;
+impl std::str::FromStr for MessageProxyUrl {
+    type Err = InvalidMessageProxyUrl;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
@@ -78,14 +89,14 @@ impl std::str::FromStr for MessageProxyAddress {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("invalid message proxy address {url:?}: {msg}")]
-pub struct InvalidMessageProxyAddress {
+#[error("invalid message proxy url {url:?}: {msg}")]
+pub struct InvalidMessageProxyUrl {
     pub url: String,
     pub msg: String,
 }
 
 async fn stream_async(
-    url: MessageProxyAddress,
+    url: MessageProxyUrl,
     tx: &re_smart_channel::Sender<LogMsg>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
@@ -142,4 +153,28 @@ async fn stream_async(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! test_parse_url {
+        ($name:ident, $url:literal, error) => {
+            #[test]
+            fn $name() {
+                assert!(MessageProxyUrl::parse($url).is_err());
+            }
+        };
+
+        ($name:ident, $url:literal, expected: $expected_http:literal) => {
+            #[test]
+            fn $name() {
+                assert_eq!(MessageProxyUrl::parse($url).to_http(), $expected_http);
+            }
+        };
+    }
+
+    test_parse_url!(basic, "temp://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
+    test_parse_url!(invalid, "definitely not valid", error);
 }

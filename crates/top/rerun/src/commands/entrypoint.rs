@@ -808,7 +808,9 @@ fn run_impl(
         Ok(())
     } else if is_another_viewer_running {
         // Another viewer is already running on the specified address
-        let url = format!("http://{server_addr}");
+        let url = format!("http://{server_addr}")
+            .parse()
+            .expect("should always be valid");
         re_log::info!(%url, "Another viewer is already running, streaming data to it.");
 
         let sink = re_sdk::sink::GrpcSink::new(url);

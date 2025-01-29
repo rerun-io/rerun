@@ -281,7 +281,7 @@ pub enum CErrorCode {
     InvalidStringArgument,
     InvalidEnumValue,
     InvalidRecordingStreamHandle,
-    InvalidSocketAddress,
+    InvalidServerUrl,
     InvalidComponentTypeHandle,
 
     _CategoryRecordingStream = 0x0000_00100,
@@ -564,9 +564,12 @@ fn rr_recording_stream_connect_grpc_impl(
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let url = url.as_str("url")?;
+    let url = url.as_str("url")?.parse();
 
-    stream.connect_grpc_opts(url);
+    match url {
+        Ok(url) => stream.connect_grpc_opts(url),
+        Err(err) => return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string())),
+    }
 
     Ok(())
 }
