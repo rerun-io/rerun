@@ -213,7 +213,7 @@ class AnyValues(AsComponents):
         """
         global ANY_VALUE_TYPE_REGISTRY
 
-        self.component_batches = list([])
+        self.component_batches = list()
 
         with catch_and_log_exceptions(self.__class__.__name__):
             for name, value in kwargs.items():
