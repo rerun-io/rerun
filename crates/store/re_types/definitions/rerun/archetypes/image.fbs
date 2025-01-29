@@ -20,9 +20,11 @@ namespace rerun.archetypes;
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///
-/// \example archetypes/image_simple image="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png"
-/// \example archetypes/image_formats title="Logging images with various formats" image="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png"
-/// \example archetypes/image_send_columns !api title="Image from file, PIL & OpenCV" image="https://static.rerun.io/image_advanced/81fc8a255488615510790ee41be314e054978d51/full.png"
+/// \example archetypes/image_simple !api image="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png"
+/// \example archetypes/image_formats !api title="Logging images with various formats" image="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png"
+/// \example archetypes/image_advanced !api title="Image from file, PIL & OpenCV" image="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1200w.png"
+/// \example archetypes/image_row_updates title="Update an image over time" image="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png"
+/// \example archetypes/image_column_updates title="Update an image over time, in a single operation" image="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png"
 table Image (
   "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",

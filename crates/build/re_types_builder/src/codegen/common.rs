@@ -319,13 +319,40 @@ pub fn collect_snippets_for_api_docs<'a>(
             }
         };
         let mut content = content
-            .split('\n')
-            .map(String::from)
-            .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
+            .lines()
+            .map(ToOwned::to_owned)
+            .skip_while(|line| line.starts_with("//")) // Skip leading comments.
             .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
             .collect_vec();
 
+        // Remove multi-line Python docstrings, otherwise we can't embed this.
+        if content
+            .first()
+            .map_or(false, |line| line.trim() == "\"\"\"")
+        {
+            if let Some((i, _)) = content
+                .iter()
+                .skip(1)
+                .find_position(|line| line.trim() == "\"\"\"")
+            {
+                content = content.into_iter().skip(i + 2).collect();
+            }
+        }
+
+        // Remove one-line Python docstrings, otherwise we can't embed this.
+        if let Some(first_line) = content.first() {
+            if first_line.starts_with("\"\"\"")
+                && first_line.ends_with("\"\"\"")
+                && first_line.len() > 6
+            {
+                content.remove(0);
+            }
+        }
+
         // trim trailing blank lines
+        while content.first().is_some_and(is_blank) {
+            content.remove(0);
+        }
         while content.last().is_some_and(is_blank) {
             content.pop();
         }

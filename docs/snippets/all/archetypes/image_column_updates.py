@@ -1,9 +1,13 @@
-"""Send multiple images at once using `send_columns`."""
+"""
+Update an image over time, in a single operation.
+
+This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
+"""
 
 import numpy as np
 import rerun as rr
 
-rr.init("rerun_example_image_send_columns", spawn=True)
+rr.init("rerun_example_image_column_updates", spawn=True)
 
 # Timeline on which the images are distributed.
 times = np.arange(0, 20)

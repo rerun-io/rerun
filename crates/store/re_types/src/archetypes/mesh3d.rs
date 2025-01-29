@@ -106,6 +106,53 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png" width="640">
 /// </picture>
 /// </center>
+///
+/// ### Update specific parts of a 3D mesh over time
+/// ```ignore
+/// use rerun::external::glam;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").spawn()?;
+///
+///     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+///
+///     // Log the initial state of our triangle:
+///     rec.set_time_sequence("frame", 0);
+///     rec.log(
+///         "triangle",
+///         &rerun::Mesh3D::new(vertex_positions)
+///             .with_vertex_normals([[0.0, 0.0, 1.0]])
+///             .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
+///     )?;
+///
+///     // Only update its vertices' positions each frame
+///     for i in 1..300 {
+///         rec.set_time_sequence("frame", i);
+///
+///         let factor = (i as f32 * 0.04).sin().abs();
+///         let vertex_positions = [
+///             (glam::Vec3::from(vertex_positions[0]) * factor),
+///             (glam::Vec3::from(vertex_positions[1]) * factor),
+///             (glam::Vec3::from(vertex_positions[2]) * factor),
+///         ];
+///         rec.log(
+///             "triangle",
+///             &rerun::Mesh3D::update_fields().with_vertex_positions(vertex_positions),
+///         )?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png">
+///   <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Mesh3D {
     /// The positions of each vertex.

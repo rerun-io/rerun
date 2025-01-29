@@ -1,10 +1,12 @@
-// Send multiple images at once using `send_columns`.
+//! Update an image over time, in a single operation.
+//!
+//! This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
 
 #include <numeric>
 #include <rerun.hpp>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_image_send_columns");
+    auto rec = rerun::RecordingStream("rerun_example_image_column_updates");
     rec.spawn().exit_on_failure();
 
     // Timeline on which the images are distributed.

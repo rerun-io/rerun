@@ -98,6 +98,42 @@ class Mesh3D(Mesh3DExt, Archetype):
     </picture>
     </center>
 
+    ### Update specific parts of a 3D mesh over time:
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
+
+    vertex_positions = np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32)
+
+    # Log the initial state of our triangle
+    rr.set_time_sequence("frame", 0)
+    rr.log(
+        "triangle",
+        rr.Mesh3D(
+            vertex_positions=vertex_positions,
+            vertex_normals=[0.0, 0.0, 1.0],
+            vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+        ),
+    )
+
+    # Only update its vertices' positions each frame
+    factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
+    for i, factor in enumerate(factors):
+        rr.set_time_sequence("frame", i)
+        rr.log("triangle", rr.Mesh3D.from_fields(vertex_positions=vertex_positions * factor))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png">
+      <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     # __init__ can be found in mesh3d_ext.py

@@ -1,4 +1,4 @@
-// Use the `send_columns` API to send several point clouds over time in a single call.
+// Use the `send_columns` API to send several point clouds over time in a single operation.
 
 #include <array>
 #include <rerun.hpp>
@@ -7,7 +7,7 @@
 using namespace std::chrono_literals;
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_points3d_send_columns");
+    const auto rec = rerun::RecordingStream("rerun_example_points3d_column_updates");
     rec.spawn().exit_on_failure();
 
     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
@@ -21,7 +21,7 @@ int main() {
         // clang-format on
     };
 
-    // At each time stamp, all points in the cloud share the same but changing color.
+    // At each timestep, all points in the cloud share the same but changing color and radius.
     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
 

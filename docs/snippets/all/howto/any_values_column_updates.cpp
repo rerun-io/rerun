@@ -1,4 +1,6 @@
-// Use `send_column` to send entire columns of custom data to Rerun.
+//! Update custom user-defined values over time, in a single operation.
+//!
+//! This is semantically equivalent to the `any_values_row_updates` example, albeit much faster.
 
 #include <rerun.hpp>
 
@@ -8,7 +10,7 @@
 #include <numeric>
 
 arrow::Status run_main() {
-    const auto rec = rerun::RecordingStream("rerun_example_any_values_send_columns");
+    const auto rec = rerun::RecordingStream("rerun_example_any_values_column_updates");
     rec.spawn().exit_on_failure();
 
     constexpr int64_t STEPS = 64;

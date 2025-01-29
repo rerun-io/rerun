@@ -176,7 +176,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/archetypes/points3d.hpp). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/archetypes/points3d.hpp). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
@@ -186,7 +186,7 @@ cases, it's possible to add custom components to archetypes, or even log entirel
 archetypes altogether.
 For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
 
-Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
+Notably, the [`RecordingStream::log`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11) method
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../../howto/extend/custom-data.md).
 
@@ -197,10 +197,10 @@ Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structur
 These are [_entity paths_](../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
-### Batches
+### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Batches of data](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Component batches](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -313,7 +313,7 @@ for (int t = 0; t < 400; t++) {
 }
 ```
 
-First we use [`RecordingStream::set_time_seconds`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L192) to declare our own custom `Timeline` and set the current timestamp.
+First we use [`RecordingStream::set_time_seconds`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad735156502aea8eecd0a5eb2f6678d55) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️ If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -391,7 +391,7 @@ Sometimes, sending the data over the network is not an option. Maybe you'd like 
 
 Rerun has you covered:
 
--   Use [`RecordingStream::save`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L162) to stream all logging data to disk.
+-   Use [`RecordingStream::save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918) to stream all logging data to disk.
 -   Visualize it via `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.

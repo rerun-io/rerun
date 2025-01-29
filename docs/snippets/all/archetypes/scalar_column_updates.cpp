@@ -1,4 +1,6 @@
-// Use the `send_columns` API to send scalars over time in a single call.
+//! Update a scalar over time, in a single operation.
+//!
+//! This is semantically equivalent to the `scalar_row_updates` example, albeit much faster.
 
 #include <cmath>
 #include <numeric>
@@ -7,7 +9,7 @@
 #include <rerun.hpp>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_scalar_send_columns");
+    const auto rec = rerun::RecordingStream("rerun_example_scalar_column_updates");
     rec.spawn().exit_on_failure();
 
     // Native scalars & times.

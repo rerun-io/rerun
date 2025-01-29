@@ -1,4 +1,4 @@
-"""Log different transforms with visualized coordinates axes."""
+"""Update specific properties of a transform over time."""
 
 import math
 
@@ -24,7 +24,6 @@ for deg in range(46):
     rr.log(
         "box",
         rr.Transform3D.from_fields(
-            # TODO(cmc): we should have access to all the fields of the extended constructor too.
             rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
         ),
     )
@@ -42,7 +41,6 @@ for deg in range(46):
     rr.log(
         "box",
         rr.Transform3D.from_fields(
-            # TODO(cmc): we should have access to all the fields of the extended constructor too.
             rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
         ),
     )
