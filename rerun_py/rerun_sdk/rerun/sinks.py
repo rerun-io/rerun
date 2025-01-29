@@ -261,7 +261,7 @@ def serve(
     web_port:
         The port to serve the web viewer on (defaults to 9090).
     grpc_port:
-        The port to serve the gRPC server on (defaults to 1852)
+        The port to serve the gRPC server on (defaults to 9876)
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -320,7 +320,7 @@ def serve_web(
     web_port:
         The port to serve the web viewer on (defaults to 9090).
     grpc_port:
-        The port to serve the gRPC server on (defaults to 1852)
+        The port to serve the gRPC server on (defaults to 9876)
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -462,7 +462,7 @@ def spawn(
 
 def spawn_grpc(
     *,
-    port: int = 1852,
+    port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
     hide_welcome_screen: bool = False,

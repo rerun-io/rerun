@@ -4,7 +4,7 @@ import rerun as rr
 
 rr.init("rerun_example_native_sync")
 
-# Connect to the Rerun gRPC server using the default address and url: http://localhost:1852
+# Connect to the Rerun gRPC server using the default address and url: http://localhost:9876
 rr.connect_grpc()
 
 # Log data as usual, thereby pushing it into the TCP socket.

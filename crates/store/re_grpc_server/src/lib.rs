@@ -23,7 +23,7 @@ use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 use tower_http::cors::CorsLayer;
 
-pub const DEFAULT_SERVER_PORT: u16 = 1852;
+pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
 /// Listen for incoming clients on `addr`.

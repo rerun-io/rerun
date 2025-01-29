@@ -177,8 +177,8 @@ mod tests {
         };
     }
 
-    test_parse_url!(basic_temp, "temp://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
+    test_parse_url!(basic_temp, "temp://127.0.0.1:9876", expected: "http://127.0.0.1:9876");
     // TODO(#8761): URL prefix
-    test_parse_url!(basic_http, "http://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
+    test_parse_url!(basic_http, "http://127.0.0.1:9876", expected: "http://127.0.0.1:9876");
     test_parse_url!(invalid, "definitely not valid", error);
 }

@@ -426,7 +426,7 @@ void test_logging_to_connection(const char* url, const rerun::RecordingStream& s
 }
 
 SCENARIO("RecordingStream can connect", TEST_TAG) {
-    const char* url = "http://127.0.0.1:1852";
+    const char* url = "http://127.0.0.1:9876";
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
         test_logging_to_connection(url, stream);

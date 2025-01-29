@@ -327,7 +327,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts("http://127.0.0.1:1852")?;
+    ///     .connect_opts("http://127.0.0.1:9876")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_opts(self, url: impl Into<String>) -> RecordingStreamResult<RecordingStream> {
@@ -359,7 +359,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_grpc_opts("http://127.0.0.1:1852")?;
+    ///     .connect_grpc_opts("http://127.0.0.1:9876")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc_opts(

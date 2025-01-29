@@ -138,14 +138,14 @@ namespace rerun {
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
         /// This function returns immediately.
-        Error connect(std::string_view url = "http://127.0.0.1:1852") const;
+        Error connect(std::string_view url = "http://127.0.0.1:9876") const;
 
         /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
         /// This function returns immediately.
-        Error connect_grpc(std::string_view url = "http://127.0.0.1:1852") const;
+        Error connect_grpc(std::string_view url = "http://127.0.0.1:9876") const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
