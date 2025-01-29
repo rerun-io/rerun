@@ -34,6 +34,7 @@ re_tracing.workspace = true
 re_types.workspace = true
 
 # External
+parking_lot.workspace = true
 tokio.workspace = true
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util.workspace = true

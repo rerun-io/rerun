@@ -27,8 +27,6 @@ use re_sdk::{
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "web_viewer")]
-use re_ws_comms::RerunServerPort;
 
 // --- FFI ---
 
@@ -1033,11 +1031,11 @@ impl PyBinarySinkStorage {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
+#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
-    ws_port: Option<u16>,
+    grpc_port: Option<u16>,
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
@@ -1060,7 +1058,7 @@ fn serve_web(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
-            ws_port.map(RerunServerPort).unwrap_or_default(),
+            grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_memory_limit,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1079,7 +1077,7 @@ fn serve_web(
         _ = default_blueprint;
         _ = recording;
         _ = web_port;
-        _ = ws_port;
+        _ = grpc_port;
         _ = open_browser;
         _ = server_memory_limit;
         Err(PyRuntimeError::new_err(

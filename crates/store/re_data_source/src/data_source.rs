@@ -24,9 +24,6 @@ pub enum DataSource {
     /// This is what you get when loading a file on Web, or when using drag-n-drop.
     FileContents(re_log_types::FileSource, FileContents),
 
-    /// A remote Rerun server.
-    WebSocketAddr(String),
-
     // RRD data streaming in from standard input.
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
@@ -113,10 +110,6 @@ impl DataSource {
                 url: uri,
                 follow: false,
             }
-        } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
-            Self::WebSocketAddr(uri)
-
-        // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
             Self::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
@@ -143,7 +136,6 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
-            Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
             #[cfg(feature = "grpc")]
@@ -234,10 +226,6 @@ impl DataSource {
                 }
 
                 Ok(rx)
-            }
-
-            Self::WebSocketAddr(rerun_server_ws_url) => {
-                crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
             }
 
             #[cfg(not(target_arch = "wasm32"))]

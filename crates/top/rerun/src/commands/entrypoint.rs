@@ -14,8 +14,6 @@ use crate::{commands::RrdCommands, CallSource};
 use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "server")]
-use re_ws_comms::RerunServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
@@ -129,7 +127,7 @@ When persisted, the state will be stored at the following locations:
     )]
     persist_state: bool,
 
-    /// What TCP port do we listen to for SDKs to connect to.
+    /// What port do we listen to for SDKs to connect to over gRPC.
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = re_grpc_server::DEFAULT_SERVER_PORT)]
     port: u16,
@@ -221,12 +219,6 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
     window_size: Option<String>,
-
-    /// What port do we listen to for incoming websocket connections from the viewer.
-    /// A port of 0 will pick a random port.
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = Default::default())]
-    ws_server_port: RerunServerPort,
 
     /// Override the default graphics backend and for a specific one instead.
     ///
@@ -780,9 +772,7 @@ fn run_impl(
         }
 
         #[cfg(all(feature = "server", feature = "web_viewer"))]
-        if args.url_or_paths.is_empty()
-            && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
-        {
+        if args.url_or_paths.is_empty() && (args.port == args.web_viewer_port.0) {
             anyhow::bail!(
                 "Trying to spawn a websocket server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",

@@ -180,7 +180,7 @@ class Viewer:
             args += [
                 "--web-viewer",
                 f"--web-viewer-port={self.web_viewer_port}",
-                f"--ws-server-port={self.ws_server_port}",
+                f"--port={self.ws_server_port}",
             ]
 
         self.process = subprocess.Popen(args)

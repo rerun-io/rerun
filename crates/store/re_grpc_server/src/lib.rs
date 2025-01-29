@@ -71,6 +71,69 @@ async fn serve_impl(
         .await
 }
 
+pub async fn serve_with_send(
+    addr: SocketAddr,
+    memory_limit: MemoryLimit,
+    shutdown: shutdown::Shutdown,
+    channel_rx: re_smart_channel::Receiver<re_log_types::LogMsg>,
+) {
+    let message_proxy = MessageProxy::new(memory_limit);
+    let event_tx = message_proxy.event_tx.clone();
+
+    tokio::spawn(async move {
+        use re_smart_channel::SmartMessagePayload;
+
+        loop {
+            let msg = match channel_rx.try_recv() {
+                Ok(msg) => match msg.payload {
+                    SmartMessagePayload::Msg(msg) => msg,
+                    SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done(); // we don't buffer
+                        continue;
+                    }
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            re_log::debug!("smart channel sender quit: {err}");
+                        } else {
+                            re_log::debug!("smart channel sender quit");
+                        }
+                        break;
+                    }
+                },
+                Err(re_smart_channel::TryRecvError::Disconnected) => {
+                    re_log::debug!("smart channel sender closed, closing receiver");
+                    break;
+                }
+                Err(re_smart_channel::TryRecvError::Empty) => {
+                    // Let other tokio tasks run:
+                    tokio::task::yield_now().await;
+                    continue;
+                }
+            };
+
+            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
+                msg,
+                re_log_encoding::Compression::LZ4,
+            ) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error!("failed to encode message: {err}");
+                    continue;
+                }
+            };
+
+            if event_tx.send(Event::Message(msg)).await.is_err() {
+                re_log::debug!("shut down, closing sender");
+                break;
+            }
+        }
+    });
+
+    if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+        re_log::error!("message proxy server crashed: {err}");
+    }
+}
+
 pub fn spawn_with_recv(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
@@ -289,9 +352,7 @@ impl MessageProxy {
         Self::new_with_recv(server_memory_limit).0
     }
 
-    pub fn new_with_recv(
-        server_memory_limit: MemoryLimit,
-    ) -> (Self, broadcast::Receiver<LogMsgProto>) {
+    fn new_with_recv(server_memory_limit: MemoryLimit) -> (Self, broadcast::Receiver<LogMsgProto>) {
         // Channel capacity is completely arbitrary.
         // We just want something large enough to handle bursts of messages.
         let (event_tx, event_rx) = mpsc::channel(1024);

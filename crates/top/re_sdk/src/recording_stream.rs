@@ -22,8 +22,6 @@ use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn}
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "web_viewer")]
-use re_ws_comms::RerunServerPort;
 
 use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -649,14 +647,14 @@ impl RecordingStreamBuilder {
         self,
         bind_ip: &str,
         web_port: WebViewerServerPort,
-        ws_port: RerunServerPort,
+        grpc_port: u16,
         server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
         self.serve_web(
             bind_ip,
             web_port,
-            ws_port,
+            grpc_port,
             server_memory_limit,
             open_browser,
         )
@@ -697,7 +695,7 @@ impl RecordingStreamBuilder {
         self,
         bind_ip: &str,
         web_port: WebViewerServerPort,
-        ws_port: RerunServerPort,
+        grpc_port: u16,
         server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
@@ -707,7 +705,7 @@ impl RecordingStreamBuilder {
                 open_browser,
                 bind_ip,
                 web_port,
-                ws_port,
+                grpc_port,
                 server_memory_limit,
             )?;
             RecordingStream::new(store_info, batcher_config, sink)

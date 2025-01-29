@@ -321,7 +321,7 @@ def serve(
     *,
     open_browser: bool = True,
     web_port: int | None = None,
-    ws_port: int | None = None,
+    grpc_port: int | None = None,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
@@ -348,8 +348,8 @@ def serve(
         Open the default browser to the viewer.
     web_port:
         The port to serve the web viewer on (defaults to 9090).
-    ws_port:
-        The port to serve the WebSocket server on (defaults to 9877)
+    grpc_port:
+        The port to serve the gRPC server on (defaults to 1852)
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -373,7 +373,7 @@ def serve(
     return serve_web(
         open_browser=open_browser,
         web_port=web_port,
-        ws_port=ws_port,
+        grpc_port=grpc_port,
         default_blueprint=default_blueprint,
         recording=recording,  # NOLINT
         server_memory_limit=server_memory_limit,
@@ -384,7 +384,7 @@ def serve_web(
     *,
     open_browser: bool = True,
     web_port: int | None = None,
-    ws_port: int | None = None,
+    grpc_port: int | None = None,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
@@ -407,8 +407,8 @@ def serve_web(
         Open the default browser to the viewer.
     web_port:
         The port to serve the web viewer on (defaults to 9090).
-    ws_port:
-        The port to serve the WebSocket server on (defaults to 9877)
+    grpc_port:
+        The port to serve the gRPC server on (defaults to 1852)
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -445,7 +445,7 @@ def serve_web(
     bindings.serve_web(
         open_browser,
         web_port,
-        ws_port,
+        grpc_port,
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
