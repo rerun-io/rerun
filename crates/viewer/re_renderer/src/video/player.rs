@@ -269,7 +269,7 @@ impl VideoPlayer {
             }
         }
 
-        // Ensure that we have as many GOPs enqueued currently as needed in order to...
+        // Ensure that we have as many GOPs enqueued currently as needed in order to…
         // * cover the GOP of the requested sample _plus one_ so we can always smoothly transition to the next GOP
         // * cover at least `min_num_samples_to_enqueue_ahead` samples to work around issues with some decoders
         //   (note that for large GOPs this is usually irrelevant)
