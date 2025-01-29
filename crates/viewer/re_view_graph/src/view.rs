@@ -1,4 +1,3 @@
-use egui::Response;
 use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
@@ -10,11 +9,7 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::{
-    self,
-    zoom_pan_area::{fit_to_rect_in_scene, zoom_pan_area},
-    ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
-};
+use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -183,33 +178,40 @@ Display a graph of nodes and edges.
         let layout = state.layout_state.get(request, params);
 
         // Prepare the view and the transformations.
-        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
+        let rect_in_ui = ui.max_rect();
 
-        let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
+        let mut scene_rect = egui::Rect::from(rect_in_scene);
+        let scene_rect_ref = scene_rect;
 
-        // We store a copy of the transformation to see if it has changed.
-        let ui_from_world_ref = ui_from_world;
+        let scene = egui::Scene::new();
 
-        let level_of_detail = LevelOfDetail::from_scaling(ui_from_world.scaling);
+        // To determine the overall scale factor needed for the level-of-details
+        // computation, we need to look at the two dimensions separately due to letter-boxing.
+        let scale_x = rect_in_ui.width() / scene_rect.width();
+        let scale_y = rect_in_ui.height() / scene_rect.height();
 
-        let mut hover_click_item: Option<(Item, Response)> = None;
+        let level_of_detail = LevelOfDetail::from_scaling(scale_x.min(scale_y));
 
-        let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
-            let mut world_bounding_rect = egui::Rect::NOTHING;
+        let mut hover_click_item: Option<(Item, egui::Response)> = None;
 
-            for graph in &graphs {
-                let graph_rect = draw_graph(
-                    ui,
-                    ctx,
-                    graph,
-                    layout,
-                    query,
-                    level_of_detail,
-                    &mut hover_click_item,
-                );
-                world_bounding_rect = world_bounding_rect.union(graph_rect);
-            }
-        });
+        let resp = scene
+            .show(ui, &mut scene_rect, |ui| {
+                let mut world_bounding_rect = egui::Rect::NOTHING;
+
+                for graph in &graphs {
+                    let graph_rect = draw_graph(
+                        ui,
+                        ctx,
+                        graph,
+                        layout,
+                        query,
+                        level_of_detail,
+                        &mut hover_click_item,
+                    );
+                    world_bounding_rect = world_bounding_rect.union(graph_rect);
+                }
+            })
+            .response;
 
         if let Some((item, response)) = hover_click_item {
             ctx.handle_select_hover_drag_interactions(&response, item, false);
@@ -224,15 +226,14 @@ Display a graph of nodes and edges.
         }
 
         // Update blueprint if changed
-        let updated_rect_in_scene =
-            blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
+        let updated_bounds = blueprint::components::VisualBounds2D::from(scene_rect);
         if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
-        } else if ui_from_world != ui_from_world_ref {
-            bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
+        } else if scene_rect != scene_rect_ref {
+            bounds_property.save_blueprint_component(ctx, &updated_bounds);
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
-        state.visual_bounds = Some(updated_rect_in_scene);
+        state.visual_bounds = Some(updated_bounds);
 
         if state.layout_state.is_in_progress() {
             ui.ctx().request_repaint();
