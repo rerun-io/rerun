@@ -1,6 +1,6 @@
-use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::{fs::File, io::Result};
 
 use ahash::HashMap;
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,15 @@ pub struct LeRobotDatasetInfo {
     chunks_size: u32,
     fps: u32,
     features: HashMap<String, Feature>,
+}
+
+impl LeRobotDatasetInfo {
+    pub fn load_from_file(filepath: impl AsRef<Path>) -> Result<Self> {
+        let info_file = File::open(filepath)?;
+        let reader = BufReader::new(info_file);
+
+        serde_json::from_reader(reader)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
