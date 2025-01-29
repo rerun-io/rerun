@@ -12,7 +12,8 @@ mod color_coordinates_visualizer_system;
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
 
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
@@ -22,13 +23,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for TCP connections from Rerun's logging SDKs.
+    // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_sdk_comms::serve(
-        "0.0.0.0",
-        re_sdk_comms::DEFAULT_SERVER_PORT,
-        Default::default(),
-    )?;
+    let rx = re_grpc_server::spawn_with_recv(
+        "0.0.0.0:1852".parse()?,
+        "75%".parse()?,
+        re_grpc_server::shutdown::never(),
+    );
 
     let startup_options = re_viewer::StartupOptions::default();
 
