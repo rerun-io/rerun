@@ -60,6 +60,14 @@ impl CamerasVisualizer {
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
     ) {
+        // Check for valid resolution.
+        let w = pinhole_properties.pinhole.resolution.x;
+        let h = pinhole_properties.pinhole.resolution.y;
+        let z = pinhole_properties.image_plane_distance;
+        if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
+            return;
+        }
+
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
@@ -112,10 +120,6 @@ impl CamerasVisualizer {
         });
 
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
-        let w = pinhole_properties.pinhole.resolution.x;
-        let h = pinhole_properties.pinhole.resolution.y;
-        let z = pinhole_properties.image_plane_distance;
-
         let corners = [
             pinhole_properties.pinhole.unproject(vec3(0.0, 0.0, z)),
             pinhole_properties.pinhole.unproject(vec3(0.0, h, z)),
@@ -331,7 +335,10 @@ impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualize
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
         // See https://github.com/rerun-io/rerun/issues/3852
         resolution_of_image_at(ctx.viewer_ctx, ctx.query, ctx.target_entity_path)
-            .unwrap_or(components::Resolution::from([100.0, 100.0]))
+            // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
+            // TODO(andreas): We should display a warning about this somewhere.
+            // Since it's not a required component, logging a warning about this might be too noisy.
+            .unwrap_or(components::Resolution::from([0.0, 0.0]))
     }
 }
 
