@@ -29,12 +29,11 @@ namespace rerun {
         // TODO(andreas): List methods that the trait should implement.
     };
 
-    // TODO: make these return collection?
+    // TODO(andreas): make these return collection?
+    // TODO(andreas): Now that we no longer rely on `Loggable` trait implementations here, `serialize` is a misnomer. Consider using `operator()` instead.
 
     // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
     /// \cond private
-
-    /// `AsComponents` for a Collection of types implementing the `rerun::Loggable` trait.
 
     /// `AsComponents` for a `Collection<ComponentBatch>`.
     template <>
