@@ -260,6 +260,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/mesh3d_instancing" = [ # Python uses doubles
   "py",
 ]
+"archetypes/series_line_style" = [
+  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
+]
+"archetypes/series_point_style" = [
+  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
+]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 # Note that the snippet comparison tool will automatically run `/tests/assets/download_test_assets.py` before running the snippets.
