@@ -29,6 +29,8 @@ namespace rerun {
         // TODO(andreas): List methods that the trait should implement.
     };
 
+    // TODO: make these return collection?
+
     // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
     /// \cond private
 
@@ -62,90 +64,28 @@ namespace rerun {
         }
     };
 
+    /// `AsComponents` for a `Collection<ComponentBatch>` individually wrapped in `Result`, forwarding errors for convenience.
+    template <>
+    struct AsComponents<Collection<Result<ComponentBatch>>> {
+        static Result<std::vector<ComponentBatch>> serialize(
+            Collection<Result<ComponentBatch>> components
+        ) {
+            std::vector<ComponentBatch> result;
+            result.reserve(components.size());
+            for (auto& component : components) {
+                RR_RETURN_NOT_OK(component.error);
+                result.push_back(std::move(component.value));
+            }
+            return Result<std::vector<ComponentBatch>>(std::move(result));
+        }
+    };
+
     /// `AsComponents` for a single `ComponentBatch` wrapped in a `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Result<ComponentBatch>> {
         static Result<std::vector<ComponentBatch>> serialize(Result<ComponentBatch> components) {
             RR_RETURN_NOT_OK(components.error);
             return Result<std::vector<ComponentBatch>>({std::move(components.value)});
-        }
-    };
-
-    template <typename TComponent>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<Collection<TComponent>> {
-        static_assert(
-            is_loggable<TComponent>, "The given type does not implement the rerun::Loggable trait."
-        );
-
-        static Result<std::vector<ComponentBatch>> serialize(
-            const Collection<TComponent>& components
-        ) {
-            auto batch_result = ComponentBatch::from_loggable<TComponent>(components);
-            RR_RETURN_NOT_OK(batch_result.error);
-
-            return Result<std::vector<ComponentBatch>>({std::move(batch_result.value)});
-        }
-    };
-
-    /// `AsComponents` for a `std::vector` of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<std::vector<TComponent>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            const std::vector<TComponent>& components
-        ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
-        }
-    };
-
-    /// AsComponents for `std::initializer_list`
-    template <typename TComponent>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<std::initializer_list<TComponent>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            std::initializer_list<TComponent> components
-        ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
-        }
-    };
-
-    /// `AsComponents` for an `std::array` of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent, size_t NumInstances>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<std::array<TComponent, NumInstances>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            const std::array<TComponent, NumInstances>& components
-        ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
-        }
-    };
-
-    /// `AsComponents` for an c-array of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent, size_t NumInstances>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<TComponent[NumInstances]> {
-        static Result<std::vector<ComponentBatch>> serialize(const TComponent (&components
-        )[NumInstances]) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
-        }
-    };
-
-    /// `AsComponents` for single indicator components.
-    template <const char ComponentName[]>
-    [[deprecated(
-        "Direct serialization of component collections is deprecated. Either use archetype constructors or construct `ComponentBatch` with explicit descriptors."
-    )]] struct AsComponents<components::IndicatorComponent<ComponentName>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            const components::IndicatorComponent<ComponentName>& indicator
-        ) {
-            return AsComponents<
-                Collection<components::IndicatorComponent<ComponentName>>>::serialize(indicator);
         }
     };
 
