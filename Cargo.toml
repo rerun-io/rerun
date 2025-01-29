@@ -64,7 +64,6 @@ re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.22.0-alpha.1"
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.22.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.22.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.22.0-alpha.1", default-features = false }
-re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.22.0-alpha.1", default-features = false }
 
 # crates/top:
 re_sdk = { path = "crates/top/re_sdk", version = "=0.22.0-alpha.1", default-features = false }
