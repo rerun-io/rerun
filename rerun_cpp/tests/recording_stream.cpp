@@ -380,14 +380,14 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
     AND_GIVEN("an invalid address for the socket address") {
         THEN("then the save call fails") {
             CHECK(
-                stream.connect_tcp("definitely not valid!", 0.0f).code ==
+                stream.connect_grpc("definitely not valid!").code ==
                 rerun::ErrorCode::InvalidSocketAddress
             );
         }
     }
     AND_GIVEN("a valid socket address " << address) {
         THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect_tcp(address, 0.0f).is_ok());
+            REQUIRE(stream.connect_grpc(address).is_ok());
 
             WHEN("logging a component and then flushing") {
                 check_logged_error([&] {
