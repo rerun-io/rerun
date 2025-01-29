@@ -46,20 +46,6 @@ pub enum SmartChannelSource {
     /// process.
     Sdk,
 
-    /// The channel was created in the context of fetching data from a Rerun WebSocket server.
-    ///
-    /// We are likely running in a web browser.
-    WsClient {
-        /// The server we are connected to (or are trying to connect to)
-        ws_server_url: String,
-    },
-
-    /// The channel was created in the context of receiving data from one or more Rerun SDKs
-    /// over TCP.
-    ///
-    /// We are a TCP server listening on this port.
-    TcpServer { port: u16 },
-
     /// The channel was created in the context of streaming in RRD data from standard input.
     Stdin,
 
@@ -85,8 +71,6 @@ impl std::fmt::Display for SmartChannelSource {
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
-            Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
-            Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
             Self::MessageProxy { url } => write!(f, "gRPC server: {url}"),
             Self::Stdin => "Standard input".fmt(f),
         }
@@ -98,9 +82,7 @@ impl SmartChannelSource {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
             Self::RrdHttpStream { .. }
-            | Self::WsClient { .. }
             | Self::JsChannel { .. }
-            | Self::TcpServer { .. }
             | Self::RerunGrpcStream { .. }
             | Self::MessageProxy { .. } => true,
         }
@@ -141,21 +123,6 @@ pub enum SmartMessageSource {
     /// The sender is a Rerun SDK running from another thread in the same process.
     Sdk,
 
-    /// The sender is a WebSocket client fetching data from a Rerun WebSocket server.
-    ///
-    /// We are likely running in a web browser.
-    WsClient {
-        /// The server we are connected to (or are trying to connect to)
-        ws_server_url: String,
-    },
-
-    /// The sender is a TCP client.
-    TcpClient {
-        // NOTE: Optional as we might not be able to retrieve the peer's address for some obscure
-        // reason.
-        addr: Option<std::net::SocketAddr>,
-    },
-
     /// The data is streaming in from standard input.
     Stdin,
 
@@ -184,11 +151,6 @@ impl std::fmt::Display for SmartMessageSource {
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),
-            Self::WsClient { ws_server_url } => ws_server_url.clone(),
-            Self::TcpClient { addr } => format!(
-                "tcp://{}",
-                addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string())
-            ),
             Self::Stdin => "stdin".into(),
         })
     }

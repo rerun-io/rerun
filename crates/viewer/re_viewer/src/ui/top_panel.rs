@@ -167,8 +167,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
                 SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. }
-                | SmartChannelSource::TcpServer { .. }
                 | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::JsChannel { .. } => true,
             }
@@ -203,10 +201,9 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             | SmartChannelSource::RerunGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::WsClient { .. } => None,
+            | SmartChannelSource::Sdk => None,
 
-            SmartChannelSource::TcpServer { .. } | SmartChannelSource::MessageProxy { .. } => {
+            SmartChannelSource::MessageProxy { .. } => {
                 Some("Waiting for an SDK to connect".to_owned())
             }
         };
@@ -235,13 +232,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             }
             re_smart_channel::SmartChannelSource::Sdk => {
                 "Waiting for logging data from SDK".to_owned()
-            }
-            re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
-                // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-                format!("Waiting for data from {ws_server_url}")
-            }
-            re_smart_channel::SmartChannelSource::TcpServer { port } => {
-                format!("Listening on TCP port {port}")
             }
         }
     }
