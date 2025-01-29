@@ -8,7 +8,7 @@
 //! to the overall cost of having large blueprint trees (a.k.a the many-entities performance
 //! issues: <https://github.com/rerun-io/rerun/issues/8233>).
 
-use std::ops::Range;
+use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -19,7 +19,8 @@ use re_log_types::{EntityPath, EntityPathPart};
 use re_types::blueprint::components::Visible;
 use re_ui::filter_widget::FilterMatcher;
 use re_viewer_context::{
-    ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, ViewId, ViewerContext,
+    CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
+    ViewId, ViewerContext,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
 
@@ -53,6 +54,17 @@ impl BlueprintTreeData {
                 }),
         }
     }
+
+    pub fn visit<B>(
+        &self,
+        mut visitor: impl FnMut(BlueprintTreeItem<'_>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        if let Some(root_container) = &self.root_container {
+            root_container.visit(&mut visitor)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 // ---
@@ -63,6 +75,18 @@ impl BlueprintTreeData {
 pub enum ContentsData {
     Container(ContainerData),
     View(ViewData),
+}
+
+impl ContentsData {
+    pub fn visit<B>(
+        &self,
+        visitor: &mut impl FnMut(BlueprintTreeItem<'_>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        match &self {
+            Self::Container(container_data) => container_data.visit(visitor),
+            Self::View(view_data) => view_data.visit(visitor),
+        }
+    }
 }
 
 /// Data related to a single container and its children.
@@ -130,6 +154,23 @@ impl ContainerData {
             default_open: true,
             children,
         })
+    }
+
+    pub fn visit<B>(
+        &self,
+        visitor: &mut impl FnMut(BlueprintTreeItem<'_>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        if visitor(BlueprintTreeItem::Container(self)).visit_children()? {
+            for child in &self.children {
+                child.visit(visitor)?;
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    pub fn item(&self) -> Item {
+        Item::Container(self.id)
     }
 }
 
@@ -254,6 +295,27 @@ impl ViewData {
             origin_tree,
             projection_trees,
         })
+    }
+
+    pub fn visit<B>(
+        &self,
+        visitor: &mut impl FnMut(BlueprintTreeItem<'_>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        if visitor(BlueprintTreeItem::View(self)).visit_children()? {
+            if let Some(origin_tree) = &self.origin_tree {
+                origin_tree.visit(visitor)?;
+            }
+
+            for projection_tree in &self.projection_trees {
+                projection_tree.visit(visitor)?;
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    pub fn item(&self) -> Item {
+        Item::View(self.id)
     }
 }
 
@@ -471,6 +533,23 @@ impl DataResultData {
         result
     }
 
+    pub fn visit<B>(
+        &self,
+        visitor: &mut impl FnMut(BlueprintTreeItem<'_>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        if visitor(BlueprintTreeItem::DataResult(self)).visit_children()? {
+            for child in &self.children {
+                child.visit(visitor)?;
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    pub fn item(&self) -> Item {
+        Item::DataResult(self.view_id, self.instance_path())
+    }
+
     pub fn instance_path(&self) -> InstancePath {
         self.entity_path.clone().into()
     }
@@ -506,4 +585,67 @@ impl DataResultData {
 //TODO(ab): taken from legacy implementation, does it still make sense?
 fn default_open_for_data_result(num_children: usize) -> bool {
     2 <= num_children && num_children <= 3
+}
+
+// ---
+
+/// Returned by the visitor closure to control tree traversal.
+pub enum VisitorControlFlow<B> {
+    /// Continue tree traversal
+    Continue,
+
+    /// Continue tree traversal but skip the children of the current item.
+    SkipBranch,
+
+    /// Stop traversal and return this value.
+    Break(B),
+}
+
+impl<B> VisitorControlFlow<B> {
+    /// Indicates whether we should visit the children of the current node—or entirely stop
+    /// traversal.
+    ///
+    /// Returning a [`ControlFlow`] enables key ergonomics by allowing the use of the short circuit
+    /// operator (`?`) while extracting the flag to control traversal of children.
+    fn visit_children(self) -> ControlFlow<B, bool> {
+        match self {
+            Self::Break(val) => ControlFlow::Break(val),
+            Self::Continue => ControlFlow::Continue(true),
+            Self::SkipBranch => ControlFlow::Continue(false),
+        }
+    }
+}
+
+/// Wrapper structure used for the closure of [`BlueprintTreeData::visit`] and friends.
+#[derive(Debug, Clone, Copy)]
+pub enum BlueprintTreeItem<'a> {
+    Container(&'a ContainerData),
+    View(&'a ViewData),
+    DataResult(&'a DataResultData),
+}
+
+impl BlueprintTreeItem<'_> {
+    pub fn item(&self) -> Item {
+        match self {
+            BlueprintTreeItem::Container(container_data) => container_data.item(),
+            BlueprintTreeItem::View(view_data) => view_data.item(),
+            BlueprintTreeItem::DataResult(data_result_data) => data_result_data.item(),
+        }
+    }
+
+    pub fn default_open(&self) -> bool {
+        match self {
+            BlueprintTreeItem::Container(container_data) => container_data.default_open,
+            BlueprintTreeItem::View(view_data) => view_data.default_open,
+            BlueprintTreeItem::DataResult(data_result_data) => data_result_data.default_open,
+        }
+    }
+
+    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> Option<bool> {
+        collapse_scope.item(self.item()).map(|collapse_id| {
+            collapse_id
+                .is_open(ctx)
+                .unwrap_or_else(|| self.default_open())
+        })
+    }
 }
