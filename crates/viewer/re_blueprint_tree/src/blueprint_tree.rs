@@ -192,19 +192,7 @@ impl BlueprintTree {
             self.contents_ui(ctx, viewport_blueprint, ui, child, true);
         }
 
-        context_menu_ui_for_item_with_context(
-            ctx,
-            viewport_blueprint,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
-            &item_response,
-            SelectionUpdateBehavior::UseSelection,
-        );
-        self.scroll_to_me_if_needed(ui, &item, &item_response);
-        ctx.handle_select_hover_drag_interactions(&item_response, item, true);
+        self.handle_interactions_for_item(ctx, viewport_blueprint, ui, item, &item_response);
 
         self.handle_root_container_drag_and_drop_interaction(
             ctx,
@@ -236,7 +224,7 @@ impl BlueprintTree {
     fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
         container_data: &ContainerData,
         parent_visible: bool,
@@ -256,8 +244,8 @@ impl BlueprintTree {
 
                 let remove_response = remove_button_ui(ui, "Remove container");
                 if remove_response.clicked() {
-                    viewport.mark_user_interaction(ctx);
-                    viewport.remove_contents(content);
+                    viewport_blueprint.mark_user_interaction(ctx);
+                    viewport_blueprint.remove_contents(content);
                 }
 
                 remove_response | vis_response
@@ -284,32 +272,19 @@ impl BlueprintTree {
                 item_content,
                 |ui| {
                     for child in &container_data.children {
-                        self.contents_ui(ctx, viewport, ui, child, container_visible);
+                        self.contents_ui(ctx, viewport_blueprint, ui, child, container_visible);
                     }
                 },
             );
 
+        viewport_blueprint.set_content_visibility(ctx, &content, visible);
         let response = response.on_hover_text(format!("{:?} container", container_data.kind));
 
-        context_menu_ui_for_item_with_context(
-            ctx,
-            viewport,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
-            &response,
-            SelectionUpdateBehavior::UseSelection,
-        );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
-
-        viewport.set_content_visibility(ctx, &content, visible);
+        self.handle_interactions_for_item(ctx, viewport_blueprint, ui, item, &response);
 
         self.handle_drag_and_drop_interaction(
             ctx,
-            viewport,
+            viewport_blueprint,
             ui,
             content,
             &response,
@@ -398,23 +373,11 @@ impl BlueprintTree {
             viewport_blueprint.focus_tab(view_data.id);
         }
 
-        context_menu_ui_for_item_with_context(
-            ctx,
-            viewport_blueprint,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
-            &response,
-            SelectionUpdateBehavior::UseSelection,
-        );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
-
         let content = Contents::View(view_data.id);
-
         viewport_blueprint.set_content_visibility(ctx, &content, visible);
+
+        self.handle_interactions_for_item(ctx, viewport_blueprint, ui, item, &response);
+
         self.handle_drag_and_drop_interaction(
             ctx,
             viewport_blueprint,
@@ -568,6 +531,20 @@ impl BlueprintTree {
             }
         });
 
+        self.handle_interactions_for_item(ctx, viewport_blueprint, ui, item, &response);
+    }
+
+    // ----------------------------------------------------------------------------
+    // item interactions
+
+    fn handle_interactions_for_item(
+        &self,
+        ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
+        ui: &egui::Ui,
+        item: Item,
+        response: &Response,
+    ) {
         context_menu_ui_for_item_with_context(
             ctx,
             viewport_blueprint,
@@ -576,11 +553,11 @@ impl BlueprintTree {
             ItemContext::BlueprintTree {
                 filter_session_id: self.filter_state.session_id(),
             },
-            &response,
+            response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
+        self.scroll_to_me_if_needed(ui, &item, response);
+        ctx.handle_select_hover_drag_interactions(response, item, true);
     }
 
     /// Check if the provided item should be scrolled to.
@@ -596,7 +573,7 @@ impl BlueprintTree {
     }
 
     // ----------------------------------------------------------------------------
-    // drag and drop support
+    // view/container drag and drop support
 
     fn handle_root_container_drag_and_drop_interaction(
         &mut self,
