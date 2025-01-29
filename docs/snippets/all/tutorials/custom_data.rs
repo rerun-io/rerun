@@ -19,22 +19,19 @@ struct CustomPoints3D {
 
 impl rerun::AsComponents for CustomPoints3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
             .as_serialized_batches()
             .into_iter()
             .chain(
-                [
-                    indicator.serialized(),
-                    self.confidences
-                        .as_ref()
-                        .and_then(|batch| batch.serialized())
-                        .map(|batch|
+                [self
+                    .confidences
+                    .as_ref()
+                    .and_then(|batch| batch.serialized())
+                    .map(|batch|
                             // Optionally override the descriptor with extra information.
                             batch
                                 .or_with_archetype_name(|| "user.CustomPoints3D".into())
-                                .or_with_archetype_field_name(|| "confidences".into())),
-                ]
+                                .or_with_archetype_field_name(|| "confidences".into()))]
                 .into_iter()
                 .flatten(),
             )

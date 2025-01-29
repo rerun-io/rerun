@@ -64,8 +64,7 @@ namespace rerun {
             cells.push_back(archetype.zoom_lock.value());
         }
         {
-            auto indicator = ScalarAxis::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<ScalarAxis>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

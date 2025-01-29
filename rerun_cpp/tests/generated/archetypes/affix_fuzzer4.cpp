@@ -270,8 +270,7 @@ namespace rerun {
             cells.push_back(archetype.fuzz2118.value());
         }
         {
-            auto indicator = AffixFuzzer4::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<AffixFuzzer4>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

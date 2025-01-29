@@ -1831,8 +1831,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                auto indicator = #type_ident::IndicatorComponent();
-                auto result = ComponentBatch::from_loggable(indicator);
+                auto result = ComponentBatch::from_indicator<#type_ident>();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
