@@ -9,14 +9,15 @@ service StorageNode {
     rpc Query(QueryRequest) returns (stream DataframePart) {}
     rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
-    rpc IndexCollection(IndexCollectionRequest) returns (IndexCollectionResponse) {}
-    // Collection index query response is a RecordBatch with 2 columns:
+    rpc CreateCollectionIndex(CreateCollectionIndexRequest) returns (CreateCollectionIndexResponse) {}
+    // Collection index query response is a RecordBatch with 3 columns:
     // - 'resource_id' column with the id of the resource
     // - timepoint column with the values reprensenting the points in time
     // where index query matches. What time points are matched depends on the type of
     // index that is queried. For example for vector search it might be timepoints where
     // top-K matches are found within *each* resource in the collection. For inverted index
     // it might be timepoints where the query string is found in the indexed column
+    // - 'data' column with the data that is returned for the matched timepoints
     rpc QueryCollectionIndex(QueryCollectionIndexRequest) returns (stream DataframePart) {}
 
     // metadata API calls
@@ -42,18 +43,21 @@ message DataframePart {
     bytes payload = 1000;
 }
 
-// ---------------- IndexCollection ------------------
+// ---------------- CreateCollectionIndex ------------------
 
-message IndexCollectionRequest {
+message CreateCollectionIndexRequest {
     // which collection do we want to create index for
     Collection collection = 1;
     // what kind of index do we want to create and what are
     // its index specific properties
     IndexProperties properties = 2;
     // Component / column we want to index
+    // TODO - name of the lance table should be derived from the descriptor!
     rerun.common.v0.ComponentColumnDescriptor column = 3;
     // What is the filter index i.e. timeline for which we
     // will query the timepoints
+    // TODO(zehiko) this might go away and we might just index
+    // across all the timelines
     rerun.common.v0.IndexColumnSelector time_index = 4;
 }
 
@@ -68,7 +72,7 @@ message IndexProperties {
 message InvertedIndex {
     bool store_position = 1;
     string base_tokenizer  = 2;
-    // TODO(zehiko) add properties as needed
+    // TODO(zehiko) add other properties as needed
 }
 
 message VectorIvfPqIndex {
@@ -85,10 +89,12 @@ enum VectorDistanceMetric {
 }
 
 message BTreeIndex {
-    // TODO(zehiko) as properties as needed
+    // TODO(zehiko) add properties as needed
 }
 
-message IndexCollectionResponse {}
+message CreateCollectionIndexResponse {
+    uint64 indexed_rows = 1;
+}
 
 
 // ---------------- QueryCollectionIndex ------------------
@@ -97,13 +103,22 @@ message QueryCollectionIndexRequest {
     // Collection we want to run the query against on
     // If not specified, the default collection is queried
     Collection collection = 1;
-    // Index type specific query properties
-    IndexQuery query = 2;
+    // Index column that is queried
+    rerun.common.v0.ComponentColumnDescriptor column = 2;
+    // Query data - type of data is index specific. Caller must ensure
+    // to provide the right type. For vector search this should
+    // be a vector of appropriate size, for inverted index this should be a string.
+    // Query data is represented as a unit (single row) RecordBatch with 1 column.
+    DataframePart query = 3;
+    // Index type specific properties
+    IndexQueryProperties properties = 4;
+    // max number of rows to be returned
+    optional uint32 limit = 5;
 }
 
-message IndexQuery {
+message IndexQueryProperties {
     // specific index query properties based on the index type
-    oneof query {
+    oneof props {
         InvertedIndexQuery inverted = 1;
         VectorIndexQuery vector = 2;
         BTreeIndexQuery btree = 3;
@@ -111,32 +126,14 @@ message IndexQuery {
 }
 
 message InvertedIndexQuery {
-    // Query to execute represented as the arrow data
-    // Query should be a unit RecordBatch with 2 columns:
-    // - 'index' column with the name of the column we want to query
-    // - 'query' column with the value we want to query. It must be
-    // of utf8 type
-    DataframePart query = 1;
     // TODO(zehiko) add properties as needed
 }
 
 message VectorIndexQuery {
-    // Query to execute represented as the arrow data
-    // Query should be a unit RecordBatch with 2 columns:
-    // - 'index' column with the name of the column we want to query
-    // - 'query' column with the value we want to query. It must be of
-    // type of float32 array
-    DataframePart query = 1;
     uint32 top_k = 2;
 }
 
 message BTreeIndexQuery {
-    // Query to execute represented as the arrow data
-    // Query should be a unit RecordBatch with 2 columns:
-    // - 'index' column with the name of the column we want to query
-    // - 'query' column with the value we want to query. The type should
-    // be of the same type as the indexed column
-    DataframePart query = 1;
     // TODO(zehiko) add properties as needed
 }
 
