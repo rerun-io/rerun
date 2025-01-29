@@ -71,7 +71,6 @@ re_memory.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
-re_sdk_comms.workspace = true
 re_smart_channel.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
