@@ -180,24 +180,19 @@ Display a graph of nodes and edges.
         let mut scene_rect = egui::Rect::from(rect_in_scene);
         let scene_rect_ref = scene_rect;
 
-        let scene = egui::Scene::new();
-
         // To determine the overall scale factor needed for the level-of-details
         // computation, we need to look at the two dimensions separately due to letter-boxing.
         let rect_in_ui = ui.max_rect();
-        let scale_x = rect_in_ui.width() / scene_rect.width();
-        let scale_y = rect_in_ui.height() / scene_rect.height();
+        let scale = rect_in_ui.size() / scene_rect.size();
 
-        let level_of_detail = LevelOfDetail::from_scaling(scale_x.min(scale_y));
+        let level_of_detail = LevelOfDetail::from_scaling(scale.min_elem());
 
         let mut hover_click_item: Option<(Item, egui::Response)> = None;
 
-        let resp = scene
+        let resp = egui::Scene::new()
             .show(ui, &mut scene_rect, |ui| {
-                let mut world_bounding_rect = egui::Rect::NOTHING;
-
                 for graph in &graphs {
-                    let graph_rect = draw_graph(
+                    draw_graph(
                         ui,
                         ctx,
                         graph,
@@ -206,7 +201,6 @@ Display a graph of nodes and edges.
                         level_of_detail,
                         &mut hover_click_item,
                     );
-                    world_bounding_rect = world_bounding_rect.union(graph_rect);
                 }
             })
             .response;
