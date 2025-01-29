@@ -12,13 +12,12 @@ use re_ui::{
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
     DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender, ViewId, ViewerContext,
+    SystemCommandSender, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,
-    VisitorControlFlow,
 };
 
 /// Holds the state of the blueprint tree UI.

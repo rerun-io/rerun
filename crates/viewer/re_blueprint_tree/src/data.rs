@@ -20,7 +20,7 @@ use re_types::blueprint::components::Visible;
 use re_ui::filter_widget::FilterMatcher;
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
-    ViewId, ViewerContext,
+    ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
 
@@ -588,33 +588,6 @@ fn default_open_for_data_result(num_children: usize) -> bool {
 }
 
 // ---
-
-/// Returned by the visitor closure to control tree traversal.
-pub enum VisitorControlFlow<B> {
-    /// Continue tree traversal
-    Continue,
-
-    /// Continue tree traversal but skip the children of the current item.
-    SkipBranch,
-
-    /// Stop traversal and return this value.
-    Break(B),
-}
-
-impl<B> VisitorControlFlow<B> {
-    /// Indicates whether we should visit the children of the current node—or entirely stop
-    /// traversal.
-    ///
-    /// Returning a [`ControlFlow`] enables key ergonomics by allowing the use of the short circuit
-    /// operator (`?`) while extracting the flag to control traversal of children.
-    fn visit_children(self) -> ControlFlow<B, bool> {
-        match self {
-            Self::Break(val) => ControlFlow::Break(val),
-            Self::Continue => ControlFlow::Continue(true),
-            Self::SkipBranch => ControlFlow::Continue(false),
-        }
-    }
-}
 
 /// Wrapper structure used for the closure of [`BlueprintTreeData::visit`] and friends.
 #[derive(Debug, Clone, Copy)]
