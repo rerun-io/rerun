@@ -1,6 +1,5 @@
 //! Web-specific tools used by various parts of the application.
 
-use anyhow::Context as _;
 use re_log::ResultExt;
 use serde::Deserialize;
 use std::{ops::ControlFlow, sync::Arc};
@@ -88,9 +87,6 @@ enum EndpointCategory {
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
     RerunGrpc(String),
 
-    /// A remote Rerun server.
-    WebSocket(String),
-
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
 
@@ -104,8 +100,6 @@ impl EndpointCategory {
             Self::HttpRrd(uri)
         } else if uri.starts_with("rerun://") {
             Self::RerunGrpc(uri)
-        } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
@@ -186,8 +180,6 @@ pub fn url_to_receiver(
             }));
             Ok(rx)
         }
-        EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
-            .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
 
         EndpointCategory::MessageProxy(url) => {
             re_grpc_client::message_proxy::read::stream(&url, Some(ui_waker))
