@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Iterable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from .._log import ComponentBatchLike
+    from .._baseclasses import DescribedComponentBatch
     from . import ViewCoordinates
 
 
@@ -30,7 +30,7 @@ class ViewCoordinatesExt:
         return coordinates
 
     # Implement the AsComponents protocol
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+    def as_component_batches(self) -> list[DescribedComponentBatch]:
         from ..archetypes import ViewCoordinates
         from ..components import ViewCoordinates as ViewCoordinatesComponent
 

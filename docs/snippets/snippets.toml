@@ -2,7 +2,6 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
-"archetypes/manual_indicator" = []
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
