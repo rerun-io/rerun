@@ -6451,22 +6451,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_sdk_comms"
-version = "0.22.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "crossbeam",
- "document-features",
- "rand",
- "re_build_info",
- "re_log",
- "re_log_encoding",
- "re_log_types",
- "re_smart_channel",
- "thiserror 1.0.65",
-]
-
-[[package]]
 name = "re_selection_panel"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
