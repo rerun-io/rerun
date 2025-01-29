@@ -264,13 +264,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
@@ -490,13 +490,17 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 
             THEN("calling log with an array logs the serialization error") {
                 check_logged_error(
-                    [&] { stream.log(path, std::array{component, component}); },
+                    [&] {
+                        stream.log(path, std::array{component, component});
+                    },
                     expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
                 check_logged_error(
-                    [&] { stream.log(path, std::vector{component, component}); },
+                    [&] {
+                        stream.log(path, std::vector{component, component});
+                    },
                     expected_error.code
                 );
             }
@@ -638,8 +642,8 @@ SCENARIO("Deprecated log_static still works", TEST_TAG) {
         THEN("an archetype can be logged") {
             stream.log_static(
                 "log_archetype-splat",
-                rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                    .with_colors(rerun::Color(0xFF0000FF))
+                rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                ).with_colors(rerun::Color(0xFF0000FF))
             );
         }
     }
