@@ -33,8 +33,6 @@ pub use self::recording_stream::{
     RecordingStreamResult,
 };
 
-pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
-
 pub use re_log_types::{
     entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
@@ -66,9 +64,7 @@ pub mod sink {
     pub use crate::binary_stream_sink::{
         BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
     };
-    pub use crate::log_sink::{
-        BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage, TcpSink,
-    };
+    pub use crate::log_sink::{BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage};
 
     pub use crate::log_sink::GrpcSink;
 
@@ -115,7 +111,6 @@ pub mod external {
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;
-    pub use re_sdk_comms;
 
     pub use re_chunk::external::*;
     pub use re_log::external::*;

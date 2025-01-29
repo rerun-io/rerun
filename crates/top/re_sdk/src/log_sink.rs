@@ -331,44 +331,6 @@ impl LogSink for CallbackSink {
 
 // ----------------------------------------------------------------------------
 
-/// Stream log messages to a Rerun TCP server.
-#[derive(Debug)]
-pub struct TcpSink {
-    client: re_sdk_comms::Client,
-}
-
-impl TcpSink {
-    /// Connect to the given address in a background thread.
-    /// Retries until successful.
-    ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
-    /// before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    #[inline]
-    pub fn new(addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {
-        Self {
-            client: re_sdk_comms::Client::new(addr, flush_timeout),
-        }
-    }
-}
-
-impl LogSink for TcpSink {
-    #[inline]
-    fn send(&self, msg: LogMsg) {
-        self.client.send(msg);
-    }
-
-    #[inline]
-    fn flush_blocking(&self) {
-        self.client.flush();
-    }
-
-    #[inline]
-    fn drop_if_disconnected(&self) {
-        self.client.drop_if_disconnected();
-    }
-}
-
 /// Stream log messages to an in-memory storage node.
 pub struct GrpcSink {
     client: MessageProxyClient,

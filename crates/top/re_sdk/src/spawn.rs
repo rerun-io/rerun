@@ -58,7 +58,7 @@ const RERUN_BINARY: &str = "rerun";
 impl Default for SpawnOptions {
     fn default() -> Self {
         Self {
-            port: crate::default_server_addr().port(),
+            port: re_grpc_server::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
             executable_name: RERUN_BINARY.into(),
