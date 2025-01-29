@@ -135,8 +135,6 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
@@ -584,93 +582,6 @@ fn spawn(
     };
 
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
-}
-
-#[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
-fn connect_tcp(
-    addr: Option<String>,
-    flush_timeout_sec: Option<f32>,
-    default_blueprint: Option<&PyMemorySinkStorage>,
-    recording: Option<&PyRecordingStream>,
-    py: Python<'_>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    if re_sdk::forced_sink_path().is_some() {
-        re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
-        return Ok(());
-    }
-
-    let addr = if let Some(addr) = addr {
-        addr.parse()?
-    } else {
-        re_sdk::default_server_addr()
-    };
-
-    let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
-
-    // The call to connect may internally flush.
-    // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    py.allow_threads(|| {
-        // We create the sink manually so we can send the default blueprint
-        // first before the rest of the current recording stream.
-        let sink = re_sdk::sink::TcpSink::new(addr, flush_timeout);
-
-        if let Some(default_blueprint) = default_blueprint {
-            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
-        }
-
-        recording.set_sink(Box::new(sink));
-
-        flush_garbage_queue();
-    });
-
-    Ok(())
-}
-
-#[pyfunction]
-#[pyo3(signature = (addr, make_active, make_default, blueprint_stream))]
-/// Special binding for directly sending a blueprint stream to a connection.
-fn connect_tcp_blueprint(
-    addr: Option<String>,
-    make_active: bool,
-    make_default: bool,
-    blueprint_stream: &PyRecordingStream,
-    py: Python<'_>,
-) -> PyResult<()> {
-    let addr = if let Some(addr) = addr {
-        addr.parse()?
-    } else {
-        re_sdk::default_server_addr()
-    };
-
-    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
-        // The call to save, needs to flush.
-        // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
-            // Flush all the pending blueprint messages before we include the Ready message
-            blueprint_stream.flush_blocking();
-
-            let activation_cmd = BlueprintActivationCommand {
-                blueprint_id,
-                make_active,
-                make_default,
-            };
-
-            blueprint_stream.record_msg(activation_cmd.into());
-
-            blueprint_stream.connect_opts(addr, None);
-            flush_garbage_queue();
-        });
-        Ok(())
-    } else {
-        Err(PyRuntimeError::new_err(
-            "Blueprint stream has no store info".to_owned(),
-        ))
-    }
 }
 
 #[pyfunction]
