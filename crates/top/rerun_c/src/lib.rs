@@ -576,6 +576,18 @@ fn rr_recording_stream_connect_grpc_impl(
 
 #[allow(unsafe_code)]
 #[no_mangle]
+pub extern "C" fn rr_recording_stream_connect(
+    id: CRecordingStream,
+    url: CStringView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
@@ -605,6 +617,18 @@ fn rr_recording_stream_spawn_grpc_impl(
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_spawn(
+    id: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_spawn_grpc_impl(id, spawn_opts) {
+        err.write_error(error);
+    }
 }
 
 #[allow(unsafe_code)]

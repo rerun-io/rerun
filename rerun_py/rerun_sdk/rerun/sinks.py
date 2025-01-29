@@ -21,36 +21,21 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-@deprecated(
-    """Please migrate to `rr.connect_tcp(…)`.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details."""
-)
 def connect(
-    addr: str | None = None,
+    url: str | None = None,
     *,
-    flush_timeout_sec: float | None = 2.0,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Connect to a remote Rerun Viewer on the given ip:port.
-
-    !!! Warning "Deprecated"
-        Please migrate to [rerun.connect_tcp][].
-        See [the migration guide](https://www.rerun.io/docs/reference/migration/migration-0-20) for more details.
-
-    Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+    Connect to a remote Rerun Viewer on the given HTTP(S) URL.
 
     This function returns immediately.
 
     Parameters
     ----------
-    addr:
-        The ip:port to connect to
-    flush_timeout_sec:
-        The minimum time the SDK will wait during a flush before potentially
-        dropping data if progress is not being made. Passing `None` indicates no timeout,
-        and can cause a call to `flush` to block indefinitely.
+    url:
+        The HTTP(S) URL to connect to
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -62,80 +47,7 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-
-    warnings.warn(
-        message=("`connect` is deprecated. Use `connect_tcp` instead."),
-        category=DeprecationWarning,
-    )
-
-    return connect_tcp(
-        addr,
-        flush_timeout_sec=flush_timeout_sec,
-        default_blueprint=default_blueprint,
-        recording=recording,  # NOLINT
-    )
-
-
-def connect_tcp(
-    addr: str | None = None,
-    *,
-    flush_timeout_sec: float | None = 2.0,
-    default_blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Connect to a remote Rerun Viewer on the given ip:port.
-
-    Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
-
-    This function returns immediately.
-
-    Parameters
-    ----------
-    addr:
-        The ip:port to connect to
-    flush_timeout_sec:
-        The minimum time the SDK will wait during a flush before potentially
-        dropping data if progress is not being made. Passing `None` indicates no timeout,
-        and can cause a call to `flush` to block indefinitely.
-    default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
-        immediately, instead use the [`rerun.send_blueprint`][] API.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - connect() call ignored")
-        return
-
-    application_id = get_application_id(recording=recording)  # NOLINT
-    if application_id is None:
-        raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
-        )
-
-    # If a blueprint is provided, we need to create a blueprint storage object
-    blueprint_storage = None
-    if default_blueprint is not None:
-        blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
-        ).storage
-
-    bindings.connect_tcp(
-        addr=addr,
-        flush_timeout_sec=flush_timeout_sec,
-        default_blueprint=blueprint_storage,
-        recording=recording.to_native() if recording is not None else None,
-    )
-
-
-_is_connect_grpc_available = hasattr(bindings, "connect_grpc")
+    return connect_grpc(url, default_blueprint=default_blueprint, recording=recording)
 
 
 def connect_grpc(
@@ -164,10 +76,6 @@ def connect_grpc(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-
-    if not _is_connect_grpc_available:
-        raise NotImplementedError("`rerun_sdk` was compiled without `remote` feature, connect_grpc is not available")
-
     if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - connect() call ignored")
         return
@@ -538,18 +446,14 @@ def spawn(
 
     """
 
-    if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - spawn() call ignored.")
-        return
-
-    _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
-
-    if connect:
-        connect_tcp(
-            f"127.0.0.1:{port}",
-            recording=recording,  # NOLINT
-            default_blueprint=default_blueprint,
-        )
+    return spawn_grpc(
+        port=port,
+        connect=connect,
+        memory_limit=memory_limit,
+        hide_welcome_screen=hide_welcome_screen,
+        default_blueprint=default_blueprint,
+        recording=recording,
+    )
 
 
 def spawn_grpc(
