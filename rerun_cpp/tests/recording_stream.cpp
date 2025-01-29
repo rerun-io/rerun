@@ -264,13 +264,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
@@ -367,27 +367,26 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
+void test_logging_to_connection(const char* url, const rerun::RecordingStream& stream) {
     // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
     // at least on some C++ implementations.
     // If we'd want to support this in earnest we'd have to create out own string_view type.
     //
-    // AND_GIVEN("a nullptr for the socket address") {
+    // AND_GIVEN("a nullptr for the socket url") {
     //     THEN("then the connect call returns a null argument error") {
     //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
     //     }
     // }
-    AND_GIVEN("an invalid address for the socket address") {
+    AND_GIVEN("an invalid url") {
         THEN("then the save call fails") {
             CHECK(
-                stream.connect_grpc("definitely not valid!").code ==
-                rerun::ErrorCode::InvalidServerUrl
+                stream.connect("definitely not valid!").code == rerun::ErrorCode::InvalidServerUrl
             );
         }
     }
-    AND_GIVEN("a valid socket address " << address) {
+    AND_GIVEN("a valid url " << url) {
         THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect_grpc(address).is_ok());
+            CHECK(stream.connect(url).code == rerun::ErrorCode::Ok);
 
             WHEN("logging a component and then flushing") {
                 check_logged_error([&] {
@@ -427,10 +426,10 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
 }
 
 SCENARIO("RecordingStream can connect", TEST_TAG) {
-    const char* address = "127.0.0.1:9876";
+    const char* url = "http://127.0.0.1:1852";
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
-        test_logging_to_connection(address, stream);
+        test_logging_to_connection(url, stream);
     }
     WHEN("setting a global RecordingStream and then discarding it") {
         {
@@ -438,7 +437,7 @@ SCENARIO("RecordingStream can connect", TEST_TAG) {
             stream.set_global();
         }
         GIVEN("the current recording stream") {
-            test_logging_to_connection(address, rerun::RecordingStream::current());
+            test_logging_to_connection(url, rerun::RecordingStream::current());
         }
     }
 }
@@ -491,17 +490,13 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 
             THEN("calling log with an array logs the serialization error") {
                 check_logged_error(
-                    [&] {
-                        stream.log(path, std::array{component, component});
-                    },
+                    [&] { stream.log(path, std::array{component, component}); },
                     expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
                 check_logged_error(
-                    [&] {
-                        stream.log(path, std::vector{component, component});
-                    },
+                    [&] { stream.log(path, std::vector{component, component}); },
                     expected_error.code
                 );
             }
@@ -643,8 +638,8 @@ SCENARIO("Deprecated log_static still works", TEST_TAG) {
         THEN("an archetype can be logged") {
             stream.log_static(
                 "log_archetype-splat",
-                rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                ).with_colors(rerun::Color(0xFF0000FF))
+                rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                    .with_colors(rerun::Color(0xFF0000FF))
             );
         }
     }

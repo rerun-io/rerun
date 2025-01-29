@@ -34,39 +34,38 @@ pub fn stream(
 }
 
 /// Represents a URL to a gRPC server.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageProxyUrl(String);
 
 impl MessageProxyUrl {
     /// Parses as a regular URL, the protocol must be `temp://`, `http://`, or `https://`.
     pub fn parse(url: &str) -> Result<Self, InvalidMessageProxyUrl> {
-        if let Some(url) = url.strip_prefix("http") {
+        if url.starts_with("http") {
             let _ = Url::parse(url).map_err(|err| InvalidMessageProxyUrl {
                 url: url.to_owned(),
                 msg: err.to_string(),
             })?;
 
-            return Ok(Self(url.to_owned()));
+            Ok(Self(url.to_owned()))
         }
+        // TODO(#8761): URL prefix
+        else if let Some(url) = url.strip_prefix("temp") {
+            let url = format!("http{url}");
 
-        let Some(url) = url.strip_prefix("temp") else {
+            let _ = Url::parse(&url).map_err(|err| InvalidMessageProxyUrl {
+                url: url.clone(),
+                msg: err.to_string(),
+            })?;
+
+            Ok(Self(url))
+        } else {
             let scheme = url.split_once("://").map(|(a, _)| a).ok_or("unknown");
-            return Err(InvalidMessageProxyUrl {
+
+            Err(InvalidMessageProxyUrl {
                 url: url.to_owned(),
-                msg: format!(
-                    "Invalid scheme {scheme:?}, expected {:?}",
-                    // TODO(#8761): URL prefix
-                    "temp"
-                ),
-            });
-        };
-        let url = format!("http{url}");
-
-        let _ = Url::parse(&url).map_err(|err| InvalidMessageProxyUrl {
-            url: url.clone(),
-            msg: err.to_string(),
-        })?;
-
-        Ok(Self(url))
+                msg: format!("Invalid scheme {scheme:?}, expected {:?}", "temp"),
+            })
+        }
     }
 
     pub fn to_http(&self) -> String {
@@ -88,7 +87,7 @@ impl std::str::FromStr for MessageProxyUrl {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 #[error("invalid message proxy url {url:?}: {msg}")]
 pub struct InvalidMessageProxyUrl {
     pub url: String,
@@ -172,12 +171,14 @@ mod tests {
             fn $name() {
                 assert_eq!(
                     MessageProxyUrl::parse($url).map(|v| v.to_http()),
-                    Ok($expected_http)
+                    Ok($expected_http.to_owned())
                 );
             }
         };
     }
 
-    test_parse_url!(basic, "temp://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
+    test_parse_url!(basic_temp, "temp://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
+    // TODO(#8761): URL prefix
+    test_parse_url!(basic_http, "http://127.0.0.1:1852", expected: "http://127.0.0.1:1852");
     test_parse_url!(invalid, "definitely not valid", error);
 }

@@ -1,5 +1,6 @@
 use std::thread;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
@@ -96,10 +97,18 @@ impl Drop for Client {
         re_log::debug!("Shutting down message proxy client");
         // Wait for flush
         self.flush();
-        // Quit immediately after that - no messages are left in the channel
-        self.shutdown_tx.try_send(()).ok();
+
+        // Quit immediately - no more messages left in the queue
+        if let Err(err) = self.shutdown_tx.try_send(()) {
+            re_log::error!("failed to gracefully shut down message proxy client: {err}");
+            return;
+        };
+
         // Wait for the shutdown
-        self.thread.take().map(|t| t.join().ok());
+        if let Some(thread) = self.thread.take() {
+            thread.join().ok();
+        };
+
         re_log::debug!("Message proxy client has shut down");
     }
 }
@@ -117,16 +126,59 @@ async fn message_proxy_client(
             return;
         }
     };
-    let channel = match endpoint.connect().await {
-        Ok(channel) => channel,
-        Err(err) => {
-            re_log::error!("Failed to connect to message proxy server: {err}");
-            return;
+
+    // Temporarily buffer messages while we're connecting:
+    let mut buffered_messages = vec![];
+    let channel = loop {
+        match endpoint.connect().await {
+            Ok(channel) => break channel,
+            Err(err) => {
+                re_log::debug!("failed to connect to message proxy server: {err}");
+                tokio::select! {
+                    cmd = cmd_rx.recv() => {
+                        match cmd {
+                            Some(Cmd::LogMsg(msg)) => {
+                                buffered_messages.push(msg);
+                            }
+                            Some(Cmd::Flush(tx)) => {
+                                re_log::debug!("Flush requested");
+                                if tx.send(()).is_err() {
+                                    re_log::debug!("Failed to respond to flush: channel is closed");
+                                    return;
+                                };
+                            }
+                            None => {
+                                re_log::debug!("Channel closed");
+                                return;
+                            }
+                        }
+                    }
+                    _ = shutdown_rx.recv() => {
+                        re_log::debug!("shutting down client without flush");
+                        return;
+                    }
+                    _ = tokio::time::sleep(Duration::from_millis(200)) => {
+                        continue;
+                    }
+                }
+            }
         }
     };
     let mut client = MessageProxyClient::new(channel);
 
     let stream = async_stream::stream! {
+        for msg in buffered_messages {
+            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(msg, compression) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error!("Failed to encode message: {err}");
+                    break;
+                }
+            };
+
+            yield msg;
+        }
+
         loop {
             tokio::select! {
                 cmd = cmd_rx.recv() => {
@@ -161,7 +213,7 @@ async fn message_proxy_client(
                 }
 
                 _ = shutdown_rx.recv() => {
-                    re_log::debug!("Shutting down without flush");
+                    re_log::debug!("Shutting down client without flush");
                     return;
                 }
             }
