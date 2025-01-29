@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use loader_lerobot::LeRobotDatasetLoader;
 use once_cell::sync::Lazy;
 
 use re_chunk::{Chunk, ChunkResult};
@@ -9,9 +10,11 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
 
 // ----------------------------------------------------------------------------
 
+pub mod le_robot;
 mod load_file;
 mod loader_archetype;
 mod loader_directory;
+mod loader_lerobot;
 mod loader_rrd;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -363,6 +366,7 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
     ]

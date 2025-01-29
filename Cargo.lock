@@ -5928,6 +5928,8 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror 1.0.65",
  "uuid",

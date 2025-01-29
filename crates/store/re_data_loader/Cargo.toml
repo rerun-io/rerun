@@ -46,6 +46,8 @@ rayon.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
 re_crash_handler.workspace = true
