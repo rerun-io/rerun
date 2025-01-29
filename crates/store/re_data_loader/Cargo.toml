@@ -42,6 +42,7 @@ itertools.workspace = true
 notify.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+parquet = { workspace = true, features = ["arrow", "snap"] }
 rayon.workspace = true
 thiserror.workspace = true
 uuid.workspace = true

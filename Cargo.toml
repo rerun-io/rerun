@@ -233,6 +233,7 @@ ordered-float = "4.3.0"
 parking_lot = "0.12"
 paste = "1.0"
 pathdiff = "0.2"
+parquet = { version = "53.4", default-features = false }
 pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"

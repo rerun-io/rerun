@@ -24,6 +24,11 @@ impl crate::DataLoader for DirectoryLoader {
             return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 
+        if crate::le_robot::is_le_robot_dataset(&dirpath) {
+            // le_robot dataset is loaded by LeRobotDatasetLoader
+            return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
+        }
+
         re_tracing::profile_function!(dirpath.display().to_string());
 
         re_log::debug!(?dirpath, loader = self.name(), "Loading directory…",);

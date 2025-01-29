@@ -1,10 +1,13 @@
-use std::io::BufReader;
+use std::f64::EPSILON;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::{fs::File, io::Result};
+use std::{error::Error, fs::File};
 
 use ahash::HashMap;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+/// Check whether the provided path contains a Le Robot dataset.
 pub fn is_le_robot_dataset(path: impl AsRef<Path>) -> bool {
     let path = path.as_ref();
 
@@ -19,6 +22,17 @@ pub fn is_le_robot_dataset(path: impl AsRef<Path>) -> bool {
     })
 }
 
+/// Errors that might happen when loading data through a [`super::LeRobotDataset`].
+#[derive(thiserror::Error, Debug)]
+pub enum LeRobotError {
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+}
+
 pub struct LeRobotDataset {}
 
 #[derive(Debug)]
@@ -29,18 +43,18 @@ pub struct LeRobotDatasetMetadata {
 }
 
 impl LeRobotDatasetMetadata {
-    pub fn load(root: impl AsRef<Path>) -> std::io::Result<Self> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_from_directory(root: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let metadir = root.as_ref().join("meta");
-        let info_filepath = metadir.join("info.json");
-        let info_file = File::open(info_filepath)?;
-        let reader = BufReader::new(info_file);
 
-        let info: LeRobotDatasetInfo = serde_json::from_reader(reader)?;
+        let info = LeRobotDatasetInfo::load_from_file(&metadir.join("info.json"))?;
+        let episodes = load_jsonl_file(&metadir.join("episodes.jsonl"))?;
+        let tasks = load_jsonl_file(&metadir.join("tasks.jsonl"))?;
 
         Ok(Self {
             info,
-            episodes: Vec::new(),
-            tasks: Vec::new(),
+            episodes,
+            tasks,
         })
     }
 }
@@ -59,11 +73,12 @@ pub struct LeRobotDatasetInfo {
 }
 
 impl LeRobotDatasetInfo {
-    pub fn load_from_file(filepath: impl AsRef<Path>) -> Result<Self> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_from_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let info_file = File::open(filepath)?;
         let reader = BufReader::new(info_file);
 
-        serde_json::from_reader(reader)
+        serde_json::from_reader(reader).map_err(|err| err.into())
     }
 }
 
@@ -84,9 +99,23 @@ pub enum DType {
     Int64,
 }
 
+// TODO: Do we want to stream in episodes or tasks?
+#[cfg(not(target_arch = "wasm32"))]
+fn load_jsonl_file<D>(filepath: impl AsRef<Path>) -> Result<Vec<D>, LeRobotError>
+where
+    D: DeserializeOwned,
+{
+    let entries = std::fs::read_to_string(filepath)?
+        .lines()
+        .map(|line| serde_json::from_str(line))
+        .collect::<Result<Vec<D>, _>>()?;
+
+    Ok(entries)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LeRobotDatasetEpisode {
-    pub index: u32,
+    pub episode_index: u32,
     pub tasks: Vec<String>,
     pub length: u32,
 }
