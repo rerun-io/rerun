@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use nohash_hasher::{IntMap, IntSet};
+use parking_lot::Mutex;
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -38,7 +41,16 @@ pub struct ViewContents {
     pub blueprint_entity_path: EntityPath,
 
     view_class_identifier: ViewClassIdentifier,
+
+    /// Deserialized entity path filter.
+    ///
+    /// Consider this read-only.
     entity_path_filter: ResolvedEntityPathFilter,
+
+    /// Update entity path filter.
+    ///
+    /// Mutations go to this value and should be saved to the blueprint store when they occur.
+    new_entity_path_filter: Arc<Mutex<ResolvedEntityPathFilter>>,
 }
 
 impl ViewContents {
@@ -83,10 +95,13 @@ impl ViewContents {
             blueprint_archetypes::ViewContents::name().short_name(),
         ));
 
+        let new_entity_path_filter = Arc::new(Mutex::new(entity_path_filter.clone()));
+
         Self {
             blueprint_entity_path,
             view_class_identifier,
             entity_path_filter,
+            new_entity_path_filter,
         }
     }
 
@@ -120,10 +135,13 @@ impl ViewContents {
         let entity_path_filter =
             EntityPathFilter::from_query_expressions(query).resolve_forgiving(subst_env);
 
+        let new_entity_path_filter = Arc::new(Mutex::new(entity_path_filter.clone()));
+
         Self {
             blueprint_entity_path: property.blueprint_store_path,
             view_class_identifier,
             entity_path_filter,
+            new_entity_path_filter,
         }
     }
 
@@ -137,34 +155,15 @@ impl ViewContents {
         ctx.save_blueprint_archetype(
             &self.blueprint_entity_path,
             &blueprint_archetypes::ViewContents::new(
-                self.entity_path_filter.iter_unresolved_expressions(),
+                self.new_entity_path_filter
+                    .lock()
+                    .iter_unresolved_expressions(),
             ),
         );
     }
 
     pub fn entity_path_filter(&self) -> &ResolvedEntityPathFilter {
         &self.entity_path_filter
-    }
-
-    /// Set the entity path filter. WARNING: a single mutation is allowed per frame, or data will be
-    /// lost.
-    //TODO(#8518): address this massive foot-gun.
-    pub fn set_entity_path_filter(
-        &self,
-        ctx: &ViewerContext<'_>,
-        new_entity_path_filter: &EntityPathFilter,
-    ) {
-        if &self.entity_path_filter.unresolved() == new_entity_path_filter {
-            return;
-        }
-
-        ctx.save_blueprint_component(
-            &self.blueprint_entity_path,
-            &new_entity_path_filter
-                .iter_expressions()
-                .map(|s| QueryExpression(s.into()))
-                .collect::<Vec<_>>(),
-        );
     }
 
     pub fn build_resolver<'a>(
@@ -191,69 +190,87 @@ impl ViewContents {
         }
     }
 
-    /// Perform arbitrary mutation on the entity path filter. WARNING: a single mutation is allowed
-    /// per frame, or data will be lost.
+    /// Sets the entity path filter to the provided one.
+    pub fn set_entity_path_filter(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path_filter: ResolvedEntityPathFilter,
+    ) {
+        *self.new_entity_path_filter.lock() = entity_path_filter;
+        self.save_entity_path_filter_to_blueprint(ctx);
+    }
+
+    /// Perform arbitrary mutation on the entity path filter.
     ///
-    /// This method exists because of the single mutation per frame limitation. It currently is the
-    /// only way to perform multiple mutations on the entity path filter in a single frame.
-    //TODO(#8518): address this massive foot-gun.
+    /// Using this method avoids triggering multiple writes to the blueprint store.
     pub fn mutate_entity_path_filter(
         &self,
         ctx: &ViewerContext<'_>,
         f: impl FnOnce(&mut ResolvedEntityPathFilter),
     ) {
-        let mut new_entity_path_filter = self.entity_path_filter.clone();
-        f(&mut new_entity_path_filter);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
+        f(&mut self.new_entity_path_filter.lock());
+        self.save_entity_path_filter_to_blueprint(ctx);
     }
 
-    /// Remove a subtree and any existing rules that it would match. WARNING: a single mutation is
-    /// allowed per frame, or data will be lost.
+    /// Remove a subtree and any existing rules that it would match.
     ///
     /// Because most-specific matches win, if we only add a subtree exclusion
     /// it can still be overridden by existing inclusions. This method ensures
     /// that not only do we add a subtree exclusion, but clear out any existing
     /// inclusions or (now redundant) exclusions that would match the subtree.
-    //TODO(#8518): address this massive foot-gun.
     pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
-        let mut new_entity_path_filter = self.entity_path_filter.clone();
-        new_entity_path_filter.remove_subtree_and_matching_rules(path);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
+        self.new_entity_path_filter
+            .lock()
+            .remove_subtree_and_matching_rules(path);
+
+        self.save_entity_path_filter_to_blueprint(ctx);
     }
 
-    /// Directly add an exclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
-    /// allowed per frame, or data will be lost.
+    /// Directly add an exclusion rule to the [`EntityPathFilter`].
     ///
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
     ///
     /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
-    //TODO(#8518): address this massive foot-gun.
     pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: ResolvedEntityPathRule) {
-        let mut new_entity_path_filter = self.entity_path_filter.clone();
-        new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
+        self.new_entity_path_filter
+            .lock()
+            .add_rule(RuleEffect::Exclude, rule);
+
+        self.save_entity_path_filter_to_blueprint(ctx);
     }
 
-    /// Directly add an inclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
-    /// allowed per frame, or data will be lost.
+    /// Directly add an inclusion rule to the [`EntityPathFilter`].
     ///
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
-    //TODO(#8518): address this massive foot-gun.
     pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: ResolvedEntityPathRule) {
-        let mut new_entity_path_filter = self.entity_path_filter.clone();
-        new_entity_path_filter.add_rule(RuleEffect::Include, rule);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
+        self.new_entity_path_filter
+            .lock()
+            .add_rule(RuleEffect::Include, rule);
+
+        self.save_entity_path_filter_to_blueprint(ctx);
     }
 
-    /// Remove rules for a given entity. WARNING: a single mutation is allowed per frame, or data
-    /// will be lost.
-    //TODO(#8518): address this massive foot-gun.
+    /// Remove rules for a given entity.
     pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
-        let mut new_entity_path_filter = self.entity_path_filter.clone();
-        new_entity_path_filter.remove_rule_for(ent_path);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
+        self.new_entity_path_filter.lock().remove_rule_for(ent_path);
+
+        self.save_entity_path_filter_to_blueprint(ctx);
+    }
+
+    /// Save the entity path filter.
+    fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
+        ctx.save_blueprint_component(
+            &self.blueprint_entity_path,
+            &self
+                .new_entity_path_filter
+                .lock()
+                .unresolved()
+                .iter_expressions()
+                .map(|s| QueryExpression(s.into()))
+                .collect::<Vec<_>>(),
+        );
     }
 
     /// Build up the initial [`DataQueryResult`] for this [`ViewContents`]

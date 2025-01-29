@@ -7,7 +7,7 @@ use re_data_ui::{
     DataUi,
 };
 use re_entity_db::{EntityPath, InstancePath};
-use re_log_types::{ComponentPath, EntityPathFilter, ResolvedEntityPathFilter};
+use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
@@ -386,8 +386,9 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                         view.contents.entity_path_filter(),
                         &view.space_origin,
                     ) {
-                        view.contents
-                            .set_entity_path_filter(ctx, &new_entity_path_filter);
+                        let path_subs = EntityPathSubs::new_with_origin(&view.space_origin);
+                        let query_filter = new_entity_path_filter.resolve_forgiving(&path_subs);
+                        view.contents.set_entity_path_filter(ctx, query_filter);
                     }
                 })
                 .header_response
