@@ -702,14 +702,14 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
-                // Special case! We are connecting a web-viewer to a web-socket address.
-                // Instead of piping, just host a web-viewer that connects to the web-socket directly:
+            if let DataSource::MessageProxy { url } = data_sources[0].clone() {
+                // Special case! We are connecting a web-viewer to a gRPC address.
+                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(rerun_server_ws_url),
+                    source_url: Some(url),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,

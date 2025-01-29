@@ -103,7 +103,7 @@ run = [
   "re_log_encoding/decoder",
 ]
 
-## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
+## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
 server = ["dep:re_grpc_server"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.

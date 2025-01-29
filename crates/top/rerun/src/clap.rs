@@ -1,6 +1,6 @@
 //! Integration with integration with the [`clap`](https://crates.io/crates/clap) command line argument parser.
 
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 use re_sdk::{RecordingStream, RecordingStreamBuilder};
 
@@ -8,7 +8,7 @@ use re_sdk::{RecordingStream, RecordingStreamBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
-    Connect(SocketAddr),
+    Connect(String),
 
     Save(PathBuf),
 
@@ -55,10 +55,10 @@ pub struct RerunArgs {
 
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
-    /// Optionally takes an `ip:port`.
+    /// Optionally takes an HTTP(S) URL.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    connect: Option<Option<SocketAddr>>,
+    connect: Option<Option<String>>,
 
     /// Connects and sends the logged data to a web-based Rerun viewer.
     #[cfg(feature = "web_viewer")]
@@ -110,9 +110,8 @@ impl RerunArgs {
                 Default::default(),
             )),
 
-            RerunBehavior::Connect(addr) => Ok((
-                RecordingStreamBuilder::new(application_id)
-                    .connect_tcp_opts(addr, crate::default_flush_timeout())?,
+            RerunBehavior::Connect(url) => Ok((
+                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
                 Default::default(),
             )),
 
@@ -165,9 +164,14 @@ impl RerunArgs {
             return Ok(RerunBehavior::Serve);
         }
 
-        match self.connect {
-            Some(Some(addr)) => return Ok(RerunBehavior::Connect(addr)),
-            Some(None) => return Ok(RerunBehavior::Connect(crate::default_server_addr())),
+        match &self.connect {
+            Some(Some(url)) => return Ok(RerunBehavior::Connect(url.clone())),
+            Some(None) => {
+                return Ok(RerunBehavior::Connect(format!(
+                    "http://127.0.0.1:{}",
+                    re_grpc_server::DEFAULT_SERVER_PORT,
+                )))
+            }
             None => {}
         }
 
