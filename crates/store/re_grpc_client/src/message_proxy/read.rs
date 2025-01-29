@@ -33,10 +33,10 @@ pub fn stream(
     Ok(rx)
 }
 
-struct MessageProxyAddress(String);
+pub struct MessageProxyAddress(String);
 
 impl MessageProxyAddress {
-    fn parse(url: &str) -> Result<Self, InvalidMessageProxyAddress> {
+    pub fn parse(url: &str) -> Result<Self, InvalidMessageProxyAddress> {
         let Some(url) = url.strip_prefix("temp") else {
             let scheme = url.split_once("://").map(|(a, _)| a).ok_or("unknown");
             return Err(InvalidMessageProxyAddress {
@@ -66,6 +66,14 @@ impl MessageProxyAddress {
 impl Display for MessageProxyAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.0, f)
+    }
+}
+
+impl std::str::FromStr for MessageProxyAddress {
+    type Err = InvalidMessageProxyAddress;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
     }
 }
 
