@@ -28,7 +28,7 @@ pub struct Shutdown(Option<oneshot::Receiver<()>>);
 impl Shutdown {
     /// Returns a future that resolves when the signal is sent.
     ///
-    /// If this was constructed with [`never`], then it never resolves.
+    /// If this was constructed with [`never()`], then it never resolves.
     pub async fn wait(self) {
         if let Some(rx) = self.0 {
             rx.await.ok();

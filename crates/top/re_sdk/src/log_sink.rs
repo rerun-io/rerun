@@ -37,7 +37,7 @@ pub trait LogSink: Send + Sync + 'static {
     fn flush_blocking(&self);
 
     /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
-    /// flush it for any reason (e.g. a broken TCP connection for a [`TcpSink`]).
+    /// flush it for any reason.
     #[inline]
     fn drop_if_disconnected(&self) {}
 

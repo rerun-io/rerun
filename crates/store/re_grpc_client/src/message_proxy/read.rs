@@ -170,7 +170,10 @@ mod tests {
         ($name:ident, $url:literal, expected: $expected_http:literal) => {
             #[test]
             fn $name() {
-                assert_eq!(MessageProxyUrl::parse($url).to_http(), $expected_http);
+                assert_eq!(
+                    MessageProxyUrl::parse($url).map(|v| v.to_http()),
+                    Ok($expected_http)
+                );
             }
         };
     }
