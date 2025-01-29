@@ -177,9 +177,6 @@ Display a graph of nodes and edges.
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout = state.layout_state.get(request, params);
 
-        // Prepare the view and the transformations.
-        let rect_in_ui = ui.max_rect();
-
         let mut scene_rect = egui::Rect::from(rect_in_scene);
         let scene_rect_ref = scene_rect;
 
@@ -187,6 +184,7 @@ Display a graph of nodes and edges.
 
         // To determine the overall scale factor needed for the level-of-details
         // computation, we need to look at the two dimensions separately due to letter-boxing.
+        let rect_in_ui = ui.max_rect();
         let scale_x = rect_in_ui.width() / scene_rect.width();
         let scale_y = rect_in_ui.height() / scene_rect.height();
 
