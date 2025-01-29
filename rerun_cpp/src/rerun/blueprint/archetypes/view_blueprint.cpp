@@ -97,8 +97,7 @@ namespace rerun {
             cells.push_back(archetype.visible.value());
         }
         {
-            auto indicator = ViewBlueprint::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<ViewBlueprint>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

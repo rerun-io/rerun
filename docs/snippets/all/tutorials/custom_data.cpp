@@ -44,8 +44,7 @@ struct rerun::AsComponents<CustomPoints3D> {
         auto batches = AsComponents<rerun::Points3D>::serialize(archetype.points).value_or_throw();
 
         // Add a custom indicator component.
-        CustomPoints3D::IndicatorComponent indicator;
-        batches.push_back(ComponentBatch::from_loggable(indicator).value_or_throw());
+        batches.push_back(ComponentBatch::from_indicator<CustomPoints3D>().value_or_throw());
 
         // Add custom confidence components if present.
         if (archetype.confidences) {

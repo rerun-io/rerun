@@ -77,8 +77,7 @@ namespace rerun {
             cells.push_back(archetype.position.value());
         }
         {
-            auto indicator = ForcePosition::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<ForcePosition>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

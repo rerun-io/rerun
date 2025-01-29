@@ -91,8 +91,7 @@ namespace rerun {
             cells.push_back(archetype.aggregation_policy.value());
         }
         {
-            auto indicator = SeriesLine::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<SeriesLine>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
