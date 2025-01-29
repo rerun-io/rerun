@@ -47,7 +47,11 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    return connect_grpc(url, default_blueprint=default_blueprint, recording=recording)
+    return connect_grpc(
+        url,
+        default_blueprint=default_blueprint,
+        recording=recording,  # NOLINT: conversion not needed
+    )
 
 
 def connect_grpc(
@@ -452,7 +456,7 @@ def spawn(
         memory_limit=memory_limit,
         hide_welcome_screen=hide_welcome_screen,
         default_blueprint=default_blueprint,
-        recording=recording,
+        recording=recording,  # NOLINT: conversion not needed
     )
 
 
