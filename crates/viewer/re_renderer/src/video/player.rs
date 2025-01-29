@@ -275,7 +275,7 @@ impl VideoPlayer {
         //   (note that for large GOPs this is usually irrelevant)
         //
         // (potentially related to:) TODO(#7327, #7595): We don't necessarily have to enqueue full GOPs always.
-        // In particulary beyond `requested_gop_idx` this can be overkill.
+        // In particularly beyond `requested_gop_idx` this can be overkill.
         let min_end_sample_idx =
             requested_sample_idx + self.chunk_decoder.min_num_samples_to_enqueue_ahead();
         loop {

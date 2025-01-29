@@ -885,7 +885,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
         // TODO(#8848): On some videos (which??) we need to enqueue more samples, otherwise ffmpeg will not provide us with any frames.
-        // The observed behavior is that we continously get frames that are 16 frames older than what we enqueued,
+        // The observed behavior is that we continuously get frames that are 16 frames older than what we enqueued,
         // never reaching the frames of all currently enqueued GOPs prior.
         // (The same happens with webcodec decoder on Safari for affected videos)
         16
