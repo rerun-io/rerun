@@ -200,6 +200,7 @@ impl EntityData {
     pub fn item(&self) -> Item {
         Item::InstancePath(InstancePath::entity_all(self.entity_path.clone()))
     }
+
     pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> Option<bool> {
         collapse_scope
             .item(self.item())
