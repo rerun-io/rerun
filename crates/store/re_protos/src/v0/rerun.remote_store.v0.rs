@@ -19,6 +19,32 @@ impl ::prost::Name for DataframePart {
         "/rerun.remote_store.v0.DataframePart".into()
     }
 }
+/// used to define which column we want to index
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexColumn {
+    /// The path of the entity.
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<super::super::common::v0::EntityPath>,
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, tag = "4")]
+    pub component_name: ::prost::alloc::string::String,
+}
+impl ::prost::Name for IndexColumn {
+    const NAME: &'static str = "IndexColumn";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.IndexColumn".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.IndexColumn".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateCollectionIndexRequest {
     /// which collection do we want to create index for
@@ -29,9 +55,8 @@ pub struct CreateCollectionIndexRequest {
     #[prost(message, optional, tag = "2")]
     pub properties: ::core::option::Option<IndexProperties>,
     /// Component / column we want to index
-    /// TODO - name of the lance table should be derived from the descriptor!
     #[prost(message, optional, tag = "3")]
-    pub column: ::core::option::Option<super::super::common::v0::ComponentColumnDescriptor>,
+    pub column: ::core::option::Option<IndexColumn>,
     /// What is the filter index i.e. timeline for which we
     /// will query the timepoints
     /// TODO(zehiko) this might go away and we might just index
@@ -149,7 +174,7 @@ pub struct QueryCollectionIndexRequest {
     pub collection: ::core::option::Option<Collection>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
-    pub column: ::core::option::Option<super::super::common::v0::ComponentColumnDescriptor>,
+    pub column: ::core::option::Option<IndexColumn>,
     /// Query data - type of data is index specific. Caller must ensure
     /// to provide the right type. For vector search this should
     /// be a vector of appropriate size, for inverted index this should be a string.

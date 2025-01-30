@@ -45,6 +45,18 @@ message DataframePart {
 
 // ---------------- CreateCollectionIndex ------------------
 
+// used to define which column we want to index
+message IndexColumn {
+    // The path of the entity.
+    rerun.common.v0.EntityPath entity_path = 1;
+    // Optional name of the `Archetype` associated with this data.
+    optional string archetype_name = 2;
+    // Optional name of the field within `Archetype` associated with this data.
+    optional string archetype_field_name = 3;
+    // Semantic name associated with this data.
+    string component_name = 4;
+}
+
 message CreateCollectionIndexRequest {
     // which collection do we want to create index for
     Collection collection = 1;
@@ -52,8 +64,7 @@ message CreateCollectionIndexRequest {
     // its index specific properties
     IndexProperties properties = 2;
     // Component / column we want to index
-    // TODO - name of the lance table should be derived from the descriptor!
-    rerun.common.v0.ComponentColumnDescriptor column = 3;
+    IndexColumn column = 3;
     // What is the filter index i.e. timeline for which we
     // will query the timepoints
     // TODO(zehiko) this might go away and we might just index
@@ -104,7 +115,7 @@ message QueryCollectionIndexRequest {
     // If not specified, the default collection is queried
     Collection collection = 1;
     // Index column that is queried
-    rerun.common.v0.ComponentColumnDescriptor column = 2;
+    IndexColumn column = 2;
     // Query data - type of data is index specific. Caller must ensure
     // to provide the right type. For vector search this should
     // be a vector of appropriate size, for inverted index this should be a string.
