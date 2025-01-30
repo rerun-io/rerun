@@ -35,6 +35,95 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Capsules3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(10);
+        if (lengths.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(lengths.value(), lengths_).value_or_throw()
+            );
+        }
+        if (radii.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
+            );
+        }
+        if (translations.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(translations.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (rotation_axis_angles.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(rotation_axis_angles.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (quaternions.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(quaternions.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
+            );
+        }
+        if (labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
+            );
+        }
+        if (show_labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (class_ids.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Capsules3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Capsules3D::columns() {
+        if (lengths.has_value()) {
+            return columns(std::vector<uint32_t>(lengths.value().length(), 1));
+        }
+        if (radii.has_value()) {
+            return columns(std::vector<uint32_t>(radii.value().length(), 1));
+        }
+        if (translations.has_value()) {
+            return columns(std::vector<uint32_t>(translations.value().length(), 1));
+        }
+        if (rotation_axis_angles.has_value()) {
+            return columns(std::vector<uint32_t>(rotation_axis_angles.value().length(), 1));
+        }
+        if (quaternions.has_value()) {
+            return columns(std::vector<uint32_t>(quaternions.value().length(), 1));
+        }
+        if (colors.has_value()) {
+            return columns(std::vector<uint32_t>(colors.value().length(), 1));
+        }
+        if (labels.has_value()) {
+            return columns(std::vector<uint32_t>(labels.value().length(), 1));
+        }
+        if (show_labels.has_value()) {
+            return columns(std::vector<uint32_t>(show_labels.value().length(), 1));
+        }
+        if (class_ids.has_value()) {
+            return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -74,8 +163,7 @@ namespace rerun {
             cells.push_back(archetype.class_ids.value());
         }
         {
-            auto indicator = Capsules3D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Capsules3D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

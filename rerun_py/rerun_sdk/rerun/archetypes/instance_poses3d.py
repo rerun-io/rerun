@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -129,10 +131,10 @@ class InstancePoses3D(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         translations: datatypes.Vec3DArrayLike | None = None,
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
@@ -144,7 +146,7 @@ class InstancePoses3D(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         translations:
             Translation vectors.
@@ -169,7 +171,7 @@ class InstancePoses3D(Archetype):
                 "mat3x3": mat3x3,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -179,17 +181,63 @@ class InstancePoses3D(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> InstancePoses3D:
+    def cleared(cls) -> InstancePoses3D:
         """Clear all the fields of a `InstancePoses3D`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        scales: datatypes.Vec3DArrayLike | None = None,
+        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        translations:
+            Translation vectors.
+        rotation_axis_angles:
+            Rotations via axis + angle.
+        quaternions:
+            Rotations via quaternion.
+        scales:
+            Scaling factors.
+        mat3x3:
+            3x3 transformation matrices.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            translations=[],
-            rotation_axis_angles=[],
-            quaternions=[],
-            scales=[],
-            mat3x3=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                translations=translations,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
+                scales=scales,
+                mat3x3=mat3x3,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     translations: components.PoseTranslation3DBatch | None = field(
         metadata={"component": True},

@@ -25,10 +25,10 @@ fn tensor_data_roundtrip() {
 
 #[test]
 fn tensor_roundtrip() {
-    let all_expected = [Tensor {
-        data: TensorData::new(vec![2, 3], TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into())).into(),
-        value_range: None,
-    }];
+    let all_expected = [Tensor::new(TensorData::new(
+        vec![2, 3],
+        TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
+    ))];
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()

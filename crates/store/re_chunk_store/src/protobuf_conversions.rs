@@ -1,8 +1,6 @@
-use re_protos::invalid_field;
-use re_protos::missing_field;
-use re_protos::TypeConversionError;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+
+use re_protos::{missing_field, TypeConversionError};
 
 impl TryFrom<re_protos::common::v0::ComponentColumnSelector> for crate::ComponentColumnSelector {
     type Error = TypeConversionError;
@@ -279,36 +277,6 @@ impl TryFrom<crate::ComponentColumnDescriptor>
     }
 }
 
-impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescriptor {
-    type Error = TypeConversionError;
-
-    fn try_from(value: crate::ColumnDescriptor) -> Result<Self, Self::Error> {
-        match value {
-            crate::ColumnDescriptor::Time(time_descriptor) => Ok(Self {
-                descriptor_type: Some(
-                    re_protos::common::v0::column_descriptor::DescriptorType::TimeColumn(
-                        re_protos::common::v0::TimeColumnDescriptor {
-                            timeline: Some(re_protos::common::v0::Timeline {
-                                name: time_descriptor.timeline.name().to_string(),
-                            }),
-                            datatype: serde_json::to_string(&time_descriptor.datatype).map_err(
-                                |err| invalid_field!(Self, "time column descriptor", err),
-                            )?,
-                        },
-                    ),
-                ),
-            }),
-            crate::ColumnDescriptor::Component(component_descriptor) => Ok(Self {
-                descriptor_type: Some(
-                    re_protos::common::v0::column_descriptor::DescriptorType::ComponentColumn(
-                        component_descriptor.try_into()?,
-                    ),
-                ),
-            }),
-        }
-    }
-}
-
 impl TryFrom<re_protos::common::v0::ComponentColumnDescriptor>
     for crate::ComponentColumnDescriptor
 {
@@ -340,41 +308,6 @@ impl TryFrom<re_protos::common::v0::ComponentColumnDescriptor>
             is_semantically_empty: value.is_semantically_empty,
             is_indicator: value.is_indicator,
         })
-    }
-}
-
-impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescriptor {
-    type Error = TypeConversionError;
-
-    fn try_from(value: re_protos::common::v0::ColumnDescriptor) -> Result<Self, Self::Error> {
-        let descriptor = value.descriptor_type.ok_or(missing_field!(
-            re_protos::common::v0::ColumnDescriptor,
-            "descriptor_type",
-        ))?;
-
-        match descriptor {
-            re_protos::common::v0::column_descriptor::DescriptorType::TimeColumn(
-                time_descriptor,
-            ) => Ok(Self::Time(crate::TimeColumnDescriptor {
-                timeline: time_descriptor
-                    .timeline
-                    .ok_or(missing_field!(
-                        re_protos::common::v0::TimeColumnDescriptor,
-                        "timeline",
-                    ))?
-                    .into(),
-                datatype: serde_json::from_str(&time_descriptor.datatype).map_err(|err| {
-                    invalid_field!(
-                        re_protos::common::v0::ColumnDescriptor,
-                        "time column descriptor",
-                        err
-                    )
-                })?,
-            })),
-            re_protos::common::v0::column_descriptor::DescriptorType::ComponentColumn(
-                component_descriptor,
-            ) => Ok(Self::Component(component_descriptor.try_into()?)),
-        }
     }
 }
 
@@ -455,54 +388,5 @@ mod tests {
         let grpc_query_after = query_expression_native.into();
 
         assert_eq!(grpc_query_before, grpc_query_after);
-    }
-
-    #[test]
-    fn test_time_column_descriptor_conversion() {
-        let time_descriptor = crate::TimeColumnDescriptor {
-            timeline: crate::Timeline::log_time(),
-            datatype: arrow::datatypes::DataType::Timestamp(
-                arrow::datatypes::TimeUnit::Nanosecond,
-                None,
-            ),
-        };
-
-        let descriptor = crate::ColumnDescriptor::Time(time_descriptor.clone());
-
-        let proto_descriptor: re_protos::common::v0::ColumnDescriptor =
-            descriptor.try_into().unwrap();
-        let descriptor_after = proto_descriptor.try_into().unwrap();
-        let crate::ColumnDescriptor::Time(time_descriptor_after) = descriptor_after else {
-            panic!("Expected TimeColumnDescriptor")
-        };
-
-        assert_eq!(time_descriptor, time_descriptor_after);
-    }
-
-    #[test]
-    fn test_component_column_descriptor_conversion() {
-        let component_descriptor = crate::ComponentColumnDescriptor {
-            entity_path: re_log_types::EntityPath::from("/some/path"),
-            archetype_name: Some("archetype".to_owned().into()),
-            archetype_field_name: Some("field".to_owned().into()),
-            component_name: re_chunk::ComponentName::new("component"),
-            store_datatype: arrow::datatypes::DataType::Int64,
-            is_static: true,
-            is_tombstone: false,
-            is_semantically_empty: false,
-            is_indicator: true,
-        };
-
-        let descriptor = crate::ColumnDescriptor::Component(component_descriptor.clone());
-
-        let proto_descriptor: re_protos::common::v0::ColumnDescriptor =
-            descriptor.try_into().unwrap();
-        let descriptor_after = proto_descriptor.try_into().unwrap();
-        let crate::ColumnDescriptor::Component(component_descriptor_after) = descriptor_after
-        else {
-            panic!("Expected ComponentColumnDescriptor")
-        };
-
-        assert_eq!(component_descriptor, component_descriptor_after);
     }
 }

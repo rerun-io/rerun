@@ -13,6 +13,28 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> AnnotationContext::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(2);
+        if (context.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(context.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(ComponentColumn::from_indicators<AnnotationContext>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
+        return columns;
+    }
+
+    Collection<ComponentColumn> AnnotationContext::columns() {
+        if (context.has_value()) {
+            return columns(std::vector<uint32_t>(context.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -28,8 +50,7 @@ namespace rerun {
             cells.push_back(archetype.context.value());
         }
         {
-            auto indicator = AnnotationContext::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<AnnotationContext>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

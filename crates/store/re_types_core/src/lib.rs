@@ -48,8 +48,7 @@ pub use self::{
         UnorderedComponentNameSet,
     },
     loggable_batch::{
-        ComponentBatch, ComponentBatchCow, ComponentBatchCowWithDescriptor, LoggableBatch,
-        SerializedComponentBatch, SerializedComponentColumn,
+        ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
@@ -192,27 +191,21 @@ pub fn try_serialize_field<C: crate::Component>(
 #[doc(hidden)] // public so we can access it from re_types too
 pub fn indicator_column<A: Archetype>(
     num_rows: usize,
-) -> SerializationResult<Option<SerializedComponentColumn>> {
-    let indicator: Option<SerializedComponentColumn> = A::indicator().serialized().map(Into::into);
+) -> SerializationResult<SerializedComponentColumn> {
+    let SerializedComponentColumn {
+        list_array,
+        descriptor,
+    } = A::indicator().into();
 
-    indicator
-        .map(|column| {
-            let SerializedComponentColumn {
-                list_array,
-                descriptor,
-            } = column;
+    let (field, _offsets, values, _nulls) = list_array.into_parts();
 
-            let (field, _offsets, values, _nulls) = list_array.into_parts();
+    let offsets = arrow::buffer::OffsetBuffer::new_zeroed(num_rows);
+    let nulls = None;
 
-            let offsets = arrow::buffer::OffsetBuffer::new_zeroed(num_rows);
-            let nulls = None;
-
-            arrow::array::ListArray::try_new(field, offsets, values, nulls)
-                .map(|list_array| SerializedComponentColumn {
-                    list_array,
-                    descriptor,
-                })
-                .map_err(Into::into)
+    arrow::array::ListArray::try_new(field, offsets, values, nulls)
+        .map(|list_array| SerializedComponentColumn {
+            list_array,
+            descriptor,
         })
-        .transpose()
+        .map_err(Into::into)
 }

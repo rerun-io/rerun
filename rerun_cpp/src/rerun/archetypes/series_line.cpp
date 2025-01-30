@@ -20,6 +20,53 @@ namespace rerun::archetypes {
                                            .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> SeriesLine::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (color.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
+            );
+        }
+        if (width.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(width.value(), lengths_).value_or_throw()
+            );
+        }
+        if (name.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(name.value(), lengths_).value_or_throw()
+            );
+        }
+        if (aggregation_policy.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(aggregation_policy.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<SeriesLine>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> SeriesLine::columns() {
+        if (color.has_value()) {
+            return columns(std::vector<uint32_t>(color.value().length(), 1));
+        }
+        if (width.has_value()) {
+            return columns(std::vector<uint32_t>(width.value().length(), 1));
+        }
+        if (name.has_value()) {
+            return columns(std::vector<uint32_t>(name.value().length(), 1));
+        }
+        if (aggregation_policy.has_value()) {
+            return columns(std::vector<uint32_t>(aggregation_policy.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -44,8 +91,7 @@ namespace rerun {
             cells.push_back(archetype.aggregation_policy.value());
         }
         {
-            auto indicator = SeriesLine::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<SeriesLine>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

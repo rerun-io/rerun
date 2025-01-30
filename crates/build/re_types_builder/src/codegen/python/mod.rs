@@ -408,8 +408,11 @@ impl PythonCodeGenerator {
                 Archetype,
                 BaseBatch,
                 ComponentBatchMixin,
+                ComponentColumn,
+                ComponentColumnList,
                 ComponentDescriptor,
                 ComponentMixin,
+                DescribedComponentBatch,
             )
             from {rerun_path}_converters import (
                 int_or_none,
@@ -695,6 +698,9 @@ fn code_for_struct(
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
         code.push_indented(1, quote_partial_update_methods(reporter, obj, objects), 2);
+        if obj.scope().is_none() {
+            code.push_indented(1, quote_columnar_methods(reporter, obj, objects), 2);
+        }
     }
 
     if obj.is_delegating_component() {
@@ -2511,7 +2517,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             quote_init_parameter_from_field(&field, objects, &obj.fqname)
         })
         .collect_vec()
-        .join(",                          ");
+        .join(",\n");
+    let parameters = indent::indent_by(8, parameters);
 
     let kwargs = obj
         .fields
@@ -2521,7 +2528,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             format!("'{field_name}': {field_name}")
         })
         .collect_vec()
-        .join(",                          ");
+        .join(",\n");
+    let kwargs = indent::indent_by(12, kwargs);
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let mut doc_string_lines = vec![format!("Update only some specific fields of a `{name}`.")];
@@ -2529,64 +2537,124 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
         doc_string_lines.push("----------".to_owned());
-        doc_string_lines.push("clear:".to_owned());
+        doc_string_lines.push("clear_unset:".to_owned());
         doc_string_lines
             .push("    If true, all unspecified fields will be explicitly cleared.".to_owned());
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
     };
-    let doc_block = quote_doc_lines(doc_string_lines)
-        .lines()
-        .map(|line| format!("            {line}"))
-        .collect_vec()
-        .join("\n");
-
-    let field_clears = obj
-        .fields
-        .iter()
-        .map(|field| {
-            let field_name = field.snake_case_name();
-            format!("{field_name}=[],")
-        })
-        .collect_vec()
-        .join("\n                          ");
-    let field_clears = indent::indent_by(4, field_clears);
+    let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     unindent(&format!(
         r#"
         @classmethod
-        def update_fields(
+        def from_fields(
             cls,
             *,
-            clear: bool = False,
+            clear_unset: bool = False,
             {parameters},
         ) -> {name}:
-
-{doc_block}
+            {doc_block}
             inst = cls.__new__(cls)
             with catch_and_log_exceptions(context=cls.__name__):
                 kwargs = {{
                     {kwargs},
                 }}
-    
-                if clear:
+
+                if clear_unset:
                     kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
-    
+
                 inst.__attrs_init__(**kwargs)
                 return inst
-            
+
             inst.__attrs_clear__()
             return inst
 
         @classmethod
-        def clear_fields(cls) -> {name}:
+        def cleared(cls) -> {name}:
             """Clear all the fields of a `{name}`."""
+            return cls.from_fields(clear_unset=True)
+        "#
+    ))
+}
+
+fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
+    let parameters = obj
+        .fields
+        .iter()
+        .filter_map(|field| {
+            let mut field = field.make_plural()?;
+            field.is_nullable = true;
+            Some(quote_init_parameter_from_field(
+                &field,
+                objects,
+                &obj.fqname,
+            ))
+        })
+        .collect_vec()
+        .join(",\n");
+    let parameters = indent::indent_by(8, parameters);
+
+    let init_args = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("{field_name}={field_name}")
+        })
+        .collect_vec()
+        .join(",\n");
+    let init_args = indent::indent_by(12, init_args);
+
+    let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
+    let doc = unindent(
+        "\
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+        ",
+    );
+    let mut doc_string_lines = doc.lines().map(|s| s.to_owned()).collect_vec();
+    if !parameter_docs.is_empty() {
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        for doc in parameter_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
+
+    // NOTE: Calling `update_fields` is not an option: we need to be able to pass
+    // plural data, even to singular fields (mono-components).
+    unindent(&format!(
+        r#"
+        @classmethod
+        def columns(
+            cls,
+            *,
+            {parameters},
+        ) -> ComponentColumnList:
+            {doc_block}
             inst = cls.__new__(cls)
-            inst.__attrs_init__(
-                {field_clears}
-            )
-            return inst
+            with catch_and_log_exceptions(context=cls.__name__):
+                inst.__attrs_init__(
+                    {init_args},
+                )
+
+            batches = inst.as_component_batches(include_indicators=False)
+            if len(batches) == 0:
+                return ComponentColumnList([])
+
+            lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+            columns = [batch.partition(lengths) for batch in batches]
+
+            indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+            return ComponentColumnList([indicator_column] + columns)
         "#
     ))
 }

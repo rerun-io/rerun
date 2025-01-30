@@ -67,6 +67,13 @@ impl MyPoints {
 impl re_types_core::Archetype for MyPoints {
     type Indicator = re_types_core::GenericIndicatorComponent<Self>;
 
+    fn indicator() -> SerializedComponentBatch {
+        use re_types_core::ComponentBatch as _;
+        // These is no such thing as failing to serialized an indicator.
+        #[allow(clippy::unwrap_used)]
+        Self::Indicator::default().serialized().unwrap()
+    }
+
     fn name() -> re_types_core::ArchetypeName {
         "example.MyPoints".into()
     }

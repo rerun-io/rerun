@@ -32,7 +32,7 @@ int main() {
         rerun::ColorModel::RGB,
         rerun::ChannelDatatype::U8
     );
-    rec.log_static("images", rerun::borrow(&format), rerun::Image::IndicatorComponent());
+    rec.log_static("images", rerun::Image::update_fields().with_format(format));
 
     // Split up the image data into several components referencing the underlying data.
     const size_t image_size_in_bytes = width * height * 3;
@@ -45,6 +45,6 @@ int main() {
     rec.send_columns(
         "images",
         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
-        rerun::borrow(image_data)
+        rerun::Image().with_many_buffer(std::move(image_data)).columns()
     );
 }

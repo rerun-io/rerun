@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -70,8 +72,8 @@ class Scalar(Archetype):
 
     rr.send_columns(
         "scalars",
-        times=[rr.TimeSequenceColumn("step", times)],
-        components=[rr.components.ScalarBatch(scalars)],
+        indexes=[rr.TimeSequenceColumn("step", times)],
+        columns=rr.Scalar.columns(scalar=scalars),
     )
     ```
     <center>
@@ -117,10 +119,10 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         scalar: datatypes.Float64Like | None = None,
     ) -> Scalar:
         """
@@ -128,7 +130,7 @@ class Scalar(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         scalar:
             The scalar value to log.
@@ -141,7 +143,7 @@ class Scalar(Archetype):
                 "scalar": scalar,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -151,13 +153,47 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Scalar:
+    def cleared(cls) -> Scalar:
         """Clear all the fields of a `Scalar`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        scalar: datatypes.Float64ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        scalar:
+            The scalar value to log.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            scalar=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                scalar=scalar,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     scalar: components.ScalarBatch | None = field(
         metadata={"component": True},

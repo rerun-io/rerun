@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -115,10 +117,10 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
@@ -129,7 +131,7 @@ class SeriesLine(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         color:
             Color for the corresponding series.
@@ -157,7 +159,7 @@ class SeriesLine(Archetype):
                 "aggregation_policy": aggregation_policy,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -167,16 +169,65 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> SeriesLine:
+    def cleared(cls) -> SeriesLine:
         """Clear all the fields of a `SeriesLine`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        color: datatypes.Rgba32ArrayLike | None = None,
+        width: datatypes.Float32ArrayLike | None = None,
+        name: datatypes.Utf8ArrayLike | None = None,
+        aggregation_policy: components.AggregationPolicyArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        color:
+            Color for the corresponding series.
+        width:
+            Stroke width for the corresponding series.
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        aggregation_policy:
+            Configures the zoom-dependent scalar aggregation.
+
+            This is done only if steps on the X axis go below a single pixel,
+            i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+            (and readability) in such situations as it prevents overdraw.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            color=[],
-            width=[],
-            name=[],
-            aggregation_policy=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                color=color,
+                width=width,
+                name=name,
+                aggregation_policy=aggregation_policy,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     color: components.ColorBatch | None = field(
         metadata={"component": True},

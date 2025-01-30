@@ -25,6 +25,52 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Pinhole::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (image_from_camera.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(image_from_camera.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (resolution.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(resolution.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (camera_xyz.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(camera_xyz.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (image_plane_distance.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(image_plane_distance.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Pinhole>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Pinhole::columns() {
+        if (image_from_camera.has_value()) {
+            return columns(std::vector<uint32_t>(image_from_camera.value().length(), 1));
+        }
+        if (resolution.has_value()) {
+            return columns(std::vector<uint32_t>(resolution.value().length(), 1));
+        }
+        if (camera_xyz.has_value()) {
+            return columns(std::vector<uint32_t>(camera_xyz.value().length(), 1));
+        }
+        if (image_plane_distance.has_value()) {
+            return columns(std::vector<uint32_t>(image_plane_distance.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -49,8 +95,7 @@ namespace rerun {
             cells.push_back(archetype.image_plane_distance.value());
         }
         {
-            auto indicator = Pinhole::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Pinhole>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

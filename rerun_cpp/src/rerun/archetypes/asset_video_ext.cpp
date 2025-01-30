@@ -87,6 +87,9 @@ namespace rerun::archetypes {
             return std::vector<std::chrono::nanoseconds>();
         }
         auto blob_list_array = std::dynamic_pointer_cast<arrow::ListArray>(blob.value().array);
+        if (!blob_list_array) {
+            return Error(ErrorCode::InvalidArchetypeField, "Blob array is not a primitive array");
+        }
         auto blob_array =
             std::dynamic_pointer_cast<arrow::PrimitiveArray>(blob_list_array->values());
         if (!blob_array) {

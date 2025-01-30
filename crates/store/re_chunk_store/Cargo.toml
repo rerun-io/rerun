@@ -18,12 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-machete]
-ignored = [
-  # Needed to enable the serde feature of arrow `Datatype`
-  "arrow-schema",
-]
-
 
 [features]
 default = []
@@ -41,6 +35,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_protos.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 
@@ -49,14 +44,12 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-arrow-schema = { workspace = true, features = ["serde"] }
 document-features.workspace = true
 indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot = { workspace = true, features = ["arc_lock"] }
-serde_json.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

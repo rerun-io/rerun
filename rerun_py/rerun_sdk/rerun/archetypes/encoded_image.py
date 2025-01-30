@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 from .encoded_image_ext import EncodedImageExt
@@ -63,10 +65,10 @@ class EncodedImage(EncodedImageExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         blob: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         opacity: datatypes.Float32Like | None = None,
@@ -77,7 +79,7 @@ class EncodedImage(EncodedImageExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         blob:
             The encoded content of some image file, e.g. a PNG or JPEG.
@@ -110,7 +112,7 @@ class EncodedImage(EncodedImageExt, Archetype):
                 "draw_order": draw_order,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -120,16 +122,70 @@ class EncodedImage(EncodedImageExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> EncodedImage:
+    def cleared(cls) -> EncodedImage:
         """Clear all the fields of a `EncodedImage`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        blob: datatypes.BlobArrayLike | None = None,
+        media_type: datatypes.Utf8ArrayLike | None = None,
+        opacity: datatypes.Float32ArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        blob:
+            The encoded content of some image file, e.g. a PNG or JPEG.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `image/jpeg`
+            * `image/png`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            blob=[],
-            media_type=[],
-            opacity=[],
-            draw_order=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                blob=blob,
+                media_type=media_type,
+                opacity=opacity,
+                draw_order=draw_order,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     blob: components.BlobBatch | None = field(
         metadata={"component": True},

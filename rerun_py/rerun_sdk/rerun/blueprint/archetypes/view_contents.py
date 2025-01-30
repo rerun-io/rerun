@@ -95,10 +95,10 @@ class ViewContents(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         query: datatypes.Utf8ArrayLike | None = None,
     ) -> ViewContents:
         """
@@ -106,7 +106,7 @@ class ViewContents(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         query:
             The `QueryExpression` that populates the contents for the view.
@@ -121,7 +121,7 @@ class ViewContents(Archetype):
                 "query": query,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -131,13 +131,9 @@ class ViewContents(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ViewContents:
+    def cleared(cls) -> ViewContents:
         """Clear all the fields of a `ViewContents`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            query=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     query: blueprint_components.QueryExpressionBatch | None = field(
         metadata={"component": True},

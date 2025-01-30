@@ -55,13 +55,8 @@ impl Image {
 
         let (height, width) = (shape[non_empty_dim_inds[0]], shape[non_empty_dim_inds[1]]);
 
-        let image_format = ImageFormat {
-            width: width as _,
-            height: height as _,
-            pixel_format: None,
-            channel_datatype: Some(datatype),
-            color_model: Some(color_model),
-        };
+        let image_format =
+            ImageFormat::from_color_model([width as _, height as _], color_model, datatype);
 
         Ok(Self::new(blob, image_format))
     }
@@ -98,14 +93,7 @@ impl Image {
         datatype: ChannelDatatype,
     ) -> Self {
         let buffer = bytes.into();
-
-        let image_format = ImageFormat {
-            width,
-            height,
-            pixel_format: None,
-            channel_datatype: Some(datatype),
-            color_model: Some(color_model),
-        };
+        let image_format = ImageFormat::from_color_model([width, height], color_model, datatype);
 
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
@@ -175,7 +163,7 @@ impl Image {
 
 #[cfg(feature = "image")]
 impl Image {
-    /// Construct a tensor from the contents of an image file.
+    /// Construct an image from the contents of an image file.
     ///
     /// This will spend CPU cycles decoding the image.
     /// To save CPU time and storage, we recommend you instead use
@@ -192,68 +180,18 @@ impl Image {
         Ok(Self::from_image(image)?)
     }
 
-    /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
+    /// Construct an image from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
     pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageConversionError> {
         Self::from_dynamic_image(image.into())
     }
 
-    /// Construct a tensor from [`image::DynamicImage`].
+    /// Construct an image from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
     pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageConversionError> {
-        re_tracing::profile_function!();
-
-        let res = [image.width(), image.height()];
-
-        match image {
-            image::DynamicImage::ImageLuma8(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
-            }
-            image::DynamicImage::ImageLuma16(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
-            }
-
-            image::DynamicImage::ImageLumaA8(image) => {
-                re_log::warn!(
-                    "Rerun doesn't have native support for 8-bit Luma + Alpha. The image will be convert to RGBA."
-                );
-                Self::from_image(image::DynamicImage::ImageLumaA8(image).to_rgba8())
-            }
-            image::DynamicImage::ImageLumaA16(image) => {
-                re_log::warn!(
-                    "Rerun doesn't have native support for 16-bit Luma + Alpha. The image will be convert to RGBA."
-                );
-                Self::from_image(image::DynamicImage::ImageLumaA16(image).to_rgba16())
-            }
-
-            image::DynamicImage::ImageRgb8(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
-            }
-            image::DynamicImage::ImageRgb16(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
-            }
-            image::DynamicImage::ImageRgb32F(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
-            }
-
-            image::DynamicImage::ImageRgba8(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
-            }
-            image::DynamicImage::ImageRgba16(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
-            }
-            image::DynamicImage::ImageRgba32F(image) => {
-                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
-            }
-
-            _ => {
-                // It is very annoying that DynamicImage is #[non_exhaustive]
-                Err(ImageConversionError::UnsupportedImageColorType(
-                    image.color(),
-                ))
-            }
-        }
+        let (image_buffer, image_format) = ImageBuffer::from_image(image)?;
+        Ok(Self::new(image_buffer, image_format))
     }
 }

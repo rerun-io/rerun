@@ -148,7 +148,7 @@ message GetRecordingSchemaRequest {
 }
 
 message GetRecordingSchemaResponse {
-    repeated rerun.common.v0.ColumnDescriptor column_descriptors = 1;
+    rerun.common.v0.Schema schema = 2;
 }
 
 // ---------------- RegisterRecording ------------------

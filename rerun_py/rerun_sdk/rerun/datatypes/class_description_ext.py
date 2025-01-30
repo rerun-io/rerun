@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 import pyarrow as pa
 
 from .keypoint_pair_ext import _keypoint_pair_converter
 
 if TYPE_CHECKING:
-    from .. import ComponentBatchLike
+    from .. import DescribedComponentBatch
     from . import (
         AnnotationInfo,
         AnnotationInfoLike,
@@ -65,7 +65,7 @@ class ClassDescriptionExt:
         )
 
     # Implement the AsComponents protocol
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+    def as_component_batches(self) -> list[DescribedComponentBatch]:
         from ..archetypes import AnnotationContext
         from . import ClassDescription
 

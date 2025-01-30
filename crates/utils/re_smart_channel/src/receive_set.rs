@@ -118,23 +118,15 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut rx = self.receivers.lock();
 
-        loop {
-            rx.retain(|r| r.is_connected());
-            if rx.is_empty() {
-                return Err(RecvError);
-            }
-
-            let mut sel = Select::new();
-            for r in rx.iter() {
-                sel.recv(&r.rx);
-            }
-
-            let oper = sel.select();
-            let index = oper.index();
-            if let Ok(msg) = oper.recv(&rx[index].rx) {
-                return Ok(msg);
-            }
+        rx.retain(|r| r.is_connected());
+        let mut sel = Select::new();
+        for r in rx.iter() {
+            sel.recv(&r.rx);
         }
+
+        let oper = sel.select();
+        let index = oper.index();
+        oper.recv(&rx[index].rx).map_err(|_err| RecvError)
     }
 
     /// Returns immediately if there is nothing to receive.

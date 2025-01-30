@@ -7,9 +7,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from rerun.error_utils import catch_and_log_exceptions
 
@@ -100,10 +102,10 @@ class AffixFuzzer3(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         fuzz2001: datatypes.AffixFuzzer1Like | None = None,
         fuzz2002: datatypes.AffixFuzzer1Like | None = None,
         fuzz2003: datatypes.AffixFuzzer1Like | None = None,
@@ -148,7 +150,7 @@ class AffixFuzzer3(Archetype):
                 "fuzz2018": fuzz2018,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -158,30 +160,75 @@ class AffixFuzzer3(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AffixFuzzer3:
+    def cleared(cls) -> AffixFuzzer3:
         """Clear all the fields of a `AffixFuzzer3`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        fuzz2001: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2002: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2003: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2004: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2005: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2006: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2007: components.AffixFuzzer7ArrayLike | None = None,
+        fuzz2008: components.AffixFuzzer8ArrayLike | None = None,
+        fuzz2009: components.AffixFuzzer9ArrayLike | None = None,
+        fuzz2010: components.AffixFuzzer10ArrayLike | None = None,
+        fuzz2011: components.AffixFuzzer11ArrayLike | None = None,
+        fuzz2012: components.AffixFuzzer12ArrayLike | None = None,
+        fuzz2013: components.AffixFuzzer13ArrayLike | None = None,
+        fuzz2014: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2015: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2016: components.AffixFuzzer16ArrayLike | None = None,
+        fuzz2017: components.AffixFuzzer17ArrayLike | None = None,
+        fuzz2018: components.AffixFuzzer18ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            fuzz2001=[],
-            fuzz2002=[],
-            fuzz2003=[],
-            fuzz2004=[],
-            fuzz2005=[],
-            fuzz2006=[],
-            fuzz2007=[],
-            fuzz2008=[],
-            fuzz2009=[],
-            fuzz2010=[],
-            fuzz2011=[],
-            fuzz2012=[],
-            fuzz2013=[],
-            fuzz2014=[],
-            fuzz2015=[],
-            fuzz2016=[],
-            fuzz2017=[],
-            fuzz2018=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                fuzz2001=fuzz2001,
+                fuzz2002=fuzz2002,
+                fuzz2003=fuzz2003,
+                fuzz2004=fuzz2004,
+                fuzz2005=fuzz2005,
+                fuzz2006=fuzz2006,
+                fuzz2007=fuzz2007,
+                fuzz2008=fuzz2008,
+                fuzz2009=fuzz2009,
+                fuzz2010=fuzz2010,
+                fuzz2011=fuzz2011,
+                fuzz2012=fuzz2012,
+                fuzz2013=fuzz2013,
+                fuzz2014=fuzz2014,
+                fuzz2015=fuzz2015,
+                fuzz2016=fuzz2016,
+                fuzz2017=fuzz2017,
+                fuzz2018=fuzz2018,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": True},

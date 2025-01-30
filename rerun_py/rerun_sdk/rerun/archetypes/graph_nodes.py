@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -113,10 +115,10 @@ class GraphNodes(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         node_ids: datatypes.Utf8ArrayLike | None = None,
         positions: datatypes.Vec2DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -129,7 +131,7 @@ class GraphNodes(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         node_ids:
             A list of node IDs.
@@ -157,7 +159,7 @@ class GraphNodes(Archetype):
                 "radii": radii,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -167,18 +169,67 @@ class GraphNodes(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> GraphNodes:
+    def cleared(cls) -> GraphNodes:
         """Clear all the fields of a `GraphNodes`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        node_ids: datatypes.Utf8ArrayLike | None = None,
+        positions: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        node_ids:
+            A list of node IDs.
+        positions:
+            Optional center positions of the nodes.
+        colors:
+            Optional colors for the boxes.
+        labels:
+            Optional text labels for the node.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        radii:
+            Optional radii for nodes.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            node_ids=[],
-            positions=[],
-            colors=[],
-            labels=[],
-            show_labels=[],
-            radii=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                node_ids=node_ids,
+                positions=positions,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                radii=radii,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     node_ids: components.GraphNodeBatch | None = field(
         metadata={"component": True},

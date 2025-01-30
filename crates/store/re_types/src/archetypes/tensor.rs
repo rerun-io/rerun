@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -48,10 +48,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Tensor {
     /// The tensor data
-    pub data: crate::components::TensorData,
+    pub data: Option<SerializedComponentBatch>,
 
     /// The expected range of values.
     ///
@@ -64,7 +64,7 @@ pub struct Tensor {
     /// in the contents of the tensor.
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-    pub value_range: Option<crate::components::ValueRange>,
+    pub value_range: Option<SerializedComponentBatch>,
 }
 
 impl Tensor {
@@ -139,9 +139,9 @@ impl ::re_types_core::Archetype for Tensor {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: TensorIndicator = TensorIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        TensorIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -171,53 +171,26 @@ impl ::re_types_core::Archetype for Tensor {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let data = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_data())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Tensor#data")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Tensor#data")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Tensor#data")?
-        };
-        let value_range = if let Some(array) = arrays_by_descr.get(&Self::descriptor_value_range())
-        {
-            <crate::components::ValueRange>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Tensor#value_range")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let data = arrays_by_descr
+            .get(&Self::descriptor_data())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_data()));
+        let value_range = arrays_by_descr
+            .get(&Self::descriptor_value_range())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_value_range())
+            });
         Ok(Self { data, value_range })
     }
 }
 
 impl ::re_types_core::AsComponents for Tensor {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            (Some(&self.data as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_data()),
-                }
-            }),
-            (self
-                .value_range
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_value_range()),
-            }),
+            self.data.clone(),
+            self.value_range.clone(),
         ]
         .into_iter()
         .flatten()
@@ -232,9 +205,99 @@ impl Tensor {
     #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self {
-            data: data.into(),
+            data: try_serialize_field(Self::descriptor_data(), [data]),
             value_range: None,
         }
+    }
+
+    /// Update only some specific fields of a `Tensor`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Tensor`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            data: Some(SerializedComponentBatch::new(
+                crate::components::TensorData::arrow_empty(),
+                Self::descriptor_data(),
+            )),
+            value_range: Some(SerializedComponentBatch::new(
+                crate::components::ValueRange::arrow_empty(),
+                Self::descriptor_value_range(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.data
+                .map(|data| data.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.value_range
+                .map(|value_range| value_range.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        Ok(columns
+            .into_iter()
+            .flatten()
+            .chain([::re_types_core::indicator_column::<Self>(
+                _lengths.into_iter().count(),
+            )?]))
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_data = self.data.as_ref().map(|b| b.array.len());
+        let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
+        let len = None.or(len_data).or(len_value_range).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// The tensor data
+    #[inline]
+    pub fn with_data(mut self, data: impl Into<crate::components::TensorData>) -> Self {
+        self.data = try_serialize_field(Self::descriptor_data(), [data]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_data`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_data(
+        mut self,
+        data: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+    ) -> Self {
+        self.data = try_serialize_field(Self::descriptor_data(), data);
+        self
     }
 
     /// The expected range of values.
@@ -253,7 +316,20 @@ impl Tensor {
         mut self,
         value_range: impl Into<crate::components::ValueRange>,
     ) -> Self {
-        self.value_range = Some(value_range.into());
+        self.value_range = try_serialize_field(Self::descriptor_value_range(), [value_range]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ValueRange`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_value_range`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_value_range(
+        mut self,
+        value_range: impl IntoIterator<Item = impl Into<crate::components::ValueRange>>,
+    ) -> Self {
+        self.value_range = try_serialize_field(Self::descriptor_value_range(), value_range);
         self
     }
 }
@@ -262,11 +338,5 @@ impl ::re_byte_size::SizeBytes for Tensor {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes() + self.value_range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod()
-            && <Option<crate::components::ValueRange>>::is_pod()
     }
 }

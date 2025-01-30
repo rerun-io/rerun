@@ -48,10 +48,10 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         ranges: datatypes.VisibleTimeRangeArrayLike | None = None,
     ) -> VisibleTimeRanges:
         """
@@ -59,7 +59,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         ranges:
             The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
@@ -74,7 +74,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
                 "ranges": ranges,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -84,13 +84,9 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> VisibleTimeRanges:
+    def cleared(cls) -> VisibleTimeRanges:
         """Clear all the fields of a `VisibleTimeRanges`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            ranges=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     ranges: blueprint_components.VisibleTimeRangeBatch | None = field(
         metadata={"component": True},

@@ -66,11 +66,24 @@ impl ViewBlueprint {
 
     /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`].
     ///
-    /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent you
+    /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent, you
     /// must call [`Self::save_to_blueprint_store`].
     pub fn new(view_class: ViewClassIdentifier, recommended: RecommendedView) -> Self {
-        let id = ViewId::random();
+        Self::new_with_id(view_class, recommended, ViewId::random())
+    }
 
+    /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`], using the provided id.
+    ///
+    /// Useful for testing contexts where random ids are not desired. Avoid using in production
+    /// code.
+    ///
+    /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent, you
+    /// must call [`Self::save_to_blueprint_store`].
+    pub fn new_with_id(
+        view_class: ViewClassIdentifier,
+        recommended: RecommendedView,
+        id: ViewId,
+    ) -> Self {
         let path_subs = EntityPathSubs::new_with_origin(&recommended.origin);
         let query_filter = recommended.query_filter.resolve_forgiving(&path_subs);
 

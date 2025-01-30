@@ -7,6 +7,7 @@ namespace rerun.datatypes;
 struct VideoTimestamp (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.NDArray[np.int64]",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.tuple_struct"
 ) {

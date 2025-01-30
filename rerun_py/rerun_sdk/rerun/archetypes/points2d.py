@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 from .points2d_ext import Points2DExt
@@ -121,10 +123,10 @@ class Points2D(Points2DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         positions: datatypes.Vec2DArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -139,7 +141,7 @@ class Points2D(Points2DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         positions:
             All the 2D positions at which the point cloud shows points.
@@ -190,7 +192,7 @@ class Points2D(Points2DExt, Archetype):
                 "keypoint_ids": keypoint_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -200,20 +202,92 @@ class Points2D(Points2DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Points2D:
+    def cleared(cls) -> Points2D:
         """Clear all the fields of a `Points2D`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        positions: datatypes.Vec2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        positions:
+            All the 2D positions at which the point cloud shows points.
+        radii:
+            Optional radii for the points, effectively turning them into circles.
+        colors:
+            Optional colors for the points.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+        labels:
+            Optional text labels for the points.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+        keypoint_ids:
+            Optional keypoint IDs for the points, identifying them within a class.
+
+            If keypoint IDs are passed in but no [`components.ClassId`][rerun.components.ClassId]s were specified, the [`components.ClassId`][rerun.components.ClassId] will
+            default to 0.
+            This is useful to identify points within a single classification (which is identified
+            with `class_id`).
+            E.g. the classification might be 'Person' and the keypoints refer to joints on a
+            detected skeleton.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            positions=[],
-            radii=[],
-            colors=[],
-            labels=[],
-            show_labels=[],
-            draw_order=[],
-            class_ids=[],
-            keypoint_ids=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                positions=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     positions: components.Position2DBatch | None = field(
         metadata={"component": True},

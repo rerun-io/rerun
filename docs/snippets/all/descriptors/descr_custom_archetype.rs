@@ -6,10 +6,6 @@ struct CustomPoints3D {
 }
 
 impl CustomPoints3D {
-    fn indicator() -> rerun::NamedIndicatorComponent {
-        rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into())
-    }
-
     fn overridden_position_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("user.CustomPoints3D".into()),
@@ -26,16 +22,15 @@ impl CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
+    fn as_serialized_batches(&self) -> Vec<rerun::SerializedComponentBatch> {
         [
-            Some(Self::indicator().to_batch()),
-            Some(
-                self.positions
-                    .with_descriptor(Self::overridden_position_descriptor()),
-            ),
+            self.positions.serialized().map(|positions| {
+                positions.with_descriptor_override(Self::overridden_position_descriptor())
+            }),
             self.colors
                 .as_ref()
-                .map(|colors| colors.with_descriptor(Self::overridden_color_descriptor())),
+                .and_then(|colors| colors.serialized())
+                .map(|colors| colors.with_descriptor_override(Self::overridden_color_descriptor())),
         ]
         .into_iter()
         .flatten()
@@ -105,11 +100,6 @@ fn check_tags(rec: &rerun::RecordingStream) {
         descriptors.sort();
 
         let expected = vec![
-            ComponentDescriptor {
-                archetype_name: None,
-                archetype_field_name: None,
-                component_name: "user.CustomPoints3DIndicator".into(),
-            },
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: Some("colors".into()),

@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 from .view_coordinates_ext import ViewCoordinatesExt
@@ -95,10 +97,10 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         xyz: datatypes.ViewCoordinatesLike | None = None,
     ) -> ViewCoordinates:
         """
@@ -106,7 +108,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         xyz:
             The directions of the [x, y, z] axes.
@@ -119,7 +121,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
                 "xyz": xyz,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -129,13 +131,47 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ViewCoordinates:
+    def cleared(cls) -> ViewCoordinates:
         """Clear all the fields of a `ViewCoordinates`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        xyz: datatypes.ViewCoordinatesArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        xyz:
+            The directions of the [x, y, z] axes.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            xyz=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                xyz=xyz,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     xyz: components.ViewCoordinatesBatch | None = field(
         metadata={"component": True},

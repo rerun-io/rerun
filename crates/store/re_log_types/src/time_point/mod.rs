@@ -3,19 +3,22 @@ use std::{
     sync::Arc,
 };
 
-mod non_min_i64;
-mod time_int;
-mod timeline;
+use arrow::datatypes::DataType as ArrowDataType;
 
 use crate::{
     time::{Time, TimeZone},
     ResolvedTimeRange,
 };
 
-// Re-exports
-pub use non_min_i64::{NonMinI64, TryFromIntError};
-pub use time_int::TimeInt;
-pub use timeline::{Timeline, TimelineName};
+mod non_min_i64;
+mod time_int;
+mod timeline;
+
+pub use self::{
+    non_min_i64::{NonMinI64, TryFromIntError},
+    time_int::TimeInt,
+    timeline::{Timeline, TimelineName},
+};
 
 /// A point in time on any number of [`Timeline`]s.
 ///
@@ -188,12 +191,18 @@ impl TimeType {
 
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
-    pub fn datatype(self) -> arrow::datatypes::DataType {
+    pub fn datatype(self) -> ArrowDataType {
         match self {
-            Self::Time => {
-                arrow::datatypes::DataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
-            }
-            Self::Sequence => arrow::datatypes::DataType::Int64,
+            Self::Time => ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None),
+            Self::Sequence => ArrowDataType::Int64,
+        }
+    }
+
+    pub fn from_arrow_datatype(datatype: &ArrowDataType) -> Option<Self> {
+        match datatype {
+            ArrowDataType::Timestamp(_, _) => Some(Self::Time),
+            ArrowDataType::Int64 => Some(Self::Sequence),
+            _ => None,
         }
     }
 

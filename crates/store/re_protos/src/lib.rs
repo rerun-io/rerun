@@ -4,7 +4,8 @@
 //! We want clear separation between 'internal' types and gRPC types and don't want
 //! to use gRPC types in the rerun viewer codebase. That's why we implement all the
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
-//!
+
+mod protobuf_conversions;
 
 pub mod external {
     pub use prost;

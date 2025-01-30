@@ -63,9 +63,7 @@ struct Snippet<'o> {
 struct Snippets<'o> {
     per_feature: BTreeMap<String, Vec<Snippet<'o>>>,
     per_archetype: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
-    per_component: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_archetype_blueprint: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
-    per_component_blueprint: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_view: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
 }
 
@@ -74,9 +72,7 @@ impl<'o> Snippets<'o> {
         let Self {
             per_feature,
             per_archetype,
-            per_component,
             per_archetype_blueprint,
-            per_component_blueprint,
             per_view,
         } = self;
 
@@ -94,10 +90,8 @@ impl<'o> Snippets<'o> {
         };
 
         merge_extend(per_archetype, rhs.per_archetype);
-        merge_extend(per_component, rhs.per_component);
         merge_extend(per_view, rhs.per_view);
         merge_extend(per_archetype_blueprint, rhs.per_archetype_blueprint);
-        merge_extend(per_component_blueprint, rhs.per_component_blueprint);
     }
 }
 
@@ -329,9 +323,7 @@ impl SnippetsRefCodeGenerator {
             .join("\n");
 
         let per_archetype_table = snippets_table(&snippets.per_archetype)?;
-        let per_component_table = snippets_table(&snippets.per_component)?;
         let per_archetype_blueprint_table = snippets_table(&snippets.per_archetype_blueprint)?;
-        let per_component_blueprint_table = snippets_table(&snippets.per_component_blueprint)?;
         let per_view_table = snippets_table(&snippets.per_view)?;
 
         let autogen_warning = format!(
@@ -349,7 +341,7 @@ impl SnippetsRefCodeGenerator {
 
 This file acts as an index reference for all of our [snippets](./README.md).
 
-Use it to quickly find copy-pastable snippets of code for any Rerun feature you're interested in (API, Archetypes, Components, etc).
+Use it to quickly find copy-pastable snippets of code for any Rerun feature you're interested in (APIs, Archetypes, Blueprint, etc).
 
 ---
 
@@ -357,10 +349,8 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 * [Features](#features)
 * [Types](#types)
     * [Archetypes](#archetypes)
-    * [Components](#components)
     * [Views](#views-blueprint)
     * [Archetypes (blueprint)](#archetypes-blueprint)
-    * [Components (blueprint)](#components-blueprint)
 
 
 ## Features
@@ -368,7 +358,6 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 | Feature | Example | Description | Python | Rust | C+⁠+ |
 | ------- | ------- | ----------- | ------ | ---- | --- |
 {per_feature_table}
-
 
 
 ## Types
@@ -381,15 +370,6 @@ _All snippets, organized by the [`Archetype`](https://rerun.io/docs/reference/ty
 | Archetype | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 {per_archetype_table}
-
-
-### Components
-
-_All snippets, organized by the [`Component`](https://rerun.io/docs/reference/types/components)(s) they use._
-
-| Component | Snippet | Description | Python | Rust | C+⁠+ |
-| --------- | ------- | ----------- | ------ | ---- | --- |
-{per_component_table}
 
 
 ### Views (blueprint)
@@ -408,15 +388,6 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | Archetype | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 {per_archetype_blueprint_table}
-
-
-### Components (blueprint)
-
-_All snippets, organized by the blueprint-related [`Component`](https://rerun.io/docs/reference/types/components)(s) they use._
-
-| Component | Snippet | Description | Python | Rust | C+⁠+ |
-| --------- | ------- | ----------- | ------ | ---- | --- |
-{per_component_blueprint_table}
 "
         );
 
@@ -535,15 +506,10 @@ fn collect_snippets_recursively<'o>(
         }
         for (objs, index) in [
             (&snippet.archetypes, &mut snippets.per_archetype),
-            (&snippet.components, &mut snippets.per_component),
             (&snippet.views, &mut snippets.per_view),
             (
                 &snippet.archetypes_blueprint,
                 &mut snippets.per_archetype_blueprint,
-            ),
-            (
-                &snippet.components_blueprint,
-                &mut snippets.per_component_blueprint,
             ),
         ] {
             for obj in objs {

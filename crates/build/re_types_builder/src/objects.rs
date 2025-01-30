@@ -12,8 +12,7 @@ use itertools::Itertools;
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
     FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE, ATTR_RUST_ARCHETYPE_EAGER,
-    ATTR_RUST_ARCHETYPE_NATIVE,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -691,14 +690,6 @@ impl Object {
     pub fn is_archetype(&self) -> bool {
         self.kind == ObjectKind::Archetype
     }
-
-    pub fn is_eager_rust_archetype(&self) -> bool {
-        self.is_archetype() && self.is_attr_set(ATTR_RUST_ARCHETYPE_EAGER)
-    }
-
-    pub fn requires_native_rust_archetype(&self) -> bool {
-        self.is_eager_rust_archetype() && self.is_attr_set(ATTR_RUST_ARCHETYPE_NATIVE)
-    }
 }
 
 pub fn is_testing_fqname(fqname: &str) -> bool {
@@ -956,6 +947,13 @@ impl ObjectField {
             None
         }
     }
+
+    pub fn make_plural(&self) -> Option<Self> {
+        self.typ.make_plural().map(|typ| Self {
+            typ,
+            ..self.clone()
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1119,6 +1117,61 @@ impl Type {
 
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
+        }
+    }
+
+    pub fn make_plural(&self) -> Option<Self> {
+        match self {
+            Self::Vector { elem_type: _ }
+            | Self::Array {
+                elem_type: _,
+                length: _,
+            } => Some(self.clone()),
+
+            Self::UInt8 => Some(Self::Vector {
+                elem_type: ElementType::UInt8,
+            }),
+            Self::UInt16 => Some(Self::Vector {
+                elem_type: ElementType::UInt16,
+            }),
+            Self::UInt32 => Some(Self::Vector {
+                elem_type: ElementType::UInt32,
+            }),
+            Self::UInt64 => Some(Self::Vector {
+                elem_type: ElementType::UInt64,
+            }),
+            Self::Int8 => Some(Self::Vector {
+                elem_type: ElementType::Int8,
+            }),
+            Self::Int16 => Some(Self::Vector {
+                elem_type: ElementType::Int16,
+            }),
+            Self::Int32 => Some(Self::Vector {
+                elem_type: ElementType::Int32,
+            }),
+            Self::Int64 => Some(Self::Vector {
+                elem_type: ElementType::Int64,
+            }),
+            Self::Bool => Some(Self::Vector {
+                elem_type: ElementType::Bool,
+            }),
+            Self::Float16 => Some(Self::Vector {
+                elem_type: ElementType::Float16,
+            }),
+            Self::Float32 => Some(Self::Vector {
+                elem_type: ElementType::Float32,
+            }),
+            Self::Float64 => Some(Self::Vector {
+                elem_type: ElementType::Float64,
+            }),
+            Self::String => Some(Self::Vector {
+                elem_type: ElementType::String,
+            }),
+            Self::Object(obj) => Some(Self::Vector {
+                elem_type: ElementType::Object(obj.clone()),
+            }),
+
+            Self::Unit => None,
         }
     }
 

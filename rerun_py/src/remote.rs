@@ -30,7 +30,6 @@ use re_protos::{
         FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
         RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
-    TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
 
@@ -272,17 +271,21 @@ impl PyStorageNodeClient {
                 recording_id: Some(RecordingId { id }),
             };
 
-            let column_descriptors = self
+            let schema = self
                 .client
                 .get_recording_schema(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner()
-                .column_descriptors
-                .into_iter()
-                .map(|cd| cd.try_into())
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err: TypeConversionError| PyRuntimeError::new_err(err.to_string()))?;
+                .schema
+                .ok_or_else(|| PyRuntimeError::new_err("Missing shcema"))?;
+
+            let arrow_schema = ArrowSchema::try_from(&schema)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let column_descriptors =
+                re_sorbet::ColumnDescriptor::from_arrow_fields(&arrow_schema.fields)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             Ok(PySchema {
                 schema: column_descriptors,

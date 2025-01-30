@@ -111,10 +111,10 @@ class ContainerBlueprint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         container_kind: blueprint_components.ContainerKindLike | None = None,
         display_name: datatypes.Utf8Like | None = None,
         contents: datatypes.EntityPathArrayLike | None = None,
@@ -129,7 +129,7 @@ class ContainerBlueprint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         container_kind:
             The class of the view.
@@ -179,7 +179,7 @@ class ContainerBlueprint(Archetype):
                 "grid_columns": grid_columns,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -189,20 +189,9 @@ class ContainerBlueprint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ContainerBlueprint:
+    def cleared(cls) -> ContainerBlueprint:
         """Clear all the fields of a `ContainerBlueprint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            container_kind=[],
-            display_name=[],
-            contents=[],
-            col_shares=[],
-            row_shares=[],
-            active_tab=[],
-            visible=[],
-            grid_columns=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     container_kind: blueprint_components.ContainerKindBatch | None = field(
         metadata={"component": True},

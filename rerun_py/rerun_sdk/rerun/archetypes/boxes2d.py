@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 from .boxes2d_ext import Boxes2DExt
@@ -67,10 +69,10 @@ class Boxes2D(Boxes2DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         half_sizes: datatypes.Vec2DArrayLike | None = None,
         centers: datatypes.Vec2DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -85,7 +87,7 @@ class Boxes2D(Boxes2DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         half_sizes:
             All half-extents that make up the batch of boxes.
@@ -128,7 +130,7 @@ class Boxes2D(Boxes2DExt, Archetype):
                 "class_ids": class_ids,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -138,20 +140,84 @@ class Boxes2D(Boxes2DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Boxes2D:
+    def cleared(cls) -> Boxes2D:
         """Clear all the fields of a `Boxes2D`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        half_sizes: datatypes.Vec2DArrayLike | None = None,
+        centers: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        half_sizes:
+            All half-extents that make up the batch of boxes.
+        centers:
+            Optional center positions of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+            The default for 2D boxes is 10.0.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            half_sizes=[],
-            centers=[],
-            colors=[],
-            radii=[],
-            labels=[],
-            show_labels=[],
-            draw_order=[],
-            class_ids=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                half_sizes=half_sizes,
+                centers=centers,
+                colors=colors,
+                radii=radii,
+                labels=labels,
+                show_labels=show_labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     half_sizes: components.HalfSize2DBatch | None = field(
         metadata={"component": True},

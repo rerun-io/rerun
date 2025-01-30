@@ -25,6 +25,12 @@ struct ColorArchetype;
 impl re_types::Archetype for ColorArchetype {
     type Indicator = re_types::GenericIndicatorComponent<Self>;
 
+    fn indicator() -> re_types::SerializedComponentBatch {
+        use re_types::ComponentBatch as _;
+        #[allow(clippy::unwrap_used)]
+        Self::Indicator::default().serialized().unwrap()
+    }
+
     fn name() -> re_types::ArchetypeName {
         "InstanceColor".into()
     }

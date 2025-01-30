@@ -6,7 +6,7 @@ from typing import Any, Iterable
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import AsComponents, ComponentBatchLike, ComponentDescriptor
+from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
@@ -50,8 +50,8 @@ class IndicatorComponentBatch:
 @catch_and_log_exceptions()
 def log(
     entity_path: str | list[str],
-    entity: AsComponents | Iterable[ComponentBatchLike],
-    *extra: AsComponents | Iterable[ComponentBatchLike],
+    entity: AsComponents | Iterable[DescribedComponentBatch],
+    *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -170,7 +170,7 @@ def log(
 @catch_and_log_exceptions()
 def log_components(
     entity_path: str | list[str],
-    components: Iterable[ComponentBatchLike],
+    components: Iterable[DescribedComponentBatch],
     *,
     static: bool = False,
     recording: RecordingStream | None = None,

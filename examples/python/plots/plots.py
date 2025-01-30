@@ -101,10 +101,7 @@ def log_classification() -> None:
         rr.log(
             "classification/samples",
             rr.Scalar(g_of_t),
-            [
-                rr.components.Color(color),
-                rr.components.MarkerSize(marker_size),
-            ],
+            rr.SeriesPoint(color=color, marker_size=marker_size),
         )
 
 

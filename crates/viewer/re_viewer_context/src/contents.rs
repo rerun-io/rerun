@@ -101,6 +101,7 @@ impl From<ContainerId> for Contents {
 
 /// The name of a [`Contents`].
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub enum ContentsName {
     /// This [`Contents`] has been given a name by the user.
     Named(String),

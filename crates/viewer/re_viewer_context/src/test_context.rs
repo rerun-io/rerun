@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
 use re_types_core::reflection::Reflection;
 
 use crate::{
@@ -201,6 +201,13 @@ impl TestContext {
         *self.recording_config.time_ctrl.read().timeline()
     }
 
+    pub fn set_active_timeline(&self, timeline: Timeline) {
+        self.recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(timeline);
+    }
+
     pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
         edit_fn(&mut self.selection_state);
 
@@ -305,8 +312,9 @@ impl TestContext {
     /// Notes:
     /// - Uses [`egui::__run_test_ctx`].
     /// - There is a possibility that the closure will be called more than once, see
-    ///   [`egui::Context::run`].
-    //TODO(ab): replace this with a kittest-based helper.
+    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
+    ///   that the closure is called exactly once.
+    //TODO(ab): should this be removed entirely in favor of `run_once_in_egui_central_panel`?
     pub fn run_in_egui_central_panel(
         &self,
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
@@ -320,6 +328,36 @@ impl TestContext {
                 });
             });
         });
+    }
+
+    /// Run the given function once with a [`ViewerContext`] produced by the [`Self`], in the
+    /// context of an [`egui::CentralPanel`].
+    ///
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    ///
+    /// Notes:
+    /// - Uses [`egui::__run_test_ctx`].
+    pub fn run_once_in_egui_central_panel<R>(
+        &self,
+        func: impl FnOnce(&ViewerContext<'_>, &mut egui::Ui) -> R,
+    ) -> R {
+        let mut func = Some(func);
+        let mut result = None;
+
+        egui::__run_test_ctx(|ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let egui_ctx = ui.ctx().clone();
+
+                self.run(&egui_ctx, |ctx| {
+                    if let Some(func) = func.take() {
+                        result = Some(func(ctx, ui));
+                    }
+                });
+            });
+        });
+
+        result.expect("Function should have been called at least once")
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
@@ -379,10 +417,9 @@ impl TestContext {
                 SystemCommand::FileSaver(_) => handled = false,
             }
 
-            eprintln!(
-                "{} system command: {command_name:?}",
-                if handled { "Handled" } else { "Ignored" }
-            );
+            if !handled {
+                eprintln!("Ignored system command: {command_name:?}",);
+            }
         }
     }
 }

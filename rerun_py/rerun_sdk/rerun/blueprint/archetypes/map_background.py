@@ -55,10 +55,10 @@ class MapBackground(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         provider: blueprint_components.MapProviderLike | None = None,
     ) -> MapBackground:
         """
@@ -66,7 +66,7 @@ class MapBackground(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         provider:
             Map provider and style to use.
@@ -81,7 +81,7 @@ class MapBackground(Archetype):
                 "provider": provider,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -91,13 +91,9 @@ class MapBackground(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> MapBackground:
+    def cleared(cls) -> MapBackground:
         """Clear all the fields of a `MapBackground`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            provider=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     provider: blueprint_components.MapProviderBatch | None = field(
         metadata={"component": True},

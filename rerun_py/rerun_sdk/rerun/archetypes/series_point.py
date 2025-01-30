@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -129,10 +131,10 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
@@ -143,7 +145,7 @@ class SeriesPoint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         color:
             Color for the corresponding series.
@@ -167,7 +169,7 @@ class SeriesPoint(Archetype):
                 "marker_size": marker_size,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -177,16 +179,61 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> SeriesPoint:
+    def cleared(cls) -> SeriesPoint:
         """Clear all the fields of a `SeriesPoint`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        color: datatypes.Rgba32ArrayLike | None = None,
+        marker: components.MarkerShapeArrayLike | None = None,
+        name: datatypes.Utf8ArrayLike | None = None,
+        marker_size: datatypes.Float32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        color:
+            Color for the corresponding series.
+        marker:
+            What shape to use to represent the point
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        marker_size:
+            Size of the marker.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            color=[],
-            marker=[],
-            name=[],
-            marker_size=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                color=color,
+                marker=marker,
+                name=name,
+                marker_size=marker_size,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     color: components.ColorBatch | None = field(
         metadata={"component": True},

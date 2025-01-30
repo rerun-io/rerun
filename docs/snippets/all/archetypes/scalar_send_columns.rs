@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let times = TimeColumn::new_sequence("step", 0..STEPS);
     let scalars = (0..STEPS).map(|step| (step as f64 / 10.0).sin());
 
-    rec.send_columns_v2(
+    rec.send_columns(
         "scalars",
         [times],
         rerun::Scalar::update_fields()

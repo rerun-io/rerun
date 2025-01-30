@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any
 
 import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
@@ -22,8 +22,8 @@ class CustomPoints3D(rr.AsComponents):
             archetype_field_name="colors",
         )
 
-    def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
-        return [rr.IndicatorComponentBatch("user.CustomPoints3D"), self.positions, self.colors]
+    def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
+        return [self.positions, self.colors]
 
 
 rr.init("rerun_example_descriptors_custom_archetype")

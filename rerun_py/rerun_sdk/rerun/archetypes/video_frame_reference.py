@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
 from .video_frame_reference_ext import VideoFrameReferenceExt
@@ -31,8 +33,6 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     --------
     ### Video with automatically determined frames:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr
@@ -53,8 +53,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+        indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
     )
     ```
     <center>
@@ -128,10 +128,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         timestamp: datatypes.VideoTimestampLike | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
     ) -> VideoFrameReference:
@@ -140,7 +140,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         timestamp:
             References the closest video frame to this timestamp.
@@ -171,7 +171,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
                 "video_reference": video_reference,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -181,14 +181,66 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> VideoFrameReference:
+    def cleared(cls) -> VideoFrameReference:
         """Clear all the fields of a `VideoFrameReference`."""
+        return cls.from_fields(clear_unset=True)
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        timestamp: datatypes.VideoTimestampArrayLike | None = None,
+        video_reference: datatypes.EntityPathArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        timestamp:
+            References the closest video frame to this timestamp.
+
+            Note that this uses the closest video frame instead of the latest at this timestamp
+            in order to be more forgiving of rounding errors for inprecise timestamp types.
+
+            Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+            This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+            (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+        video_reference:
+            Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
+
+            If none is specified, the video is assumed to be at the same entity.
+            Note that blueprint overrides on the referenced video will be ignored regardless,
+            as this is always interpreted as a reference to the data store.
+
+            For a series of video frame references, it is recommended to specify this path only once
+            at the beginning of the series and then rely on latest-at query semantics to
+            keep the video reference active.
+
+        """
+
         inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            timestamp=[],
-            video_reference=[],
-        )
-        return inst
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                timestamp=timestamp,
+                video_reference=video_reference,
+            )
+
+        batches = inst.as_component_batches(include_indicators=False)
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     timestamp: components.VideoTimestampBatch | None = field(
         metadata={"component": True},
