@@ -1,8 +1,8 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
+use smallvec::SmallVec;
 
-use crate::TimePanelSource;
 use re_chunk_store::ChunkStore;
 use re_data_ui::sorted_component_list_for_ui;
 use re_entity_db::{EntityTree, InstancePath};
@@ -10,7 +10,8 @@ use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 use re_ui::filter_widget::FilterMatcher;
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
-use smallvec::SmallVec;
+
+use crate::time_panel::TimePanelSource;
 
 #[derive(Debug)]
 pub struct StreamsTreeData {
