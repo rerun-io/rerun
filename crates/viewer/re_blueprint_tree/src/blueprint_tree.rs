@@ -667,9 +667,9 @@ impl BlueprintTree {
         let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
 
         if modifiers.shift {
-            if let Some(last_clicked_item) = &self.last_clicked_item {
+            if self.last_clicked_item.is_some() {
                 let items_iterator = self
-                    .items_in_range(ctx, blueprint_tree_data, &item, last_clicked_item)
+                    .items_in_range(ctx, blueprint_tree_data, &item)
                     .into_iter()
                     .map(|item| {
                         (
@@ -695,34 +695,36 @@ impl BlueprintTree {
 
     /// Selects a range of items in the blueprint tree.
     ///
-    /// This method selects all [`Item`]s displayed between the two provided items, inclusive. It
-    /// takes into account the collapsed state, so only actually visible items may be selected.
+    /// This method selects all [`Item`]s displayed between the provided shift-clicked item and the
+    /// exising last-clicked item (if any). It takes into account the collapsed state, so only
+    /// actually visible items may be selected.
     fn items_in_range(
-        &self,
+        &mut self,
         ctx: &ViewerContext<'_>,
         blueprint_tree_data: &BlueprintTreeData,
-        from_item: &Item,
-        to_item: &Item,
+        shift_clicked_item: &Item,
     ) -> Vec<Item> {
         let mut items_in_range = vec![];
-        let mut found_first_boundary_item = false;
+        let mut found_last_clicked_items = false;
+        let mut found_shift_clicked_items = false;
 
         blueprint_tree_data.visit(|blueprint_tree_item| {
             let item = blueprint_tree_item.item();
 
-            if &item == from_item || &item == to_item {
-                if found_first_boundary_item {
-                    // We just found the second boundary item, so we add it to the list and bail
-                    // out.
-                    items_in_range.push(item);
-                    return VisitorControlFlow::Break(());
-                } else {
-                    found_first_boundary_item = true;
-                }
+            if Some(&item) == self.last_clicked_item.as_ref() {
+                found_last_clicked_items = true;
             }
 
-            if found_first_boundary_item {
+            if &item == shift_clicked_item {
+                found_shift_clicked_items = true;
+            }
+
+            if found_last_clicked_items || found_shift_clicked_items {
                 items_in_range.push(item);
+            }
+
+            if found_last_clicked_items && found_shift_clicked_items {
+                return VisitorControlFlow::Break(());
             }
 
             let is_expanded = blueprint_tree_item
@@ -736,7 +738,15 @@ impl BlueprintTree {
             }
         });
 
-        items_in_range
+        if !found_last_clicked_items {
+            // This can happen if the last clicked item became invisible due to collapsing, or if
+            // the user switched to another recording. In either case, we invalidate it.
+            self.last_clicked_item = None;
+
+            vec![]
+        } else {
+            items_in_range
+        }
     }
 
     /// Check if the provided item should be scrolled to.
