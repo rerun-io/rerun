@@ -28,8 +28,13 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_descriptors_custom_component");
     rec.spawn().exit_on_failure();
 
-    CustomPosition3D positions[1] = {{rerun::components::Position3D{1.0f, 2.0f, 3.0f}}};
-    rec.log_static("data", positions);
+    rec.log_static(
+        "data",
+        rerun::ComponentBatch::from_loggable<rerun::components::Position3D>(
+            {1.0f, 2.0f, 3.0f},
+            rerun::Loggable<CustomPosition3D>::Descriptor
+        )
+    );
 
     // The tags are indirectly checked by the Rust version (have a look over there for more info).
 }
