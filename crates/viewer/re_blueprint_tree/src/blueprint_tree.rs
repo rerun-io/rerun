@@ -668,11 +668,21 @@ impl BlueprintTree {
         let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
 
         if modifiers.shift {
-            if self.range_selection_anchor_item.is_some() {
-                let items_iterator = self
-                    .items_in_range(ctx, blueprint_tree_data, &item)
-                    .into_iter()
-                    .map(|item| {
+            if let Some(anchor_item) = &self.range_selection_anchor_item {
+                let items_in_range = Self::items_in_range(
+                    ctx,
+                    blueprint_tree_data,
+                    self.collapse_scope(),
+                    anchor_item,
+                    &item,
+                );
+
+                if items_in_range.is_empty() {
+                    // This can happen if the last clicked item became invisible due to collapsing, or if
+                    // the user switched to another recording. In either case, we invalidate it.
+                    self.range_selection_anchor_item = None;
+                } else {
+                    let items_iterator = items_in_range.into_iter().map(|item| {
                         (
                             item,
                             Some(ItemContext::BlueprintTree {
@@ -681,7 +691,6 @@ impl BlueprintTree {
                         )
                     });
 
-                if items_iterator.len() > 0 {
                     if modifiers.command {
                         ctx.selection_state.extend_selection(items_iterator);
                     } else {
@@ -700,9 +709,10 @@ impl BlueprintTree {
     /// existing last-clicked item (if any). It takes into account the collapsed state, so only
     /// actually visible items may be selected.
     fn items_in_range(
-        &mut self,
         ctx: &ViewerContext<'_>,
         blueprint_tree_data: &BlueprintTreeData,
+        collapse_scope: CollapseScope,
+        anchor_item: &Item,
         shift_clicked_item: &Item,
     ) -> Vec<Item> {
         let mut items_in_range = vec![];
@@ -712,7 +722,7 @@ impl BlueprintTree {
         blueprint_tree_data.visit(|blueprint_tree_item| {
             let item = blueprint_tree_item.item();
 
-            if Some(&item) == self.range_selection_anchor_item.as_ref() {
+            if &item == anchor_item {
                 found_anchor_item = true;
             }
 
@@ -729,7 +739,7 @@ impl BlueprintTree {
             }
 
             let is_expanded = blueprint_tree_item
-                .is_open(ctx.egui_ctx, self.collapse_scope())
+                .is_open(ctx.egui_ctx, collapse_scope)
                 .unwrap_or(false);
 
             if is_expanded {
@@ -739,11 +749,7 @@ impl BlueprintTree {
             }
         });
 
-        if !found_anchor_item {
-            // This can happen if the last clicked item became invisible due to collapsing, or if
-            // the user switched to another recording. In either case, we invalidate it.
-            self.range_selection_anchor_item = None;
-
+        if !found_anchor_item || !found_shift_clicked_items {
             vec![]
         } else {
             items_in_range
