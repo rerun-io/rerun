@@ -78,6 +78,31 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             ),
             "any_value_f64",
         ),
+        TestCase::from_arrow(
+            ComponentName::from("custom_string"),
+            arrow::array::StringArray::from(vec!["Hello World!"]),
+            "any_value_string",
+        ),
+        TestCase::from_arrow(
+            ComponentName::from("custom_url_string"),
+            arrow::array::StringArray::from(vec!["https://rerun.io"]),
+            "any_value_url_string",
+        ),
+        TestCase::from_arrow(
+            ComponentName::from("custom_empty_array"),
+            arrow::array::UInt8Array::from(vec![] as Vec<u8>),
+            "any_value_empty_array",
+        ),
+        TestCase::from_arrow(
+            ComponentName::from("custom_small_array"),
+            arrow::array::UInt8Array::from(vec![42; 10]),
+            "any_value_small_array",
+        ),
+        TestCase::from_arrow(
+            ComponentName::from("custom_large_blob"),
+            arrow::array::UInt8Array::from(vec![42; 3001]),
+            "any_value_large_blob",
+        ),
     ];
 
     //

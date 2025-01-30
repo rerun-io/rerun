@@ -1,4 +1,4 @@
-use re_ui::UiExt;
+use re_ui::{arrow_ui, UiExt};
 use re_viewer_context::ComponentUiRegistry;
 
 use super::EntityDataUi;
@@ -27,9 +27,6 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                 component_raw,
             ) {
                 Ok(components) => match components.len() {
-                    0 => {
-                        ui.weak("(empty)");
-                    }
                     1 => {
                         components[0].entity_data_ui(
                             ctx,
@@ -41,9 +38,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                             db,
                         );
                     }
-                    i => {
-                        ui.label(format!("{} values", re_format::format_uint(i)));
-                    }
+                    _ => arrow_ui(ui, ui_layout, component_raw),
                 },
                 Err(err) => {
                     ui.error_with_details_on_hover("(failed to deserialize)")

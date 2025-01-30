@@ -1,17 +1,6 @@
-use re_types::{
-    components::{Name, Text},
-    datatypes::Utf8,
-    Loggable as _,
-};
-use re_ui::UiExt as _;
-use re_viewer_context::{
-    external::{
-        re_chunk_store::{LatestAtQuery, RowId},
-        re_entity_db::EntityDb,
-        re_log_types::EntityPath,
-    },
-    MaybeMutRef, UiLayout, ViewerContext,
-};
+use re_types::datatypes::Utf8;
+
+use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic singleline string editor.
 pub fn edit_singleline_string(
@@ -71,62 +60,4 @@ fn edit_multiline_string_impl(
     } else {
         UiLayout::SelectionPanel.data_label(ui, value.as_str())
     }
-}
-
-// TODO(#6661): Should be merged with edit_singleline_string.
-#[allow(clippy::too_many_arguments)]
-pub fn display_text_ui(
-    _ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    _query: &LatestAtQuery,
-    _db: &EntityDb,
-    _path: &EntityPath,
-    _row_id: Option<RowId>,
-    data: &dyn arrow::array::Array,
-) {
-    let text = match Text::from_arrow(data) {
-        Ok(text) => text.first().cloned(),
-        Err(err) => {
-            ui.error_label("Failed to deserialize")
-                .on_hover_text(err.to_string());
-            return;
-        }
-    };
-
-    let Some(text) = text else {
-        ui.weak("(none)");
-        return;
-    };
-
-    ui_layout.data_label(ui, text);
-}
-
-// TODO(#6661): Should be merged with edit_singleline_string.
-#[allow(clippy::too_many_arguments)]
-pub fn display_name_ui(
-    _ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    _query: &LatestAtQuery,
-    _db: &EntityDb,
-    _path: &EntityPath,
-    _row_id: Option<RowId>,
-    data: &dyn arrow::array::Array,
-) {
-    let name = match Name::from_arrow(data) {
-        Ok(name) => name.first().cloned(),
-        Err(err) => {
-            ui.error_label("Failed to deserialize")
-                .on_hover_text(err.to_string());
-            return;
-        }
-    };
-
-    let Some(name) = name else {
-        ui.weak("(none)");
-        return;
-    };
-
-    ui_layout.data_label(ui, name);
 }

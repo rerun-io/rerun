@@ -127,9 +127,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             max_row.saturating_sub(1)
         };
 
-        if num_instances == 0 {
-            ui.weak("(empty)");
-        } else if num_instances == 1 {
+        if num_instances <= 1 {
             ctx.component_ui_registry.ui(
                 ctx,
                 ui,
