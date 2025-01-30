@@ -23,16 +23,16 @@ impl rerun::AsComponents for CustomPoints3D {
             .as_serialized_batches()
             .into_iter()
             .chain(
-                [self
-                    .confidences
-                    .as_ref()
-                    .and_then(|batch| batch.serialized())
-                    .map(|batch|
+                std::iter::once(
+                    self.confidences
+                        .as_ref()
+                        .and_then(|batch| batch.serialized())
+                        .map(|batch|
                             // Optionally override the descriptor with extra information.
                             batch
                                 .or_with_archetype_name(|| "user.CustomPoints3D".into())
-                                .or_with_archetype_field_name(|| "confidences".into()))]
-                .into_iter()
+                                .or_with_archetype_field_name(|| "confidences".into())),
+                )
                 .flatten(),
             )
             .collect()
