@@ -131,9 +131,6 @@
   "rust",
   "py",
 ]
-"tutorials/any_values" = [ # Not yet implemented
-  "cpp",
-]
 "tutorials/custom-application-id" = [ # Not a complete examples
   "cpp",
   "rust",
