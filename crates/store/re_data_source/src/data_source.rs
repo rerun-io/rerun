@@ -95,21 +95,17 @@ impl DataSource {
             return Self::RerunGrpcUrl { url: uri };
         }
 
-        // TODO(#8761): URL prefix
-        if uri.starts_with("temp://") {
-            return Self::MessageProxy { url: uri };
-        }
-
         if uri.starts_with("file://") || path.exists() {
             Self::FilePath(file_source, path)
-        } else if uri.starts_with("http://")
-            || uri.starts_with("https://")
-            || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
+        } else if (uri.starts_with("http://") || uri.starts_with("https://"))
+            && (uri.ends_with(".rrd") || uri.ends_with(".rbl"))
         {
             Self::RrdHttpUrl {
                 url: uri,
                 follow: false,
             }
+        } else if uri.starts_with("http://") || uri.starts_with("https://") {
+            Self::MessageProxy { url: uri }
         } else if looks_like_a_file_path(&uri) {
             Self::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
@@ -261,6 +257,8 @@ impl DataSource {
 fn test_data_source_from_uri() {
     use re_log_types::FileSource;
 
+    let mut failed = false;
+
     let file = [
         "file://foo",
         "foo.rrd",
@@ -269,11 +267,15 @@ fn test_data_source_from_uri() {
         "D:/file",
     ];
     let http = [
-        "http://foo.zip",
-        "https://foo.zip",
         "example.zip/foo.rrd",
         "www.foo.zip/foo.rrd",
         "www.foo.zip/blueprint.rbl",
+    ];
+    let grpc = [
+        "http://foo.zip",
+        "https://foo.zip",
+        "http://127.0.0.1:9876",
+        "https://redap.rerun.io",
     ];
 
     let file_source = FileSource::DragAndDrop {
@@ -283,22 +285,36 @@ fn test_data_source_from_uri() {
     };
 
     for uri in file {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::FilePath { .. }
-            ),
-            "Expected {uri:?} to be categorized as FilePath"
-        );
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::FilePath { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as FilePath");
+            failed = true;
+        }
     }
 
     for uri in http {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::RrdHttpUrl { .. }
-            ),
-            "Expected {uri:?} to be categorized as RrdHttpUrl"
-        );
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::RrdHttpUrl { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
+            failed = true;
+        }
+    }
+
+    for uri in grpc {
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::MessageProxy { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as MessageProxy");
+            failed = true;
+        }
+    }
+
+    if failed {
+        panic!("one or more test cases failed");
     }
 }
