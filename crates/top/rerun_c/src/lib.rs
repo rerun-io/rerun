@@ -558,6 +558,45 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 }
 
 #[allow(clippy::result_large_err)]
+fn rr_recording_stream_connect_impl(
+    stream: CRecordingStream,
+    tcp_addr: CStringView,
+    flush_timeout_sec: f32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let tcp_addr = tcp_addr.as_str("tcp_addr")?;
+    let tcp_addr = tcp_addr.parse().map_err(|err| {
+        CError::new(
+            CErrorCode::InvalidSocketAddress,
+            &format!("Failed to parse tcp address {tcp_addr:?}: {err}"),
+        )
+    })?;
+
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+    stream.connect_opts(tcp_addr, flush_timeout);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_connect(
+    id: CRecordingStream,
+    tcp_addr: CStringView,
+    flush_timeout_sec: f32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_connect_grpc_impl(
     stream: CRecordingStream,
     url: CStringView,
@@ -576,18 +615,6 @@ fn rr_recording_stream_connect_grpc_impl(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_connect(
-    id: CRecordingStream,
-    url: CStringView,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
-        err.write_error(error);
-    }
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
@@ -599,7 +626,7 @@ pub extern "C" fn rr_recording_stream_connect_grpc(
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_spawn_grpc_impl(
+fn rr_recording_stream_spawn_impl(
     stream: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
 ) -> Result<(), CError> {
@@ -626,19 +653,7 @@ pub extern "C" fn rr_recording_stream_spawn(
     spawn_opts: *const CSpawnOptions,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_spawn_grpc_impl(id, spawn_opts) {
-        err.write_error(error);
-    }
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_spawn_grpc(
-    id: CRecordingStream,
-    spawn_opts: *const CSpawnOptions,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_spawn_grpc_impl(id, spawn_opts) {
+    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts) {
         err.write_error(error);
     }
 }

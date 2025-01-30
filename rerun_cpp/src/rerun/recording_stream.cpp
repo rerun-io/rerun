@@ -104,8 +104,19 @@ namespace rerun {
         }
     }
 
-    Error RecordingStream::connect(std::string_view url) const {
-        return connect_grpc(url);
+    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
+        return RecordingStream::connect_tcp(tcp_addr, flush_timeout_sec);
+    }
+
+    Error RecordingStream::connect_tcp(std::string_view tcp_addr, float flush_timeout_sec) const {
+        rr_error status = {};
+        rr_recording_stream_connect(
+            _id,
+            detail::to_rr_string(tcp_addr),
+            flush_timeout_sec,
+            &status
+        );
+        return status;
     }
 
     Error RecordingStream::connect_grpc(std::string_view url) const {
@@ -115,14 +126,10 @@ namespace rerun {
     }
 
     Error RecordingStream::spawn(const SpawnOptions& options) const {
-        return spawn_grpc(options);
-    }
-
-    Error RecordingStream::spawn_grpc(const SpawnOptions& options) const {
         rr_spawn_options rerun_c_options = {};
         options.fill_rerun_c_struct(rerun_c_options);
         rr_error status = {};
-        rr_recording_stream_spawn_grpc(_id, &rerun_c_options, &status);
+        rr_recording_stream_spawn(_id, &rerun_c_options, &status);
         return status;
     }
 

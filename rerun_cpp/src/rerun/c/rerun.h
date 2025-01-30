@@ -412,6 +412,21 @@ extern void rr_recording_stream_set_thread_local(
 /// Check whether the recording stream is enabled.
 extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
 
+/// Connect to a remote Rerun Viewer on the given ip:port.
+///
+/// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+///
+/// flush_timeout_sec:
+/// The minimum time the SDK will wait during a flush before potentially
+/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+/// and can cause a call to `flush` to block indefinitely.
+///
+/// This function returns immediately and will only raise an error for argument parsing errors,
+/// not for connection errors as these happen asynchronously.
+extern void rr_recording_stream_connect(
+    rr_recording_stream stream, rr_string tcp_addr, float flush_timeout_sec, rr_error* error
+) __attribute__((deprecated));
+
 /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
 ///
 /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
@@ -428,7 +443,7 @@ extern void rr_recording_stream_connect_grpc(
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
-/// over gRPC.
+/// over TCP.
 ///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
@@ -439,7 +454,12 @@ extern void rr_recording_stream_connect_grpc(
 /// Configuration of the spawned process.
 /// Refer to `rr_spawn_options` documentation for details.
 /// Passing null is valid and will result in the recommended defaults.
-extern void rr_recording_stream_spawn_grpc(
+///
+/// flush_timeout_sec:
+/// The minimum time the SDK will wait during a flush before potentially
+/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+/// and can cause a call to `flush` to block indefinitely.
+extern void rr_recording_stream_spawn(
     rr_recording_stream stream, const rr_spawn_options* spawn_opts, rr_error* error
 );
 
