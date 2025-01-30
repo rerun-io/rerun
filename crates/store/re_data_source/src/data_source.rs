@@ -275,7 +275,6 @@ fn test_data_source_from_uri() {
         "www.foo.zip/foo.rrd",
         "www.foo.zip/blueprint.rbl",
     ];
-    let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
 
     let file_source = FileSource::DragAndDrop {
         recommended_application_id: None,
@@ -300,16 +299,6 @@ fn test_data_source_from_uri() {
                 DataSource::RrdHttpUrl { .. }
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
-        );
-    }
-
-    for uri in ws {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::WebSocketAddr(_)
-            ),
-            "Expected {uri:?} to be categorized as WebSocketAddr"
         );
     }
 }

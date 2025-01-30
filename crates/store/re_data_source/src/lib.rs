@@ -1,7 +1,7 @@
 //! Handles different ways of loading Rerun data, e.g.:
 //!
 //! - Over HTTPS
-//! - Over WebSockets
+//! - Over gRPC
 //! - From disk
 //!
 //! Also handles different file types: rrd, images, text files, 3D models, point clouds…
