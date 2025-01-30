@@ -314,7 +314,5 @@ fn test_data_source_from_uri() {
         }
     }
 
-    if failed {
-        panic!("one or more test cases failed");
-    }
+    assert!(!failed, "one or more test cases failed");
 }
