@@ -336,10 +336,6 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
     /// ## Example
     ///
     /// ```no_run
@@ -359,10 +355,6 @@ impl RecordingStreamBuilder {
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
     ///
@@ -1714,8 +1706,7 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
-    /// the specified address.
+    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
     ///
     /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
     ///
@@ -1727,12 +1718,7 @@ impl RecordingStream {
         self.connect_grpc();
     }
 
-    /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
-    /// the specified address.
-    ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
+    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
