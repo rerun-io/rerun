@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::UiExt as _;
+use crate::{list_item::list_item_scope, UiExt as _};
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,7 +101,7 @@ impl UiLayout {
 
     fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
         if url::Url::parse(text).is_ok() {
-            ui.re_hyperlink(text, text)
+            list_item_scope(ui, text, |ui| ui.re_hyperlink(text, text))
         } else {
             ui.label(galley)
         }
