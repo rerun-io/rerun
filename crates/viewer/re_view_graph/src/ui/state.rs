@@ -13,7 +13,6 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
-    pub rect_in_ui: Option<Rect>,
 }
 
 impl GraphViewState {

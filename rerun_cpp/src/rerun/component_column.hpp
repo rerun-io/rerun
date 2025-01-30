@@ -33,29 +33,11 @@ namespace rerun {
         /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
         /// this specifies the number of components at each time point.
         /// The sum of the lengths must be equal to the number of components in the batch.
-        template <typename T>
-        [[deprecated(
-            "Use from_loggable_with_lengths(components, lengths, descriptor) (with explicit descriptor) instead"
-        )]] static Result<ComponentColumn>
-            from_loggable_with_lengths(
-                const Collection<T>& components, const Collection<uint32_t>& lengths
-            ) {
-            return from_loggable_with_lengths(components, lengths, Loggable<T>::Descriptor);
-        }
-
-        /// Creates a new component column from a collection of component instances.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        ///
-        /// \param components Continuous collection of components which is about to be partitioned.
-        /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
-        /// this specifies the number of components at each time point.
-        /// The sum of the lengths must be equal to the number of components in the batch.
         /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
         static Result<ComponentColumn> from_loggable_with_lengths(
             const Collection<T>& components, const Collection<uint32_t>& lengths,
-            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             auto component_batch_result = ComponentBatch::from_loggable(components, descriptor);
             if (component_batch_result.is_err()) {
@@ -72,26 +54,11 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         ///
         /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
-        template <typename T>
-        [[deprecated("Use from_loggable(components, descriptor) (with explicit descriptor) instead"
-        )]] static Result<ComponentColumn>
-            from_loggable(const Collection<T>& components) {
-            return from_loggable(components, Loggable<T>::Descriptor);
-        }
-
-        /// Creates a new component column from a collection of component instances where each run has a length of one.
-        ///
-        /// When used with `rerun::RecordingStream::send_columns`, this is equivalent to `from_loggable(components, std::vector{1, 1, ...})`.
-        /// I.e. there's a single component for each time point.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        ///
-        /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
         /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
         static Result<ComponentColumn> from_loggable(
             const Collection<T>& components,
-            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             return ComponentColumn::from_loggable_with_lengths(
                 components,

@@ -6,6 +6,8 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use crate::UiLayout;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
+    re_tracing::profile_function!();
+
     use arrow::array::{LargeStringArray, StringArray};
 
     ui.scope(|ui| {
@@ -33,46 +35,31 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             }
         }
 
-        let num_bytes = array.get_buffer_memory_size();
-        if num_bytes < 3_000 {
-            let instance_count = array.len();
+        let instance_count = array.len();
 
-            let options = FormatOptions::default();
-            if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
-                if instance_count == 1 {
-                    ui.monospace(formatter.value(0).to_string());
-                    return;
-                } else {
-                    let response = ui_layout.label(ui, format!("{instance_count} items"));
+        let options = FormatOptions::default()
+            .with_null("null")
+            .with_display_error(true);
+        if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
+            if instance_count == 1 {
+                ui.monospace(formatter.value(0).to_string());
+            } else {
+                let response = ui_layout.label(ui, format!("{instance_count} items"));
 
-                    if instance_count < 100 {
-                        response.on_hover_ui(|ui| {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                            ui.monospace(format!(
-                                "[{}]",
-                                (0..instance_count)
-                                    .map(|index| formatter.value(index).to_string())
-                                    .join(", ")
-                            ));
-                        });
-                    }
+                if instance_count < 100 {
+                    response.on_hover_ui(|ui| {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.monospace(format!(
+                            "[{}]",
+                            (0..instance_count)
+                                .map(|index| formatter.value(index).to_string())
+                                .join(", ")
+                        ));
+                    });
                 }
             }
-            return;
-        }
-
-        // Fallback:
-        let bytes = re_format::format_bytes(num_bytes as _);
-
-        // TODO(emilk): pretty-print data type
-        let data_type_formatted = format!("{:?}", array.data_type());
-
-        if data_type_formatted.len() < 20 {
-            // e.g. "4.2 KiB of Float32"
-            ui_layout.label(ui, format!("{bytes} of {data_type_formatted}"));
         } else {
-            // Huge datatype, probably a union horror show
-            ui_layout.label(ui, format!("{bytes} of data"));
+            // This is unreachable because we use `.with_display_error(true)` above.
         }
     });
 }
