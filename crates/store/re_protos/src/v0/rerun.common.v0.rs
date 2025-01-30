@@ -160,6 +160,49 @@ impl ::prost::Name for Query {
         "/rerun.common.v0.Query".into()
     }
 }
+/// Describes a data/component column, such as `Position3D`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentColumnDescriptor {
+    /// The path of the entity.
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<EntityPath>,
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, tag = "4")]
+    pub component_name: ::prost::alloc::string::String,
+    /// The Arrow datatype of the column.
+    ///
+    /// Currently this is a JSON-encoded `arrow-rs` `DataType`.
+    #[prost(string, tag = "5")]
+    pub datatype: ::prost::alloc::string::String,
+    /// Whether the column is a static column.
+    #[prost(bool, tag = "6")]
+    pub is_static: bool,
+    /// Whether the column is a tombstone column.
+    #[prost(bool, tag = "7")]
+    pub is_tombstone: bool,
+    /// Whether the column is an indicator column.
+    #[prost(bool, tag = "8")]
+    pub is_indicator: bool,
+    /// Whether the column is semantically empty.
+    #[prost(bool, tag = "9")]
+    pub is_semantically_empty: bool,
+}
+impl ::prost::Name for ComponentColumnDescriptor {
+    const NAME: &'static str = "ComponentColumnDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ComponentColumnDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ComponentColumnDescriptor".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ColumnSelection {
     #[prost(message, repeated, tag = "1")]
