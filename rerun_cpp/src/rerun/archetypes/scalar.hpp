@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/scalar.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -69,12 +70,12 @@ namespace rerun::archetypes {
     ///     std::vector<int64_t> times(64);
     ///     std::iota(times.begin(), times.end(), 0);
     ///
-    ///     // Convert to rerun time / scalars
-    ///     auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(times));
-    ///     auto scalar_data_collection =
-    ///         rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
-    ///
-    ///     rec.send_columns("scalars", time_column, scalar_data_collection);
+    ///     // Serialize to columns and send.
+    ///     rec.send_columns(
+    ///         "scalars",
+    ///         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+    ///         rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()
+    ///     );
     /// }
     /// ```
     struct Scalar {
@@ -118,6 +119,31 @@ namespace rerun::archetypes {
             scalar = ComponentBatch::from_loggable(_scalar, Descriptor_scalar).value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `scalar` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_scalar` should
+        /// be used when logging a single row's worth of data.
+        Scalar with_many_scalar(const Collection<rerun::components::Scalar>& _scalar) && {
+            scalar = ComponentBatch::from_loggable(_scalar, Descriptor_scalar).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

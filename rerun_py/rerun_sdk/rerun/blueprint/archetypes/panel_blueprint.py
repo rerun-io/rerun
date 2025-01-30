@@ -53,10 +53,10 @@ class PanelBlueprint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         state: blueprint_components.PanelStateLike | None = None,
     ) -> PanelBlueprint:
         """
@@ -64,7 +64,7 @@ class PanelBlueprint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         state:
             Current state of the panels.
@@ -77,7 +77,7 @@ class PanelBlueprint(Archetype):
                 "state": state,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -87,13 +87,9 @@ class PanelBlueprint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> PanelBlueprint:
+    def cleared(cls) -> PanelBlueprint:
         """Clear all the fields of a `PanelBlueprint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            state=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": True},

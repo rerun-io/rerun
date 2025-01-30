@@ -14,7 +14,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -132,10 +131,10 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
@@ -146,7 +145,7 @@ class SeriesPoint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         color:
             Color for the corresponding series.
@@ -170,7 +169,7 @@ class SeriesPoint(Archetype):
                 "marker_size": marker_size,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -180,16 +179,9 @@ class SeriesPoint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> SeriesPoint:
+    def cleared(cls) -> SeriesPoint:
         """Clear all the fields of a `SeriesPoint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            color=[],
-            marker=[],
-            name=[],
-            marker_size=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -232,15 +224,14 @@ class SeriesPoint(Archetype):
                 marker_size=marker_size,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

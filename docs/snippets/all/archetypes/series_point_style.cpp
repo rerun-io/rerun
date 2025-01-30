@@ -35,6 +35,6 @@ int main() {
         rec.set_time_sequence("step", t);
 
         rec.log("trig/sin", rerun::Scalar(sin(static_cast<double>(t) / 10.0)));
-        rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 10.0f)));
+        rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 10.0)));
     }
 }

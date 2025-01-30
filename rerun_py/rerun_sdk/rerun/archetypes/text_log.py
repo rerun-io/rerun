@@ -14,7 +14,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -101,10 +100,10 @@ class TextLog(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         text: datatypes.Utf8Like | None = None,
         level: datatypes.Utf8Like | None = None,
         color: datatypes.Rgba32Like | None = None,
@@ -114,7 +113,7 @@ class TextLog(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         text:
             The body of the message.
@@ -135,7 +134,7 @@ class TextLog(Archetype):
                 "color": color,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -145,15 +144,9 @@ class TextLog(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> TextLog:
+    def cleared(cls) -> TextLog:
         """Clear all the fields of a `TextLog`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            text=[],
-            level=[],
-            color=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -192,15 +185,14 @@ class TextLog(Archetype):
                 color=color,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

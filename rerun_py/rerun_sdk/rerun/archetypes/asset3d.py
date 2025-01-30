@@ -12,7 +12,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
@@ -77,10 +76,10 @@ class Asset3D(Asset3DExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         blob: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
@@ -90,7 +89,7 @@ class Asset3D(Asset3DExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         blob:
             The asset's bytes.
@@ -121,7 +120,7 @@ class Asset3D(Asset3DExt, Archetype):
                 "albedo_factor": albedo_factor,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -131,15 +130,9 @@ class Asset3D(Asset3DExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Asset3D:
+    def cleared(cls) -> Asset3D:
         """Clear all the fields of a `Asset3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            blob=[],
-            media_type=[],
-            albedo_factor=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -188,15 +181,14 @@ class Asset3D(Asset3DExt, Archetype):
                 albedo_factor=albedo_factor,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

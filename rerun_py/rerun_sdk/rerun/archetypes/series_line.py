@@ -14,7 +14,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -118,10 +117,10 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
@@ -132,7 +131,7 @@ class SeriesLine(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         color:
             Color for the corresponding series.
@@ -160,7 +159,7 @@ class SeriesLine(Archetype):
                 "aggregation_policy": aggregation_policy,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -170,16 +169,9 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> SeriesLine:
+    def cleared(cls) -> SeriesLine:
         """Clear all the fields of a `SeriesLine`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            color=[],
-            width=[],
-            name=[],
-            aggregation_policy=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -226,15 +218,14 @@ class SeriesLine(Archetype):
                 aggregation_policy=aggregation_policy,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

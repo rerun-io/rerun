@@ -172,7 +172,7 @@ class ComponentBatchLike(Protocol):
 class AsComponents(Protocol):
     """Describes interface for interpreting an object as a bundle of Components."""
 
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+    def as_component_batches(self) -> list[DescribedComponentBatch]:
         """
         Returns an iterable of `ComponentBatchLike` objects.
 
@@ -204,24 +204,27 @@ class Archetype:
         return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
 
     @classmethod
-    def indicator(cls) -> ComponentBatchLike:
+    def indicator(cls) -> DescribedComponentBatch:
         """
-        Creates a `ComponentBatchLike` out of the associated indicator component.
+        Creates a `DescribedComponentBatch` out of the associated indicator component.
 
         This allows for associating arbitrary indicator components with arbitrary data.
-        Check out the `manual_indicator` API example to see what's possible.
         """
         from ._log import IndicatorComponentBatch
 
-        return IndicatorComponentBatch(cls.archetype_name())
+        indicator = IndicatorComponentBatch(cls.archetype_name())
+        return DescribedComponentBatch(indicator, indicator.component_descriptor())
 
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+    def as_component_batches(self, *, include_indicators: bool = True) -> list[DescribedComponentBatch]:
         """
         Return all the component batches that make up the archetype.
 
         Part of the `AsComponents` logging interface.
         """
-        yield self.indicator()
+        if include_indicators:
+            batches = [self.indicator()]
+        else:
+            batches = []
 
         for fld in fields(type(self)):
             if "component" in fld.metadata:
@@ -232,7 +235,9 @@ class Archetype:
                         archetype_name=self.archetype_name(),
                         archetype_field_name=fld.name,
                     )
-                    yield DescribedComponentBatch(comp, descr)
+                    batches.append(DescribedComponentBatch(comp, descr))
+
+        return batches
 
     __repr__ = __str__
 
@@ -449,6 +454,9 @@ class ComponentColumnList(Iterable[ComponentColumn]):
 
     def __iter__(self) -> Iterator[ComponentColumn]:
         return iter(self._columns)
+
+    def __len__(self) -> int:
+        return len(self._columns)
 
     def partition(self, lengths: npt.ArrayLike) -> ComponentColumnList:
         """

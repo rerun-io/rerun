@@ -20,15 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .fill(255);
     }
 
-    // Send the ImageFormat and indicator once, as static.
+    // Log the ImageFormat and indicator once, as static.
     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-    rec.send_columns(
-        "images",
-        [],
-        rerun::Image::update_fields()
-            .with_format(format)
-            .columns_of_unit_batches()?,
-    )?;
+    rec.log_static("images", &rerun::Image::update_fields().with_format(format))?;
 
     // Split up the image data into several components referencing the underlying data.
     let image_size_in_bytes = width * height * 3;

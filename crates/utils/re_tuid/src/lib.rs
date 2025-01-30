@@ -6,8 +6,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-mod protobuf_conversions;
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {

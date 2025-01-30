@@ -561,7 +561,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         let chunks =
             PendingRow::many_into_chunks(acc.entity_path.clone(), chunk_max_rows_if_unsorted, rows);
         for chunk in chunks {
-            let chunk = match chunk {
+            let mut chunk = match chunk {
                 Ok(chunk) => chunk,
                 Err(err) => {
                     re_log::error!(%err, "corrupt chunk detected, dropping");
@@ -571,7 +571,15 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
-            tx_chunk.send(chunk).ok();
+
+            let split_indicators = chunk.split_indicators();
+            if !chunk.components.is_empty() {
+                // make sure the chunk didn't contain *only* indicators!
+                tx_chunk.send(chunk).ok();
+            }
+            if let Some(split_indicators) = split_indicators {
+                tx_chunk.send(split_indicators).ok();
+            }
         }
 
         acc.reset();
@@ -600,10 +608,18 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
 
                 match cmd {
-                    Command::AppendChunk(chunk) => {
+                    Command::AppendChunk(mut chunk) => {
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
-                        tx_chunk.send(chunk).ok();
+
+                        let split_indicators = chunk.split_indicators();
+                        if !chunk.components.is_empty() {
+                            // make sure the chunk didn't contain *only* indicators!
+                            tx_chunk.send(chunk).ok();
+                        }
+                        if let Some(split_indicators) = split_indicators {
+                            tx_chunk.send(split_indicators).ok();
+                        }
                     },
                     Command::AppendRow(entity_path, row) => {
                         let acc = accs.entry(entity_path.clone())
@@ -781,6 +797,8 @@ impl PendingRow {
         {
             re_tracing::profile_scope!("compute timeline sets");
 
+            // The hash is deterministic because the traversal of a `TimePoint` is itself
+            // deterministic: `TimePoint` is backed by a `BTreeMap`.
             for row in rows {
                 let mut hasher = ahash::AHasher::default();
                 row.timepoint
@@ -803,6 +821,18 @@ impl PendingRow {
             {
                 re_tracing::profile_scope!("compute datatype sets");
 
+                // The hash is dependent on the order in which the `PendingRow` was created (i.e.
+                // the order in which its components were inserted).
+                //
+                // This is because the components are stored in a `IntMap`, which doesn't do any
+                // hashing. For that reason, the traversal order of a `IntMap` in deterministic:
+                // it's always the same for `IntMap` that share the same keys, as long as these
+                // keys were inserted in the same order.
+                // See `intmap_order_is_deterministic` in the tests below.
+                //
+                // In practice, the `PendingRow`s in a given program are always built in the same
+                // order for the duration of that program, which is why this works.
+                // See `simple_but_hashes_wont_match` in the tests below.
                 for row in rows {
                     let mut hasher = ahash::AHasher::default();
                     row.components
@@ -991,7 +1021,7 @@ impl PendingTimeColumn {
 mod tests {
     use crossbeam::channel::TryRecvError;
 
-    use re_log_types::example_components::{MyPoint, MyPoint64};
+    use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoint64};
     use re_types_core::{Component as _, Loggable as _};
 
     use super::*;
@@ -1011,9 +1041,29 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let labels1 = MyLabel::to_arrow([MyLabel("a".into()), MyLabel("b".into())])?;
+        let labels2 = MyLabel::to_arrow([MyLabel("c".into()), MyLabel("d".into())])?;
+        let labels3 = MyLabel::to_arrow([MyLabel("e".into()), MyLabel("d".into())])?;
+
+        let indices1 = MyIndex::to_arrow([MyIndex(0), MyIndex(1)])?;
+        let indices2 = MyIndex::to_arrow([MyIndex(2), MyIndex(3)])?;
+        let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
+
+        let components1 = [
+            (MyPoint::descriptor(), points1.clone()),
+            (MyLabel::descriptor(), labels1.clone()),
+            (MyIndex::descriptor(), indices1.clone()),
+        ];
+        let components2 = [
+            (MyPoint::descriptor(), points2.clone()),
+            (MyLabel::descriptor(), labels2.clone()),
+            (MyIndex::descriptor(), indices2.clone()),
+        ];
+        let components3 = [
+            (MyPoint::descriptor(), points3.clone()),
+            (MyLabel::descriptor(), labels3.clone()),
+            (MyIndex::descriptor(), indices3.clone()),
+        ];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1053,11 +1103,29 @@ mod tests {
                 timeline1,
                 TimeColumn::new(Some(true), timeline1, vec![42, 43, 44].into()),
             )];
-            let expected_components = [(
-                MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+            let expected_components = [
+                (
+                    MyPoint::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*points1, &*points2, &*points3].map(Some),
+                    )
                     .unwrap(),
-            )];
+                ), //
+                (
+                    MyLabel::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*labels1, &*labels2, &*labels3].map(Some),
+                    )
+                    .unwrap(),
+                ), //
+                (
+                    MyIndex::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*indices1, &*indices2, &*indices3].map(Some),
+                    )
+                    .unwrap(),
+                ), //
+            ];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
@@ -1073,6 +1141,118 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::len_zero)]
+    fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+
+        let timeline1 = Timeline::new_temporal("log_time");
+
+        let timepoint1 = TimePoint::default().with(timeline1, 42);
+        let timepoint2 = TimePoint::default().with(timeline1, 43);
+        let timepoint3 = TimePoint::default().with(timeline1, 44);
+
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+
+        let labels1 = MyLabel::to_arrow([MyLabel("a".into()), MyLabel("b".into())])?;
+        let labels2 = MyLabel::to_arrow([MyLabel("c".into()), MyLabel("d".into())])?;
+        let labels3 = MyLabel::to_arrow([MyLabel("e".into()), MyLabel("d".into())])?;
+
+        let indices1 = MyIndex::to_arrow([MyIndex(0), MyIndex(1)])?;
+        let indices2 = MyIndex::to_arrow([MyIndex(2), MyIndex(3)])?;
+        let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
+
+        let components1 = [
+            (MyIndex::descriptor(), indices1.clone()),
+            (MyPoint::descriptor(), points1.clone()),
+            (MyLabel::descriptor(), labels1.clone()),
+        ];
+        let components2 = [
+            (MyPoint::descriptor(), points2.clone()),
+            (MyLabel::descriptor(), labels2.clone()),
+            (MyIndex::descriptor(), indices2.clone()),
+        ];
+        let components3 = [
+            (MyLabel::descriptor(), labels3.clone()),
+            (MyIndex::descriptor(), indices3.clone()),
+            (MyPoint::descriptor(), points3.clone()),
+        ];
+
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+
+        let entity_path1: EntityPath = "a/b/c".into();
+        batcher.push_row(entity_path1.clone(), row1.clone());
+        batcher.push_row(entity_path1.clone(), row2.clone());
+        batcher.push_row(entity_path1.clone(), row3.clone());
+
+        let chunks_rx = batcher.chunks();
+        drop(batcher); // flush and close
+
+        let mut chunks = Vec::new();
+        loop {
+            let chunk = match chunks_rx.try_recv() {
+                Ok(chunk) => chunk,
+                Err(TryRecvError::Empty) => panic!("expected chunk, got none"),
+                Err(TryRecvError::Disconnected) => break,
+            };
+            chunks.push(chunk);
+        }
+
+        chunks.sort_by_key(|chunk| chunk.row_id_range().unwrap().0);
+
+        // Make the programmer's life easier if this test fails.
+        eprintln!("Chunks:");
+        for chunk in &chunks {
+            eprintln!("{chunk}");
+        }
+
+        // The rows's components were inserted in different orders, and therefore the resulting
+        // `IntMap`s *may* have different traversal orders, which ultimately means that the datatype
+        // hashes *may* end up being different: i.e., possibly no batching.
+        //
+        // In practice, it's still possible to get lucky and end up with two maps that just happen
+        // to share the same iteration order regardless, which is why this assertion is overly broad.
+        // Try running this test with `--show-output`.
+        assert!(chunks.len() >= 1);
+
+        Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::zero_sized_map_values)]
+    fn intmap_order_is_deterministic() {
+        let descriptors = [
+            MyPoint::descriptor(),
+            MyColor::descriptor(),
+            MyLabel::descriptor(),
+            MyPoint64::descriptor(),
+            MyIndex::descriptor(),
+        ];
+
+        let expected: IntMap<ComponentDescriptor, ()> =
+            descriptors.iter().cloned().map(|d| (d, ())).collect();
+        let expected: Vec<_> = expected.into_keys().collect();
+
+        for _ in 0..1_000 {
+            let got_collect: IntMap<ComponentDescriptor, ()> =
+                descriptors.clone().into_iter().map(|d| (d, ())).collect();
+            let got_collect: Vec<_> = got_collect.into_keys().collect();
+
+            let mut got_insert: IntMap<ComponentDescriptor, ()> = Default::default();
+            for d in descriptors.clone() {
+                got_insert.insert(d, ());
+            }
+            let got_insert: Vec<_> = got_insert.into_keys().collect();
+
+            assert_eq!(expected, got_collect);
+            assert_eq!(expected, got_insert);
+        }
     }
 
     /// A bunch of rows that don't fit any of the split conditions should end up together.

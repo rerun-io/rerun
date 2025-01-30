@@ -14,7 +14,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -71,7 +70,7 @@ class Scalar(Archetype):
     times = np.arange(0, 64)
     scalars = np.sin(times / 10.0)
 
-    rr.send_columns_v2(
+    rr.send_columns(
         "scalars",
         indexes=[rr.TimeSequenceColumn("step", times)],
         columns=rr.Scalar.columns(scalar=scalars),
@@ -120,10 +119,10 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         scalar: datatypes.Float64Like | None = None,
     ) -> Scalar:
         """
@@ -131,7 +130,7 @@ class Scalar(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         scalar:
             The scalar value to log.
@@ -144,7 +143,7 @@ class Scalar(Archetype):
                 "scalar": scalar,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -154,13 +153,9 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Scalar:
+    def cleared(cls) -> Scalar:
         """Clear all the fields of a `Scalar`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            scalar=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -189,14 +184,16 @@ class Scalar(Archetype):
                 scalar=scalar,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        return ComponentColumnList(columns)
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     scalar: components.ScalarBatch | None = field(
         metadata={"component": True},

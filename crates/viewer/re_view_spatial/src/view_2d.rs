@@ -7,7 +7,7 @@ use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-    Archetype, ComponentName, ViewClassIdentifier,
+    ComponentName, ViewClassIdentifier,
 };
 use re_ui::UiExt as _;
 use re_view::view_property_ui;
@@ -367,13 +367,12 @@ fn recommended_views_with_image_splits(
         &mut found_image_dimensions,
     );
 
-    use re_types::ComponentBatch as _;
     let image_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
         ctx.recording(),
         subtree,
-        &Image::indicator().name(),
+        &Image::descriptor_indicator().component_name,
     );
 
     let depth_count = count_non_nested_images_with_component(
@@ -381,7 +380,7 @@ fn recommended_views_with_image_splits(
         entities,
         ctx.recording(),
         subtree,
-        &DepthImage::indicator().name(),
+        &DepthImage::descriptor_indicator().component_name,
     );
 
     let video_count = count_non_nested_images_with_component(
@@ -389,7 +388,7 @@ fn recommended_views_with_image_splits(
         entities,
         ctx.recording(),
         subtree,
-        &re_types::archetypes::AssetVideo::indicator().name(),
+        &re_types::archetypes::AssetVideo::descriptor_indicator().component_name,
     );
 
     let all_have_same_size = found_image_dimensions.len() <= 1;

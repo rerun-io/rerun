@@ -12,7 +12,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .pinhole_ext import PinholeExt
@@ -93,10 +92,10 @@ class Pinhole(PinholeExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         image_from_camera: datatypes.Mat3x3Like | None = None,
         resolution: datatypes.Vec2DLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
@@ -107,7 +106,7 @@ class Pinhole(PinholeExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         image_from_camera:
             Camera projection, from image coordinates to view coordinates.
@@ -164,7 +163,7 @@ class Pinhole(PinholeExt, Archetype):
                 "image_plane_distance": image_plane_distance,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -174,16 +173,9 @@ class Pinhole(PinholeExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Pinhole:
+    def cleared(cls) -> Pinhole:
         """Clear all the fields of a `Pinhole`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            image_from_camera=[],
-            resolution=[],
-            camera_xyz=[],
-            image_plane_distance=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -259,15 +251,14 @@ class Pinhole(PinholeExt, Archetype):
                 image_plane_distance=image_plane_distance,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

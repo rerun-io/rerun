@@ -2537,7 +2537,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
         doc_string_lines.push("----------".to_owned());
-        doc_string_lines.push("clear:".to_owned());
+        doc_string_lines.push("clear_unset:".to_owned());
         doc_string_lines
             .push("    If true, all unspecified fields will be explicitly cleared.".to_owned());
         for doc in parameter_docs {
@@ -2546,24 +2546,13 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    let field_clears = obj
-        .fields
-        .iter()
-        .map(|field| {
-            let field_name = field.snake_case_name();
-            format!("{field_name}=[],")
-        })
-        .collect_vec()
-        .join("\n");
-    let field_clears = indent::indent_by(12, field_clears);
-
     unindent(&format!(
         r#"
         @classmethod
-        def update_fields(
+        def from_fields(
             cls,
             *,
-            clear: bool = False,
+            clear_unset: bool = False,
             {parameters},
         ) -> {name}:
             {doc_block}
@@ -2573,7 +2562,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
                     {kwargs},
                 }}
 
-                if clear:
+                if clear_unset:
                     kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
 
                 inst.__attrs_init__(**kwargs)
@@ -2583,13 +2572,9 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             return inst
 
         @classmethod
-        def clear_fields(cls) -> {name}:
+        def cleared(cls) -> {name}:
             """Clear all the fields of a `{name}`."""
-            inst = cls.__new__(cls)
-            inst.__attrs_init__(
-                {field_clears}
-            )
-            return inst
+            return cls.from_fields(clear_unset=True)
         "#
     ))
 }
@@ -2643,19 +2628,6 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
-    let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
-    let pack_and_return = if has_indicator {
-        indent::indent_by(12, unindent("\
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
-
-        return ComponentColumnList([indicator_column] + columns)
-        "))
-    } else {
-        "return ComponentColumnList(columns)".to_owned()
-    };
-
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
     unindent(&format!(
@@ -2673,14 +2645,16 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                     {init_args},
                 )
 
-            batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+            batches = inst.as_component_batches(include_indicators=False)
             if len(batches) == 0:
                 return ComponentColumnList([])
 
             lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
             columns = [batch.partition(lengths) for batch in batches]
 
-            {pack_and_return}
+            indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+
+            return ComponentColumnList([indicator_column] + columns)
         "#
     ))
 }

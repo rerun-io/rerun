@@ -28,14 +28,14 @@ from ._log import IndicatorComponentBatch
 from ._send_columns import TimeColumnLike, send_columns
 from .recording_stream import RecordingStream
 
-SORBET_INDEX_NAME = b"sorbet.index_name"
-SORBET_ENTITY_PATH = b"sorbet.path"
-SORBET_ARCHETYPE_NAME = b"sorbet.semantic_family"
-SORBET_ARCHETYPE_FIELD = b"sorbet.logical_type"
-SORBET_COMPONENT_NAME = b"sorbet.semantic_type"
+SORBET_INDEX_NAME = b"rerun.index_name"
+SORBET_ENTITY_PATH = b"rerun.entity_path"
+SORBET_ARCHETYPE_NAME = b"rerun.archetype"
+SORBET_ARCHETYPE_FIELD = b"rerun.archetype_field"
+SORBET_COMPONENT_NAME = b"rerun.component"
 RERUN_KIND = b"rerun.kind"
 RERUN_KIND_CONTROL = b"control"
-RERUN_KIND_INDEX = b"time"
+RERUN_KIND_INDEX = b"index"
 
 
 class RawIndexColumn(TimeColumnLike):

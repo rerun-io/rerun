@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
@@ -57,7 +58,7 @@ namespace rerun::archetypes {
     ///         rec.set_time_sequence("step", t);
     ///
     ///         rec.log("trig/sin", rerun::Scalar(sin(static_cast<double>(t) / 100.0)));
-    ///         rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 100.0f)));
+    ///         rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 100.0)));
     ///     }
     /// }
     /// ```
@@ -129,8 +130,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `color` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        SeriesLine with_many_color(const Collection<rerun::components::Color>& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Stroke width for the corresponding series.
         SeriesLine with_width(const rerun::components::StrokeWidth& _width) && {
+            width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `width` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_width` should
+        /// be used when logging a single row's worth of data.
+        SeriesLine with_many_width(const Collection<rerun::components::StrokeWidth>& _width) && {
             width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
             return std::move(*this);
         }
@@ -139,6 +158,15 @@ namespace rerun::archetypes {
         ///
         /// Used in the legend.
         SeriesLine with_name(const rerun::components::Name& _name) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `name` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_name` should
+        /// be used when logging a single row's worth of data.
+        SeriesLine with_many_name(const Collection<rerun::components::Name>& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);
         }
@@ -156,6 +184,35 @@ namespace rerun::archetypes {
                     .value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `aggregation_policy` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_aggregation_policy` should
+        /// be used when logging a single row's worth of data.
+        SeriesLine with_many_aggregation_policy(
+            const Collection<rerun::components::AggregationPolicy>& _aggregation_policy
+        ) && {
+            aggregation_policy =
+                ComponentBatch::from_loggable(_aggregation_policy, Descriptor_aggregation_policy)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

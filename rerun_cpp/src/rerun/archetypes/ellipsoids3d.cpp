@@ -40,6 +40,99 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Ellipsoids3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(11);
+        if (half_sizes.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(half_sizes.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (centers.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(centers.value(), lengths_).value_or_throw()
+            );
+        }
+        if (rotation_axis_angles.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(rotation_axis_angles.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (quaternions.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(quaternions.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
+            );
+        }
+        if (line_radii.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(line_radii.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fill_mode.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fill_mode.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
+            );
+        }
+        if (show_labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (class_ids.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Ellipsoids3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Ellipsoids3D::columns() {
+        if (half_sizes.has_value()) {
+            return columns(std::vector<uint32_t>(half_sizes.value().length(), 1));
+        }
+        if (centers.has_value()) {
+            return columns(std::vector<uint32_t>(centers.value().length(), 1));
+        }
+        if (rotation_axis_angles.has_value()) {
+            return columns(std::vector<uint32_t>(rotation_axis_angles.value().length(), 1));
+        }
+        if (quaternions.has_value()) {
+            return columns(std::vector<uint32_t>(quaternions.value().length(), 1));
+        }
+        if (colors.has_value()) {
+            return columns(std::vector<uint32_t>(colors.value().length(), 1));
+        }
+        if (line_radii.has_value()) {
+            return columns(std::vector<uint32_t>(line_radii.value().length(), 1));
+        }
+        if (fill_mode.has_value()) {
+            return columns(std::vector<uint32_t>(fill_mode.value().length(), 1));
+        }
+        if (labels.has_value()) {
+            return columns(std::vector<uint32_t>(labels.value().length(), 1));
+        }
+        if (show_labels.has_value()) {
+            return columns(std::vector<uint32_t>(show_labels.value().length(), 1));
+        }
+        if (class_ids.has_value()) {
+            return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -82,8 +175,7 @@ namespace rerun {
             cells.push_back(archetype.class_ids.value());
         }
         {
-            auto indicator = Ellipsoids3D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Ellipsoids3D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

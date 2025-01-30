@@ -92,10 +92,10 @@ class ViewportBlueprint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: datatypes.BoolLike | None = None,
@@ -107,7 +107,7 @@ class ViewportBlueprint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         root_container:
             The layout of the views
@@ -144,7 +144,7 @@ class ViewportBlueprint(Archetype):
                 "past_viewer_recommendations": past_viewer_recommendations,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -154,17 +154,9 @@ class ViewportBlueprint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ViewportBlueprint:
+    def cleared(cls) -> ViewportBlueprint:
         """Clear all the fields of a `ViewportBlueprint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            root_container=[],
-            maximized=[],
-            auto_layout=[],
-            auto_views=[],
-            past_viewer_recommendations=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": True},

@@ -59,10 +59,10 @@ class ScalarAxis(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         range: datatypes.Range1DLike | None = None,
         zoom_lock: datatypes.BoolLike | None = None,
     ) -> ScalarAxis:
@@ -71,7 +71,7 @@ class ScalarAxis(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         range:
             The range of the axis.
@@ -89,7 +89,7 @@ class ScalarAxis(Archetype):
                 "zoom_lock": zoom_lock,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -99,14 +99,9 @@ class ScalarAxis(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ScalarAxis:
+    def cleared(cls) -> ScalarAxis:
         """Clear all the fields of a `ScalarAxis`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            range=[],
-            zoom_lock=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     range: components.Range1DBatch | None = field(
         metadata={"component": True},

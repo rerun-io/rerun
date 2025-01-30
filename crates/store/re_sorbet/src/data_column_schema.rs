@@ -170,25 +170,21 @@ impl ComponentColumnDescriptor {
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         [
-            (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
-            (*is_indicator).then_some(("sorbet.is_indicator".to_owned(), "yes".to_owned())),
-            (*is_tombstone).then_some(("sorbet.is_tombstone".to_owned(), "yes".to_owned())),
-            (*is_semantically_empty)
-                .then_some(("sorbet.is_semantically_empty".to_owned(), "yes".to_owned())),
-            Some(("sorbet.path".to_owned(), entity_path.to_string())),
-            Some((
-                "sorbet.semantic_type".to_owned(),
-                component_name.short_name().to_owned(),
-            )),
-            archetype_name.map(|name| {
-                (
-                    "sorbet.semantic_family".to_owned(),
-                    name.short_name().to_owned(),
-                )
-            }),
+            Some(("rerun.kind".to_owned(), "data".to_owned())),
+            Some(("rerun.entity_path".to_owned(), entity_path.to_string())),
+            archetype_name.map(|name| ("rerun.archetype".to_owned(), name.short_name().to_owned())),
             archetype_field_name
                 .as_ref()
-                .map(|name| ("sorbet.logical_type".to_owned(), name.to_string())),
+                .map(|name| ("rerun.archetype_field".to_owned(), name.to_string())),
+            Some((
+                "rerun.component".to_owned(),
+                component_name.short_name().to_owned(),
+            )),
+            (*is_static).then_some(("rerun.is_static".to_owned(), "yes".to_owned())),
+            (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "yes".to_owned())),
+            (*is_tombstone).then_some(("rerun.is_tombstone".to_owned(), "yes".to_owned())),
+            (*is_semantically_empty)
+                .then_some(("rerun.is_semantically_empty".to_owned(), "yes".to_owned())),
         ]
         .into_iter()
         .flatten()
@@ -228,14 +224,14 @@ impl TryFrom<&ArrowField> for ComponentColumnDescriptor {
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
         Ok(Self {
             store_datatype: field.data_type().clone(),
-            entity_path: EntityPath::parse_forgiving(field.get_or_err("sorbet.path")?),
-            archetype_name: field.get_opt("sorbet.semantic_family").map(|x| x.into()),
-            archetype_field_name: field.get_opt("sorbet.logical_type").map(|x| x.into()),
-            component_name: field.get_or_err("sorbet.semantic_type")?.into(),
-            is_static: field.get_bool("sorbet.is_static"),
-            is_indicator: field.get_bool("sorbet.is_indicator"),
-            is_tombstone: field.get_bool("sorbet.is_tombstone"),
-            is_semantically_empty: field.get_bool("sorbet.is_semantically_empty"),
+            entity_path: EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?),
+            archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
+            archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
+            component_name: field.get_or_err("rerun.component")?.into(),
+            is_static: field.get_bool("rerun.is_static"),
+            is_indicator: field.get_bool("rerun.is_indicator"),
+            is_tombstone: field.get_bool("rerun.is_tombstone"),
+            is_semantically_empty: field.get_bool("rerun.is_semantically_empty"),
         })
     }
 }

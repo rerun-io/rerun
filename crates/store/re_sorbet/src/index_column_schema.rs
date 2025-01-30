@@ -73,10 +73,11 @@ impl TimeColumnDescriptor {
 
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
 
-        let metadata = std::iter::once(Some((
-            "sorbet.index_name".to_owned(),
-            timeline.name().to_string(),
-        )))
+        let metadata = [
+            Some(("rerun.kind".to_owned(), "index".to_owned())),
+            Some(("rerun.index_name".to_owned(), timeline.name().to_string())),
+        ]
+        .into_iter()
         .flatten()
         .collect();
 
@@ -98,10 +99,10 @@ impl TryFrom<&ArrowField> for TimeColumnDescriptor {
     type Error = UnsupportedTimeType;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        let name = if let Some(name) = field.metadata().get("sorbet.index_name") {
+        let name = if let Some(name) = field.metadata().get("rerun.index_name") {
             name.to_owned()
         } else {
-            re_log::warn_once!("Timeline '{}' is missing 'sorbet.index_name' metadata. Falling back on field/column name", field.name());
+            re_log::warn_once!("Timeline '{}' is missing 'rerun.index_name' metadata. Falling back on field/column name", field.name());
             field.name().to_owned()
         };
 

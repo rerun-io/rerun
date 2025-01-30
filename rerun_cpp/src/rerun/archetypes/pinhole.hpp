@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
@@ -236,6 +237,19 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `image_from_camera` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_image_from_camera` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_image_from_camera(
+            const Collection<rerun::components::PinholeProjection>& _image_from_camera
+        ) && {
+            image_from_camera =
+                ComponentBatch::from_loggable(_image_from_camera, Descriptor_image_from_camera)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Pixel resolution (usually integers) of child image space. Width and height.
         ///
         /// Example:
@@ -245,6 +259,17 @@ namespace rerun::archetypes {
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
         Pinhole with_resolution(const rerun::components::Resolution& _resolution) && {
+            resolution =
+                ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `resolution` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_resolution` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_resolution(const Collection<rerun::components::Resolution>& _resolution
+        ) && {
             resolution =
                 ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
             return std::move(*this);
@@ -283,6 +308,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `camera_xyz` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_camera_xyz` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_camera_xyz(
+            const Collection<rerun::components::ViewCoordinates>& _camera_xyz
+        ) && {
+            camera_xyz =
+                ComponentBatch::from_loggable(_camera_xyz, Descriptor_camera_xyz).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
         ///
         /// This is only used for visualization purposes, and does not affect the projection itself.
@@ -296,6 +333,37 @@ namespace rerun::archetypes {
                                        .value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `image_plane_distance` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_image_plane_distance` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_image_plane_distance(
+            const Collection<rerun::components::ImagePlaneDistance>& _image_plane_distance
+        ) && {
+            image_plane_distance = ComponentBatch::from_loggable(
+                                       _image_plane_distance,
+                                       Descriptor_image_plane_distance
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

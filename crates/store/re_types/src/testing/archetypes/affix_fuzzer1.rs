@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -361,9 +361,9 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: AffixFuzzer1Indicator = AffixFuzzer1Indicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        AffixFuzzer1Indicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -491,7 +491,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer1 {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Self::indicator().serialized(),
+            Some(Self::indicator()),
             self.fuzz1001.clone(),
             self.fuzz1002.clone(),
             self.fuzz1003.clone(),
@@ -764,9 +764,12 @@ impl AffixFuzzer1 {
                 .map(|fuzz1022| fuzz1022.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
+        Ok(columns
+            .into_iter()
+            .flatten()
+            .chain([::re_types_core::indicator_column::<Self>(
+                _lengths.into_iter().count(),
+            )?]))
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

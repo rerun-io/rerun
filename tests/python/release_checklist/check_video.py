@@ -41,11 +41,8 @@ def run(args: Namespace) -> None:
         rr.send_columns(
             codec,
             # Note timeline values don't have to be the same as the video timestamps.
-            times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-            components=[
-                rr.VideoFrameReference.indicator(),
-                rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns),
-            ],
+            indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+            columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
         )
 
     # Use the av1 also in a 3D context

@@ -49,6 +49,7 @@ pub struct ListItem {
     force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
     height: f32,
+    render_offscreen: bool,
 }
 
 impl Default for ListItem {
@@ -62,6 +63,7 @@ impl Default for ListItem {
             force_background: None,
             collapse_openness: None,
             height: DesignTokens::list_item_height(),
+            render_offscreen: true,
         }
     }
 }
@@ -137,6 +139,18 @@ impl ListItem {
     #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
         self.height = height;
+        self
+    }
+
+    /// Controls whether [`Self`] calls [`ListItemContent::ui`] when the item is not currently
+    /// visible.
+    ///
+    /// Skipping rendering can increase performances for long lists that are mostly out of view, but
+    /// this will prevent any side effects from [`ListItemContent::ui`] from occurring. For this
+    /// reason, this is an opt-in optimization.
+    #[inline]
+    pub fn render_offscreen(mut self, render_offscreen: bool) -> Self {
+        self.render_offscreen = render_offscreen;
         self
     }
 
@@ -274,6 +288,7 @@ impl ListItem {
             force_background,
             collapse_openness,
             height,
+            render_offscreen,
         } = self;
 
         let collapse_extra = if collapse_openness.is_some() {
@@ -328,6 +343,14 @@ impl ListItem {
         // could trigger `show_body_indented` (in `Self::show_hierarchical_with_children`) to
         // allocate past the available width.
         response.rect = rect;
+
+        let should_render = render_offscreen || ui.is_rect_visible(rect);
+        if !should_render {
+            return ListItemResponse {
+                response,
+                collapse_response: None,
+            };
+        }
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();

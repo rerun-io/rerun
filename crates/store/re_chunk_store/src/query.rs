@@ -117,25 +117,32 @@ impl ChunkStore {
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().copied().collect()
-            });
+                static_chunks_per_component
+                    .keys()
+                    .copied()
+                    .collect::<UnorderedComponentNameSet>()
+            })
+            .filter(|names| !names.is_empty());
 
         let temporal_components: Option<UnorderedComponentNameSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .filter(|(cur_timeline, _)| *cur_timeline == timeline)
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.keys().copied()
+                    .get(timeline)
+                    .map(|temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component
+                            .keys()
+                            .copied()
+                            .collect::<UnorderedComponentNameSet>()
                     })
-                    .collect()
-            });
+                    .unwrap_or_default()
+            })
+            .filter(|names| !names.is_empty());
 
         match (static_components, temporal_components) {
             (None, None) => None,
-            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
+            (None, Some(comps)) | (Some(comps), None) => Some(comps),
             (Some(static_comps), Some(temporal_comps)) => {
                 Some(static_comps.into_iter().chain(temporal_comps).collect())
             }
@@ -159,25 +166,32 @@ impl ChunkStore {
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().copied().collect()
-            });
+                static_chunks_per_component
+                    .keys()
+                    .copied()
+                    .collect::<ComponentNameSet>()
+            })
+            .filter(|names| !names.is_empty());
 
         let temporal_components: Option<ComponentNameSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .filter(|(cur_timeline, _)| *cur_timeline == timeline)
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.keys().copied()
+                    .get(timeline)
+                    .map(|temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component
+                            .keys()
+                            .copied()
+                            .collect::<ComponentNameSet>()
                     })
-                    .collect()
-            });
+                    .unwrap_or_default()
+            })
+            .filter(|names| !names.is_empty());
 
         match (static_components, temporal_components) {
             (None, None) => None,
-            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
+            (None, Some(comps)) | (Some(comps), None) => Some(comps),
             (Some(static_comps), Some(temporal_comps)) => {
                 Some(static_comps.into_iter().chain(temporal_comps).collect())
             }

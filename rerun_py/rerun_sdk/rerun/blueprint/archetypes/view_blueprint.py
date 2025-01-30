@@ -80,10 +80,10 @@ class ViewBlueprint(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         class_identifier: datatypes.Utf8Like | None = None,
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
@@ -94,7 +94,7 @@ class ViewBlueprint(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         class_identifier:
             The class of the view.
@@ -124,7 +124,7 @@ class ViewBlueprint(Archetype):
                 "visible": visible,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -134,16 +134,9 @@ class ViewBlueprint(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> ViewBlueprint:
+    def cleared(cls) -> ViewBlueprint:
         """Clear all the fields of a `ViewBlueprint`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            class_identifier=[],
-            display_name=[],
-            space_origin=[],
-            visible=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     class_identifier: blueprint_components.ViewClassBatch | None = field(
         metadata={"component": True},

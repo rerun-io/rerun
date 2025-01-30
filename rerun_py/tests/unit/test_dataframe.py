@@ -398,4 +398,12 @@ class TestDataframe:
 
         df_round_trip = round_trip_recording.view(index="my_index", contents="/**").select().read_all()
 
+        print("df:")
+        print(df)
+        print()
+
+        print("df_round_trip:")
+        print(df_round_trip)
+        print()
+
         assert df == df_round_trip
