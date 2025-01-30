@@ -287,7 +287,7 @@ impl ViewBlueprint {
         let contents = ViewContents::new(
             new_id,
             self.class_identifier,
-            self.contents.entity_path_filter.clone(),
+            self.contents.entity_path_filter().clone(),
         );
 
         Self {

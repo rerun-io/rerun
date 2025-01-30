@@ -62,7 +62,7 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBluepr
 
     let tree = &ctx.recording().tree();
     let query_result = ctx.lookup_query_result(view.id);
-    let entity_path_filter = &view.contents.entity_path_filter;
+    let entity_path_filter = view.contents.entity_path_filter();
     let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);
 
     list_item::list_item_scope(ui, "view_entity_picker", |ui| {
