@@ -24,6 +24,7 @@ default = []
 
 
 [dependencies]
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
@@ -32,6 +33,7 @@ re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["image", "video"] }
+re_sorbet.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
