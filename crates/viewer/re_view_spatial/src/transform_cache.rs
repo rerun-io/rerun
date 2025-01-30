@@ -41,6 +41,11 @@ pub struct TransformCacheStoreSubscriber {
 
     per_timeline: HashMap<Timeline, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
+    // Need to keep track of all recursive clears that ever happened.
+    //
+    // Otherwise, new incoming entities may not correctly change their transform at the time of clear
+    //recursive_clears: HashSet<EntityPath>,
+    // TODO:
 }
 
 impl Default for TransformCacheStoreSubscriber {
@@ -85,6 +90,9 @@ bitflags::bitflags! {
 
         /// The entity has a pinhole projection or view coordinates, i.e. either [`components::PinholeProjection`] or [`components::ViewCoordinates`].
         const PinholeOrViewCoordinates = 1 << 2;
+
+        /// The entity has a clear component.
+        const Clear = 1 << 3;
     }
 }
 
@@ -351,7 +359,7 @@ impl TransformCacheStoreSubscriber {
 
                 for time in times {
                     let query = LatestAtQuery::new(*timeline, time);
-                    if aspects.contains(TransformAspect::Tree) {
+                    if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
                         let transform = query_and_resolve_tree_transform_at_entity(
                             &entity_path,
                             entity_db,
@@ -361,7 +369,7 @@ impl TransformCacheStoreSubscriber {
                         // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
                         entity_entry.tree_transforms.insert(time, transform);
                     }
-                    if aspects.contains(TransformAspect::Pose) {
+                    if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
                         let poses = query_and_resolve_instance_poses_at_entity(
                             &entity_path,
                             entity_db,
@@ -373,7 +381,9 @@ impl TransformCacheStoreSubscriber {
                             .get_or_insert_with(Box::default)
                             .insert(time, poses);
                     }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                    if aspects.intersects(
+                        TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear,
+                    ) {
                         let pinhole_projection = query_and_resolve_pinhole_projection_at_entity(
                             &entity_path,
                             entity_db,
@@ -421,18 +431,20 @@ impl TransformCacheStoreSubscriber {
                 continue;
             };
             if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
-                if aspects.contains(TransformAspect::Tree) {
+                if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
                     let invalidated_tree_transforms =
                         entity_entry.tree_transforms.split_off(&min_time);
                     invalidated_times.extend(invalidated_tree_transforms.into_keys());
                 }
-                if aspects.contains(TransformAspect::Pose) {
+                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
                     if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
                         let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
                         invalidated_times.extend(invalidated_pose_transforms.into_keys());
                     }
                 }
-                if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                if aspects
+                    .intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear)
+                {
                     if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
                         let invalidated_pinhole_projections =
                             pinhole_projections.split_off(&min_time);
@@ -467,67 +479,67 @@ impl TransformCacheStoreSubscriber {
 
         let entity_path = event.chunk.entity_path();
 
-            self.static_timeline
-                .invalidated_transforms
-                .push(InvalidatedTransforms {
-                    entity_path: entity_path.clone(),
-                    times: vec![TimeInt::STATIC],
-                    aspects,
+        self.static_timeline
+            .invalidated_transforms
+            .push(InvalidatedTransforms {
+                entity_path: entity_path.clone(),
+                times: vec![TimeInt::STATIC],
+                aspects,
+            });
+
+        // Adding a static transform invalidates ALL times for this entity on ALL timelines, since the resulting transforms at all times may be different now.
+        // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
+        for (timeline, per_timeline_transforms) in &mut self.per_timeline {
+            let entity_transforms = per_timeline_transforms
+                .per_entity
+                .entry(entity_path.hash())
+                .or_insert_with(|| {
+                    // Need to add an entry now if there wasn't one before.
+                    // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
+                    TransformsForEntity::new(
+                        Some(*timeline),
+                        self.static_timeline.per_entity.get(&entity_path.hash()),
+                    )
                 });
-
-            // Adding a static transform invalidates ALL times for this entity on ALL timelines, since the resulting transforms at all times may be different now.
-            // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
-            for (timeline, per_timeline_transforms) in &mut self.per_timeline {
-                let entity_transforms = per_timeline_transforms
-                    .per_entity
-                    .entry(entity_path.hash())
-                    .or_insert_with(|| {
-                        // Need to add an entry now if there wasn't one before.
-                        // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
-                        TransformsForEntity::new(
-                            Some(*timeline),
-                            self.static_timeline.per_entity.get(&entity_path.hash()),
-                        )
+            if aspects.contains(TransformAspect::Tree) {
+                per_timeline_transforms
+                    .invalidated_transforms
+                    .push(InvalidatedTransforms {
+                        entity_path: entity_path.clone(),
+                        times: std::iter::once(TimeInt::STATIC)
+                            .chain(entity_transforms.tree_transforms.keys().copied())
+                            .collect(),
+                        aspects,
                     });
-                if aspects.contains(TransformAspect::Tree) {
-                    per_timeline_transforms
-                        .invalidated_transforms
-                        .push(InvalidatedTransforms {
-                            entity_path: entity_path.clone(),
-                            times: std::iter::once(TimeInt::STATIC)
-                                .chain(entity_transforms.tree_transforms.keys().copied())
-                                .collect(),
-                            aspects,
-                        });
+            }
+            if aspects.contains(TransformAspect::Pose) {
+                let mut times = vec![TimeInt::STATIC];
+                if let Some(pose_transforms) = &entity_transforms.pose_transforms {
+                    times.extend(pose_transforms.keys().copied());
                 }
-                if aspects.contains(TransformAspect::Pose) {
-                    let mut times = vec![TimeInt::STATIC];
-                    if let Some(pose_transforms) = &entity_transforms.pose_transforms {
-                        times.extend(pose_transforms.keys().copied());
-                    }
 
-                    per_timeline_transforms
-                        .invalidated_transforms
-                        .push(InvalidatedTransforms {
-                            entity_path: entity_path.clone(),
-                            times,
-                            aspects,
-                        });
+                per_timeline_transforms
+                    .invalidated_transforms
+                    .push(InvalidatedTransforms {
+                        entity_path: entity_path.clone(),
+                        times,
+                        aspects,
+                    });
+            }
+            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                let mut times = vec![TimeInt::STATIC];
+                if let Some(pinhole_projections) = &entity_transforms.pinhole_projections {
+                    times.extend(pinhole_projections.keys().copied());
                 }
-                if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                    let mut times = vec![TimeInt::STATIC];
-                    if let Some(pinhole_projections) = &entity_transforms.pinhole_projections {
-                        times.extend(pinhole_projections.keys().copied());
-                    }
 
-                    per_timeline_transforms
-                        .invalidated_transforms
-                        .push(InvalidatedTransforms {
-                            entity_path: entity_path.clone(),
-                            times,
-                            aspects,
-                        });
-                }
+                per_timeline_transforms
+                    .invalidated_transforms
+                    .push(InvalidatedTransforms {
+                        entity_path: entity_path.clone(),
+                        times,
+                        aspects,
+                    });
+            }
             // Don't care about clears here, they don't have any effect for keeping track of changes when logged static.
         }
     }
@@ -621,10 +633,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 if self.pinhole_components.contains(&component_name) {
                     aspects |= TransformAspect::PinholeOrViewCoordinates;
                 }
-                if self
-                    .pinhole_components
-                    .contains(&re_types::components::ClearIsRecursive::name())
-                {
+                if component_name == re_types::components::ClearIsRecursive::name() {
                     aspects |= TransformAspect::Clear;
                 }
             }
@@ -852,9 +861,7 @@ fn query_and_resolve_pinhole_projection_at_entity(
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk_store::{
-        external::re_chunk::ChunkBuilder, Chunk, ChunkId, GarbageCollectionOptions, RowId,
-    };
+    use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::TimePoint;
     use re_types::{archetypes, Loggable, SerializedComponentBatch};
 
@@ -903,8 +910,7 @@ mod tests {
         // Print the flavor to its shown on test failure.
         println!("{flavor:?}");
 
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         match flavor {
             StaticTestFlavor::StaticThenRegular { update_inbetween } => {
@@ -942,20 +948,21 @@ mod tests {
         entity_db
     }
 
-    fn ensure_subscriber_registered(entity_db: &EntityDb) {
+    fn new_entity_db_with_subscriber_registered() -> EntityDb {
+        let entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
             // Make sure the subscriber is registered.
         });
+        entity_db
     }
 
     #[test]
     fn test_transforms_per_timeline_access() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        let chunk0 = ChunkBuilder::new(ChunkId::new(), EntityPath::from("with_transform"))
+        let chunk0 = Chunk::builder(EntityPath::from("with_transform"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -963,7 +970,7 @@ mod tests {
             )
             .build()
             .unwrap();
-        let chunk1 = ChunkBuilder::new(ChunkId::new(), EntityPath::from("without_transform"))
+        let chunk1 = Chunk::builder(EntityPath::from("without_transform"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -999,28 +1006,26 @@ mod tests {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
-            let prior_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        // Make sure only translation is logged (no null arrays for everything else).
-                        &archetypes::Transform3D::update_fields()
-                            .with_translation([123.0, 234.0, 345.0]),
-                    )
-                    .build()
-                    .unwrap();
-            let final_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        // Make sure only translation is logged (no null arrays for everything else).
-                        &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
-                    )
-                    .build()
-                    .unwrap();
-            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    // Make sure only translation is logged (no null arrays for everything else).
+                    &archetypes::Transform3D::update_fields()
+                        .with_translation([123.0, 234.0, 345.0]),
+                )
+                .build()
+                .unwrap();
+            let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    // Make sure only translation is logged (no null arrays for everything else).
+                    &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
+                )
+                .build()
+                .unwrap();
+            let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1085,27 +1090,24 @@ mod tests {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
-            let prior_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::InstancePoses3D::new()
-                            .with_translations([[321.0, 234.0, 345.0]]),
-                    )
-                    .build()
-                    .unwrap();
-            let final_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::InstancePoses3D::new()
-                            .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
-                    )
-                    .build()
-                    .unwrap();
-            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::InstancePoses3D::new().with_translations([[321.0, 234.0, 345.0]]),
+                )
+                .build()
+                .unwrap();
+            let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::InstancePoses3D::new()
+                        .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
+                )
+                .build()
+                .unwrap();
+            let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1195,25 +1197,23 @@ mod tests {
 
             // Static pinhole, non-static view coordinates.
             let timeline = Timeline::new_sequence("t");
-            let prior_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::Pinhole::new(image_from_camera_prior),
-                    )
-                    .build()
-                    .unwrap();
-            let final_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::Pinhole::new(image_from_camera_final),
-                    )
-                    .build()
-                    .unwrap();
-            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::Pinhole::new(image_from_camera_prior),
+                )
+                .build()
+                .unwrap();
+            let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::Pinhole::new(image_from_camera_final),
+                )
+                .build()
+                .unwrap();
+            let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1284,25 +1284,23 @@ mod tests {
 
             // Static view coordinates, non-static pinhole.
             let timeline = Timeline::new_sequence("t");
-            let prior_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::ViewCoordinates::BRU(),
-                    )
-                    .build()
-                    .unwrap();
-            let final_static_chunk =
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &archetypes::ViewCoordinates::BLU(),
-                    )
-                    .build()
-                    .unwrap();
-            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::ViewCoordinates::BRU(),
+                )
+                .build()
+                .unwrap();
+            let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::ViewCoordinates::BLU(),
+                )
+                .build()
+                .unwrap();
+            let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1349,12 +1347,11 @@ mod tests {
 
     #[test]
     fn test_tree_transforms() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -1424,12 +1421,11 @@ mod tests {
 
     #[test]
     fn test_pose_transforms() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -1527,8 +1523,7 @@ mod tests {
 
     #[test]
     fn test_pinhole_projections() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         let image_from_camera =
             components::PinholeProjection::from_focal_length_and_principal_point(
@@ -1538,7 +1533,7 @@ mod tests {
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -1614,12 +1609,11 @@ mod tests {
 
     #[test]
     fn test_out_of_order_updates() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -1656,7 +1650,7 @@ mod tests {
 
         // Add a transform between the two that invalidates the one at time stamp 3.
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 2)],
@@ -1699,12 +1693,77 @@ mod tests {
     }
 
     #[test]
+    fn test_clear_non_recursive() {
+        for clear_in_separate_chunk in [false, true] {
+            println!("clear_in_separate_chunk: {}", clear_in_separate_chunk);
+
+            let mut entity_db = new_entity_db_with_subscriber_registered();
+
+            let timeline = Timeline::new_sequence("t");
+            let path = EntityPath::from("ent");
+            let mut chunk = Chunk::builder(path.clone())
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline, 1)],
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline, 3)],
+                    &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0]),
+                );
+            if !clear_in_separate_chunk {
+                chunk = chunk.with_archetype(
+                    RowId::new(),
+                    [(timeline, 2)],
+                    &archetypes::Clear::new(false),
+                );
+            };
+            entity_db
+                .add_chunk(&Arc::new(chunk.build().unwrap()))
+                .unwrap();
+
+            if clear_in_separate_chunk {
+                let chunk = Chunk::builder(path.clone())
+                    .with_archetype(
+                        RowId::new(),
+                        [(timeline, 2)],
+                        &archetypes::Clear::new(false),
+                    )
+                    .build()
+                    .unwrap();
+                entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+
+            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+                cache.apply_all_updates(&entity_db);
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms = transforms_per_timeline
+                    .entity_transforms(path.hash())
+                    .unwrap();
+
+                assert_eq!(
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+                );
+                assert_eq!(
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
+                    glam::Affine3A::IDENTITY
+                );
+                assert_eq!(
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(3.0, 4.0, 5.0))
+                );
+            });
+        }
+    }
+
+    #[test]
     fn test_gc() {
-        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        ensure_subscriber_registered(&entity_db);
+        let mut entity_db = new_entity_db_with_subscriber_registered();
 
         let timeline = Timeline::new_sequence("t");
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity0"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity0"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 1)],
@@ -1719,7 +1778,7 @@ mod tests {
             cache.apply_all_updates(&entity_db);
         });
 
-        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity1"))
+        let chunk = Chunk::builder(EntityPath::from("my_entity1"))
             .with_archetype(
                 RowId::new(),
                 [(timeline, 2)],
