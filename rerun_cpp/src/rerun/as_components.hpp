@@ -22,81 +22,69 @@ namespace rerun {
         static_assert(
             NoAsComponentsFor<T>::value,
             "AsComponents is not implemented for this type. "
-            "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
-            "c-arrays of components. "
+            "It is implemented for all built-in archetypes as well as invidiual & collections of `rerun::ComponentBatch`."
             "You can add your own implementation by specializing AsComponents<T> for your type T."
         );
 
         // TODO(andreas): List methods that the trait should implement.
     };
 
+    // TODO(andreas): make these return collection?
+    // TODO(andreas): Now that we no longer rely on `Loggable` trait implementations here, `serialize` is a misnomer. Consider using `operator()` instead.
+
     // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
     /// \cond private
 
-    /// `AsComponents` for a Collection of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent>
-    struct AsComponents<Collection<TComponent>> {
-        static_assert(
-            is_loggable<TComponent>, "The given type does not implement the rerun::Loggable trait."
-        );
-
-        static Result<std::vector<ComponentBatch>> serialize(
-            const Collection<TComponent>& components
+    /// `AsComponents` for a `Collection<ComponentBatch>`.
+    template <>
+    struct AsComponents<Collection<ComponentBatch>> {
+        static Result<std::vector<ComponentBatch>> serialize(Collection<ComponentBatch> components
         ) {
-            auto batch_result = ComponentBatch::from_loggable<TComponent>(components);
-            RR_RETURN_NOT_OK(batch_result.error);
-
-            return Result<std::vector<ComponentBatch>>({std::move(batch_result.value)});
+            return Result<std::vector<ComponentBatch>>(std::move(components).to_vector());
         }
     };
 
-    /// `AsComponents` for a `std::vector` of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent>
-    struct AsComponents<std::vector<TComponent>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            const std::vector<TComponent>& components
-        ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
+    /// `AsComponents` for a single `ComponentBatch`.
+    template <>
+    struct AsComponents<ComponentBatch> {
+        static Result<std::vector<ComponentBatch>> serialize(ComponentBatch components) {
+            return Result<std::vector<ComponentBatch>>({std::move(components)});
         }
     };
 
-    /// AsComponents for `std::initializer_list`
-    template <typename TComponent>
-    struct AsComponents<std::initializer_list<TComponent>> {
+    /// `AsComponents` for a `Collection<ComponentBatch>` wrapped in a `Result`, forwarding errors for convenience.
+    template <>
+    struct AsComponents<Result<Collection<ComponentBatch>>> {
         static Result<std::vector<ComponentBatch>> serialize(
-            std::initializer_list<TComponent> components
+            Result<Collection<ComponentBatch>> components
         ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
+            RR_RETURN_NOT_OK(components.error);
+            return Result<std::vector<ComponentBatch>>(std::move(components.value).to_vector());
         }
     };
 
-    /// `AsComponents` for an `std::array` of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent, size_t NumInstances>
-    struct AsComponents<std::array<TComponent, NumInstances>> {
+    /// `AsComponents` for a `Collection<ComponentBatch>` individually wrapped in `Result`, forwarding errors for convenience.
+    template <>
+    struct AsComponents<Collection<Result<ComponentBatch>>> {
         static Result<std::vector<ComponentBatch>> serialize(
-            const std::array<TComponent, NumInstances>& components
+            Collection<Result<ComponentBatch>> components
         ) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
+            std::vector<ComponentBatch> result;
+            result.reserve(components.size());
+            for (auto& component : components) {
+                RR_RETURN_NOT_OK(component.error);
+                result.push_back(std::move(component.value));
+            }
+            return Result<std::vector<ComponentBatch>>(std::move(result));
         }
     };
 
-    /// `AsComponents` for an c-array of types implementing the `rerun::Loggable` trait.
-    template <typename TComponent, size_t NumInstances>
-    struct AsComponents<TComponent[NumInstances]> {
-        static Result<std::vector<ComponentBatch>> serialize(const TComponent (&components
-        )[NumInstances]) {
-            return AsComponents<Collection<TComponent>>::serialize(components);
-        }
-    };
-
-    /// `AsComponents` for single indicator components.
-    template <const char ComponentName[]>
-    struct AsComponents<components::IndicatorComponent<ComponentName>> {
-        static Result<std::vector<ComponentBatch>> serialize(
-            const components::IndicatorComponent<ComponentName>& indicator
-        ) {
-            return AsComponents<
-                Collection<components::IndicatorComponent<ComponentName>>>::serialize(indicator);
+    /// `AsComponents` for a single `ComponentBatch` wrapped in a `Result`, forwarding errors for convenience.
+    template <>
+    struct AsComponents<Result<ComponentBatch>> {
+        static Result<std::vector<ComponentBatch>> serialize(Result<ComponentBatch> components) {
+            RR_RETURN_NOT_OK(components.error);
+            return Result<std::vector<ComponentBatch>>({std::move(components.value)});
         }
     };
 

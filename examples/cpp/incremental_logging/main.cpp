@@ -49,14 +49,10 @@ int main() {
         rerun::TextDocument(README).with_media_type(rerun::components::MediaType::markdown())
     );
 
-    rerun::Collection<rerun::Color> colors = rerun::Color(255, 0, 0);
-    rerun::Collection<rerun::Radius> radii = rerun::Radius(0.1f);
-
     // Only log colors and radii once.
-    rec.set_time_sequence("frame_nr", 0);
-    rec.log("points", colors, radii);
     // Logging statically with `RecordingStream::log_static` would also work.
-    // rec.log_static("points", colors, radii);
+    rec.set_time_sequence("frame_nr", 0);
+    rec.log("points", rerun::Points3D().with_colors(rerun::Color(255, 0, 0)).with_radii(0.1f));
 
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
@@ -71,6 +67,6 @@ int main() {
         std::generate(points.begin(), points.end(), [&] {
             return rerun::Position3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
         });
-        rec.log("points", rerun::Points3D(points));
+        rec.log("points", rerun::Points3D::update_fields().with_positions(points));
     }
 }

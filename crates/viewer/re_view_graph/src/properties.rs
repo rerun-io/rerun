@@ -6,7 +6,6 @@ use re_types::{
     components::Position2D,
     Archetype as _,
 };
-use re_ui::zoom_pan_area::fit_to_rect_in_scene;
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
 use crate::{ui::GraphViewState, GraphView};
@@ -22,14 +21,7 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphView {
         };
 
         match state.layout_state.bounding_rect() {
-            Some(rect) if valid_bound(&rect) => {
-                if let Some(rect_in_ui) = state.rect_in_ui {
-                    let ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect);
-                    (ui_from_world.inverse() * rect_in_ui).into()
-                } else {
-                    rect.into()
-                }
-            }
+            Some(rect) if valid_bound(&rect) => rect.into(),
             _ => VisualBounds2D::default(),
         }
     }
