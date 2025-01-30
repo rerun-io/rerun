@@ -1714,26 +1714,37 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
+    /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
     /// the specified address.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
+    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
     pub fn connect(&self) {
         self.connect_grpc();
     }
 
-    /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
+    /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
     /// the specified address.
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect_opts(&self, url: re_grpc_client::MessageProxyUrl) {
-        self.connect_grpc_opts(url);
+    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
+    pub fn connect_opts(
+        &self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) {
+        let _ = flush_timeout;
+        self.connect_grpc_opts(format!("http://{addr}"));
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
