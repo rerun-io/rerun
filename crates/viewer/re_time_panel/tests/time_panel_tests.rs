@@ -34,6 +34,8 @@ pub fn time_panel_two_sections_should_match_snapshot() {
     run_time_panel_and_save_snapshot(
         test_context,
         TimePanel::default(),
+        300.0,
+        false,
         "time_panel_two_sections",
     );
 }
@@ -69,42 +71,13 @@ pub fn time_panel_dense_data_should_match_snapshot() {
         builder
     });
 
-    run_time_panel_and_save_snapshot(test_context, TimePanel::default(), "time_panel_dense_data");
-}
-
-fn run_time_panel_and_save_snapshot(
-    mut test_context: TestContext,
-    mut time_panel: TimePanel,
-    snapshot_name: &str,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, 300.0))
-        .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let blueprint = ViewportBlueprint::try_from_db(
-                    viewer_ctx.store_context.blueprint,
-                    &LatestAtQuery::latest(blueprint_timeline()),
-                );
-
-                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
-
-                time_panel.show_expanded_with_header(
-                    viewer_ctx,
-                    &blueprint,
-                    viewer_ctx.recording(),
-                    &mut time_ctrl,
-                    ui,
-                );
-
-                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
-            });
-
-            test_context.handle_system_commands();
-        });
-
-    harness.run();
-    harness.snapshot(snapshot_name);
+    run_time_panel_and_save_snapshot(
+        test_context,
+        TimePanel::default(),
+        300.0,
+        false,
+        "time_panel_dense_data",
+    );
 }
 
 // ---
@@ -159,7 +132,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel.activate_filter(query);
     }
 
-    run_time_panel_and_save_snapshot(test_context, time_panel, snapshot_name);
+    run_time_panel_and_save_snapshot(test_context, time_panel, 300.0, false, snapshot_name);
 }
 
 // --
@@ -175,7 +148,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
         for time in [0, 5, i64::MAX] {
             let mut test_context = TestContext::default();
 
-            log_all_data(&mut test_context);
+            log_data_for_various_entity_kinds_tests(&mut test_context);
 
             test_context
                 .recording_config
@@ -194,16 +167,18 @@ pub fn test_various_entity_kinds_in_time_panel() {
 
             let time_panel = TimePanel::default();
 
-            run_expanded_time_panel_and_save_snapshot(
+            run_time_panel_and_save_snapshot(
                 test_context,
                 time_panel,
+                1200.0,
+                true,
                 &format!("various_entity_kinds_{timeline}_{time}"),
             );
         }
     }
 }
 
-pub fn log_all_data(test_context: &mut TestContext) {
+pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {
     let timeline_a = "timeline_a";
     let timeline_b = "timeline_b";
 
@@ -267,23 +242,27 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     });
 }
 
-fn run_expanded_time_panel_and_save_snapshot(
+fn run_time_panel_and_save_snapshot(
     mut test_context: TestContext,
     mut time_panel: TimePanel,
+    height: f32,
+    expand_all: bool,
     snapshot_name: &str,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, 1200.0))
+        .with_size(Vec2::new(700.0, height))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                re_context_menu::collapse_expand::collapse_expand_instance_path(
-                    viewer_ctx,
-                    viewer_ctx.recording(),
-                    &InstancePath::entity_all("/".into()),
-                    CollapseScope::StreamsTree,
-                    true,
-                );
+                if expand_all {
+                    re_context_menu::collapse_expand::collapse_expand_instance_path(
+                        viewer_ctx,
+                        viewer_ctx.recording(),
+                        &InstancePath::entity_all("/".into()),
+                        CollapseScope::StreamsTree,
+                        true,
+                    );
+                }
 
                 let blueprint = ViewportBlueprint::try_from_db(
                     viewer_ctx.store_context.blueprint,
