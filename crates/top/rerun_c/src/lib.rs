@@ -281,8 +281,9 @@ pub enum CErrorCode {
     InvalidStringArgument,
     InvalidEnumValue,
     InvalidRecordingStreamHandle,
-    InvalidServerUrl,
+    InvalidSocketAddress,
     InvalidComponentTypeHandle,
+    InvalidServerUrl = 0x0000_0001a,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamRuntimeFailure,
@@ -578,6 +579,7 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
+    #[expect(deprecated)] // Will be removed once `connect` is removed.
     stream.connect_opts(tcp_addr, flush_timeout);
 
     Ok(())

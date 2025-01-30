@@ -147,13 +147,14 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 GIVEN("component batches") {
-                    auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
-                                      {{1.0, 2.0}, {4.0, 5.0}}
-                    ).value_or_throw();
-                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                                      {rerun::Color(0xFF0000FF)}
-                    )
-                                      .value_or_throw();
+                    auto batch0 =
+                        rerun::ComponentBatch::from_loggable<rerun::Position2D>({{1.0, 2.0},
+                                                                                 {4.0, 5.0}})
+                            .value_or_throw();
+                    auto batch1 =
+                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
+                                                                           })
+                            .value_or_throw();
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -172,9 +173,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                         {{1.0, 2.0}, {4.0, 5.0}}
                     );
-                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                        {rerun::Color(0xFF0000FF)}
-                    );
+                    auto batch1 =
+                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
+                        });
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -186,7 +187,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1};
+                            batch1
+                        };
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
@@ -195,29 +197,29 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
                 THEN("several archetypes can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
@@ -297,26 +299,81 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* url, const rerun::RecordingStream& stream) {
-    // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-    // at least on some C++ implementations.
-    // If we'd want to support this in earnest we'd have to create out own string_view type.
-    //
-    // AND_GIVEN("a nullptr for the socket url") {
-    //     THEN("then the connect call returns a null argument error") {
-    //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
-    //     }
-    // }
+void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
+    RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
+    {
+        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+        // at least on some C++ implementations.
+        // If we'd want to support this in earnest we'd have to create out own string_view type.
+        //
+        // AND_GIVEN("a nullptr for the socket address") {
+        //     THEN("then the connect call returns a null argument error") {
+        //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
+        //     }
+        // }
+        AND_GIVEN("an invalid address for the socket address") {
+            THEN("connect call fails") {
+                CHECK(
+                    stream.connect("definitely not valid!").code ==
+                    rerun::ErrorCode::InvalidSocketAddress
+                );
+            }
+        }
+        AND_GIVEN("a valid socket address " << address) {
+            THEN("connect call returns no error") {
+                CHECK(stream.connect(address).code == rerun::ErrorCode::Ok);
+
+                WHEN("logging an archetype and then flushing") {
+                    check_logged_error([&] {
+                        stream.log(
+                            "archetype",
+                            rerun::Points2D({
+                                rerun::Vec2D{1.0, 2.0},
+                                rerun::Vec2D{4.0, 5.0},
+                            })
+                        );
+                    });
+
+                    stream.flush_blocking();
+
+                    THEN("does not crash") {
+                        // No easy way to see if it got sent.
+                    }
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("RecordingStream can connect", TEST_TAG) {
+    const char* address = "127.0.0.1:9876";
+    GIVEN("a new RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+        test_logging_to_connection(address, stream);
+    }
+    WHEN("setting a global RecordingStream and then discarding it") {
+        {
+            rerun::RecordingStream stream("test-global");
+            stream.set_global();
+        }
+        GIVEN("the current recording stream") {
+            test_logging_to_connection(address, rerun::RecordingStream::current());
+        }
+    }
+}
+
+void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStream& stream) {
     AND_GIVEN("an invalid url") {
-        THEN("then the save call fails") {
+        THEN("connect call fails") {
             CHECK(
-                stream.connect("definitely not valid!").code == rerun::ErrorCode::InvalidServerUrl
+                stream.connect_grpc("definitely not valid!").code ==
+                rerun::ErrorCode::InvalidServerUrl
             );
         }
     }
-    AND_GIVEN("a valid url " << url) {
-        THEN("save call with zero timeout returns no error") {
-            CHECK(stream.connect(url).code == rerun::ErrorCode::Ok);
+    AND_GIVEN("a valid socket url " << url) {
+        THEN("connect call returns no error") {
+            CHECK(stream.connect_grpc(url).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -339,11 +396,11 @@ void test_logging_to_connection(const char* url, const rerun::RecordingStream& s
     }
 }
 
-SCENARIO("RecordingStream can connect", TEST_TAG) {
+SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
     const char* url = "http://127.0.0.1:9876";
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
-        test_logging_to_connection(url, stream);
+        test_logging_to_grpc_connection(url, stream);
     }
     WHEN("setting a global RecordingStream and then discarding it") {
         {
@@ -351,7 +408,7 @@ SCENARIO("RecordingStream can connect", TEST_TAG) {
             stream.set_global();
         }
         GIVEN("the current recording stream") {
-            test_logging_to_connection(url, rerun::RecordingStream::current());
+            test_logging_to_grpc_connection(url, rerun::RecordingStream::current());
         }
     }
 }

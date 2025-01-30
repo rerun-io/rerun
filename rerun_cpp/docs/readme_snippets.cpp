@@ -21,7 +21,7 @@ static std::vector<uint8_t> create_image() {
     // Create a recording stream.
     rerun::RecordingStream rec("rerun_example_app");
     // Spawn the viewer and connect to it.
-    rec.spawn_grpc().exit_on_failure();
+    rec.spawn().exit_on_failure();
 
     std::vector<rerun::Position3D> points = create_positions();
     std::vector<rerun::Color> colors = create_colors();
@@ -63,7 +63,7 @@ static std::vector<uint8_t> create_image() {
     rec.log("path/to/points", rerun::Points3D(points).with_colors(colors));
 
     // Spawn & connect later.
-    auto result = rec.spawn_grpc();
+    auto result = rec.spawn();
     if (result.is_err()) {
         // Handle error.
     }

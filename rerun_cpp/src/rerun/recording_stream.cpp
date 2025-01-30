@@ -104,6 +104,7 @@ namespace rerun {
         }
     }
 
+    RR_DISABLE_DEPRECATION_WARNING
     Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
         return RecordingStream::connect_tcp(tcp_addr, flush_timeout_sec);
     }

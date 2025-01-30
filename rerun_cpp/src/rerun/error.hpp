@@ -38,11 +38,12 @@ namespace rerun {
         InvalidStringArgument,
         InvalidEnumValue,
         InvalidRecordingStreamHandle,
-        InvalidServerUrl,
+        InvalidSocketAddress,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
         InvalidArchetypeField,
         FileRead,
+        InvalidServerUrl,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,
