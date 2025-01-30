@@ -60,7 +60,10 @@ impl BackgroundTasks {
         self.promises
             .remove(name.as_ref())
             .and_then(|promise| match promise.try_take() {
-                Ok(any) => Some(*any.downcast::<T>().unwrap()),
+                Ok(any) => Some(
+                    *any.downcast::<T>()
+                        .unwrap_or_else(|err| panic!("downcast failure: {err:?}")),
+                ),
                 Err(promise) => {
                     self.promises.insert(name.as_ref().to_owned(), promise);
                     None

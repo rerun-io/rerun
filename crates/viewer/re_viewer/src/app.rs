@@ -1150,11 +1150,11 @@ impl App {
 
                 self.egui_debug_panel_ui(ui);
 
-                // TODO(andreas): store the re_renderer somewhere else.
-                let egui_renderer = {
-                    let render_state = frame.wgpu_render_state().unwrap();
-                    &mut render_state.renderer.write()
-                };
+                let egui_renderer = &mut frame
+                    .wgpu_render_state()
+                    .expect("Failed to get frame render state")
+                    .renderer
+                    .write();
 
                 if let Some(render_ctx) = egui_renderer
                     .callback_resources
@@ -1836,7 +1836,10 @@ impl eframe::App for App {
         }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
-        let mut store_hub = self.store_hub.take().unwrap();
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
@@ -1884,14 +1887,16 @@ impl eframe::App for App {
         let gpu_resource_stats = {
             re_tracing::profile_scope!("gpu_resource_stats");
 
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
-            };
+            let egui_renderer = frame
+                .wgpu_render_state()
+                .expect("Failed to get frame render state")
+                .renderer
+                .read();
+
             let render_ctx = egui_renderer
                 .callback_resources
                 .get::<re_renderer::RenderContext>()
-                .unwrap();
+                .expect("Failed to get render context");
 
             // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
@@ -1910,14 +1915,16 @@ impl eframe::App for App {
         self.purge_memory_if_needed(&mut store_hub);
 
         {
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
-            };
+            let egui_renderer = frame
+                .wgpu_render_state()
+                .expect("Failed to get frame render state")
+                .renderer
+                .read();
+
             let render_ctx = egui_renderer
                 .callback_resources
                 .get::<re_renderer::RenderContext>()
-                .unwrap();
+                .expect("Failed to get render context");
 
             // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
             let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
