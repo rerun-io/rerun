@@ -696,7 +696,7 @@ impl BlueprintTree {
     /// Selects a range of items in the blueprint tree.
     ///
     /// This method selects all [`Item`]s displayed between the provided shift-clicked item and the
-    /// exising last-clicked item (if any). It takes into account the collapsed state, so only
+    /// existing last-clicked item (if any). It takes into account the collapsed state, so only
     /// actually visible items may be selected.
     fn items_in_range(
         &mut self,
