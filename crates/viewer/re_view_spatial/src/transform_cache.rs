@@ -351,7 +351,6 @@ impl TransformCacheStoreSubscriber {
 
                 for time in times {
                     let query = LatestAtQuery::new(*timeline, time);
-
                     if aspects.contains(TransformAspect::Tree) {
                         let transform = query_and_resolve_tree_transform_at_entity(
                             &entity_path,
@@ -392,12 +391,82 @@ impl TransformCacheStoreSubscriber {
         }
     }
 
-    fn add_chunk(&mut self, event: &re_chunk_store::ChunkStoreEvent, aspects: TransformAspect) {
+    fn add_non_static_chunk(
+        &mut self,
+        event: &re_chunk_store::ChunkStoreEvent,
+        aspects: TransformAspect,
+    ) {
         re_tracing::profile_function!();
+
+        debug_assert!(!event.diff.chunk.is_static());
 
         let entity_path = event.chunk.entity_path();
 
-        if event.diff.chunk.is_static() {
+        for (timeline, time_column) in event.diff.chunk.timelines() {
+            let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
+                CachedTransformsForTimeline::new(timeline, &self.static_timeline)
+            });
+
+            // All of these require complex latest-at queries that would require a lot more context,
+            // are fairly expensive, and may depend on other components that may come in at the same time.
+            // (we could inject that here, but it's not entirely straight forward).
+            // So instead, we note down that the caches are invalidated for the given entity & times.
+
+            // This invalidates any time _after_ the first event in this chunk.
+            // (e.g. if a rotation is added prior to translations later on,
+            // then the resulting transforms at those translations change as well for latest-at queries)
+
+            let mut invalidated_times = Vec::new();
+            let Some(min_time) = time_column.times().min() else {
+                continue;
+            };
+            if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
+                if aspects.contains(TransformAspect::Tree) {
+                    let invalidated_tree_transforms =
+                        entity_entry.tree_transforms.split_off(&min_time);
+                    invalidated_times.extend(invalidated_tree_transforms.into_keys());
+                }
+                if aspects.contains(TransformAspect::Pose) {
+                    if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
+                        let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                    }
+                }
+                if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                    if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
+                        let invalidated_pinhole_projections =
+                            pinhole_projections.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                    }
+                }
+            }
+
+            let times = time_column
+                .times()
+                .chain(invalidated_times.into_iter())
+                .collect();
+
+            per_timeline
+                .invalidated_transforms
+                .push(InvalidatedTransforms {
+                    entity_path: entity_path.clone(),
+                    times,
+                    aspects,
+                });
+        }
+    }
+
+    fn add_static_chunk(
+        &mut self,
+        event: &re_chunk_store::ChunkStoreEvent,
+        aspects: TransformAspect,
+    ) {
+        re_tracing::profile_function!();
+
+        debug_assert!(event.diff.chunk.is_static());
+
+        let entity_path = event.chunk.entity_path();
+
             self.static_timeline
                 .invalidated_transforms
                 .push(InvalidatedTransforms {
@@ -459,60 +528,7 @@ impl TransformCacheStoreSubscriber {
                             aspects,
                         });
                 }
-            }
-        } else {
-            for (timeline, time_column) in event.diff.chunk.timelines() {
-                let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
-                    CachedTransformsForTimeline::new(timeline, &self.static_timeline)
-                });
-
-                // All of these require complex latest-at queries that would require a lot more context,
-                // are fairly expensive, and may depend on other components that may come in at the same time.
-                // (we could inject that here, but it's not entirely straight forward).
-                // So instead, we note down that the caches are invalidated for the given entity & times.
-
-                // This invalidates any time _after_ the first event in this chunk.
-                // (e.g. if a rotation is added prior to translations later on,
-                // then the resulting transforms at those translations change as well for latest-at queries)
-
-                let mut invalidated_times = Vec::new();
-                let Some(min_time) = time_column.times().min() else {
-                    continue;
-                };
-                if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
-                    if aspects.contains(TransformAspect::Tree) {
-                        let invalidated_tree_transforms =
-                            entity_entry.tree_transforms.split_off(&min_time);
-                        invalidated_times.extend(invalidated_tree_transforms.into_keys());
-                    }
-                    if aspects.contains(TransformAspect::Pose) {
-                        if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
-                            let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
-                            invalidated_times.extend(invalidated_pose_transforms.into_keys());
-                        }
-                    }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                        if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
-                            let invalidated_pinhole_projections =
-                                pinhole_projections.split_off(&min_time);
-                            invalidated_times.extend(invalidated_pinhole_projections.into_keys());
-                        }
-                    }
-                }
-
-                let times = time_column
-                    .times()
-                    .chain(invalidated_times.into_iter())
-                    .collect();
-
-                per_timeline
-                    .invalidated_transforms
-                    .push(InvalidatedTransforms {
-                        entity_path: entity_path.clone(),
-                        times,
-                        aspects,
-                    });
-            }
+            // Don't care about clears here, they don't have any effect for keeping track of changes when logged static.
         }
     }
 
@@ -605,6 +621,12 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 if self.pinhole_components.contains(&component_name) {
                     aspects |= TransformAspect::PinholeOrViewCoordinates;
                 }
+                if self
+                    .pinhole_components
+                    .contains(&re_types::components::ClearIsRecursive::name())
+                {
+                    aspects |= TransformAspect::Clear;
+                }
             }
             if aspects.is_empty() {
                 continue;
@@ -612,8 +634,10 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
 
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 self.remove_chunk(event, aspects);
+            } else if event.diff.chunk.is_static() {
+                self.add_static_chunk(event, aspects);
             } else {
-                self.add_chunk(event, aspects);
+                self.add_non_static_chunk(event, aspects);
             }
         }
     }
