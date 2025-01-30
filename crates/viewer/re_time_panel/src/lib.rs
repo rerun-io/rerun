@@ -148,11 +148,12 @@ pub struct TimePanel {
     #[serde(skip)]
     filter_state_app_id: Option<ApplicationId>,
 
-    /// Last clicked item.
+    /// Range selection anchor item.
     ///
-    /// We keep track of it to implement the range selection using shift-click.
+    /// This is the item we used as a starting point for range selection. It is set and remembered
+    /// everytime the user clicks on an item _without_ holding shift.
     #[serde(skip)]
-    last_clicked_item: Option<Item>,
+    range_selection_anchor_item: Option<Item>,
 }
 
 impl Default for TimePanel {
@@ -168,7 +169,7 @@ impl Default for TimePanel {
             source: TimePanelSource::Recording,
             filter_state: Default::default(),
             filter_state_app_id: None,
-            last_clicked_item: None,
+            range_selection_anchor_item: None,
         }
     }
 }
@@ -1044,21 +1045,30 @@ impl TimePanel {
         let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
 
         if modifiers.shift {
-            if self.last_clicked_item.is_some() {
-                let items_iterator = self
-                    .items_in_range(ctx, streams_tree_data, entity_db, &item)
-                    .into_iter()
-                    .map(|item| {
+            if let Some(anchor_item) = &self.range_selection_anchor_item {
+                let items_in_range = Self::items_in_range(
+                    ctx,
+                    streams_tree_data,
+                    entity_db,
+                    self.collapse_scope(),
+                    anchor_item,
+                    &item,
+                );
+
+                if items_in_range.is_empty() {
+                    // This can happen if the last clicked item became invisible due to collapsing, or if
+                    // the user switched to another recording. In either case, we invalidate it.
+                    self.range_selection_anchor_item = None;
+                } else {
+                    let items_iterator = items_in_range.into_iter().map(|item| {
                         (
                             item,
-                            Some(ItemContext::StreamsTree {
-                                store_kind: self.source.into(),
+                            Some(ItemContext::BlueprintTree {
                                 filter_session_id: self.filter_state.session_id(),
                             }),
                         )
                     });
 
-                if items_iterator.len() > 0 {
                     if modifiers.command {
                         ctx.selection_state.extend_selection(items_iterator);
                     } else {
@@ -1067,7 +1077,7 @@ impl TimePanel {
                 }
             }
         } else {
-            self.last_clicked_item = Some(item);
+            self.range_selection_anchor_item = Some(item);
         }
     }
 
@@ -1077,10 +1087,11 @@ impl TimePanel {
     /// existing last-clicked item (if any). It takes into account the collapsed state, so only
     /// actually visible items may be selected.
     fn items_in_range(
-        &mut self,
         ctx: &ViewerContext<'_>,
         streams_tree_data: &StreamsTreeData,
         entity_db: &re_entity_db::EntityDb,
+        collapse_scope: CollapseScope,
+        anchor_item: &Item,
         shift_clicked_item: &Item,
     ) -> Vec<Item> {
         let mut items_in_range = vec![];
@@ -1097,7 +1108,7 @@ impl TimePanel {
                 entity_data.item()
             };
 
-            if Some(&item) == self.last_clicked_item.as_ref() {
+            if &item == anchor_item {
                 found_last_clicked_items = true;
             }
 
@@ -1114,7 +1125,7 @@ impl TimePanel {
             }
 
             let is_expanded = entity_data
-                .is_open(ctx.egui_ctx, self.collapse_scope())
+                .is_open(ctx.egui_ctx, collapse_scope)
                 .unwrap_or(false);
 
             if is_expanded {
@@ -1125,10 +1136,6 @@ impl TimePanel {
         });
 
         if !found_last_clicked_items {
-            // This can happen if the last clicked item became invisible due to collapsing, or if
-            // the user switched to another recording. In either case, we invalidate it.
-            self.last_clicked_item = None;
-
             vec![]
         } else {
             items_in_range
