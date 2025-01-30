@@ -25,10 +25,11 @@ re_data_ui.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true
 re_int_histogram.workspace = true
-re_log_types.workspace = true
 re_log.workspace = true
+re_log_types.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
+re_types_core.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
@@ -38,6 +39,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 serde.workspace = true
+smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]

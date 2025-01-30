@@ -2,14 +2,10 @@ use std::hash::Hash;
 
 use egui::{
     emath::{GuiRounding, Rot2},
-    pos2, Align2, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
+    pos2, Align2, Button, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
 };
 
-use crate::{
-    design_tokens, icons,
-    list_item::{self, LabelContent, ListItem},
-    DesignTokens, Icon, LabelStyle, SUCCESS_COLOR,
-};
+use crate::{design_tokens, icons, list_item, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -769,6 +765,7 @@ pub trait UiExt {
                     visuals.rounding,
                     visuals.weak_bg_fill,
                     visuals.bg_stroke,
+                    egui::StrokeKind::Inside,
                 );
             }
 
@@ -973,16 +970,23 @@ pub trait UiExt {
         url: impl ToString,
     ) -> egui::Response {
         let ui = self.ui_mut();
-        let response = ListItem::new()
-            .show_flat(
-                ui,
-                LabelContent::new(text).with_icon(&crate::icons::EXTERNAL_LINK),
-            )
-            .on_hover_cursor(egui::CursorIcon::PointingHand);
-        if response.clicked() {
-            ui.ctx().open_url(egui::OpenUrl::new_tab(url));
-        }
-        response
+        ui.scope(|ui| {
+            let style = ui.style_mut();
+            style.visuals.button_frame = false;
+
+            let tint = ui.style().visuals.widgets.noninteractive.fg_stroke.color;
+            let image = crate::icons::EXTERNAL_LINK.as_image().tint(tint);
+            let response = ui
+                .add(Button::image_and_text(image, text))
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+
+            if response.clicked() {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+            }
+
+            response
+        })
+        .response
     }
 
     /// Show some close/maximize/minimize buttons for the native window.

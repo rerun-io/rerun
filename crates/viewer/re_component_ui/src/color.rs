@@ -35,6 +35,7 @@ fn edit_rgba32_impl(ui: &mut egui::Ui, color: &mut MaybeMutRef<'_, Rgba32>) -> e
         response.rect,
         1.0,
         ui.visuals().widgets.noninteractive.fg_stroke,
+        egui::StrokeKind::Inside,
     );
 
     let [r, g, b, a] = color.to_array();

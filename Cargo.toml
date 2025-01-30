@@ -589,10 +589,10 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "80e2199a2e121db288fe6b0099d91c35acc75a7c" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 #egui_tiles = { path = "../egui_tiles" }
 
 egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
