@@ -268,7 +268,7 @@ impl ViewportBlueprint {
                         || entity_path.is_descendant_of(&view.space_origin)
                         || view
                             .contents
-                            .entity_path_filter
+                            .entity_path_filter()
                             .matches(&instance_path.entity_path)
                 })
             }
@@ -359,7 +359,7 @@ impl ViewportBlueprint {
                 .views
                 .values()
                 .filter(|view| view.class_identifier() == class_id)
-                .map(|view| &view.contents.entity_path_filter)
+                .map(|view| view.contents.entity_path_filter())
                 .collect::<Vec<_>>();
             recommended_views.retain(|(query_filter, _)| {
                 existing_path_filters

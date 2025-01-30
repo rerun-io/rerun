@@ -36,6 +36,7 @@ pub mod test_context;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
+mod visitor_flow_control;
 
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
@@ -87,6 +88,7 @@ pub use self::{
         VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::{RecordingConfig, ViewerContext},
+    visitor_flow_control::VisitorControlFlow,
 };
 
 pub use re_ui::UiLayout; // Historical reasons

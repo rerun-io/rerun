@@ -47,7 +47,7 @@ fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error
         colors: Some(vec![colors]),
     };
 
-    rec.log_static("data", &points as _)?;
+    rec.log_static("data", &points)?;
 
     Ok(())
 }

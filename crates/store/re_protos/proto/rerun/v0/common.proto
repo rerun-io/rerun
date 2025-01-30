@@ -102,7 +102,6 @@ message Query {
     SparseFillStrategy sparse_fill_strategy = 11;
 }
 
-
 message ColumnSelection {
     repeated ColumnSelector columns = 1;
 }

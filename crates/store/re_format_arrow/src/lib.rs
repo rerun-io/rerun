@@ -41,7 +41,7 @@ fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArra
         }
     }
 
-    match ArrayFormatter::try_new(array, &FormatOptions::default()) {
+    match ArrayFormatter::try_new(array, &FormatOptions::default().with_null("null")) {
         Ok(formatter) => Box::new(move |index| Ok(format!("{}", formatter.value(index)))),
         Err(err) => Box::new(move |_| Err(format!("Failed to format array: {err}"))),
     }

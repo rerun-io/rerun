@@ -41,6 +41,7 @@ re_log.workspace = true
 re_log_types.workspace = true  # syntax-highlighting for EntityPath
 re_tracing.workspace = true
 
+arrow = { workspace = true, optional = true }
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
@@ -57,8 +58,7 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 time = { workspace = true, features = ["formatting", "local-offset"] }
-
-arrow = { workspace = true, optional = true }
+url.workspace = true
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

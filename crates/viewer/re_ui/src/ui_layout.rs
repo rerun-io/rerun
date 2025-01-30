@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::UiExt as _;
+
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiLayout {
@@ -95,14 +99,20 @@ impl UiLayout {
         self.data_label_impl(ui, string.as_ref())
     }
 
+    fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
+        if url::Url::parse(text).is_ok() {
+            ui.re_hyperlink(text, text)
+        } else {
+            ui.label(galley)
+        }
+    }
+
     fn data_label_impl(self, ui: &mut egui::Ui, string: &str) -> egui::Response {
         let font_id = egui::TextStyle::Monospace.resolve(ui.style());
         let color = ui.visuals().text_color();
         let wrap_width = ui.available_width();
         let mut layout_job =
             egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
-
-        let mut needs_scroll_area = false;
 
         match self {
             Self::List => {
@@ -118,19 +128,11 @@ impl UiLayout {
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
             }
-            Self::SelectionPanel => {
-                needs_scroll_area = false;
-            }
+            Self::SelectionPanel => {}
         }
 
         let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        if needs_scroll_area {
-            egui::ScrollArea::vertical()
-                .show(ui, |ui| ui.label(galley))
-                .inner
-        } else {
-            ui.label(galley)
-        }
+        Self::decorate_url(ui, string, galley)
     }
 }

@@ -17,7 +17,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rerun::ComponentDescriptor::new("description"),
     );
 
-    rec.log("any_values", &[confidences, description])?;
+    // URIs will become clickable links
+    let homepage = rerun::SerializedComponentBatch::new(
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://www.rerun.io",
+        ])),
+        rerun::ComponentDescriptor::new("homepage"),
+    );
+
+    let repository = rerun::SerializedComponentBatch::new(
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://github.com/rerun-io/rerun",
+        ])),
+        rerun::ComponentDescriptor::new("repository"),
+    );
+
+    rec.log(
+        "any_values",
+        &[confidences, description, homepage, repository],
+    )?;
 
     Ok(())
 }

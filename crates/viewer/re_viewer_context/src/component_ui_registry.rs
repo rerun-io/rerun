@@ -259,7 +259,7 @@ impl ComponentUiRegistry {
 
         // Component UI can only show a single instance.
         if array.len() == 0 || (instance.is_all() && array.len() > 1) {
-            none_or_many_values_ui(ui, array.len());
+            (*self.fallback_ui)(ctx, ui, ui_layout, query, db, entity_path, None, &array);
             return;
         }
 
@@ -305,7 +305,16 @@ impl ComponentUiRegistry {
         re_tracing::profile_function!(component_name.full_name());
 
         if component_raw.len() != 1 {
-            none_or_many_values_ui(ui, component_raw.len());
+            (*self.fallback_ui)(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                db,
+                entity_path,
+                row_id,
+                component_raw,
+            );
             return;
         }
 
@@ -546,13 +555,5 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> O
             re_log::error_once!("Failed to deserialize component of type {component_name}: {err}",);
             None
         }
-    }
-}
-
-fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: usize) {
-    if num_instances == 0 {
-        ui.label("(empty)");
-    } else {
-        ui.label(format!("{} values", re_format::format_uint(num_instances)));
     }
 }

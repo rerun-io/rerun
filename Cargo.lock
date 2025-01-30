@@ -6565,10 +6565,12 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
+ "smallvec",
  "vec1",
 ]
 
@@ -6727,6 +6729,7 @@ dependencies = [
  "strum_macros",
  "sublime_fuzzy",
  "time",
+ "url",
 ]
 
 [[package]]
