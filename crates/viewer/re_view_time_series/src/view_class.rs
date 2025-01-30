@@ -369,7 +369,7 @@ Display time series data in a plot.
         let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.view_id))
-            .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+            .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
                 format_time(
@@ -436,13 +436,10 @@ Display time series data in a plot.
             ));
 
             let current_auto = plot_ui.auto_bounds();
-            plot_ui.set_auto_bounds(
-                [
-                    current_auto[0] || is_resetting,
-                    is_resetting && !y_zoom_lock,
-                ]
-                .into(),
-            );
+            plot_ui.set_auto_bounds([
+                current_auto[0] || is_resetting,
+                is_resetting && !y_zoom_lock,
+            ]);
 
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;

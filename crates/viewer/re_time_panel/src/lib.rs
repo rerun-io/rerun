@@ -1235,11 +1235,10 @@ fn paint_range_highlight(
         let visible_history_area_rect =
             Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
 
-        painter.rect(
+        painter.rect_filled(
             visible_history_area_rect,
             0.0,
             egui::Color32::WHITE.gamma_multiply(0.1),
-            egui::Stroke::NONE,
         );
     }
 }
