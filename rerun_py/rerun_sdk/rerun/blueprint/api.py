@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 from typing import Iterable, Optional, Union
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 import rerun_bindings as bindings
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer

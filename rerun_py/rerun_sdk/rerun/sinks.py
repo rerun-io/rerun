@@ -54,7 +54,7 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith('http'):
+    if addr is not None and not addr.startswith("http"):
         addr = f"http://{addr}"
     return connect_grpc(
         url=addr,
@@ -96,13 +96,14 @@ def connect_tcp(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith('http'):
+    if addr is not None and not addr.startswith("http"):
         addr = f"http://{addr}"
     return connect_grpc(
         url=addr,
         default_blueprint=default_blueprint,
         recording=recording,  # NOLINT: conversion not needed
     )
+
 
 def connect_grpc(
     url: str | None = None,

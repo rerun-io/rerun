@@ -147,14 +147,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 GIVEN("component batches") {
-                    auto batch0 =
-                        rerun::ComponentBatch::from_loggable<rerun::Position2D>({{1.0, 2.0},
-                                                                                 {4.0, 5.0}})
-                            .value_or_throw();
-                    auto batch1 =
-                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
-                                                                           })
-                            .value_or_throw();
+                    auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
+                                      {{1.0, 2.0}, {4.0, 5.0}}
+                    ).value_or_throw();
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                                      {rerun::Color(0xFF0000FF)}
+                    )
+                                      .value_or_throw();
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -173,9 +172,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                         {{1.0, 2.0}, {4.0, 5.0}}
                     );
-                    auto batch1 =
-                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
-                        });
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                        {rerun::Color(0xFF0000FF)}
+                    );
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -187,8 +186,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1
-                        };
+                            batch1};
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
@@ -197,29 +195,29 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
                 THEN("several archetypes can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
-                            .with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
