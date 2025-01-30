@@ -101,7 +101,7 @@ impl UiLayout {
 
     fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
         if url::Url::parse(text).is_ok() {
-            list_item_scope(ui, text, |ui| ui.re_hyperlink(text, text))
+            ui.re_hyperlink(text, text)
         } else {
             ui.label(galley)
         }
