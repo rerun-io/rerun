@@ -304,9 +304,7 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
-    ///
-    /// This is an alias for [`Self::connect_grpc`].
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
     ///
     /// ## Example
     ///
@@ -314,6 +312,7 @@ impl RecordingStreamBuilder {
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[deprecated(since = "0.20.0", note = "use connect_grpc() instead")]
     pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc()
     }
@@ -321,17 +320,65 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// This is an alias for [`Self::connect_grpc_opts`].
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_tcp()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
+    pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
+        self.connect_grpc()
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts("http://127.0.0.1:9876")?;
+    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn connect_opts(self, url: impl Into<String>) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(url)
+    #[deprecated(since = "0.20.0", note = "use connect_tcp_opts() instead")]
+    pub fn connect_opts(
+        self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let _ = flush_timeout;
+        self.connect_grpc_opts(format!("http://{addr}"))
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
+    pub fn connect_tcp_opts(
+        self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let _ = flush_timeout;
+        self.connect_grpc_opts(format!("http://{addr}"))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
