@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Iterable, Optional, Union
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 import rerun_bindings as bindings
 
@@ -559,6 +560,10 @@ class Blueprint:
 
         Viewer(blueprint=self).display()
 
+    @deprecated(
+        """Please migrate to `connect_grpc(…)`.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+    )
     def connect(
         self,
         application_id: str,

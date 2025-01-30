@@ -21,22 +21,29 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
+@deprecated(
+    """Please migrate to `connect_grpc(…)`.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+)
 def connect(
-    url: str | None = None,
+    addr: str | None = None,
     *,
+    flush_timeout_sec: float | None = 2.0,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+    Connect to a remote Rerun Viewer on the given ip:port.
 
     This function returns immediately.
 
     Parameters
     ----------
-    url:
-        The HTTP(S) URL to connect to
-    default_blueprint
+    addr:
+        The ip:port to connect to
+    flush_timeout_sec:
+        Deprecated.
+    default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
         clicks the "reset blueprint" button. If you want to activate the new blueprint
@@ -47,12 +54,55 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    if addr is not None and not addr.startswith('http'):
+        addr = f"http://{addr}"
     return connect_grpc(
-        url,
+        url=addr,
         default_blueprint=default_blueprint,
         recording=recording,  # NOLINT: conversion not needed
     )
 
+
+@deprecated(
+    """Please migrate to `connect_grpc(…)`.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+)
+def connect_tcp(
+    addr: str | None = None,
+    *,
+    flush_timeout_sec: float | None = 2.0,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Connect to a remote Rerun Viewer on the given ip:port.
+
+    This function returns immediately.
+
+    Parameters
+    ----------
+    addr:
+        The ip:port to connect to
+    flush_timeout_sec:
+        Deprecated.
+    default_blueprint:
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    if addr is not None and not addr.startswith('http'):
+        addr = f"http://{addr}"
+    return connect_grpc(
+        url=addr,
+        default_blueprint=default_blueprint,
+        recording=recording,  # NOLINT: conversion not needed
+    )
 
 def connect_grpc(
     url: str | None = None,
