@@ -5,11 +5,7 @@ use egui::{
     pos2, Align2, Button, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
 };
 
-use crate::{
-    design_tokens, icons,
-    list_item::{self, list_item_scope, LabelContent, ListItem},
-    DesignTokens, Icon, LabelStyle, SUCCESS_COLOR,
-};
+use crate::{design_tokens, icons, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
