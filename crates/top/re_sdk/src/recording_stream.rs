@@ -1791,14 +1791,14 @@ impl RecordingStream {
     /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
     /// that viewer instead of starting a new one.
     ///
-    /// See also [`Self::spawn_grpc_opts`] if you wish to configure the behavior of thew Rerun process
+    /// See also [`Self::spawn_opts`] if you wish to configure the behavior of thew Rerun process
     /// as well as the underlying connection.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn(&self) -> RecordingStreamResult<()> {
-        self.spawn_grpc()
+        self.spawn_opts(&Default::default())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -1815,40 +1815,6 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
-        self.spawn_grpc_opts(opts)
-    }
-
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
-    /// underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to send data to that
-    /// new process.
-    ///
-    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
-    /// that viewer instead of starting a new one.
-    ///
-    /// See also [`Self::spawn_grpc_opts`] if you wish to configure the behavior of thew Rerun process
-    /// as well as the underlying connection.
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    pub fn spawn_grpc(&self) -> RecordingStreamResult<()> {
-        self.spawn_grpc_opts(&Default::default())
-    }
-
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
-    /// underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to send data to that
-    /// new process.
-    ///
-    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
-    /// that viewer instead of starting a new one.
-    ///
-    /// The behavior of the spawned Viewer can be configured via `opts`.
-    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    pub fn spawn_grpc_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(());

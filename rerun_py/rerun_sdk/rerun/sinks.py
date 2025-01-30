@@ -501,57 +501,6 @@ def spawn(
 
     """
 
-    return spawn_grpc(
-        port=port,
-        connect=connect,
-        memory_limit=memory_limit,
-        hide_welcome_screen=hide_welcome_screen,
-        default_blueprint=default_blueprint,
-        recording=recording,  # NOLINT: conversion not needed
-    )
-
-
-def spawn_grpc(
-    *,
-    port: int = 9876,
-    connect: bool = True,
-    memory_limit: str = "75%",
-    hide_welcome_screen: bool = False,
-    default_blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Spawn a Rerun Viewer, listening on the given port.
-
-    This is often the easiest and best way to use Rerun.
-    Just call this once at the start of your program.
-
-    You can also call [rerun.init][] with a `spawn=True` argument.
-
-    Parameters
-    ----------
-    port:
-        The port to listen on.
-    connect:
-        also connect to the viewer and stream logging data to it.
-    memory_limit:
-        An upper limit on how much memory the Rerun Viewer should use.
-        When this limit is reached, Rerun will drop the oldest data.
-        Example: `16GB` or `50%` (of system total).
-    hide_welcome_screen:
-        Hide the normal Rerun welcome screen.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
-        immediately, instead use the [`rerun.send_blueprint`][] API.
-
-    """
-
     if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - spawn() call ignored.")
         return

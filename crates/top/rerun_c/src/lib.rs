@@ -642,7 +642,7 @@ fn rr_recording_stream_spawn_impl(
     };
 
     stream
-        .spawn_grpc_opts(&spawn_opts)
+        .spawn_opts(&spawn_opts)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
