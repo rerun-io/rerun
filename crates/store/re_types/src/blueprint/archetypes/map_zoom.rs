@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -83,9 +83,9 @@ impl ::re_types_core::Archetype for MapZoom {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: MapZoomIndicator = MapZoomIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        MapZoomIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -126,7 +126,7 @@ impl ::re_types_core::AsComponents for MapZoom {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Self::indicator().serialized(), self.zoom.clone()]
+        [Some(Self::indicator()), self.zoom.clone()]
             .into_iter()
             .flatten()
             .collect()

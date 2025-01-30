@@ -33,6 +33,7 @@ from . import (
     remote as remote,
 )
 from ._baseclasses import (
+    ComponentBatchLike as ComponentBatchLike,
     ComponentBatchMixin as ComponentBatchMixin,
     ComponentColumn as ComponentColumn,
     ComponentColumnList as ComponentColumnList,
@@ -45,7 +46,6 @@ from ._image_encoded import (
 )
 from ._log import (
     AsComponents as AsComponents,
-    ComponentBatchLike as ComponentBatchLike,
     IndicatorComponentBatch as IndicatorComponentBatch,
     escape_entity_path_part as escape_entity_path_part,
     log as log,
@@ -59,7 +59,6 @@ from ._send_columns import (
     TimeSecondsColumn as TimeSecondsColumn,
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
-    send_columns_v2 as send_columns_v2,
 )
 from .any_value import (
     AnyBatchValue as AnyBatchValue,

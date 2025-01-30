@@ -29,6 +29,62 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ViewportBlueprint::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(6);
+        if (root_container.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(root_container.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (maximized.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(maximized.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (auto_layout.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(auto_layout.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (auto_views.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(auto_views.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (past_viewer_recommendations.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(
+                                  past_viewer_recommendations.value(),
+                                  lengths_
+            )
+                                  .value_or_throw());
+        }
+        columns.push_back(ComponentColumn::from_indicators<ViewportBlueprint>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
+        return columns;
+    }
+
+    Collection<ComponentColumn> ViewportBlueprint::columns() {
+        if (root_container.has_value()) {
+            return columns(std::vector<uint32_t>(root_container.value().length(), 1));
+        }
+        if (maximized.has_value()) {
+            return columns(std::vector<uint32_t>(maximized.value().length(), 1));
+        }
+        if (auto_layout.has_value()) {
+            return columns(std::vector<uint32_t>(auto_layout.value().length(), 1));
+        }
+        if (auto_views.has_value()) {
+            return columns(std::vector<uint32_t>(auto_views.value().length(), 1));
+        }
+        if (past_viewer_recommendations.has_value()) {
+            return columns(std::vector<uint32_t>(past_viewer_recommendations.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {
@@ -57,8 +113,7 @@ namespace rerun {
             cells.push_back(archetype.past_viewer_recommendations.value());
         }
         {
-            auto indicator = ViewportBlueprint::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<ViewportBlueprint>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

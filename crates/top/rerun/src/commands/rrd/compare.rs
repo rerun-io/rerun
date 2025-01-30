@@ -6,12 +6,23 @@ use std::{
 use anyhow::Context as _;
 use itertools::{izip, Itertools};
 
+use re_chunk::Chunk;
+
 // ---
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct CompareCommand {
     path_to_rrd1: String,
     path_to_rrd2: String,
+
+    /// If specified, the comparison will focus purely on semantics, ignoring order.
+    ///
+    /// The Rerun data model is itself unordered, and because many of the internal pipelines are
+    /// asynchronous by nature, it is very easy to end up with semantically identical, but
+    /// differently ordered data.
+    /// In most cases, the distinction is irrelevant, and you'd rather the comparison succeeds.
+    #[clap(long, default_value_t = false)]
+    unordered: bool,
 
     /// If specified, dumps both .rrd files as tables.
     #[clap(long, default_value_t = false)]
@@ -27,6 +38,7 @@ impl CompareCommand {
         let Self {
             path_to_rrd1,
             path_to_rrd2,
+            unordered,
             full_dump,
         } = self;
 
@@ -64,17 +76,36 @@ impl CompareCommand {
             re_format::format_uint(chunks2.len()),
         );
 
-        for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-            anyhow::ensure!(
-                re_chunk::Chunk::are_similar(&chunk1, &chunk2),
-                "Chunks do not match:\n{}",
-                similar_asserts::SimpleDiff::from_str(
-                    &format!("{chunk1}"),
-                    &format!("{chunk2}"),
-                    "got",
-                    "expected",
-                ),
-            );
+        let mut unordered_failed = false;
+        if *unordered {
+            let mut chunks2_opt: Vec<Option<Arc<Chunk>>> =
+                chunks2.clone().into_iter().map(Some).collect_vec();
+            'outer: for chunk1 in &chunks1 {
+                for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
+                    #[allow(clippy::unwrap_used)]
+                    if re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
+                        *chunk2 = None;
+                        continue 'outer;
+                    }
+                }
+                unordered_failed = true;
+                break;
+            }
+        }
+
+        if !*unordered || unordered_failed {
+            for (chunk1, chunk2) in izip!(chunks1, chunks2) {
+                anyhow::ensure!(
+                    re_chunk::Chunk::are_similar(&chunk1, &chunk2),
+                    "Chunks do not match:\n{}",
+                    similar_asserts::SimpleDiff::from_str(
+                        &format!("{chunk1}"),
+                        &format!("{chunk2}"),
+                        "got",
+                        "expected",
+                    ),
+                );
+            }
         }
 
         re_log::debug!("{path_to_rrd1:?} and {path_to_rrd2:?} are similar enough.");

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
 
 from rerun._baseclasses import ComponentDescriptor
 
-from ._baseclasses import ComponentColumn, ComponentColumnList
-from ._log import AsComponents, ComponentBatchLike
+from ._baseclasses import ComponentBatchLike, ComponentColumn, ComponentColumnList, DescribedComponentBatch
+from ._log import AsComponents
 from .error_utils import catch_and_log_exceptions
 
 ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
@@ -216,15 +216,15 @@ class AnyValues(AsComponents):
         """
         global ANY_VALUE_TYPE_REGISTRY
 
-        self.component_batches = []
+        self.component_batches = list()
 
         with catch_and_log_exceptions(self.__class__.__name__):
             for name, value in kwargs.items():
                 batch = AnyBatchValue(name, value, drop_untyped_nones=drop_untyped_nones)
                 if batch.is_valid():
-                    self.component_batches.append(batch)
+                    self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+    def as_component_batches(self) -> list[DescribedComponentBatch]:
         return self.component_batches
 
     @classmethod

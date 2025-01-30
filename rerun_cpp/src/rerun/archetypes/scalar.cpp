@@ -12,6 +12,28 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Scalar>(Descriptor_scalar).value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Scalar::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(2);
+        if (scalar.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(scalar.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Scalar>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Scalar::columns() {
+        if (scalar.has_value()) {
+            return columns(std::vector<uint32_t>(scalar.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -27,8 +49,7 @@ namespace rerun {
             cells.push_back(archetype.scalar.value());
         }
         {
-            auto indicator = Scalar::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Scalar>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

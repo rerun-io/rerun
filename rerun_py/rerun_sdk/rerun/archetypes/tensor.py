@@ -12,7 +12,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .tensor_ext import TensorExt
@@ -72,10 +71,10 @@ class Tensor(TensorExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         data: datatypes.TensorDataLike | None = None,
         value_range: datatypes.Range1DLike | None = None,
     ) -> Tensor:
@@ -84,7 +83,7 @@ class Tensor(TensorExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         data:
             The tensor data
@@ -110,7 +109,7 @@ class Tensor(TensorExt, Archetype):
                 "value_range": value_range,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -120,14 +119,9 @@ class Tensor(TensorExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Tensor:
+    def cleared(cls) -> Tensor:
         """Clear all the fields of a `Tensor`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            data=[],
-            value_range=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -170,15 +164,14 @@ class Tensor(TensorExt, Archetype):
                 value_range=value_range,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

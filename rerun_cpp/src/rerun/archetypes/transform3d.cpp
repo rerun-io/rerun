@@ -31,6 +31,77 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Transform3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(8);
+        if (translation.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(translation.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (rotation_axis_angle.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(rotation_axis_angle.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (quaternion.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(quaternion.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (scale.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(scale.value(), lengths_).value_or_throw()
+            );
+        }
+        if (mat3x3.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(mat3x3.value(), lengths_).value_or_throw()
+            );
+        }
+        if (relation.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(relation.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (axis_length.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(axis_length.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Transform3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Transform3D::columns() {
+        if (translation.has_value()) {
+            return columns(std::vector<uint32_t>(translation.value().length(), 1));
+        }
+        if (rotation_axis_angle.has_value()) {
+            return columns(std::vector<uint32_t>(rotation_axis_angle.value().length(), 1));
+        }
+        if (quaternion.has_value()) {
+            return columns(std::vector<uint32_t>(quaternion.value().length(), 1));
+        }
+        if (scale.has_value()) {
+            return columns(std::vector<uint32_t>(scale.value().length(), 1));
+        }
+        if (mat3x3.has_value()) {
+            return columns(std::vector<uint32_t>(mat3x3.value().length(), 1));
+        }
+        if (relation.has_value()) {
+            return columns(std::vector<uint32_t>(relation.value().length(), 1));
+        }
+        if (axis_length.has_value()) {
+            return columns(std::vector<uint32_t>(axis_length.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -64,8 +135,7 @@ namespace rerun {
             cells.push_back(archetype.axis_length.value());
         }
         {
-            auto indicator = Transform3D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Transform3D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

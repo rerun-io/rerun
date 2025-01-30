@@ -67,6 +67,153 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> AffixFuzzer2::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(20);
+        if (fuzz1101.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1101.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1102.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1102.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1103.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1103.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1104.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1104.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1105.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1105.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1106.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1106.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1107.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1107.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1108.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1108.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1109.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1109.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1110.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1110.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1111.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1111.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1112.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1112.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1113.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1113.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1114.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1114.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1115.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1115.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1116.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1116.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1117.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1117.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1118.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1118.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (fuzz1122.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1122.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<AffixFuzzer2>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> AffixFuzzer2::columns() {
+        if (fuzz1101.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1101.value().length(), 1));
+        }
+        if (fuzz1102.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1102.value().length(), 1));
+        }
+        if (fuzz1103.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1103.value().length(), 1));
+        }
+        if (fuzz1104.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1104.value().length(), 1));
+        }
+        if (fuzz1105.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1105.value().length(), 1));
+        }
+        if (fuzz1106.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1106.value().length(), 1));
+        }
+        if (fuzz1107.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1107.value().length(), 1));
+        }
+        if (fuzz1108.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1108.value().length(), 1));
+        }
+        if (fuzz1109.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1109.value().length(), 1));
+        }
+        if (fuzz1110.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1110.value().length(), 1));
+        }
+        if (fuzz1111.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1111.value().length(), 1));
+        }
+        if (fuzz1112.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1112.value().length(), 1));
+        }
+        if (fuzz1113.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1113.value().length(), 1));
+        }
+        if (fuzz1114.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1114.value().length(), 1));
+        }
+        if (fuzz1115.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1115.value().length(), 1));
+        }
+        if (fuzz1116.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1116.value().length(), 1));
+        }
+        if (fuzz1117.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1117.value().length(), 1));
+        }
+        if (fuzz1118.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1118.value().length(), 1));
+        }
+        if (fuzz1122.has_value()) {
+            return columns(std::vector<uint32_t>(fuzz1122.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {
@@ -136,8 +283,7 @@ namespace rerun {
             cells.push_back(archetype.fuzz1122.value());
         }
         {
-            auto indicator = AffixFuzzer2::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<AffixFuzzer2>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

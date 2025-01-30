@@ -12,7 +12,6 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
-    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .geo_line_strings_ext import GeoLineStringsExt
@@ -80,10 +79,10 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         line_strings: components.GeoLineStringArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -93,7 +92,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         line_strings:
             The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
@@ -118,7 +117,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
                 "colors": colors,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -128,15 +127,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> GeoLineStrings:
+    def cleared(cls) -> GeoLineStrings:
         """Clear all the fields of a `GeoLineStrings`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            line_strings=[],
-            radii=[],
-            colors=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
@@ -179,15 +172,14 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
                 colors=colors,
             )
 
-        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
         lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
         columns = [batch.partition(lengths) for batch in batches]
 
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

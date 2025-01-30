@@ -191,6 +191,11 @@ impl FilterMatcher {
         }
     }
 
+    /// Is the filter currently active?
+    pub fn is_active(&self) -> bool {
+        self.lowercase_query.is_some()
+    }
+
     /// Is the filter set to match everything?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
@@ -223,7 +228,7 @@ impl FilterMatcher {
     /// Returns `None` when there is no match.
     /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
     /// actual match.
-    fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
+    pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
         let query = match self.lowercase_query.as_deref() {
             None => {
                 return Some(Either::Left(std::iter::empty()));
@@ -257,7 +262,7 @@ impl FilterMatcher {
     /// actual match.
     pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
         self.find_matches(text)
-            .map(|match_iter| format_matching_text(ctx, text, match_iter))
+            .map(|match_iter| format_matching_text(ctx, text, match_iter, None))
     }
 }
 
@@ -267,9 +272,12 @@ pub fn format_matching_text(
     ctx: &egui::Context,
     text: &str,
     match_iter: impl Iterator<Item = Range<usize>>,
+    text_color: Option<egui::Color32>,
 ) -> egui::WidgetText {
     let mut current = 0;
     let mut job = egui::text::LayoutJob::default();
+
+    let color = text_color.unwrap_or(Color32::PLACEHOLDER);
 
     for Range { start, end } in match_iter {
         if current < start {
@@ -278,7 +286,7 @@ pub fn format_matching_text(
                 0.0,
                 egui::TextFormat {
                     font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                    color: Color32::PLACEHOLDER,
+                    color,
                     ..Default::default()
                 },
             );
@@ -289,7 +297,7 @@ pub fn format_matching_text(
             0.0,
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                color: Color32::PLACEHOLDER,
+                color,
                 background: ctx.style().visuals.selection.bg_fill,
                 ..Default::default()
             },
@@ -304,7 +312,7 @@ pub fn format_matching_text(
             0.0,
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                color: Color32::PLACEHOLDER,
+                color,
                 ..Default::default()
             },
         );

@@ -2,7 +2,6 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
-"archetypes/manual_indicator" = []
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
@@ -102,10 +101,10 @@
   "rust", # Missing examples
 ]
 "howto/any_batch_value_send_columns" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
 ]
 "howto/any_values_send_columns" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
@@ -198,15 +197,8 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/arrows3d_simple" = [ # TODO(#3206): examples use different RNGs
-  "cpp",
+"archetypes/arrows3d_simple" = [ # Python uses doubles
   "py",
-  "rust",
-]
-"archetypes/asset3d_out_of_tree" = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
-  "cpp",
-  "py",
-  "rust",
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
@@ -221,11 +213,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/mesh3d_partial_updates" = [ # TODO(andreas): use new partial update api
-  "cpp",
+"archetypes/mesh3d_partial_updates" = [ # Python uses doubles
   "py",
-  "rust",
-] # float precision issues
+]
 "archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -236,9 +226,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/points3d_send_columns" = [
-  "cpp", # TODO(#8754): needs tagged columnar APIs
-]
 "archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -247,25 +234,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
-"archetypes/scalar_send_columns" = [
-  "cpp", # TODO(#8754): needs tagged columnar APIs
-]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/series_point_style" = [ # TODO(#5116): trigonometric functions have slightly different outcomes
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/series_line_style" = [ # TODO(#5116):trigonometric functions have slightly different outcomes
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
+"archetypes/text_log_integration" = [ # The entity path will differ because the integrations work differently
   "cpp",
   "py",
   "rust",
@@ -283,20 +257,14 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/image_send_columns" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
-  "cpp",
+"archetypes/mesh3d_instancing" = [ # Python uses doubles
   "py",
-  "rust",
 ]
-"archetypes/mesh3d_instancing" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.
-  "cpp",
-  "py",
-  "rust",
+"archetypes/series_line_style" = [
+  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
 ]
-"archetypes/video_auto_frames" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
-  "cpp",
-  "py",
-  "rust",
+"archetypes/series_point_style" = [
+  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
 ]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.

@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -107,9 +107,9 @@ impl ::re_types_core::Archetype for ScalarAxis {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: ScalarAxisIndicator = ScalarAxisIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        ScalarAxisIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -156,7 +156,7 @@ impl ::re_types_core::AsComponents for ScalarAxis {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Self::indicator().serialized(),
+            Some(Self::indicator()),
             self.range.clone(),
             self.zoom_lock.clone(),
         ]

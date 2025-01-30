@@ -185,7 +185,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
     code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
-    code.push_str("use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};\n");
+    code.push_str("use ::re_types_core::{ComponentBatch, SerializedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -1174,7 +1174,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     let all_component_batches = {
         std::iter::once(quote! {
-            Self::indicator().serialized()
+            Some(Self::indicator())
         })
         .chain(obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
@@ -1244,9 +1244,9 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             }
 
             #[inline]
-            fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-                static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+            fn indicator() -> SerializedComponentBatch {
+                #[allow(clippy::unwrap_used)] // There is no such thing as failing to serialize an indicator.
+                #quoted_indicator_name::DEFAULT.serialized().unwrap()
             }
 
             #[inline]
@@ -1638,13 +1638,9 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         ");
         let columns_unary_doc = quote_doc_lines(&columns_unary_doc.lines().map(|l| l.to_owned()).collect_vec());
 
-        let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
-        let num_fields = required.iter().chain(optional.iter()).count();
-
         let fields = required.iter().chain(optional.iter()).map(|field| {
             let field_name = format_ident!("{}", field.name);
-            let clone = if num_fields == 1 && !has_indicator { quote!(.into_iter()) } else { quote!(.clone()) };
-            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths #clone)).transpose()?)
+            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths.clone())).transpose()?)
         });
 
         let field_lengths = required.iter().chain(optional.iter()).map(|field| {
@@ -1656,12 +1652,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
         });
 
-        let indicator_column = if !has_indicator {
-            // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
-            quote!(None)
-        } else {
-            quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?)
-        };
+        let indicator_column = quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?);
 
         quote! {
             #columns_doc
@@ -1674,8 +1665,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                let indicator_column = #indicator_column;
-                Ok(columns.into_iter().chain([indicator_column]).flatten())
+                Ok(columns.into_iter().flatten().chain([#indicator_column]))
             }
 
             #columns_unary_doc

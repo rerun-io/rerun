@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/media_type.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
@@ -130,6 +131,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `text` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_text` should
+        /// be used when logging a single row's worth of data.
+        TextDocument with_many_text(const Collection<rerun::components::Text>& _text) && {
+            text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The Media Type of the text.
         ///
         /// For instance:
@@ -142,6 +152,34 @@ namespace rerun::archetypes {
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `media_type` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
+        /// be used when logging a single row's worth of data.
+        TextDocument with_many_media_type(
+            const Collection<rerun::components::MediaType>& _media_type
+        ) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

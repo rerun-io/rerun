@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/axis_length.hpp"
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
@@ -614,9 +615,34 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `translation` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_translation` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_translation(
+            const Collection<rerun::components::Translation3D>& _translation
+        ) && {
+            translation = ComponentBatch::from_loggable(_translation, Descriptor_translation)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Rotation via axis + angle.
         Transform3D with_rotation_axis_angle(
             const rerun::components::RotationAxisAngle& _rotation_axis_angle
+        ) && {
+            rotation_axis_angle =
+                ComponentBatch::from_loggable(_rotation_axis_angle, Descriptor_rotation_axis_angle)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rotation_axis_angle` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_rotation_axis_angle` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_rotation_axis_angle(
+            const Collection<rerun::components::RotationAxisAngle>& _rotation_axis_angle
         ) && {
             rotation_axis_angle =
                 ComponentBatch::from_loggable(_rotation_axis_angle, Descriptor_rotation_axis_angle)
@@ -631,8 +657,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `quaternion` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_quaternion` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_quaternion(
+            const Collection<rerun::components::RotationQuat>& _quaternion
+        ) && {
+            quaternion =
+                ComponentBatch::from_loggable(_quaternion, Descriptor_quaternion).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Scaling factor.
         Transform3D with_scale(const rerun::components::Scale3D& _scale) && {
+            scale = ComponentBatch::from_loggable(_scale, Descriptor_scale).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `scale` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_scale` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_scale(const Collection<rerun::components::Scale3D>& _scale) && {
             scale = ComponentBatch::from_loggable(_scale, Descriptor_scale).value_or_throw();
             return std::move(*this);
         }
@@ -643,8 +690,30 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `mat3x3` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_mat3x3` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_mat3x3(const Collection<rerun::components::TransformMat3x3>& _mat3x3
+        ) && {
+            mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Specifies the relation this transform establishes between this entity and its parent.
         Transform3D with_relation(const rerun::components::TransformRelation& _relation) && {
+            relation =
+                ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `relation` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_relation` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_relation(
+            const Collection<rerun::components::TransformRelation>& _relation
+        ) && {
             relation =
                 ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
             return std::move(*this);
@@ -659,6 +728,34 @@ namespace rerun::archetypes {
                               .value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `axis_length` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_axis_length` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_axis_length(
+            const Collection<rerun::components::AxisLength>& _axis_length
+        ) && {
+            axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

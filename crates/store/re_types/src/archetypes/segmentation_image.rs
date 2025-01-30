@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -187,9 +187,9 @@ impl ::re_types_core::Archetype for SegmentationImage {
     }
 
     #[inline]
-    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
-        static INDICATOR: SegmentationImageIndicator = SegmentationImageIndicator::DEFAULT;
-        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+    fn indicator() -> SerializedComponentBatch {
+        #[allow(clippy::unwrap_used)]
+        SegmentationImageIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -247,7 +247,7 @@ impl ::re_types_core::AsComponents for SegmentationImage {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Self::indicator().serialized(),
+            Some(Self::indicator()),
             self.buffer.clone(),
             self.format.clone(),
             self.opacity.clone(),
@@ -338,9 +338,12 @@ impl SegmentationImage {
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
+        Ok(columns
+            .into_iter()
+            .flatten()
+            .chain([::re_types_core::indicator_column::<Self>(
+                _lengths.into_iter().count(),
+            )?]))
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

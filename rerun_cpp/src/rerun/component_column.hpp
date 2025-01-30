@@ -33,19 +33,17 @@ namespace rerun {
         /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
         /// this specifies the number of components at each time point.
         /// The sum of the lengths must be equal to the number of components in the batch.
+        /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
         static Result<ComponentColumn> from_loggable_with_lengths(
-            const Collection<T>& components, const Collection<uint32_t>& lengths
+            const Collection<T>& components, const Collection<uint32_t>& lengths,
+            const ComponentDescriptor& descriptor
         ) {
-            auto component_batch_result = ComponentBatch::from_loggable(components);
+            auto component_batch_result = ComponentBatch::from_loggable(components, descriptor);
             if (component_batch_result.is_err()) {
                 return component_batch_result.error;
             }
-            return from_batch_with_lengths(
-                component_batch_result.value,
-                lengths,
-                list_array_type_for<T>()
-            );
+            return from_batch_with_lengths(component_batch_result.value, lengths);
         }
 
         /// Creates a new component column from a collection of component instances where each run has a length of one.
@@ -56,19 +54,28 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         ///
         /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
+        /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
-        static Result<ComponentColumn> from_loggable(const Collection<T>& components) {
+        static Result<ComponentColumn> from_loggable(
+            const Collection<T>& components, const ComponentDescriptor& descriptor
+        ) {
             return ComponentColumn::from_loggable_with_lengths(
                 components,
-                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(components.size(), 1))
+                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(components.size(), 1)),
+                descriptor
             );
         }
 
         /// Creates a new component column with a given number of archetype indicators for a given archetype type.
         template <typename Archetype>
         static Result<ComponentColumn> from_indicators(uint32_t num_indicators) {
-            return ComponentColumn::from_loggable<typename Archetype::IndicatorComponent>(
-                std::vector<typename Archetype::IndicatorComponent>(num_indicators)
+            auto component_batch_result = ComponentBatch::from_indicator<Archetype>();
+            if (component_batch_result.is_err()) {
+                return component_batch_result.error;
+            }
+            return ComponentColumn::from_batch_with_lengths(
+                component_batch_result.value,
+                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(num_indicators, 0))
             );
         }
 
@@ -78,11 +85,8 @@ namespace rerun {
         /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
         /// this specifies the number of components at each time point.
         /// The sum of the lengths must be equal to the number of components in the batch.
-        /// \param list_array_type The type of the list array to use for the component column.
-        /// Can be retrieved using `list_array_type_for<T>()`.
         static Result<ComponentColumn> from_batch_with_lengths(
-            ComponentBatch batch, const Collection<uint32_t>& lengths,
-            std::shared_ptr<arrow::DataType> list_array_type
+            ComponentBatch batch, const Collection<uint32_t>& lengths
         );
 
         /// Creates a new component batch partition from a batch and a collection of component offsets.
@@ -94,32 +98,8 @@ namespace rerun {
         /// E.g. a `ParitionedComponentBatch` with a single component would have an offset array of `[0, 1]`.
         /// A `ComponentColumn` with 5 components divided into runs of length 2 and 3
         // would have an offset array of `[0, 2, 5]`.
-        /// \param list_array_type The type of the list array to use for the component column.
-        /// Can be retrieved using `list_array_type_for<T>()`.
         static Result<ComponentColumn> from_batch_with_offsets(
-            ComponentBatch batch, Collection<uint32_t> offsets,
-            std::shared_ptr<arrow::DataType> list_array_type
-        );
-
-        /// Returns the list array type for the given loggable type.
-        ///
-        /// Lazily creates the type on first call and then returns a reference to it.
-        template <typename T>
-        static const std::shared_ptr<arrow::DataType>& list_array_type_for() {
-            static_assert(
-                rerun::is_loggable<T>,
-                "The given type does not implement the rerun::Loggable trait."
-            );
-            static std::shared_ptr<arrow::DataType> data_type =
-                list_array_type_for(Loggable<T>::arrow_datatype());
-            return data_type;
-        }
-
-        /// Creates a new arrow::Datatype for an underlying type.
-        ///
-        /// To avoid repeated allocation, use the templated version of this method.
-        static std::shared_ptr<arrow::DataType> list_array_type_for(
-            std::shared_ptr<arrow::DataType> inner_type
+            ComponentBatch batch, Collection<uint32_t> offsets
         );
 
         /// To rerun C API component batch.

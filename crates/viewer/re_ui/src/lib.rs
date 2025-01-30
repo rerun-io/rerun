@@ -16,7 +16,6 @@ mod section_collapsing_header;
 pub mod syntax_highlighting;
 mod ui_ext;
 mod ui_layout;
-pub mod zoom_pan_area;
 
 use egui::Color32;
 use egui::NumExt as _;

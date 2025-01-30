@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -273,6 +274,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `albedo_factor` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_factor(
+            const Collection<rerun::components::AlbedoFactor>& _albedo_factor
+        ) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional albedo texture.
         ///
         /// Used with the `components::Texcoord2D` of the mesh.
@@ -281,6 +294,21 @@ namespace rerun::archetypes {
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         Mesh3D with_albedo_texture_buffer(
             const rerun::components::ImageBuffer& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_buffer` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_buffer` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_texture_buffer(
+            const Collection<rerun::components::ImageBuffer>& _albedo_texture_buffer
         ) && {
             albedo_texture_buffer = ComponentBatch::from_loggable(
                                         _albedo_texture_buffer,
@@ -302,6 +330,21 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `albedo_texture_format` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_format` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_albedo_texture_format(
+            const Collection<rerun::components::ImageFormat>& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional class Ids for the vertices.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
@@ -310,6 +353,22 @@ namespace rerun::archetypes {
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
             return std::move(*this);
         }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

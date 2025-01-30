@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
@@ -248,8 +249,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `buffer` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_buffer` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_buffer(const Collection<rerun::components::ImageBuffer>& _buffer) && {
+            buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The format of the image.
         DepthImage with_format(const rerun::components::ImageFormat& _format) && {
+            format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `format` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_format` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_format(const Collection<rerun::components::ImageFormat>& _format) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
             return std::move(*this);
         }
@@ -266,10 +285,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `meter` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_meter` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_meter(const Collection<rerun::components::DepthMeter>& _meter) && {
+            meter = ComponentBatch::from_loggable(_meter, Descriptor_meter).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Colormap to use for rendering the depth image.
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
         DepthImage with_colormap(const rerun::components::Colormap& _colormap) && {
+            colormap =
+                ComponentBatch::from_loggable(_colormap, Descriptor_colormap).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `colormap` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_colormap` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_colormap(const Collection<rerun::components::Colormap>& _colormap) && {
             colormap =
                 ComponentBatch::from_loggable(_colormap, Descriptor_colormap).value_or_throw();
             return std::move(*this);
@@ -292,6 +330,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `depth_range` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_depth_range` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_depth_range(
+            const Collection<rerun::components::ValueRange>& _depth_range
+        ) && {
+            depth_range = ComponentBatch::from_loggable(_depth_range, Descriptor_depth_range)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Scale the radii of the points in the point cloud generated from this image.
         ///
         /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
@@ -306,6 +356,19 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `point_fill_ratio` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_point_fill_ratio` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_point_fill_ratio(
+            const Collection<rerun::components::FillRatio>& _point_fill_ratio
+        ) && {
+            point_fill_ratio =
+                ComponentBatch::from_loggable(_point_fill_ratio, Descriptor_point_fill_ratio)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
@@ -314,6 +377,33 @@ namespace rerun::archetypes {
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             return std::move(*this);
         }
+
+        /// This method makes it possible to pack multiple `draw_order` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_draw_order(const Collection<rerun::components::DrawOrder>& _draw_order
+        ) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

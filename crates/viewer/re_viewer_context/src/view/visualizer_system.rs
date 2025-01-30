@@ -54,15 +54,14 @@ pub struct VisualizerQueryInfo {
 }
 
 impl VisualizerQueryInfo {
-    pub fn from_archetype<T: Archetype>() -> Self {
-        use re_types_core::ComponentBatch as _;
+    pub fn from_archetype<A: Archetype>() -> Self {
         Self {
-            indicators: std::iter::once(T::indicator().name()).collect(),
-            required: T::required_components()
+            indicators: std::iter::once(A::indicator().descriptor.component_name).collect(),
+            required: A::required_components()
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),
-            queried: T::all_components()
+            queried: A::all_components()
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),

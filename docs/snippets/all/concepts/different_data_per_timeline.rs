@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.set_time_seconds("red timeline", 1.0);
     rec.log(
         "points",
-        &[&rerun::components::Color::from_u32(0xFF0000FF) as &dyn rerun::ComponentBatch],
+        &rerun::Points2D::update_fields().with_colors([0xFF0000FF]),
     )?;
 
     // And a blue color on the other.
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.set_time_sequence("blue timeline", 1);
     rec.log(
         "points",
-        &[&rerun::components::Color::from_u32(0x0000FFFF) as &dyn rerun::ComponentBatch],
+        &rerun::Points2D::update_fields().with_colors([0x0000FFFF]),
     )?;
 
     // TODO(#5521): log VisualBounds2D

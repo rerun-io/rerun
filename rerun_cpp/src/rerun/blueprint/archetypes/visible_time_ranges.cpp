@@ -13,6 +13,28 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> VisibleTimeRanges::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(2);
+        if (ranges.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(ranges.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(ComponentColumn::from_indicators<VisibleTimeRanges>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
+        return columns;
+    }
+
+    Collection<ComponentColumn> VisibleTimeRanges::columns() {
+        if (ranges.has_value()) {
+            return columns(std::vector<uint32_t>(ranges.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {
@@ -29,8 +51,7 @@ namespace rerun {
             cells.push_back(archetype.ranges.value());
         }
         {
-            auto indicator = VisibleTimeRanges::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<VisibleTimeRanges>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -338,7 +338,7 @@ namespace rerun {
         /// ```
         ///
         /// The `log` function can flexibly accept an arbitrary number of additional objects which will
-        /// be merged into the first entity so long as they don't expose conflicting components, for instance:
+        /// be merged into the first entity, for instance:
         /// ```
         /// // Log three points with arrows sticking out of them:
         /// rec.log(
@@ -349,19 +349,20 @@ namespace rerun {
         /// );
         /// ```
         ///
-        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        /// Any failures that may are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
         ///
         /// @see try_log, log_static, try_log_with_static
         template <typename... Ts>
-        void log(std::string_view entity_path, const Ts&... archetypes_or_collections) const {
+        void log(std::string_view entity_path, const Ts&... as_components) const {
             if (!is_enabled()) {
                 return;
             }
-            try_log_with_static(entity_path, false, archetypes_or_collections...).handle();
+            try_log_with_static(entity_path, false, as_components...).handle();
         }
 
         /// Logs one or more archetype and/or component batches as static data.
@@ -373,61 +374,62 @@ namespace rerun {
         /// Failures are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
         ///
         /// @see log, try_log_static, try_log_with_static
         template <typename... Ts>
-        void log_static(std::string_view entity_path, const Ts&... archetypes_or_collections)
-            const {
+        void log_static(std::string_view entity_path, const Ts&... as_components) const {
             if (!is_enabled()) {
                 return;
             }
-            try_log_with_static(entity_path, true, archetypes_or_collections...).handle();
+            try_log_with_static(entity_path, true, as_components...).handle();
         }
 
         /// Logs one or more archetype and/or component batches.
         ///
         /// See `log` for more information.
-        /// Unlike `log` this method returns an error if an error occurs during serialization or logging.
+        /// Unlike `log` this method returns an error if an error occurs.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
         ///
         /// @see log, try_log_static, try_log_with_static
         template <typename... Ts>
-        Error try_log(std::string_view entity_path, const Ts&... archetypes_or_collections) const {
+        Error try_log(std::string_view entity_path, const Ts&... as_components) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            return try_log_with_static(entity_path, false, archetypes_or_collections...);
+            return try_log_with_static(entity_path, false, as_components...);
         }
 
         /// Logs one or more archetype and/or component batches as static data, returning an error.
         ///
         /// See `log`/`log_static` for more information.
-        /// Unlike `log_static` this method returns if an error occurs during serialization or logging.
+        /// Unlike `log_static` this method returns if an error occurs.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
-        /// \returns An error if an error occurs during serialization or logging.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
+        /// \returns An error if an error occurs during evaluation of `AsComponents` or logging.
         ///
         /// @see log_static, try_log, try_log_with_static
         template <typename... Ts>
-        Error try_log_static(std::string_view entity_path, const Ts&... archetypes_or_collections)
-            const {
+        Error try_log_static(std::string_view entity_path, const Ts&... as_components) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            return try_log_with_static(entity_path, true, archetypes_or_collections...);
+            return try_log_with_static(entity_path, true, as_components...);
         }
 
         /// Logs one or more archetype and/or component batches optionally static, returning an error.
         ///
         /// See `log`/`log_static` for more information.
-        /// Returns an error if an error occurs during serialization or logging.
+        /// Returns an error if an error occurs during evaluation of `AsComponents` or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param static_ If true, the logged components will be static.
@@ -435,21 +437,21 @@ namespace rerun {
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
         ///
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
-        void log_with_static(
-            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
-        ) const {
-            try_log_with_static(entity_path, static_, archetypes_or_collections...).handle();
+        void log_with_static(std::string_view entity_path, bool static_, const Ts&... as_components)
+            const {
+            try_log_with_static(entity_path, static_, as_components...).handle();
         }
 
         /// Logs one or more archetype and/or component batches optionally static, returning an error.
         ///
         /// See `log`/`log_static` for more information.
-        /// Returns an error if an error occurs during serialization or logging.
+        /// Returns an error if an error occurs during evaluation of `AsComponents` or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param static_ If true, the logged components will be static.
@@ -457,14 +459,15 @@ namespace rerun {
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
-        /// \param archetypes_or_collections Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
-        /// \returns An error if an error occurs during serialization or logging.
+        /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
+        /// You can implement `AsComponents` for your own types as well
+        /// \returns An error if an error occurs during evaluation of `AsComponents` or logging.
         ///
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
         Error try_log_with_static(
-            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
+            std::string_view entity_path, bool static_, const Ts&... as_components
         ) const {
             if (!is_enabled()) {
                 return Error::ok();
@@ -478,7 +481,7 @@ namespace rerun {
                     }
 
                     const Result<std::vector<ComponentBatch>> serialization_result =
-                        AsComponents<Ts>().serialize(archetypes_or_collections);
+                        AsComponents<Ts>().serialize(as_components);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                         return;
@@ -646,10 +649,13 @@ namespace rerun {
 
         /// Directly log a columns of data to Rerun.
         ///
+        /// This variant takes in arbitrary amount of `ComponentColumn`s and `ComponentColumn` collections.
+        ///
         /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
-        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
-        /// of individual components.
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
         ///
         /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
         /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
@@ -658,63 +664,67 @@ namespace rerun {
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param time_columns The time columns to send.
-        /// \param component_columns The columns of components to send.
-        /// Each individual component in each collection will be associated with a single time value.
-        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
+        /// \param component_columns The columns of components to send. Both individual `ComponentColumn`s and `Collection<ComponentColumn>`s are accepted.
         /// \see `try_send_columns`
         template <typename... Ts>
         void send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_columns // NOLINT
+            Ts... component_columns // NOLINT
         ) const {
             try_send_columns(entity_path, time_columns, component_columns...).handle();
         }
 
         /// Directly log a columns of data to Rerun.
         ///
+        /// This variant takes in arbitrary amount of `ComponentColumn`s and `ComponentColumn` collections.
+        ///
         /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
-        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
-        /// of individual components.
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
         ///
         /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
         /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param time_columns The time columns to send.
-        /// \param component_columns The columns of components to send.
-        /// Each individual component in each collection will be associated with a single time value.
-        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
+        /// \param component_columns The columns of components to send. Both individual `ComponentColumn`s and `Collection<ComponentColumn>`s are accepted.
         /// \see `send_columns`
         template <typename... Ts>
         Error try_send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_columns // NOLINT
+            Ts... component_columns // NOLINT
         ) const {
-            if (!is_enabled()) {
-                return Error::ok();
+            if constexpr (sizeof...(Ts) == 1) {
+                // Directly forward if this is only a single element,
+                // skipping collection of component column vector.
+                return try_send_columns(
+                    entity_path,
+                    std::move(time_columns),
+                    Collection(std::forward<Ts...>(component_columns...))
+                );
             }
-            std::vector<ComponentColumn> serialized_columns;
-            Error err;
+
+            std::vector<ComponentColumn> flat_column_list;
             (
                 [&] {
-                    if (err.is_err()) {
-                        return;
-                    }
+                    static_assert(
+                        std::is_same_v<std::remove_cv_t<Ts>, ComponentColumn> ||
+                            std::is_constructible_v<Collection<ComponentColumn>, Ts>,
+                        "Ts must be ComponentColumn or a collection thereof"
+                    );
 
-                    const Result<ComponentColumn> serialization_result =
-                        ComponentColumn::from_loggable(component_columns);
-                    if (serialization_result.is_err()) {
-                        err = serialization_result.error;
-                        return;
-                    }
-                    serialized_columns.emplace_back(std::move(serialization_result.value));
+                    push_back_columns(flat_column_list, std::move(component_columns));
                 }(),
                 ...
             );
-            RR_RETURN_NOT_OK(err);
-
-            return try_send_columns(entity_path, time_columns, std::move(serialized_columns));
+            return try_send_columns(
+                entity_path,
+                std::move(time_columns),
+                // Need to create collection explicitly, otherwise this becomes a recursive call.
+                Collection<ComponentColumn>(std::move(flat_column_list))
+            );
         }
 
         /// Directly log a columns of data to Rerun.
@@ -764,6 +774,21 @@ namespace rerun {
         /// @}
 
       private:
+        // Utility function to implement `try_send_columns` variadic template.
+        static void push_back_columns(
+            std::vector<ComponentColumn>& component_columns, Collection<ComponentColumn> new_columns
+        ) {
+            for (const auto& new_column : new_columns) {
+                component_columns.emplace_back(std::move(new_column));
+            }
+        }
+
+        static void push_back_columns(
+            std::vector<ComponentColumn>& component_columns, ComponentColumn new_column
+        ) {
+            component_columns.emplace_back(std::move(new_column));
+        }
+
         RecordingStream(uint32_t id, StoreKind store_kind);
 
         uint32_t _id;
