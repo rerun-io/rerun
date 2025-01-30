@@ -52,8 +52,8 @@ pub enum LevelOfDetail {
 }
 
 impl LevelOfDetail {
-    pub fn from_scaling(zoom: f32) -> Self {
-        if zoom < 0.20 {
+    pub fn from_scaling(scale: f32) -> Self {
+        if scale < 0.20 {
             Self::Low
         } else {
             Self::Full

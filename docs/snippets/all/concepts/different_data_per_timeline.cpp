@@ -13,12 +13,12 @@ int main() {
     // Log a red color on one timeline.
     rec.reset_time(); // Clears all set timeline info.
     rec.set_time_seconds("red timeline", 1.0);
-    rec.log("points", std::array{rerun::components::Color(0xFF0000FF)});
+    rec.log("points", rerun::Points2D::update_fields().with_colors(rerun::Color(0xFF0000FF)));
 
     // And a blue color on the other.
     rec.reset_time(); // Clears all set timeline info.
     rec.set_time_sequence("blue timeline", 1);
-    rec.log("points", std::array{rerun::components::Color(0x0000FFFF)});
+    rec.log("points", rerun::Points2D::update_fields().with_colors(rerun::Color(0x0000FFFF)));
 
     // TODO(#5521): log VisualBounds2D
 }

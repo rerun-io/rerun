@@ -39,11 +39,29 @@ As part of the switch to "eager archetype serialization" (serialization of arche
 
 However, it is still possible to do so with the `TensorData` component.
 
-### C++ `RecordingStream::send_column` no longer takes raw component collections
+### C++ `RecordingStream::log`/`send_column` no longer takes raw component collections
 
-Previously, `RecordingStream::send_column` accepted raw component collections.
+Previously, both `RecordingStream::log` and `RecordingStream::send_column` were able to
+handle raw component collections which then would be serialized to arrow on the fly.
 
-This is no longer the case and only `rerun::ComponentColumn` and anything else from which
+#### `log`
+
+Under the hood we allow any type that implements the `AsComponents` trait.
+However, `AsComponents` is no longer implemented for collections of components / implementors of `Loggable`.
+
+Instead, you're encouraged to use archetypes for cases where you'd previously use loose collections of components.
+This is made easier by the fact that archetypes can now be created without specifying required components.
+For example, colors of a point cloud can be logged without position data:
+
+```cpp
+rec.log("points", rerun::Points3D().with_colors(colors));
+```
+
+Custom implementations of `AsComponents` still work as before.
+
+#### `send_column`
+
+Only `rerun::ComponentColumn` and anything else from which
 a `Collection<ComponentColumn>` can be constructed is accepted.
 The preferred way to create `rerun::ComponentColumn`s is to use the new `columns` method on archetypes.
 

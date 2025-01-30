@@ -15,7 +15,14 @@ SCENARIO("Log empty data", TEST_TAG) {
             stream.log("empty", rerun::Points3D(std::vector<rerun::Position3D>{}));
         });
     }
-    SECTION("Using an empty component vector") {
-        check_logged_error([&] { stream.log("empty", std::vector<rerun::Position3D>{}); });
+    SECTION("Using an empty component batch") {
+        check_logged_error([&] {
+            stream.log(
+                "empty",
+                rerun::ComponentBatch::empty<rerun::Position3D>(
+                    rerun::Loggable<rerun::Position3D>::Descriptor
+                )
+            );
+        });
     }
 }

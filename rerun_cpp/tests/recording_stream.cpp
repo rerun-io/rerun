@@ -146,119 +146,55 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
             WHEN("creating a new stream") {
                 rerun::RecordingStream stream("test", std::string_view(), kind);
 
-                // We can make single components work, but this would make error messages a lot
-                // worse since we'd have to implement the base `AsComponents` template for this.
-                //
-                // THEN("single components can be logged") {
-                //     stream.log(
-                //         "single-components",
-                //         rerun::Position2D{1.0, 2.0},
-                //         rerun::Color(0x00FF00FF)
-                //     );
-                // }
-
-                THEN("components as c-array can be logged") {
-                    rerun::Position2D c_style_array[2] = {
-                        rerun::Vec2D{1.0, 2.0},
-                        rerun::Vec2D{4.0, 5.0},
-                    };
-
-                    stream.log("as-carray", c_style_array);
-                    stream.log_static("as-carray", c_style_array);
+                GIVEN("component batches") {
+                    auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
+                                      {{1.0, 2.0}, {4.0, 5.0}},
+                                      rerun::Loggable<rerun::Position2D>::Descriptor
+                    )
+                                      .value_or_throw();
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                                      {rerun::Color(0xFF0000FF)},
+                                      rerun::Loggable<rerun::Color>::Descriptor
+                    )
+                                      .value_or_throw();
+                    THEN("single component batch can be logged") {
+                        stream.log("log_archetype-splat", batch0);
+                        stream.log_static("log_archetype-splat", batch0);
+                    }
+                    THEN("component batches can be listed out") {
+                        stream.log("log_archetype-splat", batch0, batch1);
+                        stream.log_static("log_archetype-splat", batch0, batch1);
+                    }
+                    THEN("a collection of component batches can be logged") {
+                        rerun::Collection<rerun::ComponentBatch> batches = {batch0, batch1};
+                        stream.log("log_archetype-splat", batches);
+                        stream.log_static("log_archetype-splat", batches);
+                    }
                 }
-                THEN("components as std::initializer_list can be logged") {
-                    const auto c_style_array = {
-                        rerun::components::Position2D{1.0, 2.0},
-                        rerun::components::Position2D{4.0, 5.0},
-                    };
-                    stream.log("as-initializer-list", c_style_array);
-                    stream.log_static("as-initializer-list", c_style_array);
-                }
-                THEN("components as std::array can be logged") {
-                    stream.log(
-                        "as-array",
-                        std::array<rerun::Position2D, 2>{
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        }
+                GIVEN("component batches wrapped in `rerun::Result`") {
+                    auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
+                        {{1.0, 2.0}, {4.0, 5.0}},
+                        rerun::Loggable<rerun::Position2D>::Descriptor
                     );
-                    stream.log_static(
-                        "as-array",
-                        std::array<rerun::Position2D, 2>{
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        }
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                        {rerun::Color(0xFF0000FF)},
+                        rerun::Loggable<rerun::Color>::Descriptor
                     );
-                }
-                THEN("components as std::vector can be logged") {
-                    stream.log(
-                        "as-vector",
-                        std::vector<rerun::Position2D>{
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        }
-                    );
-                    stream.log_static(
-                        "as-vector",
-                        std::vector<rerun::Position2D>{
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        }
-                    );
-                }
-                THEN("several components with a mix of vector, array and c-array can be logged") {
-                    rerun::Text c_style_array[3] = {
-                        rerun::Text("hello"),
-                        rerun::Text("friend"),
-                        rerun::Text("yo"),
-                    };
-                    stream.log(
-                        "as-mix",
-                        std::vector{
-                            rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                            rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                            rerun::Position2D(rerun::Vec2D{5.0, 5.0}),
-                        },
-                        std::array{
-                            rerun::Color(0xFF0000FF),
-                            rerun::Color(0x00FF00FF),
-                            rerun::Color(0x0000FFFF),
-                        },
-                        c_style_array
-                    );
-                    stream.log_static(
-                        "as-mix",
-                        std::vector{
-                            rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                            rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                            rerun::Position2D(rerun::Vec2D{5.0, 5.0}),
-                        },
-                        std::array{
-                            rerun::Color(0xFF0000FF),
-                            rerun::Color(0x00FF00FF),
-                            rerun::Color(0x0000FFFF),
-                        },
-                        c_style_array
-                    );
-                }
-
-                THEN("components with splatting some of them can be logged") {
-                    stream.log(
-                        "log-splat",
-                        std::vector{
-                            rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                            rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                        },
-                        std::array{rerun::Color(0xFF0000FF)}
-                    );
-                    stream.log_static(
-                        "log-splat",
-                        std::vector{
-                            rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                            rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                        },
-                        std::array{rerun::Color(0xFF0000FF)}
-                    );
+                    THEN("single component batch can be logged") {
+                        stream.log("log_archetype-splat", batch0);
+                        stream.log_static("log_archetype-splat", batch0);
+                    }
+                    THEN("component batches can be listed out") {
+                        stream.log("log_archetype-splat", batch0, batch1);
+                        stream.log_static("log_archetype-splat", batch0, batch1);
+                    }
+                    THEN("collection of component batch results can be logged") {
+                        rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
+                            batch0,
+                            batch1};
+                        stream.log("log_archetype-splat", batches);
+                        stream.log_static("log_archetype-splat", batches);
+                    }
                 }
 
                 THEN("an archetype can be logged") {
@@ -269,6 +205,22 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     );
                     stream.log_static(
                         "log_archetype-splat",
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
+                    );
+                }
+                THEN("several archetypes can be logged") {
+                    stream.log(
+                        "log_archetype-splat",
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF))
+                    );
+                    stream.log_static(
+                        "log_archetype-splat",
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
+                        ).with_colors(rerun::Color(0xFF0000FF)),
                         rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
                         ).with_colors(rerun::Color(0xFF0000FF))
                     );
@@ -326,23 +278,6 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                     WHEN("saving that one to a different file " << test_rrd1) {
                         REQUIRE(stream1->save(test_rrd1).is_ok());
 
-                        WHEN("logging a component to the second stream") {
-                            check_logged_error([&] {
-                                stream1->log(
-                                    "as-array",
-                                    std::array<rerun::Position2D, 2>{
-                                        rerun::Vec2D{1.0, 2.0},
-                                        rerun::Vec2D{4.0, 5.0},
-                                    }
-                                );
-                            });
-
-                            THEN("after destruction, the second stream produced a bigger file") {
-                                stream0.reset();
-                                stream1.reset();
-                                CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
-                            }
-                        }
                         WHEN("logging an archetype to the second stream") {
                             check_logged_error([&] {
                                 stream1->log(
@@ -389,22 +324,6 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
         THEN("save call with zero timeout returns no error") {
             REQUIRE(stream.connect_tcp(address, 0.0f).is_ok());
 
-            WHEN("logging a component and then flushing") {
-                check_logged_error([&] {
-                    stream.log(
-                        "as-array",
-                        std::array<rerun::Position2D, 2>{
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        }
-                    );
-                });
-                stream.flush_blocking();
-
-                THEN("does not crash") {
-                    // No easy way to see if it got sent.
-                }
-            }
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
                     stream.log(
@@ -483,41 +402,25 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
         const char* path = "valid";
         auto& expected_error = rerun::Loggable<BadComponent>::error;
 
-        AND_GIVEN("an component that fails serialization") {
+        AND_GIVEN("an component batch result that failed serialization") {
             const auto component = BadComponent();
 
             expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
-            THEN("calling log with an array logs the serialization error") {
+            auto batch_result = rerun::ComponentBatch::from_loggable(
+                component,
+                rerun::Loggable<BadComponent>::Descriptor
+            );
+
+            THEN("calling log with that batch logs the serialization error") {
+                check_logged_error([&] { stream.log(path, batch_result); }, expected_error.code);
+            }
+            THEN("calling log with a collection wrapping that batch logs the serialization error") {
                 check_logged_error(
-                    [&] {
-                        stream.log(path, std::array{component, component});
-                    },
+                    [&] { stream.log(path, rerun::Collection{batch_result}); },
                     expected_error.code
                 );
-            }
-            THEN("calling log with a vector logs the serialization error") {
-                check_logged_error(
-                    [&] {
-                        stream.log(path, std::vector{component, component});
-                    },
-                    expected_error.code
-                );
-            }
-            THEN("calling log with a c array logs the serialization error") {
-                const BadComponent components[] = {component, component};
-                check_logged_error([&] { stream.log(path, components); }, expected_error.code);
-            }
-            THEN("calling try_log with an array forwards the serialization error") {
-                CHECK(stream.try_log(path, std::array{component, component}) == expected_error);
-            }
-            THEN("calling try_log with a vector forwards the serialization error") {
-                CHECK(stream.try_log(path, std::vector{component, component}) == expected_error);
-            }
-            THEN("calling try_log with a c array forwards the serialization error") {
-                const BadComponent components[] = {component, component};
-                CHECK(stream.try_log(path, components) == expected_error);
             }
         }
         AND_GIVEN("an archetype that fails serialization") {
@@ -568,88 +471,6 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
         check_logged_error([&] { stream.set_time_sequence("exists!", 123); });
         check_logged_error([&] { stream.disable_timeline("exists"); });
     }
-}
-
-// Regression test for https://github.com/rerun-io/cpp-example-opencv-eigen/issues/25
-SCENARIO("Deprecated log_static still works", TEST_TAG) {
-    rerun::RecordingStream stream("test");
-
-    // Disable deprecation warnings for this test since this is testing deprecated functionality.
-    RR_PUSH_WARNINGS
-    RR_DISABLE_DEPRECATION_WARNING
-
-    GIVEN("a new RecordingStream and valid entity paths") {
-        THEN("components as std::initializer_list can be logged") {
-            const auto c_style_array = {
-                rerun::components::Position2D{1.0, 2.0},
-                rerun::components::Position2D{4.0, 5.0},
-            };
-            stream.log_static("as-initializer-list", c_style_array);
-        }
-
-        THEN("components as std::array can be logged") {
-            stream.log_static(
-                "as-array",
-                std::array<rerun::Position2D, 2>{
-                    rerun::Vec2D{1.0, 2.0},
-                    rerun::Vec2D{4.0, 5.0},
-                }
-            );
-        }
-
-        THEN("components as std::vector can be logged") {
-            stream.log_static(
-                "as-vector",
-                std::vector<rerun::Position2D>{
-                    rerun::Vec2D{1.0, 2.0},
-                    rerun::Vec2D{4.0, 5.0},
-                }
-            );
-        }
-
-        THEN("several components with a mix of vector, array and c-array can be logged") {
-            rerun::Text c_style_array[3] = {
-                rerun::Text("hello"),
-                rerun::Text("friend"),
-                rerun::Text("yo"),
-            };
-            stream.log_static(
-                "as-mix",
-                std::vector{
-                    rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                    rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                    rerun::Position2D(rerun::Vec2D{5.0, 5.0}),
-                },
-                std::array{
-                    rerun::Color(0xFF0000FF),
-                    rerun::Color(0x00FF00FF),
-                    rerun::Color(0x0000FFFF),
-                },
-                c_style_array
-            );
-        }
-
-        THEN("components with splatting some of them can be logged") {
-            stream.log_static(
-                "log-splat",
-                std::vector{
-                    rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
-                    rerun::Position2D(rerun::Vec2D{1.0, 3.0}),
-                },
-                std::array{rerun::Color(0xFF0000FF)}
-            );
-        }
-
-        THEN("an archetype can be logged") {
-            stream.log_static(
-                "log_archetype-splat",
-                rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                ).with_colors(rerun::Color(0xFF0000FF))
-            );
-        }
-    }
-
-    RR_POP_WARNINGS // For `RR_DISABLE_DEPRECATION_WARNING`.
 }
 
 SCENARIO("Global RecordingStream doesn't cause crashes", TEST_TAG) {
