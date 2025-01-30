@@ -50,10 +50,11 @@ pub struct BlueprintTree {
     /// recording with a different application id.
     filter_state_app_id: Option<ApplicationId>,
 
-    /// Last clicked item.
+    /// Range selection anchor item.
     ///
-    /// We keep track of it to implement the range selection using shift-click.
-    last_clicked_item: Option<Item>,
+    /// This is the item we used as a starting point for range selection. It is set and remembered
+    /// everytime the user clicks on an item _without_ holding shift.
+    range_selection_anchor_item: Option<Item>,
 }
 
 impl BlueprintTree {
@@ -667,7 +668,7 @@ impl BlueprintTree {
         let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
 
         if modifiers.shift {
-            if self.last_clicked_item.is_some() {
+            if self.range_selection_anchor_item.is_some() {
                 let items_iterator = self
                     .items_in_range(ctx, blueprint_tree_data, &item)
                     .into_iter()
@@ -689,7 +690,7 @@ impl BlueprintTree {
                 }
             }
         } else {
-            self.last_clicked_item = Some(item);
+            self.range_selection_anchor_item = Some(item);
         }
     }
 
@@ -705,25 +706,25 @@ impl BlueprintTree {
         shift_clicked_item: &Item,
     ) -> Vec<Item> {
         let mut items_in_range = vec![];
-        let mut found_last_clicked_items = false;
+        let mut found_anchor_item = false;
         let mut found_shift_clicked_items = false;
 
         blueprint_tree_data.visit(|blueprint_tree_item| {
             let item = blueprint_tree_item.item();
 
-            if Some(&item) == self.last_clicked_item.as_ref() {
-                found_last_clicked_items = true;
+            if Some(&item) == self.range_selection_anchor_item.as_ref() {
+                found_anchor_item = true;
             }
 
             if &item == shift_clicked_item {
                 found_shift_clicked_items = true;
             }
 
-            if found_last_clicked_items || found_shift_clicked_items {
+            if found_anchor_item || found_shift_clicked_items {
                 items_in_range.push(item);
             }
 
-            if found_last_clicked_items && found_shift_clicked_items {
+            if found_anchor_item && found_shift_clicked_items {
                 return VisitorControlFlow::Break(());
             }
 
@@ -738,10 +739,10 @@ impl BlueprintTree {
             }
         });
 
-        if !found_last_clicked_items {
+        if !found_anchor_item {
             // This can happen if the last clicked item became invisible due to collapsing, or if
             // the user switched to another recording. In either case, we invalidate it.
-            self.last_clicked_item = None;
+            self.range_selection_anchor_item = None;
 
             vec![]
         } else {
