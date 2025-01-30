@@ -162,8 +162,6 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        re_tracing::profile_function!();
-
         let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 

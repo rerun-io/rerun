@@ -3,12 +3,10 @@
 //! This crate provides a panel that shows all entities in the store and allows control of time and
 //! timelines, as well as all necessary ui elements that make it up.
 
-// TODO(#6330): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 mod data_density_graph;
 mod paint_ticks;
 mod recursive_chunks_per_timeline_subscriber;
+mod streams_tree_data;
 mod time_axis;
 mod time_control_ui;
 mod time_ranges_ui;
@@ -24,12 +22,13 @@ use re_context_menu::{
 };
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
-use re_entity_db::{EntityDb, EntityTree, InstancePath};
+use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     external::re_types_core::ComponentName, ApplicationId, ComponentPath, EntityPath,
     ResolvedTimeRange, TimeInt, TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
+use re_ui::filter_widget::format_matching_text;
 use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -37,6 +36,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::streams_tree_data::EntityData;
 use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -88,7 +88,7 @@ impl TimePanelItem {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum TimePanelSource {
     #[default]
     Recording,
@@ -620,44 +620,33 @@ impl TimePanel {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
 
-                // Show "/" on top only for recording streams, because the `/` entity in blueprint
-                // is always empty, so it's just lost space. This works around an issue where the
-                // selection/hover state of the `/` entity is wrongly synchronized between both
-                // stores, due to `Item::*` not tracking stores for entity paths.
-                let show_root = self.source == TimePanelSource::Recording;
-
                 let filter_matcher = self.filter_state.filter();
 
-                if show_root {
-                    self.show_tree(
+                let entity_tree_data =
+                    crate::streams_tree_data::StreamsTreeData::from_source_and_filter(
                         ctx,
-                        viewport_blueprint,
-                        entity_db,
-                        time_ctrl,
-                        time_area_response,
-                        time_area_painter,
-                        entity_db.tree(),
+                        self.source,
                         &filter_matcher,
-                        ui,
                     );
-                } else {
-                    self.show_children(
+
+                for child in &entity_tree_data.children {
+                    self.show_entity(
                         ctx,
                         viewport_blueprint,
                         entity_db,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        entity_db.tree(),
-                        &filter_matcher,
+                        child,
                         ui,
                     );
                 }
             });
     }
 
+    /// Display the list item for an entity.
     #[expect(clippy::too_many_arguments)]
-    fn show_tree(
+    fn show_entity(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
@@ -665,68 +654,13 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree: &EntityTree,
-        filter_matcher: &filter_widget::FilterMatcher,
+        entity_data: &EntityData,
         ui: &mut egui::Ui,
     ) {
-        // We traverse and display this tree only if it contains a matching entity part.
-        'early_exit: {
-            if filter_matcher.matches_nothing() {
-                return;
-            }
+        re_tracing::profile_function!();
 
-            // Filter is inactive or otherwise whitelisting everything.
-            if filter_matcher.matches_everything() {
-                break 'early_exit;
-            }
-
-            // The current path is a match.
-            if tree
-                .path
-                .iter()
-                .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-            {
-                break 'early_exit;
-            }
-
-            // Our subtree contains a match.
-            if tree
-                .find_first_child_recursive(|entity_path| {
-                    entity_path
-                        .last()
-                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-                })
-                .is_some()
-            {
-                break 'early_exit;
-            }
-
-            // No match to be found, so nothing to display.
-            return;
-        }
-
-        let db = match self.source {
-            TimePanelSource::Recording => ctx.recording(),
-            TimePanelSource::Blueprint => ctx.store_context.blueprint,
-        };
-
-        // The last part of the path component
-        let last_path_part = tree.path.last();
-        let text = if let Some(last_path_part) = last_path_part {
-            let part_text = if tree.is_leaf() {
-                last_path_part.ui_string()
-            } else {
-                format!("{}/", last_path_part.ui_string()) // show we have children with a /
-            };
-
-            filter_matcher
-                .matches_formatted(ui.ctx(), &part_text)
-                .unwrap_or_else(|| part_text.into())
-        } else {
-            "/".into()
-        };
-
-        let item = TimePanelItem::entity_path(tree.path.clone());
+        let entity_path = &entity_data.entity_path;
+        let item = TimePanelItem::entity_path(entity_path.clone());
         let is_selected = ctx.selection().contains_item(&item.to_item());
         let is_item_hovered = ctx
             .selection_state()
@@ -735,24 +669,22 @@ impl TimePanel {
 
         let collapse_scope = self.collapse_scope();
 
-        // expand if children is focused
+        // Expand if one of the children is focused
         let focused_entity_path = ctx
             .focused_item
             .as_ref()
             .and_then(|item| item.entity_path());
 
-        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
+        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(entity_path))
+        {
             collapse_scope
-                .entity(tree.path.clone())
+                .entity(entity_path.clone())
                 .set_open(ui.ctx(), true);
         }
 
         // Globally unique id that is dependent on the "nature" of the tree (recording or blueprint,
         // in a filter session or not)
-        let id = collapse_scope.entity(tree.path.clone()).into();
-
-        let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
-        let default_open = self.filter_state.is_active() || is_short_path;
+        let id = collapse_scope.entity(entity_path.clone()).into();
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -767,23 +699,27 @@ impl TimePanel {
             .show_hierarchical_with_children(
                 ui,
                 id,
-                default_open,
-                list_item::LabelContent::new(text)
-                    .with_icon(guess_instance_path_icon(
-                        ctx,
-                        &InstancePath::from(tree.path.clone()),
-                    ))
-                    .truncate(false),
+                entity_data.default_open,
+                list_item::LabelContent::new(format_matching_text(
+                    ctx.egui_ctx,
+                    &entity_data.label,
+                    entity_data.highlight_sections.iter().cloned(),
+                    None,
+                ))
+                .with_icon(guess_instance_path_icon(
+                    ctx,
+                    &InstancePath::from(entity_path.clone()),
+                ))
+                .truncate(false),
                 |ui| {
-                    self.show_children(
+                    self.show_entity_contents(
                         ctx,
                         viewport_blueprint,
                         entity_db,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        tree,
-                        filter_matcher,
+                        entity_data,
                         ui,
                     );
                 },
@@ -795,13 +731,13 @@ impl TimePanel {
                 ui,
                 ctx,
                 &time_ctrl.current_query(),
-                db,
-                &tree.path,
+                entity_db,
+                entity_path,
                 include_subtree,
             );
         });
 
-        if Some(&tree.path) == focused_entity_path {
+        if Some(entity_path) == focused_entity_path {
             // Scroll only if the entity isn't already visible. This is important because that's what
             // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
             // annoying to induce a scroll motion.
@@ -828,6 +764,10 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
+        //
+        // Display the data density graph only if it is visible.
+        //
+
         // From the left of the label, all the way to the right-most of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
@@ -835,41 +775,42 @@ impl TimePanel {
         );
 
         let is_visible = ui.is_rect_visible(full_width_rect);
-
-        // ----------------------------------------------
-
-        // show the data in the time area:
-        let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
-            &entity_db.storage_engine(),
-            time_ctrl.timeline(),
-            &tree.path,
-        );
-        if is_visible && tree_has_data_in_current_timeline {
-            let row_rect =
-                Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
-
-            highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
-
-            // show the density graph only if that item is closed
-            if is_closed {
-                data_density_graph::data_density_graph_ui(
-                    &mut self.data_density_graph_painter,
-                    ctx,
-                    time_ctrl,
-                    db,
-                    time_area_painter,
-                    ui,
-                    &self.time_ranges_ui,
-                    row_rect,
-                    &item,
-                    true,
+        if is_visible {
+            let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
+                &entity_db.storage_engine(),
+                time_ctrl.timeline(),
+                entity_path,
+            );
+            if tree_has_data_in_current_timeline {
+                let row_rect = Rect::from_x_y_ranges(
+                    time_area_response.rect.x_range(),
+                    response_rect.y_range(),
                 );
+
+                highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
+
+                // show the density graph only if that item is closed
+                if is_closed {
+                    data_density_graph::data_density_graph_ui(
+                        &mut self.data_density_graph_painter,
+                        ctx,
+                        time_ctrl,
+                        entity_db,
+                        time_area_painter,
+                        ui,
+                        &self.time_ranges_ui,
+                        row_rect,
+                        &item,
+                        true,
+                    );
+                }
             }
         }
     }
 
+    /// Display the contents of an entity, i.e. its sub-entities and its components.
     #[expect(clippy::too_many_arguments)]
-    fn show_children(
+    fn show_entity_contents(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
@@ -877,12 +818,13 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree: &EntityTree,
-        filter_matcher: &filter_widget::FilterMatcher,
+        entity_data: &EntityData,
         ui: &mut egui::Ui,
     ) {
-        for child in tree.children.values() {
-            self.show_tree(
+        re_tracing::profile_function!();
+
+        for child in &entity_data.children {
+            self.show_entity(
                 ctx,
                 viewport_blueprint,
                 entity_db,
@@ -890,39 +832,23 @@ impl TimePanel {
                 time_area_response,
                 time_area_painter,
                 child,
-                filter_matcher,
                 ui,
             );
         }
 
+        let entity_path = &entity_data.entity_path;
         let engine = entity_db.storage_engine();
         let store = engine.store();
 
         // If this is an entity:
-        if let Some(components) = store.all_components_for_entity(&tree.path) {
+        if let Some(components) = store.all_components_for_entity(entity_path) {
             for component_name in sorted_component_list_for_ui(components.iter()) {
-                let is_static = store.entity_has_static_component(&tree.path, &component_name);
+                let is_static = store.entity_has_static_component(entity_path, &component_name);
 
-                let component_path = ComponentPath::new(tree.path.clone(), component_name);
+                let component_path = ComponentPath::new(entity_path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
                 let timeline = time_ctrl.timeline();
-
-                let component_has_data_in_current_timeline = store
-                    .entity_has_component_on_timeline(
-                        time_ctrl.timeline(),
-                        &tree.path,
-                        &component_name,
-                    );
-
-                let num_static_messages =
-                    store.num_static_events_for_component(&tree.path, component_name);
-                let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
-                    time_ctrl.timeline(),
-                    &tree.path,
-                    component_name,
-                );
-                let total_num_messages = num_static_messages + num_temporal_messages;
 
                 let response = ui
                     .list_item()
@@ -956,6 +882,16 @@ impl TimePanel {
                 let response_rect = response.rect;
 
                 response.on_hover_ui(|ui| {
+                    let num_static_messages =
+                        store.num_static_events_for_component(entity_path, component_name);
+                    let num_temporal_messages = store
+                        .num_temporal_events_for_component_on_timeline(
+                            time_ctrl.timeline(),
+                            entity_path,
+                            component_name,
+                        );
+                    let total_num_messages = num_static_messages + num_temporal_messages;
+
                     if total_num_messages == 0 {
                         ui.label(ui.ctx().warning_text(format!(
                             "No event logged on timeline {:?}",
@@ -1018,32 +954,48 @@ impl TimePanel {
                 );
 
                 let is_visible = ui.is_rect_visible(full_width_rect);
-                if is_visible && component_has_data_in_current_timeline {
-                    // show the data in the time area:
-                    let row_rect = Rect::from_x_y_ranges(
-                        time_area_response.rect.x_range(),
-                        response_rect.y_range(),
-                    );
 
-                    highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
+                if is_visible {
+                    let component_has_data_in_current_timeline = store
+                        .entity_has_component_on_timeline(
+                            time_ctrl.timeline(),
+                            entity_path,
+                            &component_name,
+                        );
 
-                    let db = match self.source {
-                        TimePanelSource::Recording => ctx.recording(),
-                        TimePanelSource::Blueprint => ctx.store_context.blueprint,
-                    };
+                    if component_has_data_in_current_timeline {
+                        // show the data in the time area:
+                        let row_rect = Rect::from_x_y_ranges(
+                            time_area_response.rect.x_range(),
+                            response_rect.y_range(),
+                        );
 
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_painter,
-                        ui,
-                        &self.time_ranges_ui,
-                        row_rect,
-                        &item,
-                        true,
-                    );
+                        highlight_timeline_row(
+                            ui,
+                            ctx,
+                            time_area_painter,
+                            &item.to_item(),
+                            &row_rect,
+                        );
+
+                        let db = match self.source {
+                            TimePanelSource::Recording => ctx.recording(),
+                            TimePanelSource::Blueprint => ctx.store_context.blueprint,
+                        };
+
+                        data_density_graph::data_density_graph_ui(
+                            &mut self.data_density_graph_painter,
+                            ctx,
+                            time_ctrl,
+                            db,
+                            time_area_painter,
+                            ui,
+                            &self.time_ranges_ui,
+                            row_rect,
+                            &item,
+                            true,
+                        );
+                    }
                 }
             }
         }
