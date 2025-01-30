@@ -1744,7 +1744,11 @@ impl RecordingStream {
         flush_timeout: Option<std::time::Duration>,
     ) {
         let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"));
+        self.connect_grpc_opts(
+            format!("http://{addr}")
+                .parse()
+                .expect("should always be valid"),
+        );
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
