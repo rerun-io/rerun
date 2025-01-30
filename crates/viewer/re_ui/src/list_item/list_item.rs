@@ -412,7 +412,12 @@ impl ListItem {
                 let stroke = crate::design_tokens().drop_target_container_stroke();
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_stroke(bg_rect_to_paint.shrink(stroke.width), 0.0, stroke),
+                    Shape::rect_stroke(
+                        bg_rect_to_paint.shrink(stroke.width),
+                        0.0,
+                        stroke,
+                        egui::StrokeKind::Inside,
+                    ),
                 );
             }
 

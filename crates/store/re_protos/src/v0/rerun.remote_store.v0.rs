@@ -802,7 +802,7 @@ pub mod storage_node_client {
         }
         /// Collection index query response is a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
-        /// - timepoint column with the values reprensenting the points in time
+        /// - timepoint column with the values representing the points in time
         /// where index query matches. What time points are matched depends on the type of
         /// index that is queried. For example for vector search it might be timepoints where
         /// top-K matches are found within *each* resource in the collection. For inverted index
@@ -996,7 +996,7 @@ pub mod storage_node_server {
             + 'static;
         /// Collection index query response is a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
-        /// - timepoint column with the values reprensenting the points in time
+        /// - timepoint column with the values representing the points in time
         /// where index query matches. What time points are matched depends on the type of
         /// index that is queried. For example for vector search it might be timepoints where
         /// top-K matches are found within *each* resource in the collection. For inverted index

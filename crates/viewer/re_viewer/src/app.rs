@@ -2070,9 +2070,10 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     );
 
     painter.rect_stroke(
-        egui_ctx.screen_rect().shrink(0.5),
+        egui_ctx.screen_rect(),
         re_ui::DesignTokens::native_window_rounding(),
         re_ui::design_tokens().native_frame_stroke,
+        egui::StrokeKind::Inside,
     );
 }
 

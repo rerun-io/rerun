@@ -269,8 +269,14 @@ pub fn create_labels(
         };
 
         label_shapes.push(
-            egui::epaint::RectShape::new(bg_rect.expand(4.0), 4.0, background_color, rect_stroke)
-                .into(),
+            egui::epaint::RectShape::new(
+                bg_rect.expand(4.0),
+                4.0,
+                background_color,
+                rect_stroke,
+                egui::StrokeKind::Outside,
+            )
+            .into(),
         );
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),

@@ -125,8 +125,18 @@ fn show_zoomed_image_region_area_outline(
     let sample_rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
     // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
     let painter = egui_ctx.debug_painter().with_clip_rect(ui_clip_rect);
-    painter.rect_stroke(sample_rect, 0.0, (2.0, egui::Color32::BLACK));
-    painter.rect_stroke(sample_rect, 0.0, (1.0, egui::Color32::WHITE));
+    painter.rect_stroke(
+        sample_rect,
+        0.0,
+        (2.0, egui::Color32::BLACK),
+        egui::StrokeKind::Middle,
+    );
+    painter.rect_stroke(
+        sample_rect,
+        0.0,
+        (1.0, egui::Color32::WHITE),
+        egui::StrokeKind::Middle,
+    );
 }
 
 /// Identifies an image/texture interaction.
@@ -230,8 +240,14 @@ fn try_show_zoomed_image_region(
             center_texel_rect.expand(1.0),
             0.0,
             (1.0, egui::Color32::BLACK),
+            egui::StrokeKind::Outside,
         );
-        painter.rect_stroke(center_texel_rect, 0.0, (1.0, egui::Color32::WHITE));
+        painter.rect_stroke(
+            center_texel_rect,
+            0.0,
+            (1.0, egui::Color32::WHITE),
+            egui::StrokeKind::Outside,
+        );
     }
 
     let [x, y] = center_texel;

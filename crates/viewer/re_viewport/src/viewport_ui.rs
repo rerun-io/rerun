@@ -166,10 +166,9 @@ impl ViewportUi {
                         egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
                     ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
 
-                    // We need to shrink a bit so the panel-resize lines don't cover the highlight rectangle.
-                    // This is hacky.
+                    // We paint the stroke on the inside so the panel-resize lines don't cover the highlight rectangle.
                     let painter = ui.painter().clone().with_layer_id(top_layer_id);
-                    painter.rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
+                    painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
 
                     if should_display_drop_destination_frame {
                         painter.rect_filled(
@@ -820,8 +819,7 @@ impl TabWidget {
     }
 
     fn paint(self, ui: &egui::Ui) {
-        ui.painter()
-            .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
+        ui.painter().rect_filled(self.rect, 0.0, self.bg_color);
 
         let icon_image = self
             .icon
