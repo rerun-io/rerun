@@ -297,53 +297,55 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
-    RR_PUSH_WARNINGS
-    RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
-    {
-        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-        // at least on some C++ implementations.
-        // If we'd want to support this in earnest we'd have to create out own string_view type.
-        //
-        // AND_GIVEN("a nullptr for the socket address") {
-        //     THEN("then the connect call returns a null argument error") {
-        //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
-        //     }
-        // }
-        AND_GIVEN("an invalid address for the socket address") {
-            THEN("connect call fails") {
-                CHECK(
-                    stream.connect("definitely not valid!").code ==
-                    rerun::ErrorCode::InvalidSocketAddress
-                );
-            }
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
+    void
+    test_logging_to_connection(
+        const char* address, const rerun::RecordingStream& stream
+    ) { // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+    // at least on some C++ implementations.
+    // If we'd want to support this in earnest we'd have to create out own string_view type.
+    //
+    // AND_GIVEN("a nullptr for the socket address") {
+    //     THEN("then the connect call returns a null argument error") {
+    //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
+    //     }
+    // }
+    AND_GIVEN("an invalid address for the socket address") {
+        THEN("connect call fails") {
+            CHECK(
+                stream.connect("definitely not valid!").code ==
+                rerun::ErrorCode::InvalidSocketAddress
+            );
         }
-        AND_GIVEN("a valid socket address " << address) {
-            THEN("connect call returns no error") {
-                CHECK(stream.connect(address).code == rerun::ErrorCode::Ok);
+    }
 
-                WHEN("logging an archetype and then flushing") {
-                    check_logged_error([&] {
-                        stream.log(
-                            "archetype",
-                            rerun::Points2D({
-                                rerun::Vec2D{1.0, 2.0},
-                                rerun::Vec2D{4.0, 5.0},
-                            })
-                        );
-                    });
+    AND_GIVEN("a valid socket address " << address) {
+        THEN("connect call returns no error") {
+            CHECK(stream.connect(address).code == rerun::ErrorCode::Ok);
 
-                    stream.flush_blocking();
+            WHEN("logging an archetype and then flushing") {
+                check_logged_error([&] {
+                    stream.log(
+                        "archetype",
+                        rerun::Points2D({
+                            rerun::Vec2D{1.0, 2.0},
+                            rerun::Vec2D{4.0, 5.0},
+                        })
+                    );
+                });
 
-                    THEN("does not crash") {
-                        // No easy way to see if it got sent.
-                    }
+                stream.flush_blocking();
+
+                THEN("does not crash") {
+                    // No easy way to see if it got sent.
                 }
             }
         }
     }
-    RR_POP_WARNINGS
 }
+
+RR_POP_WARNINGS
 
 SCENARIO("RecordingStream can connect", TEST_TAG) {
     const char* address = "127.0.0.1:9876";
