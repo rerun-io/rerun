@@ -111,7 +111,7 @@ impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
 ///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(frozen, name = "IndexColumnSelector")]
 #[derive(Clone)]
-pub struct PyIndexColumnSelector(TimeColumnSelector);
+struct PyIndexColumnSelector(TimeColumnSelector);
 
 #[pymethods]
 impl PyIndexColumnSelector {
@@ -138,12 +138,6 @@ impl PyIndexColumnSelector {
     }
 }
 
-impl From<PyIndexColumnSelector> for TimeColumnSelector {
-    fn from(selector: PyIndexColumnSelector) -> Self {
-        selector.0
-    }
-}
-
 /// The descriptor of a component column.
 ///
 /// Component columns contain the data for a specific component of an entity.
@@ -153,7 +147,7 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
     fn from(desc: ComponentColumnDescriptor) -> Self {
@@ -218,7 +212,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
-pub struct PyComponentColumnSelector(ComponentColumnSelector);
+struct PyComponentColumnSelector(ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
@@ -254,12 +248,6 @@ impl PyComponentColumnSelector {
     #[getter]
     fn component_name(&self) -> &str {
         &self.0.component_name
-    }
-}
-
-impl From<PyComponentColumnSelector> for ComponentColumnSelector {
-    fn from(selector: PyComponentColumnSelector) -> Self {
-        selector.0
     }
 }
 

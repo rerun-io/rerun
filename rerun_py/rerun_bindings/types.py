@@ -15,8 +15,6 @@ if TYPE_CHECKING:
         ComponentColumnSelector as ComponentColumnSelector,
         IndexColumnDescriptor as IndexColumnDescriptor,
         IndexColumnSelector as IndexColumnSelector,
-        InvertedIndexQueryProperties as InvertedIndexQueryProperties,
-        VectorIndexQueryProperties as VectorIndexQueryProperties,
     )
 
 AnyColumn: TypeAlias = Union[
@@ -73,9 +71,4 @@ This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 TableLike: TypeAlias = Union[pa.Table, pa.RecordBatch, pa.RecordBatchReader]
 """
 A type alias for TableLike pyarrow objects.
-"""
-
-AnyIndexQueryProperties: TypeAlias = Union[VectorIndexQueryProperties, InvertedIndexQueryProperties]
-"""
-A type alias for any index query properties.
 """
