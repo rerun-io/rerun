@@ -298,6 +298,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 }
 
 void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
+    RR_PUSH_WARNINGS
     RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
     {
         // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
@@ -341,6 +342,7 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
             }
         }
     }
+    RR_POP_WARNINGS
 }
 
 SCENARIO("RecordingStream can connect", TEST_TAG) {
