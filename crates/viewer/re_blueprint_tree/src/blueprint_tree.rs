@@ -1084,26 +1084,22 @@ impl BlueprintTree {
         egui_ctx: &egui::Context,
         focused_contents: &Contents,
     ) {
-        //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
-        let expend_contents = |contents: &Contents| match contents {
-            Contents::Container(container_id) => self
-                .collapse_scope()
-                .container(*container_id)
-                .set_open(egui_ctx, true),
-            Contents::View(view_id) => self
-                .collapse_scope()
-                .view(*view_id)
-                .set_open(egui_ctx, true),
-        };
-
         viewport.visit_contents(&mut |contents, hierarchy| {
             if contents == focused_contents {
-                expend_contents(contents);
+                self.collapse_scope()
+                    .contents(*contents)
+                    .set_open(egui_ctx, true);
+
                 for parent in hierarchy {
-                    expend_contents(&Contents::Container(*parent));
+                    self.collapse_scope()
+                        .container(*parent)
+                        .set_open(egui_ctx, true);
                 }
+
+                VisitorControlFlow::Break(())
+            } else {
+                VisitorControlFlow::Continue
             }
-            true
         });
     }
 
@@ -1232,14 +1228,15 @@ fn list_views_with_entity(
     entity_path: &EntityPath,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
-    viewport.visit_contents(&mut |contents, _| {
+    viewport.visit_contents::<()>(&mut |contents, _| {
         if let Contents::View(view_id) = contents {
             let result_tree = &ctx.lookup_query_result(*view_id).tree;
             if result_tree.lookup_node_by_path(entity_path).is_some() {
                 view_ids.push(*view_id);
             }
         }
-        true
+
+        VisitorControlFlow::Continue
     });
     view_ids
 }

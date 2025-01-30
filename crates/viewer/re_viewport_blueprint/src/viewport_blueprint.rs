@@ -1,3 +1,10 @@
+use ahash::HashMap;
+use egui_tiles::{SimplificationOptions, TileId};
+use nohash_hasher::IntSet;
+use parking_lot::Mutex;
+use re_log_types::EntityPathSubs;
+use smallvec::SmallVec;
+use std::ops::ControlFlow;
 use std::{
     collections::BTreeMap,
     sync::{
@@ -5,13 +12,6 @@ use std::{
         Arc,
     },
 };
-
-use ahash::HashMap;
-use egui_tiles::{SimplificationOptions, TileId};
-use nohash_hasher::IntSet;
-use parking_lot::Mutex;
-use re_log_types::EntityPathSubs;
-use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
@@ -23,7 +23,7 @@ use re_types::{
     blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
 };
 
 use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
@@ -428,12 +428,12 @@ impl ViewportBlueprint {
 
     /// Walk the entire [`Contents`] tree, starting from the root container.
     ///
-    /// See [`Self::visit_contents_in_container`] for details.
-    pub fn visit_contents(
+    /// See [`VisitorControlFlow`] for details on traversal behavior.
+    pub fn visit_contents<B>(
         &self,
-        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
-    ) {
-        self.visit_contents_in_container(&self.root_container, visitor);
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        self.visit_contents_in_container(&self.root_container, visitor)
     }
 
     /// Walk the subtree defined by the provided container id and call `visitor` for each
@@ -444,43 +444,39 @@ impl ViewportBlueprint {
     /// - `visitor` is first called for the container passed in argument
     /// - `visitor`'s second argument contains the hierarchy leading to the visited contents, from
     ///   (and including) the container passed in argument
-    pub fn visit_contents_in_container(
+    pub fn visit_contents_in_container<B>(
         &self,
         container_id: &ContainerId,
-        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
-    ) {
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
         let mut hierarchy = SmallVec::new();
-        self.visit_contents_in_container_impl(container_id, &mut hierarchy, visitor);
+        self.visit_contents_impl(&Contents::Container(*container_id), &mut hierarchy, visitor)
     }
 
-    fn visit_contents_in_container_impl(
+    fn visit_contents_impl<B>(
         &self,
-        container_id: &ContainerId,
+        contents: &Contents,
         hierarchy: &mut SmallVec<[ContainerId; 4]>,
-        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
-    ) {
-        if visitor(&Contents::Container(*container_id), hierarchy) {
-            if let Some(container) = self.container(container_id) {
-                hierarchy.push(*container_id);
-                for contents in &container.contents {
-                    if visitor(contents, hierarchy) {
-                        match contents {
-                            Contents::Container(container_id) => {
-                                self.visit_contents_in_container_impl(
-                                    container_id,
-                                    hierarchy,
-                                    visitor,
-                                );
-                            }
-                            Contents::View(_) => {}
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> VisitorControlFlow<B>,
+    ) -> ControlFlow<B> {
+        let visit_children = visitor(contents, hierarchy).visit_children()?;
+
+        if visit_children {
+            match contents {
+                Contents::Container(container_id) => {
+                    if let Some(container) = self.container(container_id) {
+                        hierarchy.push(*container_id);
+                        for contents in &container.contents {
+                            self.visit_contents_impl(contents, hierarchy, visitor)?;
                         }
-                    } else {
-                        return;
+                        hierarchy.pop();
                     }
                 }
-                hierarchy.pop();
+                Contents::View(_) => {} // no children
             }
         }
+
+        ControlFlow::Continue(())
     }
 
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root
@@ -496,29 +492,19 @@ impl ViewportBlueprint {
         predicate: &impl Fn(&Contents) -> bool,
         container_id: &ContainerId,
     ) -> Option<Contents> {
-        if predicate(&Contents::Container(*container_id)) {
-            return Some(Contents::Container(*container_id));
-        }
-
-        let container = self.container(container_id)?;
-
-        for contents in &container.contents {
+        let result = self.visit_contents_in_container(container_id, &mut |contents, _| {
             if predicate(contents) {
-                return Some(*contents);
+                VisitorControlFlow::Break(*contents)
+            } else {
+                VisitorControlFlow::Continue
             }
+        });
 
-            match contents {
-                Contents::Container(container_id) => {
-                    let res = self.find_contents_in_container_by(predicate, container_id);
-                    if res.is_some() {
-                        return res;
-                    }
-                }
-                Contents::View(_) => {}
-            }
+        //TODO(ab): starting with rust 1.83, we can use `break_value()` instead of this match statement
+        match result {
+            ControlFlow::Break(contents) => Some(contents),
+            ControlFlow::Continue(_) => None,
         }
-
-        None
     }
 
     /// Checks if some content is (directly or indirectly) contained in the given container.

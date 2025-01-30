@@ -4,7 +4,9 @@
 //! particular in tests.
 
 use re_entity_db::{EntityDb, InstancePath};
-use re_viewer_context::{CollapseScope, ContainerId, Contents, ViewId, ViewerContext};
+use re_viewer_context::{
+    CollapseScope, ContainerId, Contents, ViewId, ViewerContext, VisitorControlFlow,
+};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn collapse_expand_container(
@@ -14,7 +16,7 @@ pub fn collapse_expand_container(
     scope: CollapseScope,
     expand: bool,
 ) {
-    blueprint.visit_contents_in_container(container_id, &mut |contents, _| {
+    blueprint.visit_contents_in_container::<()>(container_id, &mut |contents, _| {
         match contents {
             Contents::Container(container_id) => scope
                 .container(*container_id)
@@ -23,7 +25,7 @@ pub fn collapse_expand_container(
             Contents::View(view_id) => collapse_expand_view(ctx, view_id, scope, expand),
         }
 
-        true
+        VisitorControlFlow::Continue
     });
 }
 
