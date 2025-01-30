@@ -491,6 +491,12 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         return self._COMPONENT_DESCRIPTOR  # type: ignore[attr-defined, no-any-return]
 
+    def described(self, descriptor: ComponentDescriptor | None = None) -> DescribedComponentBatch:
+        """Wraps the current `ComponentBatchLike` in a `DescribedComponentBatch` with the given descriptor or, if None, the component's descriptor."""
+        if descriptor is None:
+            descriptor = self.component_descriptor()
+        return DescribedComponentBatch(self, descriptor)
+
     def with_descriptor(self, descriptor: ComponentDescriptor) -> DescribedComponentBatch:
         """Wraps the current `ComponentBatchLike` in a `DescribedComponentBatch` with the given descriptor."""
         return DescribedComponentBatch(self, descriptor)
