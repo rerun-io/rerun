@@ -145,6 +145,9 @@ impl FilterState {
                             .lock_focus(true)
                             .ui(ui);
 
+                        //TODO(ab): is there a better way to do that?
+                        inner_state.filter_query = inner_state.filter_query.replace('/', "");
+
                         if self.request_focus {
                             self.request_focus = false;
                             response.request_focus();
