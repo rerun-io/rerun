@@ -112,7 +112,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Points2D>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Points2D>::as_batches(
         const archetypes::Points2D& archetype
     ) {
         using namespace archetypes;
@@ -149,6 +149,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

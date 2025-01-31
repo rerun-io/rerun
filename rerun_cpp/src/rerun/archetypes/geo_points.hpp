@@ -171,7 +171,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::GeoPoints> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(const archetypes::GeoPoints& archetype
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::GeoPoints& archetype
         );
     };
 } // namespace rerun

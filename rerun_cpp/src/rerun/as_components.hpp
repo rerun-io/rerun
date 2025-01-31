@@ -6,7 +6,7 @@
 #include "loggable.hpp"
 
 namespace rerun {
-    /// The AsComponents trait is used to convert a type into a list of serialized component.
+    /// The AsComponents trait is used to convert a type into a list of component batches.
     ///
     /// It is implemented for various built-in types as well as collections of components.
     /// You can build your own archetypes by implementing this trait.
@@ -26,11 +26,9 @@ namespace rerun {
             "You can add your own implementation by specializing AsComponents<T> for your type T."
         );
 
-        // TODO(andreas): List methods that the trait should implement.
+        /// Converts the type `T` into a collection of `ComponentBatch`s.
+        static Result<Collection<ComponentBatch>> as_batches(const T& archetype);
     };
-
-    // TODO(andreas): make these return collection?
-    // TODO(andreas): Now that we no longer rely on `Loggable` trait implementations here, `serialize` is a misnomer. Consider using `operator()` instead.
 
     // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
     /// \cond private
@@ -38,35 +36,35 @@ namespace rerun {
     /// `AsComponents` for a `Collection<ComponentBatch>`.
     template <>
     struct AsComponents<Collection<ComponentBatch>> {
-        static Result<std::vector<ComponentBatch>> serialize(Collection<ComponentBatch> components
+        static Result<Collection<ComponentBatch>> as_batches(Collection<ComponentBatch> components
         ) {
-            return Result<std::vector<ComponentBatch>>(std::move(components).to_vector());
+            return components;
         }
     };
 
     /// `AsComponents` for a single `ComponentBatch`.
     template <>
     struct AsComponents<ComponentBatch> {
-        static Result<std::vector<ComponentBatch>> serialize(ComponentBatch components) {
-            return Result<std::vector<ComponentBatch>>({std::move(components)});
+        static Result<Collection<ComponentBatch>> as_batches(ComponentBatch components) {
+            return rerun::take_ownership(std::move(components));
         }
     };
 
     /// `AsComponents` for a `Collection<ComponentBatch>` wrapped in a `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Result<Collection<ComponentBatch>>> {
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             Result<Collection<ComponentBatch>> components
         ) {
             RR_RETURN_NOT_OK(components.error);
-            return Result<std::vector<ComponentBatch>>(std::move(components.value).to_vector());
+            return components.value;
         }
     };
 
     /// `AsComponents` for a `Collection<ComponentBatch>` individually wrapped in `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Collection<Result<ComponentBatch>>> {
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             Collection<Result<ComponentBatch>> components
         ) {
             std::vector<ComponentBatch> result;
@@ -75,16 +73,16 @@ namespace rerun {
                 RR_RETURN_NOT_OK(component.error);
                 result.push_back(std::move(component.value));
             }
-            return Result<std::vector<ComponentBatch>>(std::move(result));
+            return rerun::take_ownership(std::move(result));
         }
     };
 
     /// `AsComponents` for a single `ComponentBatch` wrapped in a `Result`, forwarding errors for convenience.
     template <>
     struct AsComponents<Result<ComponentBatch>> {
-        static Result<std::vector<ComponentBatch>> serialize(Result<ComponentBatch> components) {
+        static Result<Collection<ComponentBatch>> as_batches(Result<ComponentBatch> components) {
             RR_RETURN_NOT_OK(components.error);
-            return Result<std::vector<ComponentBatch>>({std::move(components.value)});
+            return rerun::take_ownership(std::move(components.value));
         }
     };
 

@@ -377,6 +377,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Pinhole& archetype);
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Pinhole& archetype);
     };
 } // namespace rerun

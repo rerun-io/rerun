@@ -208,7 +208,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::AffixFuzzer3>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::AffixFuzzer3>::as_batches(
         const archetypes::AffixFuzzer3& archetype
     ) {
         using namespace archetypes;
@@ -275,6 +275,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

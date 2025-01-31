@@ -60,7 +60,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::GeoLineStrings>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::GeoLineStrings>::as_batches(
         const archetypes::GeoLineStrings& archetype
     ) {
         using namespace archetypes;
@@ -82,6 +82,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun
