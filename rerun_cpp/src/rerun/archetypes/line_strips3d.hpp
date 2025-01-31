@@ -263,7 +263,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::LineStrips3D> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::LineStrips3D& archetype
         );
     };

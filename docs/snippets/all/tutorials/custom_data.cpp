@@ -37,8 +37,10 @@ struct CustomPoints3D {
 
 template <>
 struct rerun::AsComponents<CustomPoints3D> {
-    static Result<std::vector<ComponentBatch>> serialize(const CustomPoints3D& archetype) {
-        auto batches = AsComponents<rerun::Points3D>::serialize(archetype.points).value_or_throw();
+    static Result<rerun::Collection<ComponentBatch>> as_batches(const CustomPoints3D& archetype) {
+        auto batches = AsComponents<rerun::Points3D>::as_batches(archetype.points)
+                           .value_or_throw()
+                           .to_vector();
 
         // Add custom confidence components if present.
         if (archetype.confidences) {
@@ -50,7 +52,7 @@ struct rerun::AsComponents<CustomPoints3D> {
             );
         }
 
-        return batches;
+        return rerun::take_ownership(std::move(batches));
     }
 };
 

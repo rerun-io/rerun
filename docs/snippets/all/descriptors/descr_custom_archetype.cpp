@@ -32,7 +32,7 @@ struct CustomPoints3D {
 
 template <>
 struct rerun::AsComponents<CustomPoints3D> {
-    static Result<std::vector<ComponentBatch>> serialize(const CustomPoints3D& archetype) {
+    static Result<rerun::Collection<ComponentBatch>> as_batches(const CustomPoints3D& archetype) {
         std::vector<rerun::ComponentBatch> batches;
 
         auto positions_descr = rerun::Loggable<CustomPosition3D>::Descriptor
@@ -51,7 +51,7 @@ struct rerun::AsComponents<CustomPoints3D> {
             );
         }
 
-        return batches;
+        return rerun::take_ownership(std::move(batches));
     }
 };
 

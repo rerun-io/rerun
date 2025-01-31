@@ -106,7 +106,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::VisibleTimeRanges> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::VisibleTimeRanges& archetype
         );
     };

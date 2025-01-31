@@ -10,8 +10,8 @@
 template <typename T>
 void test_compare_archetype_serialization(const T& arch_a, const T& arch_b) {
     THEN("convert to component lists") {
-        auto arch_b_serialized_result = rerun::AsComponents<T>::serialize(arch_b);
-        auto arch_a_serialized_result = rerun::AsComponents<T>::serialize(arch_a);
+        auto arch_b_serialized_result = rerun::AsComponents<T>::as_batches(arch_b);
+        auto arch_a_serialized_result = rerun::AsComponents<T>::as_batches(arch_a);
 
         AND_THEN("serializing each list succeeds") {
             REQUIRE(arch_b_serialized_result.is_ok());

@@ -427,6 +427,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Image> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Image& archetype);
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Image& archetype);
     };
 } // namespace rerun

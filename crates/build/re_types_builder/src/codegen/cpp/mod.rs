@@ -1818,9 +1818,8 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         docs: "Serialize all set component batches.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            // TODO(andreas): Use a rerun::Collection here as well.
-            return_type: quote!(Result<std::vector<ComponentBatch>>),
-            name_and_parameters: quote!(serialize(const #quoted_scoped_archetypes::#type_ident& archetype)),
+            return_type: quote!(Result<Collection<ComponentBatch>>),
+            name_and_parameters: quote!(as_batches(const #quoted_scoped_archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
             using namespace #quoted_scoped_archetypes;
@@ -1837,7 +1836,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return cells;
+            return rerun::take_ownership(std::move(cells));
         },
         inline: false,
     }

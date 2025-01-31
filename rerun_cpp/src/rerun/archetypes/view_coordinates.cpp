@@ -38,7 +38,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::ViewCoordinates>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::ViewCoordinates>::as_batches(
         const archetypes::ViewCoordinates& archetype
     ) {
         using namespace archetypes;
@@ -54,6 +54,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

@@ -48,7 +48,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::TextDocument>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::TextDocument>::as_batches(
         const archetypes::TextDocument& archetype
     ) {
         using namespace archetypes;
@@ -67,6 +67,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

@@ -168,7 +168,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::LineGrid3D> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::LineGrid3D& archetype
         );
     };

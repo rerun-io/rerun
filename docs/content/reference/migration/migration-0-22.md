@@ -72,3 +72,22 @@ rec.send_columns("scalars", time_column,
 );
 ```
 All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) have been updated accordingly.
+
+
+### C++ `AsComponents::serialize` is now called `AsComponents::as_batches` and returns `rerun::Collection<ComponentBatch>`
+
+The `AsComponents`'s `serialize` method has been renamed to `as_batches` and now returns a `rerun::Collection<ComponentBatch>` instead of a `std::vector<ComponentBatch>`.
+
+```cpp
+// Old
+template <>
+struct AsComponents<CustomArchetype> {
+    static Result<std::vector<ComponentBatch>> serialize(const CustomArchetype& archetype);
+};
+
+// New
+template <>
+struct AsComponents<CustomArchetype> {
+    static Result<rerun::Collection<ComponentBatch>> operator()(const CustomArchetype& archetype);
+};
+```

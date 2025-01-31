@@ -91,8 +91,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::DataframeQuery>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::DataframeQuery>::as_batches(
             const blueprint::archetypes::DataframeQuery& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -120,6 +120,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun
