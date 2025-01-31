@@ -20,13 +20,10 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (edges.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(edges.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(edges.value().partitioned(lengths_).value_or_throw());
         }
         if (graph_type.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(graph_type.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(graph_type.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<GraphEdges>(static_cast<uint32_t>(lengths_.size()))

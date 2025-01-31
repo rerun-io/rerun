@@ -23,17 +23,13 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
         if (mag_filter.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(mag_filter.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(mag_filter.value().partitioned(lengths_).value_or_throw());
         }
         if (colormap.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(colormap.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(colormap.value().partitioned(lengths_).value_or_throw());
         }
         if (gamma.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(gamma.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(gamma.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<TensorScalarMapping>(
                               static_cast<uint32_t>(lengths_.size())

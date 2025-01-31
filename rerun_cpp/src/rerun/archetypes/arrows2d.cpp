@@ -34,43 +34,28 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(9);
         if (vectors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(vectors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(vectors.value().partitioned(lengths_).value_or_throw());
         }
         if (origins.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(origins.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(origins.value().partitioned(lengths_).value_or_throw());
         }
         if (radii.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(radii.value().partitioned(lengths_).value_or_throw());
         }
         if (colors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
         if (labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(labels.value().partitioned(lengths_).value_or_throw());
         }
         if (show_labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(show_labels.value().partitioned(lengths_).value_or_throw());
         }
         if (draw_order.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(draw_order.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
         if (class_ids.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Arrows2D>(static_cast<uint32_t>(lengths_.size()))

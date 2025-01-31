@@ -30,24 +30,16 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (image_from_camera.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(image_from_camera.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(image_from_camera.value().partitioned(lengths_).value_or_throw());
         }
         if (resolution.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(resolution.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(resolution.value().partitioned(lengths_).value_or_throw());
         }
         if (camera_xyz.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(camera_xyz.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(camera_xyz.value().partitioned(lengths_).value_or_throw());
         }
         if (image_plane_distance.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(image_plane_distance.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(image_plane_distance.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Pinhole>(static_cast<uint32_t>(lengths_.size()))

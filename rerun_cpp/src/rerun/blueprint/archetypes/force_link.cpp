@@ -25,17 +25,13 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
         if (enabled.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(enabled.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(enabled.value().partitioned(lengths_).value_or_throw());
         }
         if (distance.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(distance.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(distance.value().partitioned(lengths_).value_or_throw());
         }
         if (iterations.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(iterations.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(iterations.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<ForceLink>(static_cast<uint32_t>(lengths_.size()))

@@ -32,39 +32,25 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(8);
         if (buffer.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(buffer.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(buffer.value().partitioned(lengths_).value_or_throw());
         }
         if (format.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(format.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(format.value().partitioned(lengths_).value_or_throw());
         }
         if (meter.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(meter.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(meter.value().partitioned(lengths_).value_or_throw());
         }
         if (colormap.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(colormap.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(colormap.value().partitioned(lengths_).value_or_throw());
         }
         if (depth_range.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(depth_range.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(depth_range.value().partitioned(lengths_).value_or_throw());
         }
         if (point_fill_ratio.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(point_fill_ratio.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(point_fill_ratio.value().partitioned(lengths_).value_or_throw());
         }
         if (draw_order.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(draw_order.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<DepthImage>(static_cast<uint32_t>(lengths_.size()))

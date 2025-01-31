@@ -23,19 +23,13 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
         if (blob.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(blob.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(blob.value().partitioned(lengths_).value_or_throw());
         }
         if (media_type.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(media_type.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(media_type.value().partitioned(lengths_).value_or_throw());
         }
         if (albedo_factor.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(albedo_factor.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(albedo_factor.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Asset3D>(static_cast<uint32_t>(lengths_.size()))

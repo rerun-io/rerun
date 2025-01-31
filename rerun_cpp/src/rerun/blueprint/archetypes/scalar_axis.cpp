@@ -22,13 +22,10 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (range.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(range.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(range.value().partitioned(lengths_).value_or_throw());
         }
         if (zoom_lock.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(zoom_lock.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(zoom_lock.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<ScalarAxis>(static_cast<uint32_t>(lengths_.size()))

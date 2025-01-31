@@ -641,7 +641,7 @@ impl QuotedObject {
         Partitions the component data into multiple sub-batches.
 
         Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
-        instead, via `ComponentColumn::from_batch_with_lengths`.
+        instead, via `ComponentBatch::partitioned`.
 
         This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
 
@@ -659,9 +659,7 @@ impl QuotedObject {
                     let field_ident = field_name_ident(field);
                     quote! {
                         if (#field_ident.has_value()) {
-                            columns.push_back(ComponentColumn::from_batch_with_lengths(
-                                #field_ident.value(), lengths_
-                            ).value_or_throw());
+                            columns.push_back(#field_ident.value().partitioned(lengths_).value_or_throw());
                         }
                     }
                 });

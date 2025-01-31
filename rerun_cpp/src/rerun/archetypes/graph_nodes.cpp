@@ -30,33 +30,22 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(7);
         if (node_ids.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(node_ids.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(node_ids.value().partitioned(lengths_).value_or_throw());
         }
         if (positions.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(positions.value().partitioned(lengths_).value_or_throw());
         }
         if (colors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
         if (labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(labels.value().partitioned(lengths_).value_or_throw());
         }
         if (show_labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(show_labels.value().partitioned(lengths_).value_or_throw());
         }
         if (radii.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(radii.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<GraphNodes>(static_cast<uint32_t>(lengths_.size()))

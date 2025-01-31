@@ -18,9 +18,7 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (scaling.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(scaling.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(scaling.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<TensorViewFit>(static_cast<uint32_t>(lengths_.size()))

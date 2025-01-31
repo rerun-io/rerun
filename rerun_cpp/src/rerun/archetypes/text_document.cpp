@@ -20,13 +20,10 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (text.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(text.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(text.value().partitioned(lengths_).value_or_throw());
         }
         if (media_type.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(media_type.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(media_type.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<TextDocument>(static_cast<uint32_t>(lengths_.size()))
