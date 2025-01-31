@@ -15,7 +15,7 @@ use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
-use re_log_types::{EntityPath, EntityPathPart};
+use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
 use re_ui::filter_widget::FilterMatcher;
 use re_viewer_context::{
@@ -367,7 +367,7 @@ impl DataResultData {
         query_result: &DataQueryResult,
         data_result_or_path: &DataResultNodeOrPath<'_>,
         projection: bool,
-        hierarchy: &mut Vec<EntityPathPart>,
+        hierarchy: &mut Vec<String>,
         filter_matcher: &FilterMatcher,
         mut is_already_a_match: bool,
     ) -> Option<Self> {
@@ -382,9 +382,14 @@ impl DataResultData {
         let data_result_node = data_result_or_path.data_result_node();
         let visible = data_result_node.is_some_and(|node| node.data_result.is_visible(ctx));
 
-        let (label, should_pop) = if let Some(entity_part) = entity_path.last() {
-            hierarchy.push(entity_part.clone());
-            (entity_part.ui_string(), true)
+        let entity_part_ui_string = entity_path
+            .last()
+            .map(|entity_part| entity_part.ui_string());
+
+        let (label, should_pop) = if let Some(entity_part_ui_string) = entity_part_ui_string.clone()
+        {
+            hierarchy.push(entity_part_ui_string.clone());
+            (entity_part_ui_string, true)
         } else {
             ("/ (root)".to_owned(), false)
         };
@@ -393,77 +398,76 @@ impl DataResultData {
         // Filtering
         //
 
-        // TODO(ab): we're currently only matching on the last part of `hierarchy`. Technically,
-        // this means that `hierarchy` is not needed at all. It will however be needed when we match
-        // across multiple parts, so it's good to have it already.
-        let (entity_part_matches, highlight_sections) = if filter_matcher.matches_everything() {
-            // fast path (filter is inactive)
-            (true, SmallVec::new())
-        } else if let Some(entity_part) = hierarchy.last() {
-            // Nominal case of matching the hierarchy.
-            if let Some(match_sections) = filter_matcher.find_matches(&entity_part.ui_string()) {
-                (true, match_sections.collect())
-            } else {
-                (false, SmallVec::new())
-            }
-        } else {
-            // `entity_path` is the root, it can never match anything
-            (false, SmallVec::new())
-        };
+        // We must special case origin placeholder in projection. Although it does show up (as,
+        // well, a placeholder), it shouldn't be considered for matching as its entity part is not
+        // displayed.
+        let is_origin_placeholder = projection && entity_path == view_blueprint.space_origin;
 
-        // We want to keep entire branches if a single of its node matches. So we must propagate the
-        // "matched" state so we can make the right call when we reach leaf nodes.
-        is_already_a_match |= entity_part_matches;
+        if !is_already_a_match && !is_origin_placeholder {
+            let current_path_matches =
+                filter_matcher.matches_hierarchy(hierarchy.iter().map(|s| s.as_str()));
+            is_already_a_match |= current_path_matches;
+        }
+
+        // here are some highlights if we end up being a match
+        let highlight_sections = || -> SmallVec<_> {
+            if is_origin_placeholder {
+                SmallVec::new()
+            } else if let Some(entity_part_ui_string) = &entity_part_ui_string {
+                filter_matcher
+                    .find_ranges_for_keywords(entity_part_ui_string)
+                    .collect()
+            } else {
+                SmallVec::new()
+            }
+        };
 
         //
         // "Nominal" data result node (extracted for deduplication).
         //
 
         let view_id = view_blueprint.id;
-        let mut from_data_result_node = |data_result_node: &DataResultNode,
-                                         highlight_sections: SmallVec<_>,
-                                         entity_path: EntityPath,
-                                         label,
-                                         default_open| {
-            let mut children = data_result_node
-                .children
-                .iter()
-                .filter_map(|child_handle| {
-                    let child_node = query_result.tree.lookup_node(*child_handle);
+        let mut from_data_result_node =
+            |data_result_node: &DataResultNode, entity_path: EntityPath, label, default_open| {
+                let mut children = data_result_node
+                    .children
+                    .iter()
+                    .filter_map(|child_handle| {
+                        let child_node = query_result.tree.lookup_node(*child_handle);
 
-                    debug_assert!(
-                        child_node.is_some(),
-                        "DataResultNode {data_result_node:?} has an invalid child"
-                    );
+                        debug_assert!(
+                            child_node.is_some(),
+                            "DataResultNode {data_result_node:?} has an invalid child"
+                        );
 
-                    child_node.and_then(|child_node| {
-                        Self::from_data_result_and_filter(
-                            ctx,
-                            view_blueprint,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(child_node),
-                            projection,
-                            hierarchy,
-                            filter_matcher,
-                            is_already_a_match,
-                        )
+                        child_node.and_then(|child_node| {
+                            Self::from_data_result_and_filter(
+                                ctx,
+                                view_blueprint,
+                                query_result,
+                                &DataResultNodeOrPath::DataResultNode(child_node),
+                                projection,
+                                hierarchy,
+                                filter_matcher,
+                                is_already_a_match,
+                            )
+                        })
                     })
+                    .collect_vec();
+
+                children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
+
+                (is_already_a_match || !children.is_empty()).then(|| Self {
+                    kind: DataResultKind::EntityPart,
+                    entity_path,
+                    visible,
+                    view_id,
+                    label,
+                    highlight_sections: highlight_sections(),
+                    default_open,
+                    children,
                 })
-                .collect_vec();
-
-            children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
-
-            (is_already_a_match || !children.is_empty()).then(|| Self {
-                kind: DataResultKind::EntityPart,
-                entity_path,
-                visible,
-                view_id,
-                label,
-                highlight_sections,
-                default_open,
-                children,
-            })
-        };
+            };
 
         //
         // Handle all situations
@@ -480,14 +484,13 @@ impl DataResultData {
                     visible,
                     view_id,
                     label,
-                    highlight_sections,
+                    highlight_sections: highlight_sections(),
                     default_open,
                     children: vec![],
                 })
             } else if let Some(data_result_node) = data_result_node {
                 from_data_result_node(
                     data_result_node,
-                    highlight_sections,
                     entity_path,
                     label,
                     filter_matcher.is_active(),
@@ -505,7 +508,7 @@ impl DataResultData {
                     visible,
                     view_id,
                     label,
-                    highlight_sections,
+                    highlight_sections: highlight_sections(),
                     default_open: false, // not hierarchical anyway
                     children: vec![],
                 })
@@ -513,13 +516,7 @@ impl DataResultData {
                 let default_open = filter_matcher.is_active()
                     || default_open_for_data_result(data_result_node.children.len());
 
-                from_data_result_node(
-                    data_result_node,
-                    highlight_sections,
-                    entity_path,
-                    label,
-                    default_open,
-                )
+                from_data_result_node(data_result_node, entity_path, label, default_open)
             } else {
                 // TODO(ab): what are the circumstances for this? Should we warn about it?
                 None

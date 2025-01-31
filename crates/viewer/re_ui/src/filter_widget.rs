@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
-use itertools::Either;
+use itertools::{Either, Itertools};
 
 use crate::{list_item, UiExt as _};
 
@@ -177,82 +177,138 @@ impl FilterState {
 
 /// Full-text, case-insensitive matcher.
 pub struct FilterMatcher {
-    /// The lowercase version of the query string.
+    /// Lowercase keywords.
     ///
     /// If this is `None`, the filter is inactive and the matcher will accept everything. If this
-    /// is `Some("")`, the matcher will reject any input.
-    lowercase_query: Option<String>,
+    /// is `Some([])`, the matcher will reject any input.
+    keywords: Option<Vec<String>>,
 }
 
 impl FilterMatcher {
     fn new(query: Option<&str>) -> Self {
         Self {
-            lowercase_query: query.map(|s| s.to_lowercase()),
+            keywords: query.map(|s| s.split_whitespace().map(str::to_lowercase).collect()),
         }
     }
 
     /// Is the filter currently active?
     pub fn is_active(&self) -> bool {
-        self.lowercase_query.is_some()
+        self.keywords.is_some()
     }
 
     /// Is the filter set to match everything?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
     pub fn matches_everything(&self) -> bool {
-        self.lowercase_query.is_none()
+        self.keywords.is_none()
     }
 
     /// Is the filter set to match nothing?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
     pub fn matches_nothing(&self) -> bool {
-        self.lowercase_query
+        self.keywords
             .as_ref()
-            .is_some_and(|query| query.is_empty())
+            .is_some_and(|keywords| keywords.is_empty())
     }
 
     /// Does the given text match the filter?
     pub fn matches(&self, text: &str) -> bool {
-        match self.lowercase_query.as_deref() {
+        match self.keywords.as_deref() {
             None => true,
-            Some("") => false,
-            Some(query) => text.to_lowercase().contains(query),
+            Some([]) => false,
+            Some(keywords) => {
+                let lowercase_input = text.to_lowercase();
+                keywords
+                    .iter()
+                    .all(|keyword| lowercase_input.contains(keyword))
+            }
         }
     }
 
-    /// Find all matches in the given text.
+    /// Does the given hierarchy match the filter?
     ///
-    /// Can be used to format the text, e.g. with [`format_matching_text`].
+    /// To match, each of the keyword must be present in at least one of the parts of the hierarchy.
+    pub fn matches_hierarchy<'a>(&self, hierarchy: impl IntoIterator<Item = &'a str>) -> bool {
+        match self.keywords.as_deref() {
+            None => true,
+            Some([]) => false,
+            Some(keywords) => {
+                let mut keyword_matches = vec![false; keywords.len()];
+
+                for part in hierarchy {
+                    let lowercase_input = part.to_lowercase();
+                    for (i, keyword) in keywords.iter().enumerate() {
+                        if !keyword_matches[i] && lowercase_input.contains(keyword) {
+                            keyword_matches[i] = true;
+
+                            if keyword_matches.iter().all(|&b| b) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                false
+            }
+        }
+    }
+
+    /// Match the intput text and return match ranges if any.
     ///
-    /// Returns `None` when there is no match.
-    /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
-    /// actual match.
+    /// This function does apply the full matching semantics:
+    /// - It returns `None` when there is no match.
+    /// - It returns `Some` when the filter is inactive (and thus matches everything), or if there
+    ///   is an actual match.
+    ///
+    /// See [`format_matching_text`] for formatting text according to the returned ranges.
     pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
-        let query = match self.lowercase_query.as_deref() {
+        let keywords = match self.keywords.as_deref() {
             None => {
                 return Some(Either::Left(std::iter::empty()));
             }
-            Some("") => {
+            Some([]) => {
                 return None;
             }
-            Some(query) => query,
+            Some(keywords) => keywords,
         };
 
-        let mut start = 0;
         let lower_case_text = text.to_lowercase();
-        let query_len = query.len();
 
-        if !lower_case_text.contains(query) {
-            return None;
+        let mut all_ranges = vec![];
+        for keyword in keywords {
+            if lower_case_text.contains(keyword) {
+                all_ranges.extend(single_keyword_matches(&lower_case_text, keyword));
+            } else {
+                return None;
+            }
         }
 
-        Some(Either::Right(std::iter::from_fn(move || {
-            let index = lower_case_text[start..].find(query)?;
-            let start_index = start + index;
-            start = start_index + query_len;
-            Some(start_index..(start_index + query_len))
-        })))
+        Some(Either::Right(MergeRanges::new(all_ranges)))
+    }
+
+    /// Find match ranges for any of the keywords in the provided input.
+    ///
+    /// Note that this function does not perform any actual matching semantics. It just provides
+    /// highlighting information for a hierarchy part that has already been tested for match using
+    /// [`Self::matches_hierarchy`].
+    pub fn find_ranges_for_keywords(&self, text: &str) -> impl Iterator<Item = Range<usize>> + '_ {
+        let keywords = match self.keywords.as_deref() {
+            None | Some([]) => {
+                return Either::Left(std::iter::empty());
+            }
+
+            Some(keywords) => keywords,
+        };
+
+        let lower_case_text = text.to_lowercase();
+
+        let all_ranges = keywords
+            .iter()
+            .flat_map(|keyword| single_keyword_matches(&lower_case_text, keyword))
+            .collect_vec();
+
+        Either::Right(MergeRanges::new(all_ranges))
     }
 
     /// Returns a formatted version of the text with the matching sections highlighted.
@@ -319,4 +375,153 @@ pub fn format_matching_text(
     }
 
     job.into()
+}
+
+/// Helper function to extract all matches of a given keyword in the given text.
+fn single_keyword_matches<'a>(
+    lower_case_text: &'a str,
+    keyword: &'a str,
+) -> impl Iterator<Item = Range<usize>> + 'a {
+    let keyword_len = keyword.len();
+    let mut start = 0;
+    std::iter::from_fn(move || {
+        let index = lower_case_text[start..].find(keyword)?;
+        let start_index = start + index;
+        start = start_index + keyword_len;
+        Some(start_index..(start_index + keyword_len))
+    })
+}
+
+/// Given a vector of ranges, iterate over the sorted, merged ranges.
+struct MergeRanges {
+    ranges: Vec<Range<usize>>,
+    current: Option<Range<usize>>,
+}
+
+impl MergeRanges {
+    fn new(mut ranges: Vec<Range<usize>>) -> Self {
+        ranges.sort_by_key(|r| usize::MAX - r.start);
+        let current = ranges.pop();
+        Self { ranges, current }
+    }
+}
+
+impl Iterator for MergeRanges {
+    type Item = Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut current = self.current.take()?;
+
+        while let Some(next) = self.ranges.pop() {
+            if next.start <= current.end {
+                current.end = current.end.max(next.end);
+            } else {
+                self.current = Some(next);
+                return Some(current);
+            }
+        }
+
+        Some(current)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![expect(clippy::single_range_in_vec_init)]
+
+    use super::*;
+
+    #[test]
+    fn test_merge_range() {
+        // merge to one
+        assert_eq!(MergeRanges::new(vec![0..10, 5..15]).collect_vec(), [0..15]);
+        assert_eq!(MergeRanges::new(vec![5..15, 0..10]).collect_vec(), [0..15]);
+        assert_eq!(
+            MergeRanges::new(vec![0..4, 3..4, 1..2, 5..15, 5..15, 0..10]).collect_vec(),
+            [0..15]
+        );
+        assert_eq!(MergeRanges::new(vec![0..11, 11..15]).collect_vec(), [0..15]);
+
+        // independent
+        assert_eq!(
+            MergeRanges::new(vec![0..5, 11..15]).collect_vec(),
+            [0..5, 11..15]
+        );
+        assert_eq!(
+            MergeRanges::new(vec![11..15, 0..5]).collect_vec(),
+            [0..5, 11..15]
+        );
+
+        // mixed
+        assert_eq!(
+            MergeRanges::new(vec![0..5, 20..30, 3..6, 25..27, 30..35]).collect_vec(),
+            [0..6, 20..35]
+        );
+    }
+
+    #[test]
+    fn test_match_all() {
+        let inactive_matcher = FilterMatcher::new(None);
+
+        assert_eq!(
+            inactive_matcher.find_matches("haystack").unwrap().count(),
+            0
+        );
+    }
+
+    #[test]
+    fn test_match_nothing() {
+        let inactive_matcher = FilterMatcher::new(Some(""));
+
+        assert!(inactive_matcher.find_matches("haystack").is_none());
+    }
+
+    #[test]
+    fn test_match() {
+        let matcher = FilterMatcher::new(Some("str tru ure"));
+
+        // filter active but doesn't match
+        assert!(matcher.find_matches("struct").is_none());
+
+        assert_eq!(
+            matcher.find_matches("structure").unwrap().collect_vec(),
+            [0..4, 6..9]
+        );
+    }
+
+    #[test]
+    fn test_match_hierarchy() {
+        let matcher = FilterMatcher::new(Some("one TWo three"));
+
+        // matches
+        assert!(matcher.matches_hierarchy(["oNe", "two", "three"]));
+        assert!(matcher.matches_hierarchy(["tHRee", "One", "two"]));
+        assert!(matcher.matches_hierarchy(["three", "one", "nothing", "two"]));
+        assert!(matcher.matches_hierarchy(["thrEEone", "nothing", "TWO"]));
+        assert!(matcher.matches_hierarchy(["three", "twONE"]));
+
+        // doesn't match
+        assert!(!matcher.matches_hierarchy(["one", "two", "four"]));
+    }
+
+    #[test]
+    fn test_find_ranges_for_keywords() {
+        let matcher = FilterMatcher::new(Some("one two three"));
+
+        assert_eq!(matcher.find_ranges_for_keywords("haystack").count(), 0);
+        assert_eq!(
+            matcher.find_ranges_for_keywords("xxONExx").collect_vec(),
+            [2..5]
+        );
+        assert_eq!(
+            matcher.find_ranges_for_keywords("xxTWonExx").collect_vec(),
+            [2..7]
+        );
+        assert_eq!(
+            matcher
+                .find_ranges_for_keywords("xxTWonExthree")
+                .collect_vec(),
+            [2..7, 8..13]
+        );
+    }
 }

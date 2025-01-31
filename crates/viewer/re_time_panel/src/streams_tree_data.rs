@@ -101,34 +101,33 @@ impl EntityData {
             return None;
         }
 
-        let mut label = entity_tree
+        let entity_part_ui_string = entity_tree
             .path
             .last()
-            .map(|entity_part| entity_part.ui_string())
-            .unwrap_or("/".to_owned());
+            .map(|entity_part| entity_part.ui_string());
+        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
 
         //
         // Filtering
         //
 
-        let (entity_part_matches, highlight_sections) = if filter_matcher.matches_everything() {
-            // fast path (filter is inactive)
-            (true, SmallVec::new())
-        } else if let Some(entity_part) = entity_tree.path.last() {
-            // Nominal case of matching the hierarchy.
-            if let Some(match_sections) = filter_matcher.find_matches(&entity_part.ui_string()) {
-                (true, match_sections.collect())
-            } else {
-                (false, SmallVec::new())
-            }
-        } else {
-            // we are the root, it can never match anything
-            (false, SmallVec::new())
-        };
+        if !is_already_a_match {
+            let current_path_matches = filter_matcher
+                .matches_hierarchy(entity_tree.path.iter().map(|p| p.unescaped_str()));
 
-        // We want to keep entire branches if a single of its node matches. So we must propagate the
-        // "matched" state so we can make the right call when we reach leaf nodes.
-        is_already_a_match |= entity_part_matches;
+            is_already_a_match |= current_path_matches;
+        }
+
+        // here are some highlights if we end up being a match
+        let highlight_sections = || -> SmallVec<_> {
+            if let Some(entity_part_ui_string) = &entity_part_ui_string {
+                filter_matcher
+                    .find_ranges_for_keywords(entity_part_ui_string)
+                    .collect()
+            } else {
+                SmallVec::new()
+            }
+        };
 
         //
         // Recurse
@@ -143,7 +142,7 @@ impl EntityData {
                 Self {
                     entity_path: entity_tree.path.clone(),
                     label,
-                    highlight_sections,
+                    highlight_sections: highlight_sections(),
                     default_open,
                     children: vec![],
                 }
@@ -170,7 +169,7 @@ impl EntityData {
                         label.push('/');
                         label
                     },
-                    highlight_sections,
+                    highlight_sections: highlight_sections(),
                     default_open,
                     children,
                 }
