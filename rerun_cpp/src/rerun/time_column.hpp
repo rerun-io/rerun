@@ -71,8 +71,7 @@ namespace rerun {
         /// Already sorted time points may perform better.
         ///
         /// \deprecated Use `from_sequence` instead.
-        [[deprecated("Use `from_sequence` instead.")]]
-        static TimeColumn from_sequence_points(
+        [[deprecated("Use `from_sequence` instead.")]] static TimeColumn from_sequence_points(
             std::string timeline_name, Collection<int64_t> sequence_points,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
