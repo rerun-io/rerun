@@ -100,9 +100,6 @@
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
-"howto/any_values_send_columns" = [
-  "cpp", # Not implemented
-]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
