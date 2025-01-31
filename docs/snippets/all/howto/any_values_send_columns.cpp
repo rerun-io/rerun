@@ -27,8 +27,8 @@ arrow::Status run_main() {
         rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "sin").value_or_throw();
 
     arrow::DoubleBuilder cos_builder;
-    for (int64_t i = 0; i < STEPS * 10; i++) {
-        ARROW_RETURN_NOT_OK(cos_builder.Append(cos(static_cast<double>(i) / 100.0)));
+    for (int64_t i = 0; i < STEPS; i++) {
+        ARROW_RETURN_NOT_OK(cos_builder.Append(cos(static_cast<double>(i) / 10.0)));
     }
     ARROW_RETURN_NOT_OK(cos_builder.Finish(&arrow_array));
     auto cos =
