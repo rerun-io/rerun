@@ -54,7 +54,7 @@ anyhow.workspace = true
 criterion.workspace = true
 insta = { workspace = true, features = ["redactions", "yaml"] }
 rand.workspace = true
-smallvec  = { workspace = true, features = ["serde"] }
+smallvec = { workspace = true, features = ["serde"] }
 
 [lib]
 bench = false

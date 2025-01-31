@@ -254,7 +254,7 @@ impl FilterMatcher {
         }
     }
 
-    /// Match the intput text and return match ranges if any.
+    /// Match the input text and return match ranges if any.
     ///
     /// This function does apply the full matching semantics:
     /// - It returns `None` when there is no match.
@@ -478,14 +478,14 @@ mod test {
 
     #[test]
     fn test_match() {
-        let matcher = FilterMatcher::new(Some("str tru ure"));
+        let matcher = FilterMatcher::new(Some("str tru re"));
 
         // filter active but doesn't match
         assert!(matcher.find_matches("struct").is_none());
 
         assert_eq!(
             matcher.find_matches("structure").unwrap().collect_vec(),
-            [0..4, 6..9]
+            [0..4, 7..9]
         );
     }
 
