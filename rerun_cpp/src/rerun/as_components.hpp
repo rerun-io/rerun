@@ -6,7 +6,7 @@
 #include "loggable.hpp"
 
 namespace rerun {
-    /// The AsComponents trait is used to convert a type into a list of as_batchesd component.
+    /// The AsComponents trait is used to convert a type into a list of component batches.
     ///
     /// It is implemented for various built-in types as well as collections of components.
     /// You can build your own archetypes by implementing this trait.
