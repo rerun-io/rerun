@@ -62,7 +62,7 @@ impl BackgroundTasks {
             .and_then(|promise| match promise.try_take() {
                 Ok(any) => Some(
                     *any.downcast::<T>()
-                        .unwrap_or_else(|err| panic!("downcast failure: {err:?}")),
+                        .expect("Downcast failure in poll_promise"),
                 ),
                 Err(promise) => {
                     self.promises.insert(name.as_ref().to_owned(), promise);
