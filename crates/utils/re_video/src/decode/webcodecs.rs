@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
+use once_cell::sync::Lazy;
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
@@ -190,7 +191,25 @@ impl AsyncDecoder for WebVideoDecoder {
 
         Ok(())
     }
+
+    fn min_num_samples_to_enqueue_ahead(&self) -> usize {
+        // TODO(#8848): For some h264 videos (which??) we need to enqueue more samples, otherwise Safari will not provide us with any frames.
+        // (The same happens with FFmpeg-cli decoder for the affected videos)
+        if self.video_config.is_h264() && *IS_SAFARI {
+            16 // Safari needs more samples queued for h264
+        } else {
+            // No such workaround are needed anywhere else,
+            // GOP boundaries as handled by the video player are enough.
+            0
+        }
+    }
 }
+
+static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
+    web_sys::window().map_or(false, |w| {
+        w.has_own_property(&wasm_bindgen::JsValue::from("safari"))
+    })
+});
 
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
