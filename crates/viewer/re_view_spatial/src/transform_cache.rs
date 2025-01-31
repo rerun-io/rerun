@@ -29,6 +29,10 @@ use re_types::{
 ///   Instance poses that should be applied to the tree transforms (via [`crate::contexts::TransformTreeContext`]) but not propagate.
 /// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
 ///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
+///
+/// Most of what this construct does internally is to keep track at which points in time these sets of components
+/// change such that a latest-at query for them may (!) yield any new results.
+/// It then (in [`TransformCacheStoreSubscriber::apply_all_updates`]) performs those queries and derives transforms from them.
 pub struct TransformCacheStoreSubscriber {
     /// All components of [`archetypes::Transform3D`]
     transform_components: IntSet<ComponentName>,
@@ -142,7 +146,7 @@ impl CachedTransformsForTimeline {
 
     fn add_recursive_clears(&mut self, entity_path: &EntityPath, times: Vec<TimeInt>) {
         // Insert clears for all entities down the known tree.
-        // (clears _at_ the entity are taken separately)
+        // (clears _at_ the entity stored & processed separately by invalidating the entity's transforms)
         for (entity, transforms) in &mut self.per_entity {
             if entity.is_descendant_of(entity_path) {
                 transforms.add_clears(&times);
@@ -150,14 +154,10 @@ impl CachedTransformsForTimeline {
         }
 
         // Store for future reference.
-        match self.recursive_clears.entry(entity_path.hash()) {
-            std::collections::hash_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().extend(times);
-            }
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(times);
-            }
-        }
+        self.recursive_clears
+            .entry(entity_path.hash())
+            .or_default()
+            .extend(times);
     }
 }
 
@@ -476,7 +476,7 @@ impl TransformCacheStoreSubscriber {
         }
     }
 
-    fn add_non_static_chunk(
+    fn add_temporal_chunk(
         &mut self,
         event: &re_chunk_store::ChunkStoreEvent,
         aspects: TransformAspect,
@@ -503,6 +503,10 @@ impl TransformCacheStoreSubscriber {
             // then the resulting transforms at those translations change as well for latest-at queries)
 
             let mut invalidated_times = Vec::new();
+
+            // Min time is conservative - technically we want to check this for each component individually,
+            // but using the same for all is fine as it rarely matters.
+            // (it may produce some false positive transform updates)
             let Some(min_time) = time_column.times().min() else {
                 continue;
             };
@@ -748,7 +752,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             } else if event.diff.chunk.is_static() {
                 self.add_static_chunk(event, aspects);
             } else {
-                self.add_non_static_chunk(event, aspects);
+                self.add_temporal_chunk(event, aspects);
             }
         }
     }
