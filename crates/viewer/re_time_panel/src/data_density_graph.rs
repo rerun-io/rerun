@@ -3,7 +3,6 @@
 //! The data density is the number of data points per unit of time.
 //! We collect this into a histogram, blur it, and then paint it.
 
-use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
@@ -15,7 +14,7 @@ use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
-use crate::TimePanelItem;
+use crate::time_panel::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -211,7 +210,6 @@ impl DensityGraph {
         y_range: Rangef,
         painter: &egui::Painter,
         full_color: Color32,
-        hovered_x_range: RangeInclusive<f32>,
     ) {
         re_tracing::profile_function!();
 
@@ -270,11 +268,8 @@ impl DensityGraph {
                 let inner_radius =
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
-                let inner_color = if hovered_x_range.contains(&x) {
-                    Color32::WHITE
-                } else {
-                    full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density))
-                };
+                let inner_color = full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
+
                 (inner_radius, inner_color)
             };
             let outer_radius = inner_radius + feather_radius;
@@ -417,8 +412,6 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
-        // TODO(jprochazk): completely remove `hovered_x_range` and associated code from painter
-        0f32..=0f32,
     );
 
     if tooltips_enabled {

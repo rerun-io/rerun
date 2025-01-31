@@ -37,7 +37,7 @@ namespace rerun {
         template <typename T>
         static Result<ComponentColumn> from_loggable_with_lengths(
             const Collection<T>& components, const Collection<uint32_t>& lengths,
-            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             auto component_batch_result = ComponentBatch::from_loggable(components, descriptor);
             if (component_batch_result.is_err()) {
@@ -58,7 +58,7 @@ namespace rerun {
         template <typename T>
         static Result<ComponentColumn> from_loggable(
             const Collection<T>& components,
-            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             return ComponentColumn::from_loggable_with_lengths(
                 components,
@@ -70,8 +70,7 @@ namespace rerun {
         /// Creates a new component column with a given number of archetype indicators for a given archetype type.
         template <typename Archetype>
         static Result<ComponentColumn> from_indicators(uint32_t num_indicators) {
-            auto component_batch_result =
-                ComponentBatch::from_loggable(typename Archetype::IndicatorComponent());
+            auto component_batch_result = ComponentBatch::from_indicator<Archetype>();
             if (component_batch_result.is_err()) {
                 return component_batch_result.error;
             }

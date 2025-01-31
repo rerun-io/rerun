@@ -162,8 +162,6 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        re_tracing::profile_function!();
-
         let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
@@ -209,10 +207,16 @@ impl ViewerContext<'_> {
                 }
             }
 
-            if response.ctx.input(|i| i.modifiers.command) {
-                selection_state.toggle_selection(interacted_items);
-            } else {
-                selection_state.set_selection(interacted_items);
+            let modifiers = response.ctx.input(|i| i.modifiers);
+
+            // Shift-clicking means extending the selection. This generally requires local context,
+            // so we don't handle it here.
+            if !modifiers.shift {
+                if modifiers.command {
+                    selection_state.toggle_selection(interacted_items);
+                } else {
+                    selection_state.set_selection(interacted_items);
+                }
             }
         }
     }

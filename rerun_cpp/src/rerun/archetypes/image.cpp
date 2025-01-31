@@ -88,8 +88,7 @@ namespace rerun {
             cells.push_back(archetype.draw_order.value());
         }
         {
-            auto indicator = Image::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Image>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

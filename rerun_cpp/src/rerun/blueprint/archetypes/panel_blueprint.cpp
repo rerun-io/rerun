@@ -51,8 +51,7 @@ namespace rerun {
             cells.push_back(archetype.state.value());
         }
         {
-            auto indicator = PanelBlueprint::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<PanelBlueprint>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

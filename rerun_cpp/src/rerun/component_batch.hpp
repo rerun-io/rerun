@@ -29,12 +29,6 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
-        ComponentBatch() = default;
-        ComponentBatch(ComponentBatch&& other) = default;
-        ComponentBatch(const ComponentBatch& other) = default;
-        ComponentBatch& operator=(ComponentBatch&& other) = default;
-        ComponentBatch& operator=(const ComponentBatch& other) = default;
-
         /// Creates a new empty component batch with a given descriptor.
         template <typename T>
         static Result<ComponentBatch> empty(const ComponentDescriptor& descriptor) {
@@ -45,16 +39,10 @@ namespace rerun {
         ///
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
-        static Result<ComponentBatch> from_loggable(const rerun::Collection<T>& components) {
-            return from_loggable(components, Loggable<T>::Descriptor);
-        }
-
-        /// Creates a new component batch from a collection of component instances.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const rerun::Collection<T>& components, const ComponentDescriptor& descriptor
+            const rerun::Collection<T>& components,
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
+
         ) {
             static_assert(
                 rerun::is_loggable<T>,
@@ -99,18 +87,9 @@ namespace rerun {
         ///
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
-        static Result<ComponentBatch> from_loggable(const T& component) {
-            // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
-            const auto collection = Collection<T>::borrow(&component, 1);
-            return from_loggable(collection);
-        }
-
-        /// Creates a new component batch from a single component instance.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const T& component, const ComponentDescriptor& descriptor
+            const T& component,
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
             const auto collection = Collection<T>::borrow(&component, 1);
@@ -123,22 +102,9 @@ namespace rerun {
         ///
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
-        static Result<ComponentBatch> from_loggable(const std::optional<T>& component) {
-            if (component.has_value()) {
-                return from_loggable(component.value());
-            } else {
-                return from_loggable(Collection<T>());
-            }
-        }
-
-        /// Creates a new data cell from a single optional component instance.
-        ///
-        /// None is represented as a data cell with 0 instances.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const std::optional<T>& component, const ComponentDescriptor& descriptor
+            const std::optional<T>& component,
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             if (component.has_value()) {
                 return from_loggable(component.value(), descriptor);
@@ -154,30 +120,23 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const std::optional<rerun::Collection<T>>& components
-        ) {
-            if (components.has_value()) {
-                return from_loggable(components.value());
-            } else {
-                return from_loggable(Collection<T>());
-            }
-        }
-
-        /// Creates a new data cell from an optional collection of component instances.
-        ///
-        /// None is represented as a data cell with 0 instances.
-        ///
-        /// Automatically registers the component type the first time this type is encountered.
-        template <typename T>
-        static Result<ComponentBatch> from_loggable(
             const std::optional<rerun::Collection<T>>& components,
-            const ComponentDescriptor& descriptor
+            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
         ) {
             if (components.has_value()) {
                 return from_loggable(components.value(), descriptor);
             } else {
                 return from_loggable(Collection<T>(), descriptor);
             }
+        }
+
+        /// Creates a new component batch for an archetype indicator.
+        template <typename Archetype>
+        static Result<ComponentBatch> from_indicator() {
+            return ComponentBatch::from_loggable(
+                typename Archetype::IndicatorComponent(),
+                Loggable<typename Archetype::IndicatorComponent>::Descriptor
+            );
         }
 
         /// Size in the number of elements the underlying arrow array contains.

@@ -43,6 +43,9 @@ int main() {
             mul_pos(factor, vertex_positions[1]),
             mul_pos(factor, vertex_positions[2]),
         };
-        rec.log("triangle", modified_vertex_positions);
+        rec.log(
+            "triangle",
+            rerun::Mesh3D::update_fields().with_vertex_positions(modified_vertex_positions)
+        );
     }
 }

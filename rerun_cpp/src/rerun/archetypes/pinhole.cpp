@@ -95,8 +95,7 @@ namespace rerun {
             cells.push_back(archetype.image_plane_distance.value());
         }
         {
-            auto indicator = Pinhole::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Pinhole>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

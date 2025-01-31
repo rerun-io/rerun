@@ -52,8 +52,8 @@ pub enum LevelOfDetail {
 }
 
 impl LevelOfDetail {
-    pub fn from_scaling(zoom: f32) -> Self {
-        if zoom < 0.20 {
+    pub fn from_scaling(scale: f32) -> Self {
+        if scale < 0.20 {
             Self::Low
         } else {
             Self::Full
@@ -305,8 +305,13 @@ pub fn draw_entity_rect(
 
     let padded = rect.expand(10.0);
 
-    ui.painter()
-        .rect(padded, 0.0, Color32::TRANSPARENT, Stroke::new(1.0, color));
+    ui.painter().rect(
+        padded,
+        0.0,
+        Color32::TRANSPARENT,
+        Stroke::new(1.0, color),
+        egui::StrokeKind::Inside,
+    );
 
     ui.painter().text(
         padded.left_top(),

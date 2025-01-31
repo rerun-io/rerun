@@ -322,8 +322,7 @@ namespace rerun {
             cells.push_back(archetype.fuzz1022.value());
         }
         {
-            auto indicator = AffixFuzzer1::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<AffixFuzzer1>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

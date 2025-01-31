@@ -1957,7 +1957,7 @@ checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 [[package]]
 name = "ecolor"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -1974,7 +1974,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2013,7 +2013,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2031,7 +2031,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2050,7 +2050,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2070,7 +2070,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.19.0"
-source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#9d500ac65fea8273f8d26eb6f513dded86778389"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -2081,7 +2081,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.19.0"
-source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#9d500ac65fea8273f8d26eb6f513dded86778389"
 dependencies = [
  "egui",
  "egui_extras",
@@ -2091,7 +2091,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "ahash",
  "egui",
@@ -2108,7 +2108,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2125,7 +2125,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "dify",
  "eframe",
@@ -2140,7 +2140,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui_plot.git?rev=80e2199a2e121db288fe6b0099d91c35acc75a7c#80e2199a2e121db288fe6b0099d91c35acc75a7c"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#a19562ea60a13b276a1e96035c5600fb4932ce53"
 dependencies = [
  "ahash",
  "egui",
@@ -2161,8 +2161,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "588dcf9028464fb4d23baf1f7805c13927fb540f2f9096f7d177b814848645a3"
+source = "git+https://github.com/rerun-io/egui_tiles?branch=emilk/update-egui#4876446fd618c59571490c7a637043d569f2e531"
 dependencies = [
  "ahash",
  "egui",
@@ -2196,7 +2195,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2312,7 +2311,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2331,7 +2330,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.30.0"
-source = "git+https://github.com/emilk/egui.git?branch=master#bc5f908b80cbcb20a728b36d20df860d90a29263"
+source = "git+https://github.com/emilk/egui.git?branch=master#50294b5d9f51d4c599c243669c464f826ac51728"
 
 [[package]]
 name = "equivalent"
@@ -3902,7 +3901,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -5493,7 +5492,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6566,10 +6565,12 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
+ "smallvec",
  "vec1",
 ]
 
@@ -6728,6 +6729,7 @@ dependencies = [
  "strum_macros",
  "sublime_fuzzy",
  "time",
+ "url",
 ]
 
 [[package]]
@@ -10032,7 +10034,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

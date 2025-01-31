@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{hex_color, Ui};
 
 use re_ui::UiExt as _;
 
@@ -56,7 +56,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         if ui
             .button(
                 egui::RichText::new("Go to documentation →")
-                    .color(egui::Color32::from_hex("#60A0FF").expect("this color is valid"))
+                    .color(hex_color!("#60A0FF"))
                     .text_style(re_ui::DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)

@@ -12,12 +12,13 @@ use re_ui::{
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
     DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender, ViewId, ViewerContext,
+    SystemCommandSender, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 
-use crate::data::BlueprintTreeData;
-use crate::data::{ContainerData, ContentsData, DataResultData, DataResultKind, ViewData};
+use crate::data::{
+    BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,
+};
 
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
@@ -48,6 +49,12 @@ pub struct BlueprintTree {
     /// Used to invalidate the filter state (aka deactivate it) when the user switches to a
     /// recording with a different application id.
     filter_state_app_id: Option<ApplicationId>,
+
+    /// Range selection anchor item.
+    ///
+    /// This is the item we used as a starting point for range selection. It is set and remembered
+    /// everytime the user clicks on an item _without_ holding shift.
+    range_selection_anchor_item: Option<Item>,
 }
 
 impl BlueprintTree {
@@ -135,8 +142,14 @@ impl BlueprintTree {
                         });
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
-                        if let Some(root_container) = blueprint_tree_data.root_container {
-                            self.root_container_ui(ctx, viewport_blueprint, ui, &root_container);
+                        if let Some(root_container) = &blueprint_tree_data.root_container {
+                            self.root_container_ui(
+                                ctx,
+                                viewport_blueprint,
+                                &blueprint_tree_data,
+                                ui,
+                                root_container,
+                            );
                         }
                     });
 
@@ -167,6 +180,7 @@ impl BlueprintTree {
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         container_data: &ContainerData,
     ) {
@@ -189,22 +203,24 @@ impl BlueprintTree {
             );
 
         for child in &container_data.children {
-            self.contents_ui(ctx, viewport_blueprint, ui, child, true);
+            self.contents_ui(
+                ctx,
+                viewport_blueprint,
+                blueprint_tree_data,
+                ui,
+                child,
+                true,
+            );
         }
 
-        context_menu_ui_for_item_with_context(
+        self.handle_interactions_for_item(
             ctx,
             viewport_blueprint,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
+            blueprint_tree_data,
+            ui,
+            item,
             &item_response,
-            SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, &item_response);
-        ctx.handle_select_hover_drag_interactions(&item_response, item, true);
 
         self.handle_root_container_drag_and_drop_interaction(
             ctx,
@@ -219,16 +235,31 @@ impl BlueprintTree {
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         contents_data: &ContentsData,
         parent_visible: bool,
     ) {
         match contents_data {
             ContentsData::Container(container_data) => {
-                self.container_ui(ctx, viewport_blueprint, ui, container_data, parent_visible);
+                self.container_ui(
+                    ctx,
+                    viewport_blueprint,
+                    blueprint_tree_data,
+                    ui,
+                    container_data,
+                    parent_visible,
+                );
             }
             ContentsData::View(view_data) => {
-                self.view_ui(ctx, viewport_blueprint, ui, view_data, parent_visible);
+                self.view_ui(
+                    ctx,
+                    viewport_blueprint,
+                    blueprint_tree_data,
+                    ui,
+                    view_data,
+                    parent_visible,
+                );
             }
         };
     }
@@ -236,7 +267,8 @@ impl BlueprintTree {
     fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
+        viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         container_data: &ContainerData,
         parent_visible: bool,
@@ -256,8 +288,8 @@ impl BlueprintTree {
 
                 let remove_response = remove_button_ui(ui, "Remove container");
                 if remove_response.clicked() {
-                    viewport.mark_user_interaction(ctx);
-                    viewport.remove_contents(content);
+                    viewport_blueprint.mark_user_interaction(ctx);
+                    viewport_blueprint.remove_contents(content);
                 }
 
                 remove_response | vis_response
@@ -284,32 +316,33 @@ impl BlueprintTree {
                 item_content,
                 |ui| {
                     for child in &container_data.children {
-                        self.contents_ui(ctx, viewport, ui, child, container_visible);
+                        self.contents_ui(
+                            ctx,
+                            viewport_blueprint,
+                            blueprint_tree_data,
+                            ui,
+                            child,
+                            container_visible,
+                        );
                     }
                 },
             );
 
+        viewport_blueprint.set_content_visibility(ctx, &content, visible);
         let response = response.on_hover_text(format!("{:?} container", container_data.kind));
 
-        context_menu_ui_for_item_with_context(
+        self.handle_interactions_for_item(
             ctx,
-            viewport,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
+            viewport_blueprint,
+            blueprint_tree_data,
+            ui,
+            item,
             &response,
-            SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
-
-        viewport.set_content_visibility(ctx, &content, visible);
 
         self.handle_drag_and_drop_interaction(
             ctx,
-            viewport,
+            viewport_blueprint,
             ui,
             content,
             &response,
@@ -321,6 +354,7 @@ impl BlueprintTree {
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
@@ -371,6 +405,7 @@ impl BlueprintTree {
                     self.data_result_ui(
                         ctx,
                         viewport_blueprint,
+                        blueprint_tree_data,
                         ui,
                         data_result_data,
                         view_visible,
@@ -387,7 +422,14 @@ impl BlueprintTree {
                         );
 
                     for projection in &view_data.projection_trees {
-                        self.data_result_ui(ctx, viewport_blueprint, ui, projection, view_visible);
+                        self.data_result_ui(
+                            ctx,
+                            viewport_blueprint,
+                            blueprint_tree_data,
+                            ui,
+                            projection,
+                            view_visible,
+                        );
                     }
                 }
             });
@@ -398,23 +440,18 @@ impl BlueprintTree {
             viewport_blueprint.focus_tab(view_data.id);
         }
 
-        context_menu_ui_for_item_with_context(
+        let content = Contents::View(view_data.id);
+        viewport_blueprint.set_content_visibility(ctx, &content, visible);
+
+        self.handle_interactions_for_item(
             ctx,
             viewport_blueprint,
-            &item,
-            // expand/collapse context menu actions need this information
-            ItemContext::BlueprintTree {
-                filter_session_id: self.filter_state.session_id(),
-            },
+            blueprint_tree_data,
+            ui,
+            item,
             &response,
-            SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
 
-        let content = Contents::View(view_data.id);
-
-        viewport_blueprint.set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
             ctx,
             viewport_blueprint,
@@ -427,9 +464,10 @@ impl BlueprintTree {
 
     #[allow(clippy::too_many_arguments)]
     fn data_result_ui(
-        &self,
+        &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
@@ -537,7 +575,14 @@ impl BlueprintTree {
                     item_content,
                     |ui| {
                         for child in &data_result_data.children {
-                            self.data_result_ui(ctx, viewport_blueprint, ui, child, view_visible);
+                            self.data_result_ui(
+                                ctx,
+                                viewport_blueprint,
+                                blueprint_tree_data,
+                                ui,
+                                child,
+                                view_visible,
+                            );
                         }
                     },
                 )
@@ -568,6 +613,28 @@ impl BlueprintTree {
             }
         });
 
+        self.handle_interactions_for_item(
+            ctx,
+            viewport_blueprint,
+            blueprint_tree_data,
+            ui,
+            item,
+            &response,
+        );
+    }
+
+    // ----------------------------------------------------------------------------
+    // item interactions
+
+    fn handle_interactions_for_item(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
+        blueprint_tree_data: &BlueprintTreeData,
+        ui: &egui::Ui,
+        item: Item,
+        response: &Response,
+    ) {
         context_menu_ui_for_item_with_context(
             ctx,
             viewport_blueprint,
@@ -576,11 +643,117 @@ impl BlueprintTree {
             ItemContext::BlueprintTree {
                 filter_session_id: self.filter_state.session_id(),
             },
-            &response,
+            response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.handle_select_hover_drag_interactions(&response, item, true);
+        self.scroll_to_me_if_needed(ui, &item, response);
+        ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
+
+        self.handle_range_selection(ctx, blueprint_tree_data, item, response);
+    }
+
+    /// Handle setting/extending the selection based on shift-clicking.
+    fn handle_range_selection(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        blueprint_tree_data: &BlueprintTreeData,
+        item: Item,
+        response: &Response,
+    ) {
+        // Early out if we're not being clicked.
+        if !response.clicked() {
+            return;
+        }
+
+        let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
+
+        if modifiers.shift {
+            if let Some(anchor_item) = &self.range_selection_anchor_item {
+                let items_in_range = Self::items_in_range(
+                    ctx,
+                    blueprint_tree_data,
+                    self.collapse_scope(),
+                    anchor_item,
+                    &item,
+                );
+
+                if items_in_range.is_empty() {
+                    // This can happen if the last clicked item became invisible due to collapsing, or if
+                    // the user switched to another recording. In either case, we invalidate it.
+                    self.range_selection_anchor_item = None;
+                } else {
+                    let items_iterator = items_in_range.into_iter().map(|item| {
+                        (
+                            item,
+                            Some(ItemContext::BlueprintTree {
+                                filter_session_id: self.filter_state.session_id(),
+                            }),
+                        )
+                    });
+
+                    if modifiers.command {
+                        ctx.selection_state.extend_selection(items_iterator);
+                    } else {
+                        ctx.selection_state.set_selection(items_iterator);
+                    }
+                }
+            }
+        } else {
+            self.range_selection_anchor_item = Some(item);
+        }
+    }
+
+    /// Selects a range of items in the blueprint tree.
+    ///
+    /// This method selects all [`Item`]s displayed between the provided shift-clicked item and the
+    /// existing last-clicked item (if any). It takes into account the collapsed state, so only
+    /// actually visible items may be selected.
+    fn items_in_range(
+        ctx: &ViewerContext<'_>,
+        blueprint_tree_data: &BlueprintTreeData,
+        collapse_scope: CollapseScope,
+        anchor_item: &Item,
+        shift_clicked_item: &Item,
+    ) -> Vec<Item> {
+        let mut items_in_range = vec![];
+        let mut found_anchor_item = false;
+        let mut found_shift_clicked_items = false;
+
+        blueprint_tree_data.visit(|blueprint_tree_item| {
+            let item = blueprint_tree_item.item();
+
+            if &item == anchor_item {
+                found_anchor_item = true;
+            }
+
+            if &item == shift_clicked_item {
+                found_shift_clicked_items = true;
+            }
+
+            if found_anchor_item || found_shift_clicked_items {
+                items_in_range.push(item);
+            }
+
+            if found_anchor_item && found_shift_clicked_items {
+                return VisitorControlFlow::Break(());
+            }
+
+            let is_expanded = blueprint_tree_item
+                .is_open(ctx.egui_ctx, collapse_scope)
+                .unwrap_or(false);
+
+            if is_expanded {
+                VisitorControlFlow::Continue
+            } else {
+                VisitorControlFlow::SkipBranch
+            }
+        });
+
+        if !found_anchor_item || !found_shift_clicked_items {
+            vec![]
+        } else {
+            items_in_range
+        }
     }
 
     /// Check if the provided item should be scrolled to.
@@ -596,7 +769,7 @@ impl BlueprintTree {
     }
 
     // ----------------------------------------------------------------------------
-    // drag and drop support
+    // view/container drag and drop support
 
     fn handle_root_container_drag_and_drop_interaction(
         &mut self,

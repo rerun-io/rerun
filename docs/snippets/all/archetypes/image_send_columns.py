@@ -16,8 +16,8 @@ for t in times:
     images[t, 50:150, (t * 10) : (t * 10 + 100), 1] = 255
 
 # Log the ImageFormat and indicator once, as static.
-format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-rr.send_columns("images", indexes=[], columns=rr.Image.columns(format=format_static))
+format = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
+rr.log("images", rr.Image.from_fields(format=format), static=True)
 
 # Send all images at once.
 rr.send_columns(

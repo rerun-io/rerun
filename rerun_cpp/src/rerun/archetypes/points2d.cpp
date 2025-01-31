@@ -144,8 +144,7 @@ namespace rerun {
             cells.push_back(archetype.keypoint_ids.value());
         }
         {
-            auto indicator = Points2D::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<Points2D>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

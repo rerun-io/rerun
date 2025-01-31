@@ -54,8 +54,7 @@ namespace rerun {
             cells.push_back(archetype.near_clip_plane.value());
         }
         {
-            auto indicator = NearClipPlane::IndicatorComponent();
-            auto result = ComponentBatch::from_loggable(indicator);
+            auto result = ComponentBatch::from_indicator<NearClipPlane>();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

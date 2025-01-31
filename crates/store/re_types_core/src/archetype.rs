@@ -50,7 +50,6 @@ pub trait Archetype {
     /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
     ///
     /// This allows for associating arbitrary indicator components with arbitrary data.
-    /// Check out the `manual_indicator` API example to see what's possible.
     fn indicator() -> SerializedComponentBatch;
 
     /// Returns all component descriptors that _must_ be provided by the user when constructing this archetype.
