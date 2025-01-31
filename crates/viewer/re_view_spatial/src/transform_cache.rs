@@ -143,7 +143,7 @@ impl CachedTransformsForTimeline {
     fn add_recursive_clears(&mut self, entity_path: &EntityPath, times: Vec<TimeInt>) {
         // Insert clears for all entities down the known tree.
         // (clears _at_ the entity are taken separately)
-        for (entity, transforms) in self.per_entity.iter_mut() {
+        for (entity, transforms) in &mut self.per_entity {
             if entity.is_descendant_of(entity_path) {
                 transforms.add_clears(&times);
             }
@@ -217,7 +217,7 @@ impl TransformsForEntity {
         let mut pose_transforms = None;
         let mut pinhole_projections = None;
 
-        if let Some(static_transforms) = static_timeline.per_entity.get(&entity_path) {
+        if let Some(static_transforms) = static_timeline.per_entity.get(entity_path) {
             tree_transforms = static_transforms.tree_transforms.clone();
             pose_transforms = static_transforms.pose_transforms.clone();
             pinhole_projections = static_transforms.pinhole_projections.clone();
@@ -506,7 +506,7 @@ impl TransformCacheStoreSubscriber {
             let Some(min_time) = time_column.times().min() else {
                 continue;
             };
-            if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path) {
+            if let Some(entity_entry) = per_timeline.per_entity.get_mut(entity_path) {
                 if aspects.intersects(TransformAspect::Tree | TransformAspect::Clear) {
                     let invalidated_tree_transforms =
                         entity_entry.tree_transforms.split_off(&min_time);
@@ -673,7 +673,7 @@ impl TransformCacheStoreSubscriber {
                 .retain(|invalidated_transform| !invalidated_transform.times.is_empty());
 
             // Remove existing data.
-            if let Some(per_entity) = per_timeline.per_entity.get_mut(&entity_path) {
+            if let Some(per_entity) = per_timeline.per_entity.get_mut(entity_path) {
                 for time in time_column.times() {
                     if aspects.contains(TransformAspect::Tree) {
                         per_entity.tree_transforms.remove(&time);
@@ -700,7 +700,7 @@ impl TransformCacheStoreSubscriber {
                         .as_ref()
                         .map_or(true, |pinhole_projections| pinhole_projections.is_empty())
                 {
-                    per_timeline.per_entity.remove(&entity_path);
+                    per_timeline.per_entity.remove(entity_path);
                 }
             }
 
@@ -1797,7 +1797,7 @@ mod tests {
     #[test]
     fn test_clear_non_recursive() {
         for clear_in_separate_chunk in [false, true] {
-            println!("clear_in_separate_chunk: {}", clear_in_separate_chunk);
+            println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
 
@@ -1864,8 +1864,7 @@ mod tests {
             [(false, false), (false, true), (true, false), (true, true)]
         {
             println!(
-                "clear_in_separate_chunk: {}, apply_after_each_chunk: {}",
-                clear_in_separate_chunk, update_after_each_chunk
+                "clear_in_separate_chunk: {clear_in_separate_chunk}, apply_after_each_chunk: {update_after_each_chunk}",
             );
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
@@ -1921,7 +1920,7 @@ mod tests {
                 for path in [EntityPath::from("parent"), EntityPath::from("parent/child")] {
                     let transform = transforms_per_timeline.entity_transforms(&path).unwrap();
 
-                    println!("checking for correct transforms for path: {:?}", path);
+                    println!("checking for correct transforms for path: {path:?}");
 
                     assert_eq!(
                         transform.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),

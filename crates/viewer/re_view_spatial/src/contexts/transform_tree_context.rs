@@ -596,7 +596,7 @@ fn transforms_at<'a>(
 ) -> TransformsAtEntity<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(entity_transforms) = transforms_for_timeline.entity_transforms(&entity_path) else {
+    let Some(entity_transforms) = transforms_for_timeline.entity_transforms(entity_path) else {
         return TransformsAtEntity::default();
     };
 
