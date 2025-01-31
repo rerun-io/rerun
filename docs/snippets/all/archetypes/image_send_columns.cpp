@@ -44,7 +44,7 @@ int main() {
     // Send all images at once.
     rec.send_columns(
         "images",
-        rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+        rerun::TimeColumn::from_sequence("step", std::move(times)),
         rerun::Image().with_many_buffer(std::move(image_data)).columns()
     );
 }
