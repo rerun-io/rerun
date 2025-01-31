@@ -450,7 +450,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
                     .enumerate()
                     .map(|(i, count)| {
                         Bar::new(i as _, count as _)
-                            .width(0.9)
+                            .width(1.0) // no gaps between bars
                             .fill(fill)
                             .vertical()
                             .stroke(egui::Stroke::NONE)

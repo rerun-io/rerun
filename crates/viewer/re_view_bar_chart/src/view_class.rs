@@ -169,15 +169,16 @@ Display a 1D tensor as a bar chart.
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();
                     let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
+                    let stroke_color = fill.linear_multiply(0.5);
                     BarChart::new(
                         values
                             .enumerate()
                             .map(|(i, value)| {
                                 Bar::new(i as f64 + 0.5, value.into())
-                                    .width(0.95)
+                                    .width(1.0) // No gaps
                                     .name(format!("{ent_path} #{i}"))
                                     .fill(fill)
-                                    .stroke(egui::Stroke::NONE)
+                                    .stroke((1.0, stroke_color))
                             })
                             .collect(),
                     )
