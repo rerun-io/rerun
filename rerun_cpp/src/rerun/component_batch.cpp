@@ -1,4 +1,5 @@
 #include "component_batch.hpp"
+#include "component_column.hpp"
 
 #include <arrow/array/array_base.h>
 #include <arrow/c/bridge.h>
@@ -37,6 +38,27 @@ namespace rerun {
         component_batch.array = std::move(array);
         component_batch.component_type = comp_type_handle;
         return component_batch;
+    }
+
+    Result<ComponentColumn> ComponentBatch::partitioned(const Collection<uint32_t>& lengths) && {
+        // Can't define this method in the header because it needs to know about `ComponentColumn`.
+        return ComponentColumn::from_batch_with_lengths(std::move(*this), lengths);
+    }
+
+    Result<ComponentColumn> ComponentBatch::partitioned() && {
+        // Can't define this method in the header because it needs to know about `ComponentColumn`.
+        return std::move(*this).partitioned(std::vector<uint32_t>(length(), 1));
+    }
+
+    Result<ComponentColumn> ComponentBatch::partitioned(const Collection<uint32_t>& lengths
+    ) const& {
+        // Can't define this method in the header because it needs to know about `ComponentColumn`.
+        return ComponentColumn::from_batch_with_lengths(*this, lengths);
+    }
+
+    Result<ComponentColumn> ComponentBatch::partitioned() const& {
+        // Can't define this method in the header because it needs to know about `ComponentColumn`.
+        return partitioned(std::vector<uint32_t>(length(), 1));
     }
 
     Error ComponentBatch::to_c_ffi_struct(rr_component_batch& out_component_batch) const {

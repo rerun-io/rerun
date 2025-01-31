@@ -100,9 +100,6 @@
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
-"howto/any_batch_value_send_columns" = [
-  "cpp", # Not implemented
-]
 "howto/any_values_send_columns" = [
   "cpp", # Not implemented
 ]

@@ -18,6 +18,10 @@ namespace arrow {
 struct rr_component_batch;
 
 namespace rerun {
+    struct ComponentColumn;
+}
+
+namespace rerun {
     /// Arrow-encoded data of a single batch of components together with a component descriptor.
     ///
     /// Component descriptors are registered when first encountered.
@@ -117,6 +121,39 @@ namespace rerun {
         static Result<ComponentBatch> from_arrow_array(
             std::shared_ptr<arrow::Array> array, const ComponentDescriptor& descriptor
         );
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
+        /// this specifies the number of components at each time point.
+        /// The sum of the lengths must be equal to the number of components in the batch.
+        Result<ComponentColumn> partitioned(const Collection<uint32_t>& lengths) &&;
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        Result<ComponentColumn> partitioned() &&;
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
+        /// this specifies the number of components at each time point.
+        /// The sum of the lengths must be equal to the number of components in the batch.
+        Result<ComponentColumn> partitioned(const Collection<uint32_t>& lengths) const&;
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        Result<ComponentColumn> partitioned() const&;
 
         /// Size in the number of elements the underlying arrow array contains.
         size_t length() const;
