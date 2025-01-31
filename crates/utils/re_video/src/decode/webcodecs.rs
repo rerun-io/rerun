@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
-use once_cell::unsync::Lazy;
+use once_cell::sync::Lazy;
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
@@ -205,7 +205,7 @@ impl AsyncDecoder for WebVideoDecoder {
     }
 }
 
-const IS_SAFARI: Lazy<bool> = Lazy::new(|| {
+static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
     web_sys::window().map_or(false, |w| {
         w.has_own_property(&wasm_bindgen::JsValue::from("safari"))
     })
