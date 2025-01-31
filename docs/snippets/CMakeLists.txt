@@ -35,6 +35,7 @@ endforeach()
 # `text_log_integration` uses `loguru` as the example text logging library.
 target_link_libraries(text_log_integration PRIVATE loguru::loguru)
 
-# `any_values` uses `arrow` directly.
+# `any_values`-style examples use `arrow` directly.
 target_link_libraries(any_values PRIVATE rerun_arrow_target)
 target_link_libraries(any_batch_value_send_columns PRIVATE rerun_arrow_target)
+target_link_libraries(extra_values PRIVATE rerun_arrow_target)

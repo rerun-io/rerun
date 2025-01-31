@@ -140,9 +140,6 @@
   "rust",
   "py",
 ]
-"tutorials/extra_values" = [ # Missing examples
-  "cpp",
-]
 "tutorials/log-file" = [ # Not a complete examples
   "cpp",
   "rust",
