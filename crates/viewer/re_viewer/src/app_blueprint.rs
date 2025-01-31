@@ -197,11 +197,11 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         let chunk = Chunk::builder(entity_path)
             .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
             .build()
-            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+            .expect("Failed to build chunk - incorrect number of instances for the component");
 
         welcome_screen_blueprint
             .add_chunk(&Arc::new(chunk))
-            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+            .expect("Failed to add new chunk for welcome screen");
     }
 }
 
@@ -222,7 +222,7 @@ impl AppBlueprint<'_> {
             let chunk = Chunk::builder(entity_path)
                 .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
                 .build()
-                .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+                .expect("Failed to build chunk - incorrect number of instances for the component");
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 store_ctx.blueprint.store_id().clone(),
