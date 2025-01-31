@@ -60,6 +60,7 @@ namespace rerun {
         /// @see error::value_or_exit
         T value_or_throw() && {
             error.throw_on_failure();
+            // Do an explicit move in order to guarantee that we give up ownership of `value`.
             return std::move(value);
         }
 
@@ -74,6 +75,7 @@ namespace rerun {
         /// @see error::value_or_throw
         T value_or_exit() && {
             error.exit_on_failure();
+            // Do an explicit move in order to guarantee that we give up ownership of `value`.
             return std::move(value);
         }
 
