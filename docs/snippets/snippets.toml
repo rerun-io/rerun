@@ -100,12 +100,6 @@
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
-"howto/any_batch_value_send_columns" = [
-  "cpp", # Not implemented
-]
-"howto/any_values_send_columns" = [
-  "cpp", # Not implemented
-]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
@@ -131,9 +125,6 @@
   "rust",
   "py",
 ]
-"tutorials/any_values" = [ # Not yet implemented
-  "cpp",
-]
 "tutorials/custom-application-id" = [ # Not a complete examples
   "cpp",
   "rust",
@@ -148,9 +139,6 @@
   "cpp",
   "rust",
   "py",
-]
-"tutorials/extra_values" = [ # Missing examples
-  "cpp",
 ]
 "tutorials/log-file" = [ # Not a complete examples
   "cpp",

@@ -24,22 +24,16 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (positions.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(positions.value().partitioned(lengths_).value_or_throw());
         }
         if (radii.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(radii.value().partitioned(lengths_).value_or_throw());
         }
         if (colors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
         if (class_ids.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<GeoPoints>(static_cast<uint32_t>(lengths_.size()))

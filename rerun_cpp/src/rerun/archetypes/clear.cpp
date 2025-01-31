@@ -18,10 +18,7 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (is_recursive.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(is_recursive.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(is_recursive.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Clear>(static_cast<uint32_t>(lengths_.size()))

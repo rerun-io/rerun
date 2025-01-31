@@ -18,9 +18,7 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (context.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(context.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(context.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<AnnotationContext>(
                               static_cast<uint32_t>(lengths_.size())

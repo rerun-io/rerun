@@ -18,9 +18,7 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (range.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(range.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(range.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<VisualBounds2D>(static_cast<uint32_t>(lengths_.size()))

@@ -25,25 +25,16 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (color.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
         if (width.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(width.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(width.value().partitioned(lengths_).value_or_throw());
         }
         if (name.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(name.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(name.value().partitioned(lengths_).value_or_throw());
         }
         if (aggregation_policy.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(aggregation_policy.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(aggregation_policy.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<SeriesLine>(static_cast<uint32_t>(lengths_.size()))

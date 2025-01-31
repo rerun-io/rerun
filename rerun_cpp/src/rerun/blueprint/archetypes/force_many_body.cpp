@@ -21,13 +21,10 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (enabled.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(enabled.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(enabled.value().partitioned(lengths_).value_or_throw());
         }
         if (strength.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(strength.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(strength.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<ForceManyBody>(static_cast<uint32_t>(lengths_.size()))

@@ -21,14 +21,10 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (corner.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(corner.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(corner.value().partitioned(lengths_).value_or_throw());
         }
         if (visible.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<PlotLegend>(static_cast<uint32_t>(lengths_.size()))

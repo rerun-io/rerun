@@ -69,76 +69,58 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(19);
         if (fuzz2001.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2001.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2001.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2002.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2002.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2002.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2003.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2003.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2003.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2004.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2004.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2004.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2005.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2005.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2005.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2006.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2006.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2006.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2007.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2007.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2007.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2008.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2008.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2008.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2009.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2009.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2009.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2010.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2010.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2010.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2011.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2011.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2011.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2012.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2012.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2012.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2013.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2013.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2013.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2014.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2014.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2014.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2015.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2015.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2015.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2016.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2016.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2016.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2017.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2017.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2017.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz2018.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2018.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz2018.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<AffixFuzzer3>(static_cast<uint32_t>(lengths_.size()))

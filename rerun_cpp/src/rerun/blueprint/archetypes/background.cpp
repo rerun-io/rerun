@@ -20,14 +20,10 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (kind.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(kind.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
         if (color.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Background>(static_cast<uint32_t>(lengths_.size()))

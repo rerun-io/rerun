@@ -34,31 +34,21 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(6);
         if (root_container.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(root_container.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(root_container.value().partitioned(lengths_).value_or_throw());
         }
         if (maximized.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(maximized.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(maximized.value().partitioned(lengths_).value_or_throw());
         }
         if (auto_layout.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(auto_layout.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(auto_layout.value().partitioned(lengths_).value_or_throw());
         }
         if (auto_views.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(auto_views.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(auto_views.value().partitioned(lengths_).value_or_throw());
         }
         if (past_viewer_recommendations.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(
-                                  past_viewer_recommendations.value(),
-                                  lengths_
-            )
-                                  .value_or_throw());
+            columns.push_back(
+                past_viewer_recommendations.value().partitioned(lengths_).value_or_throw()
+            );
         }
         columns.push_back(ComponentColumn::from_indicators<ViewportBlueprint>(
                               static_cast<uint32_t>(lengths_.size())
