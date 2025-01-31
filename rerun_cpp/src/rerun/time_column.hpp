@@ -69,7 +69,28 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the sequence points.
         /// Already sorted time points may perform better.
+        ///
+        /// \deprecated Use `from_sequence` instead.
+        [[deprecated("Use `from_sequence` instead.")]]
         static TimeColumn from_sequence_points(
+            std::string timeline_name, Collection<int64_t> sequence_points,
+            SortingStatus sorting_status = SortingStatus::Unknown
+        ) {
+            return TimeColumn(
+                Timeline(std::move(timeline_name), TimeType::Sequence),
+                std::move(sequence_points),
+                sorting_status
+            );
+        }
+
+        /// Creates a time column from an array of sequence points.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param sequence_points The sequence points.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the sequence points.
+        /// Already sorted time points may perform better.
+        static TimeColumn from_sequence(
             std::string timeline_name, Collection<int64_t> sequence_points,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
