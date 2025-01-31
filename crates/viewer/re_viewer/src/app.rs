@@ -963,7 +963,9 @@ impl App {
 
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
-                self.run_copy_direct_link_command(store_context);
+                if self.run_copy_direct_link_command(store_context).is_none() {
+                    re_log::error!("Failed to copy direct link to clipboard. Is this not running in a browser?");
+                }
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -1018,11 +1020,16 @@ impl App {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let location = web_sys::window().unwrap().location();
-        let origin = location.origin().unwrap();
-        let host = location.host().unwrap();
-        let pathname = location.pathname().unwrap();
+    fn run_copy_direct_link_command(
+        &mut self,
+        store_context: Option<&StoreContext<'_>>,
+    ) -> Option<()> {
+        use crate::web_tools::JsResultExt as _;
+
+        let location = web_sys::window()?.location();
+        let origin = location.origin().ok_or_log_js_error_once()?;
+        let host = location.host().ok_or_log_js_error_once()?;
+        let pathname = location.pathname().ok_or_log_js_error_once()?;
 
         let hosted_viewer_path = if self.build_info.is_final() {
             // final release, use version tag
@@ -1052,6 +1059,8 @@ impl App {
         self.egui_ctx.copy_text(direct_link.clone());
         self.notifications
             .success(format!("Copied {direct_link:?} to clipboard"));
+
+        Some(())
     }
 
     fn memory_panel_ui(
