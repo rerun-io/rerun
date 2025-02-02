@@ -36,7 +36,7 @@ arrow::Status run_main() {
 
     rec.send_columns(
         "/",
-        rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+        rerun::TimeColumn::from_sequence("step", std::move(times)),
         sin.partitioned().value_or_throw(),
         cos.partitioned().value_or_throw()
     );

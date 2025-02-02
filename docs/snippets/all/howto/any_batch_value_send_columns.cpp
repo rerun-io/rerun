@@ -38,7 +38,7 @@ arrow::Status run_main() {
 
     rec.send_columns(
         "/",
-        rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+        rerun::TimeColumn::from_sequence("step", std::move(times)),
         one_per_timestamp.partitioned().value_or_throw(),
         ten_per_timestamp.partitioned(std::vector<uint32_t>(STEPS, 10)).value_or_throw()
     );
