@@ -55,7 +55,7 @@ namespace rerun::archetypes {
     ///     const size_t WIDTH = 300;
     ///
     ///     for (size_t t = 0; t <20; ++t) {
-    ///         rec.set_time_sequence("time", t);
+    ///         rec.set_time_sequence("time", static_cast<int64_t>(t));
     ///
     ///         std::vector<uint8_t> data(WIDTH * HEIGHT * 3, 0);
     ///         for (size_t i = 0; i <data.size(); i += 3) {
@@ -70,7 +70,7 @@ namespace rerun::archetypes {
     ///         }
     ///
     ///         rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
-    ///     };
+    ///     }
     /// }
     /// ```
     ///

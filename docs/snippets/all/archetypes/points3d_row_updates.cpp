@@ -26,8 +26,8 @@ int main() {
     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
 
-    for (int i = 0; i < 5; i++) {
-        rec.set_time_seconds("time", 10 + i);
+    for (size_t i = 0; i < 5; i++) {
+        rec.set_time_seconds("time", 10.0 + static_cast<double>(i));
         rec.log(
             "points",
             rerun::Points3D(positions[i]).with_colors(colors[i]).with_radii(radii[i])
