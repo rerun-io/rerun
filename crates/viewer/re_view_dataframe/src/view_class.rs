@@ -1,9 +1,5 @@
 use std::any::Any;
 
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
-};
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
@@ -11,6 +7,11 @@ use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
     SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt, ViewSystemExecutionError, ViewerContext,
+};
+
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
+    visualizer_system::EmptySystem,
 };
 
 #[derive(Default)]
