@@ -879,6 +879,7 @@ enum VectorDistanceMetricLike {
 
 impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDistanceMetric {
     type Error = PyErr;
+
     fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
         match metric {
             VectorDistanceMetricLike::VectorDistanceMetric(metric) => Ok(metric.into()),
