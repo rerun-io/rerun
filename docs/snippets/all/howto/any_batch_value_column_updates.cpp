@@ -8,7 +8,7 @@
 #include <numeric>
 
 arrow::Status run_main() {
-    const auto rec = rerun::RecordingStream("rerun_example_any_batch_value_send_columns");
+    const auto rec = rerun::RecordingStream("rerun_example_any_batch_value_column_updates");
     rec.spawn().exit_on_failure();
 
     constexpr int64_t STEPS = 64;

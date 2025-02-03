@@ -1,5 +1,5 @@
 ---
-title: Batch Data
+title: Component Batches
 order: 700
 ---
 

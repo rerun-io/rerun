@@ -1,4 +1,4 @@
-//! Demonstrates usage of the new partial updates APIs.
+//! Update specific properties of a point cloud over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
@@ -19,6 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
         let radii = (0..10).map(|n| if n < i { 0.6 } else { 0.2 });
 
+        // Update only the colors and radii, leaving everything else as-is.
         rec.set_time_sequence("frame", i);
         rec.log(
             "points",
@@ -28,6 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
+    // Update the positions and radii, and clear everything else in the process.
     rec.set_time_sequence("frame", 20);
     rec.log(
         "points",

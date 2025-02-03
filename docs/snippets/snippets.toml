@@ -15,27 +15,37 @@
 # Add anything you can think about!
 #
 # Tip: use UTF8 NBSPs (https://unicode-explorer.com/c/00A0) as needed.
-[snippets_ref.features]
-"Query dataframes" = [
-  "reference/dataframe_query",
-  "reference/dataframe_view_query",
-]
-"Send partial updates" = [
-  "archetypes/mesh3d_partial_updates",
-  "archetypes/points3d_partial_updates",
-  "archetypes/transform3d_partial_updates",
-]
-"Send columnar data" = [
-  "archetypes/image_send_columns",
-  "archetypes/points3d_send_columns",
-  "archetypes/scalar_send_columns",
-  "howto/any_values_send_columns",
-  "howto/any_batch_value_send_columns",
-]
-"Send custom data" = [
-  "tutorials/any_values",
-  "tutorials/extra_values",
-  "tutorials/custom_data",
+[snippets_ref]
+features = [
+  ["Update rows", [
+    "archetypes/scalar_row_updates",
+    "archetypes/points3d_row_updates",
+    "archetypes/transform3d_row_updates",
+  ]],
+  ["Update columns", [
+    "archetypes/scalar_column_updates",
+    "archetypes/points3d_column_updates",
+    "archetypes/transform3d_column_updates",
+    "archetypes/image_column_updates",  # bonus!
+  ]],
+  ["Partial updates", [
+    "archetypes/points3d_partial_updates",
+    "archetypes/transform3d_partial_updates",
+    "archetypes/mesh3d_partial_updates",
+  ]],
+  ["Send custom data", [
+    "tutorials/any_values",
+    "tutorials/extra_values",
+    "tutorials/custom_data",
+  ]],
+  ["Send columns of custom data", [
+    "howto/any_values_column_updates",
+    "howto/any_batch_value_column_updates",
+  ]],
+  ["Query dataframes", [
+    "reference/dataframe_query",
+    "reference/dataframe_view_query",
+  ]],
 ]
 
 # These entries won't run at all.
@@ -44,6 +54,11 @@
 # for one or more specific SDKs.
 [opt_out.run]
 "concepts/explicit_recording" = [ # python-specific check
+  "cpp",
+  "rust",
+]
+"concepts/how_helix_was_logged" = [ # pseudo-code
+  "py",
   "cpp",
   "rust",
 ]

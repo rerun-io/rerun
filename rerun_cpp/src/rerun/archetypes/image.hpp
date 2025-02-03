@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Logging images with various formats
-    /// ![image](https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png)
+    /// ![image](https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png)
     ///
     /// ```cpp
     /// #include <algorithm>

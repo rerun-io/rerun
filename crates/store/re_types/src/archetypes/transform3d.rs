@@ -166,6 +166,171 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png" width="640">
 /// </picture>
 /// </center>
+///
+/// ### Update a transform over time
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_row_updates").spawn()?;
+///
+///     rec.set_time_sequence("tick", 0);
+///     rec.log(
+///         "box",
+///         &[
+///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
+///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
+///             &rerun::Transform3D::default().with_axis_length(10.0),
+///         ],
+///     )?;
+///
+///     for t in 0..100 {
+///         rec.set_time_sequence("tick", t + 1);
+///         rec.log(
+///             "box",
+///             &rerun::Transform3D::default()
+///                 .with_translation([0.0, 0.0, t as f32 / 10.0])
+///                 .with_rotation(rerun::RotationAxisAngle::new(
+///                     [0.0, 1.0, 0.0],
+///                     rerun::Angle::from_radians(truncated_radians((t * 4) as f32)),
+///                 )),
+///         )?;
+///     }
+///
+///     Ok(())
+/// }
+///
+/// fn truncated_radians(deg: f32) -> f32 {
+///     ((deg.to_radians() * 1000.0) as i32) as f32 / 1000.0
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+///   <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Update a transform over time, in a single operation
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_column_updates").spawn()?;
+///
+///     rec.set_time_sequence("tick", 0);
+///     rec.log(
+///         "box",
+///         &[
+///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
+///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
+///             &rerun::Transform3D::default().with_axis_length(10.0),
+///         ],
+///     )?;
+///
+///     let translations = (0..100).map(|t| [0.0, 0.0, t as f32 / 10.0]);
+///     let rotations = (0..100)
+///         .map(|t| truncated_radians((t * 4) as f32))
+///         .map(|rad| rerun::RotationAxisAngle::new([0.0, 1.0, 0.0], rerun::Angle::from_radians(rad)));
+///
+///     let ticks = rerun::TimeColumn::new_sequence("tick", 1..101);
+///     rec.send_columns(
+///         "box",
+///         [ticks],
+///         rerun::Transform3D::default()
+///             .with_many_translation(translations)
+///             .with_many_rotation_axis_angle(rotations)
+///             .columns_of_unit_batches()?,
+///     )?;
+///
+///     Ok(())
+/// }
+///
+/// fn truncated_radians(deg: f32) -> f32 {
+///     ((deg.to_radians() * 1000.0) as i32) as f32 / 1000.0
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+///   <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Update specific properties of a transform over time
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_partial_updates").spawn()?;
+///
+///     // Set up a 3D box.
+///     rec.log(
+///         "box",
+///         &[
+///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
+///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
+///             &rerun::Transform3D::default().with_axis_length(10.0),
+///         ],
+///     )?;
+///
+///     // Update only the rotation of the box.
+///     for deg in 0..=45 {
+///         let rad = truncated_radians((deg * 4) as f32);
+///         rec.log(
+///             "box",
+///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///                 [0.0, 1.0, 0.0],
+///                 rerun::Angle::from_radians(rad),
+///             )),
+///         )?;
+///     }
+///
+///     // Update only the position of the box.
+///     for t in 0..=50 {
+///         rec.log(
+///             "box",
+///             &rerun::Transform3D::update_fields().with_translation([0.0, 0.0, t as f32 / 10.0]),
+///         )?;
+///     }
+///
+///     // Update only the rotation of the box.
+///     for deg in 0..=45 {
+///         let rad = truncated_radians(((deg + 45) * 4) as f32);
+///         rec.log(
+///             "box",
+///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///                 [0.0, 1.0, 0.0],
+///                 rerun::Angle::from_radians(rad),
+///             )),
+///         )?;
+///     }
+///
+///     // Clear all of the box's attributes, and reset its axis length.
+///     rec.log(
+///         "box",
+///         &rerun::Transform3D::clear_fields().with_axis_length(15.0),
+///     )?;
+///
+///     Ok(())
+/// }
+///
+/// fn truncated_radians(deg: f32) -> f32 {
+///     ((deg.to_radians() * 1000.0) as i32) as f32 / 1000.0
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png">
+///   <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Transform3D {
     /// Translation vector.

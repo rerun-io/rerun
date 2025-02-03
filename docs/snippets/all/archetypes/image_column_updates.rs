@@ -1,7 +1,11 @@
+//! Update an image over time, in a single operation.
+//!
+//! This is semantically equivalent to the `image_row_updates` example, albeit much faster.
+
 use ndarray::{s, Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_send_columns").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_column_updates").spawn()?;
 
     // Timeline on which the images are distributed.
     let times = (0..20).collect::<Vec<i64>>();

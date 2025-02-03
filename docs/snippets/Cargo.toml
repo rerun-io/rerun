@@ -14,6 +14,7 @@ workspace = true
 [dependencies]
 rerun = { path = "../../crates/top/rerun" }
 
+itertools.workspace = true
 ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 rand_distr = { workspace = true, features = ["std"] }
@@ -30,6 +31,7 @@ rust-format.workspace = true
 [package.metadata.cargo-machete]
 # false positives because they aren't used until codegen is run:
 ignored = [
+  "itertools",
   "ndarray",
   "rand",
   "rand_distr",

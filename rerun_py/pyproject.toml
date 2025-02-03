@@ -70,9 +70,10 @@ extend-exclude = [
   "docs/snippets/all/tutorials/timelines_example.py",
 
   # Intentionally incomplete snippets
+  "docs/snippets/all/concepts/how_helix_was_logged.py",
+  "docs/snippets/all/concepts/static",
   "docs/snippets/all/tutorials/custom-application-id.py",
   "docs/snippets/all/tutorials/custom-recording-id.py",
-  "docs/snippets/all/concepts/static",
 
   # generated
   "examples/python/objectron/objectron/proto/objectron/proto.py",

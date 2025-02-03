@@ -1,13 +1,14 @@
-//! Use the `send_columns` API to send several point clouds over time in a single call.
-
-use rerun::TimeColumn;
+//! Update a point cloud over time, in a single operation.
+//!
+//! This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_send_columns").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_points3d_column_updates").spawn()?;
+
+    let times = rerun::TimeColumn::new_seconds("time", 10..15);
 
     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
-    let times = TimeColumn::new_seconds("time", 10..15);
-
     #[rustfmt::skip]
     let positions = [
         [1.0, 0.0, 1.0], [0.5, 0.5, 2.0],

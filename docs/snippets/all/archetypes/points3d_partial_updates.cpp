@@ -1,4 +1,4 @@
-//! Demonstrates usage of the new partial updates APIs.
+//! Update specific properties of a point cloud over time.
 
 #include <rerun.hpp>
 
@@ -36,6 +36,7 @@ int main() {
             }
         }
 
+        // Update only the colors and radii, leaving everything else as-is.
         rec.set_time_sequence("frame", i);
         rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
     }
@@ -43,6 +44,7 @@ int main() {
     std::vector<rerun::Radius> radii;
     radii.emplace_back(0.3f);
 
+    // Update the positions and radii, and clear everything else in the process.
     rec.set_time_sequence("frame", 20);
     rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with_radii(radii));
 }
