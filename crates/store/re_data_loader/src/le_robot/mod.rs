@@ -3,7 +3,6 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use ahash::HashMap;
-use anyhow::Context;
 use arrow::array::RecordBatch;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
@@ -20,7 +19,7 @@ pub fn is_le_robot_dataset(path: impl AsRef<Path>) -> bool {
     ["meta", "data"].iter().all(|subdir| {
         let subpath = path.join(subdir);
 
-        return subpath.is_dir();
+        subpath.is_dir()
     })
 }
 
@@ -76,7 +75,7 @@ impl LeRobotDataset {
         let episode_data_file = self
             .path
             .join("data")
-            .join("chunk-000") // TODO: when does this change?
+            .join("chunk-000") // TODO(gijsd): when does this change?
             .join(format!("episode_{episode_index:0>6}.parquet"));
 
         let file = File::open(episode_data_file)?;
@@ -96,7 +95,7 @@ impl LeRobotDataset {
         let videopath = self
             .path
             .join("videos")
-            .join("chunk-000")
+            .join("chunk-000") // TODO(gijsd): When does this change?
             .join("observation.image")
             .join(format!("episode_{episode_index:0>6}.mp4"));
 
@@ -105,7 +104,7 @@ impl LeRobotDataset {
         let contents = {
             re_tracing::profile_scope!("fs::read");
             std::fs::read(&videopath)?
-            // TODO: Look into using anyhow again?
+            // TODO(gijsd): Look into using anyhow again?
             // .with_context(|| format!("Failed to read file {videopath:?}"))?
         };
 
@@ -124,9 +123,9 @@ impl LeRobotDatasetMetadata {
     pub fn load_from_directory(metadir: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let metadir = metadir.as_ref();
 
-        let info = LeRobotDatasetInfo::load_from_file(&metadir.join("info.json"))?;
-        let episodes = load_jsonl_file(&metadir.join("episodes.jsonl"))?;
-        let tasks = load_jsonl_file(&metadir.join("tasks.jsonl"))?;
+        let info = LeRobotDatasetInfo::load_from_file(metadir.join("info.json"))?;
+        let episodes = load_jsonl_file(metadir.join("episodes.jsonl"))?;
+        let tasks = load_jsonl_file(metadir.join("tasks.jsonl"))?;
 
         Ok(Self {
             info,
@@ -176,7 +175,7 @@ pub enum DType {
     Int64,
 }
 
-// TODO: Do we want to stream in episodes or tasks?
+// TODO(gijsd): Do we want to stream in episodes or tasks?
 #[cfg(not(target_arch = "wasm32"))]
 fn load_jsonl_file<D>(filepath: impl AsRef<Path>) -> Result<Vec<D>, LeRobotError>
 where

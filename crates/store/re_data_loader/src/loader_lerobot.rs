@@ -1,21 +1,18 @@
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, FixedSizeListArray, Float32Array, Int64Array};
-use arrow::datatypes::{DataType, Field, FieldRef};
+use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::ArrowArrayDowncastRef;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{
-    ArrowArray, Chunk, ChunkId, RowId, TimeColumn, TimePoint, Timeline, TransportChunk,
-};
+use re_chunk::{ArrowArray, Chunk, ChunkId, RowId, TimeColumn, TimePoint, Timeline};
 
-use re_log_types::external::re_tuid::{self};
 use re_log_types::StoreId;
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
-use re_types::{Archetype, Component, ComponentBatch, Loggable};
+use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::le_robot::{LeRobotDataset, LeRobotError};
+use crate::le_robot::LeRobotDataset;
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 pub struct LeRobotDatasetLoader;
@@ -27,7 +24,7 @@ impl DataLoader for LeRobotDatasetLoader {
 
     fn load_from_path(
         &self,
-        settings: &crate::DataLoaderSettings,
+        _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
@@ -64,7 +61,7 @@ impl DataLoader for LeRobotDatasetLoader {
             let timeline = re_log_types::Timeline::new_sequence("frame_index");
             let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
                 .downcast_array_ref::<Int64Array>()
-                .unwrap()
+                .expect("frame indices are of an unexpected type")
                 .values();
             let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
             let timelines = std::iter::once((timeline, time_column.clone())).collect();
@@ -82,15 +79,15 @@ impl DataLoader for LeRobotDatasetLoader {
                 let field = data.schema_ref().field(idx);
 
                 match field.data_type() {
-                    // TODO: match on type of element
+                    // TODO(gijsd): match on type of element
                     DataType::FixedSizeList(_element, _) => {
                         // Unwrap: we know the type of the column
                         let fixed_size_array = data
                             .column(idx)
                             .downcast_array_ref::<FixedSizeListArray>()
-                            .unwrap();
+                            .expect("failed to downcast FixedSizeListArray");
 
-                        chunks.extend(make_entity_chunks(field, &timelines, &fixed_size_array)?);
+                        chunks.extend(make_entity_chunks(field, &timelines, fixed_size_array)?);
                     }
                     _ => {
                         eprintln!(
@@ -115,12 +112,12 @@ impl DataLoader for LeRobotDatasetLoader {
 
     fn load_from_file_contents(
         &self,
-        settings: &crate::DataLoaderSettings,
+        _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        _contents: std::borrow::Cow<'_, [u8]>,
+        _tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        return Err(DataLoaderError::Incompatible(filepath));
+        Err(DataLoaderError::Incompatible(filepath))
     }
 }
 
@@ -161,7 +158,7 @@ fn log_episode_video(
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.into(),
-                std::iter::once((timeline.clone(), time_column)).collect(),
+                std::iter::once((*timeline, time_column)).collect(),
                 [
                     (
                         VideoFrameReference::indicator().descriptor.clone(),
@@ -211,7 +208,10 @@ fn make_entity_chunks(
         .values()
         .as_any()
         .downcast_ref::<Float32Array>()
-        .unwrap(); // TODO: what to do with this
+        // TODO(gijsd): what to do with this
+        .ok_or(DataLoaderError::Other(anyhow::format_err!(
+            "Only scalar columns are supported for now."
+        )))?;
 
     let mut chunks = Vec::with_capacity(num_elements);
 
@@ -245,11 +245,10 @@ fn make_entity_chunks(
             ChunkId::new(),
             entity_path.into(),
             timelines.clone(),
-            [(
-                <re_types::components::Scalar as re_types::Component>::descriptor().clone(),
+            std::iter::once((
+                <Scalar as Component>::descriptor().clone(),
                 data_field_array,
-            )]
-            .into_iter()
+            ))
             .collect(),
         )?;
 
