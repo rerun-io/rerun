@@ -19,25 +19,33 @@ use tokio_stream::StreamExt;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_chunk_store::ChunkStore;
-use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_dataframe::{
+    ChunkStoreHandle, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
+    TimeColumnSelector, ViewContentsSelector,
+};
 use re_grpc_client::TonicStatusError;
 use re_log_encoding::codec::wire::{decoder::Decode, encoder::Encode};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
-    common::v0::RecordingId,
+    common::v0::{EntityPath, IndexColumnSelector, RecordingId},
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
-        FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
-        RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
+        index_properties::Props, storage_node_client::StorageNodeClient, CatalogFilter, Collection,
+        ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest, IndexColumn,
+        QueryCatalogRequest, QueryCollectionIndexRequest, QueryRequest, RecordingType,
+        RegisterRecordingRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
 
-use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
+use crate::dataframe::{
+    ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
+    PyRecordingHandle, PyRecordingView, PySchema,
+};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyStorageNodeClient>()?;
+    m.add_class::<PyVectorDistanceMetric>()?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
 
@@ -360,6 +368,336 @@ impl PyStorageNodeClient {
         })
     }
 
+    /// Create a vector index.
+    ///
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// num_partitions : int
+    ///     The number of partitions for the index.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors for the index.
+    /// distance_metric : VectorDistanceMetric
+    ///     The distance metric to use for the index.
+    #[pyo3(signature = (
+        collection,
+        column,
+        time_index,
+        num_partitions,
+        num_sub_vectors,
+        distance_metric
+    ))]
+    fn create_vector_index(
+        &mut self,
+        collection: String,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        num_partitions: u32,
+        num_sub_vectors: u32,
+        distance_metric: VectorDistanceMetricLike,
+    ) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let time_selector: TimeColumnSelector = time_index.into();
+            let column_selector: ComponentColumnSelector = column.into();
+            let distance_metric: re_protos::remote_store::v0::VectorDistanceMetric =
+                distance_metric.try_into()?;
+
+            let index_column = IndexColumn {
+                entity_path: Some(EntityPath {
+                    path: column_selector.entity_path.to_string(),
+                }),
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: column_selector.component_name,
+            };
+
+            let time_index = IndexColumnSelector {
+                timeline: Some(re_protos::common::v0::Timeline {
+                    name: time_selector.timeline.to_string(),
+                }),
+            };
+
+            self.client
+                .create_collection_index(
+                    re_protos::remote_store::v0::CreateCollectionIndexRequest {
+                        collection: Some(Collection { name: collection }),
+                        properties: Some(re_protos::remote_store::v0::IndexProperties {
+                            props: Some(Props::Vector(VectorIvfPqIndex {
+                                num_partitions,
+                                num_sub_vectors,
+                                distance_metrics: distance_metric.into(),
+                            })),
+                        }),
+                        column: Some(index_column),
+                        time_index: Some(time_index),
+                    },
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    /// Create a full-text-search index.
+    ///
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// store_position : bool
+    ///     Whether to store the position of the token in the document.
+    /// base_tokenizer : str
+    ///     The base tokenizer to use.
+    #[pyo3(signature = (
+        collection,
+        column,
+        time_index,
+        store_position,
+        base_tokenizer
+    ))]
+    fn create_fts_index(
+        &mut self,
+        collection: String,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        store_position: bool,
+        base_tokenizer: &str,
+    ) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let time_selector: TimeColumnSelector = time_index.into();
+            let column_selector: ComponentColumnSelector = column.into();
+
+            let index_column = IndexColumn {
+                entity_path: Some(EntityPath {
+                    path: column_selector.entity_path.to_string(),
+                }),
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: column_selector.component_name,
+            };
+
+            let time_index = IndexColumnSelector {
+                timeline: Some(re_protos::common::v0::Timeline {
+                    name: time_selector.timeline.to_string(),
+                }),
+            };
+
+            self.client
+                .create_collection_index(
+                    re_protos::remote_store::v0::CreateCollectionIndexRequest {
+                        collection: Some(Collection { name: collection }),
+                        properties: Some(re_protos::remote_store::v0::IndexProperties {
+                            props: Some(Props::Inverted(
+                                re_protos::remote_store::v0::InvertedIndex {
+                                    store_position,
+                                    base_tokenizer: base_tokenizer.to_owned(),
+                                },
+                            )),
+                        }),
+                        column: Some(index_column),
+                        time_index: Some(time_index),
+                    },
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    /// Query a vector index.
+    ///
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// query : pa.RecordBatch
+    ///     The query to run.
+    /// column : ComponentColumnSelector
+    ///     The component column to query.
+    /// top_k : int
+    ///     The number of results to return.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
+    #[pyo3(signature = (
+            collection,
+            query,
+            column,
+            top_k,
+        ))]
+    fn query_vector_index(
+        &mut self,
+        collection: String,
+        query: MetadataLike,
+        column: PyComponentColumnSelector,
+        top_k: u32,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            let column_selector: ComponentColumnSelector = column.into();
+            let query = query.into_record_batch()?;
+
+            let transport_chunks = self
+                .client
+                .query_collection_index(QueryCollectionIndexRequest {
+                    collection: Some(Collection { name: collection }),
+                    column: Some(IndexColumn {
+                        entity_path: Some(EntityPath {
+                            path: column_selector.entity_path.to_string(),
+                        }),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: column_selector.component_name,
+                    }),
+                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                        props: Some(
+                            re_protos::remote_store::v0::index_query_properties::Props::Vector(
+                                re_protos::remote_store::v0::VectorIndexQuery { top_k },
+                            ),
+                        ),
+                    }),
+                    query: Some(
+                        query
+                            .encode()
+                            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                    ),
+                    limit: None,
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .map(|resp| {
+                    resp.and_then(|r| {
+                        r.decode()
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks.into_iter().map(Ok).collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
+    /// Query a vector index.
+    ///
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// query : pa.RecordBatch
+    ///     The query to run.
+    /// column : ComponentColumnSelector
+    ///     The component column to query.
+    /// limit : Optional[int]
+    ///     The maximum number of results to return.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
+    #[allow(rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        collection,
+        query,
+        column,
+        limit = None
+    ))]
+    fn query_fts_index(
+        &mut self,
+        collection: String,
+        query: MetadataLike,
+        column: PyComponentColumnSelector,
+        limit: Option<u32>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            let column_selector: ComponentColumnSelector = column.into();
+            let query = query.into_record_batch()?;
+
+            let transport_chunks = self
+                .client
+                .query_collection_index(QueryCollectionIndexRequest {
+                    collection: Some(Collection { name: collection }),
+                    column: Some(IndexColumn {
+                        entity_path: Some(EntityPath {
+                            path: column_selector.entity_path.to_string(),
+                        }),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: column_selector.component_name,
+                    }),
+                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                        props: Some(
+                            re_protos::remote_store::v0::index_query_properties::Props::Inverted(
+                                re_protos::remote_store::v0::InvertedIndexQuery {},
+                            ),
+                        ),
+                    }),
+                    query: Some(
+                        query
+                            .encode()
+                            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                    ),
+                    limit,
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .map(|resp| {
+                    resp.and_then(|r| {
+                        r.decode()
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks.into_iter().map(Ok).collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
     /// Update the catalog metadata for one or more recordings.
     ///
     /// The updates are provided as a pyarrow Table or RecordBatch containing the metadata to update.
@@ -507,6 +845,63 @@ impl PyStorageNodeClient {
             store: handle,
             cache,
         })
+    }
+}
+
+#[pyclass(name = "VectorDistanceMetric", eq, eq_int)]
+#[derive(Clone, Debug, PartialEq)]
+enum PyVectorDistanceMetric {
+    L2,
+    Cosine,
+    Dot,
+    Hamming,
+}
+
+impl From<PyVectorDistanceMetric> for re_protos::remote_store::v0::VectorDistanceMetric {
+    fn from(metric: PyVectorDistanceMetric) -> Self {
+        match metric {
+            PyVectorDistanceMetric::L2 => Self::L2,
+            PyVectorDistanceMetric::Cosine => Self::Cosine,
+            PyVectorDistanceMetric::Dot => Self::Dot,
+            PyVectorDistanceMetric::Hamming => Self::Hamming,
+        }
+    }
+}
+
+/// A type alias for either a `VectorDistanceMetric` enum or a string literal.
+#[derive(FromPyObject)]
+enum VectorDistanceMetricLike {
+    #[pyo3(transparent, annotation = "enum")]
+    VectorDistanceMetric(PyVectorDistanceMetric),
+
+    #[pyo3(transparent, annotation = "literal")]
+    CatchAll(String),
+}
+
+impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDistanceMetric {
+    type Error = PyErr;
+
+    fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
+        match metric {
+            VectorDistanceMetricLike::VectorDistanceMetric(metric) => Ok(metric.into()),
+            VectorDistanceMetricLike::CatchAll(metric) => match metric.to_lowercase().as_str() {
+                "l2" => Ok(PyVectorDistanceMetric::L2.into()),
+                "cosine" => Ok(PyVectorDistanceMetric::Cosine.into()),
+                "dot" => Ok(PyVectorDistanceMetric::Dot.into()),
+                "hamming" => Ok(PyVectorDistanceMetric::Hamming.into()),
+                _ => Err(PyValueError::new_err(format!(
+                    "Unknown vector distance metric: {metric}"
+                ))),
+            },
+        }
+    }
+}
+
+impl From<PyVectorDistanceMetric> for i32 {
+    fn from(metric: PyVectorDistanceMetric) -> Self {
+        let proto_typed = re_protos::remote_store::v0::VectorDistanceMetric::from(metric);
+
+        proto_typed as Self
     }
 }
 
