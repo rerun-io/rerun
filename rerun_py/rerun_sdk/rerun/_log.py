@@ -160,7 +160,7 @@ def log(
                 f"but got {type(entity)} instead."
             )
 
-    log_components(
+    _log_components(
         entity_path=entity_path,
         components=components,
         static=static,
