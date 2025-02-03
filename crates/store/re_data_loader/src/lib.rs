@@ -10,12 +10,15 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
 
 // ----------------------------------------------------------------------------
 
-pub mod le_robot;
 mod load_file;
 mod loader_archetype;
 mod loader_directory;
-mod loader_lerobot;
 mod loader_rrd;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod le_robot;
+#[cfg(not(target_arch = "wasm32"))]
+mod loader_lerobot;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
