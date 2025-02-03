@@ -616,7 +616,7 @@ impl PyStorageNodeClient {
     ///        The query to run.
     ///    column : ComponentColumnSelector
     ///        The component column to query.
-    ///    limit : Optional[int]
+    ///    limit : Optional[u32]
     ///        The maximum number of results to return.
     ///
     ///    Returns
