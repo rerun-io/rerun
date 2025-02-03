@@ -6,7 +6,7 @@ use arrow::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
         StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array,
     },
-    buffer::ScalarBuffer as ArrowScalarBuffer,
+    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
 use itertools::{izip, Either, Itertools};
 use nohash_hasher::IntMap;
@@ -1023,24 +1023,35 @@ impl TimeColumn {
         #![allow(clippy::manual_map)]
 
         if array.null_count() > 0 {
-            return Err(TimeColumnError::ContainsNulls);
+            Err(TimeColumnError::ContainsNulls)
+        } else {
+            Self::read_nullable_array(array).map(|(times, _nulls)| times)
         }
+    }
+
+    /// Parse the given [`ArrowArray`] as a time column where null values are acceptable.
+    ///
+    /// Results in an error if the array is of the wrong datatype.
+    pub fn read_nullable_array(
+        array: &dyn ArrowArray,
+    ) -> Result<(ArrowScalarBuffer<i64>, Option<ArrowNullBuffer>), TimeColumnError> {
+        #![allow(clippy::manual_map)]
 
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
         if let Some(times) = array.downcast_array_ref::<arrow::array::Int64Array>() {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::Time64NanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::DurationNanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else {
             Err(TimeColumnError::UnsupportedDataType(
                 array.data_type().clone(),

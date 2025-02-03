@@ -7,6 +7,7 @@ use arrow::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef,
         Int32DictionaryArray as ArrowInt32DictionaryArray, ListArray as ArrowListArray,
     },
+    buffer::NullBuffer as ArrowNullBuffer,
     datatypes::DataType as ArrowDataType,
 };
 use thiserror::Error;
@@ -168,6 +169,7 @@ pub(crate) enum DisplayColumn {
     Timeline {
         timeline: Timeline,
         time_data: ArrowScalarBuffer<i64>,
+        time_nulls: Option<ArrowNullBuffer>,
     },
     Component {
         entity_path: EntityPath,
@@ -185,16 +187,16 @@ impl DisplayColumn {
             ColumnDescriptor::Time(desc) => {
                 let timeline = desc.timeline();
 
-                let time_data = TimeColumn::read_array(column_data).map_err(|err| {
-                    DisplayRecordBatchError::BadTimeColumn {
+                let (time_data, time_nulls) = TimeColumn::read_nullable_array(column_data)
+                    .map_err(|err| DisplayRecordBatchError::BadTimeColumn {
                         timeline: timeline.name().as_str().to_owned(),
                         error: err,
-                    }
-                })?;
+                    })?;
 
                 Ok(Self::Timeline {
                     timeline,
                     time_data,
+                    time_nulls,
                 })
             }
 
@@ -238,13 +240,18 @@ impl DisplayColumn {
             Self::Timeline {
                 timeline,
                 time_data,
+                time_nulls,
             } => {
                 if instance_index.is_some() {
                     // we only ever display the row id on the summary line
                     return;
                 }
 
-                if let Some(value) = time_data.get(row_index) {
+                let is_valid = time_nulls
+                    .as_ref()
+                    .map_or(true, |nulls| nulls.is_valid(row_index));
+
+                if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
                     match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
                             ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
