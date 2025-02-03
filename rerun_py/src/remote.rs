@@ -29,10 +29,10 @@ use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
     common::v0::{EntityPath, IndexColumnSelector, RecordingId},
     remote_store::v0::{
-        index_properties::Props, storage_node_client::StorageNodeClient, CatalogFilter, Collection,
-        ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest, IndexColumn,
-        QueryCatalogRequest, QueryCollectionIndexRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest, VectorIvfPqIndex,
+        index_properties::Props, storage_node_client::StorageNodeClient, CatalogEntry,
+        CatalogFilter, ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest,
+        IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
+        SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
@@ -372,8 +372,8 @@ impl PyStorageNodeClient {
     ///
     /// Parameters
     /// ----------
-    /// collection : str
-    ///     The name of the collection.
+    /// entry : str
+    ///     The name of the catalog entry to index.
     /// column : ComponentColumnSelector
     ///     The component column to index.
     /// time_index : IndexColumnSelector
@@ -385,7 +385,7 @@ impl PyStorageNodeClient {
     /// distance_metric : VectorDistanceMetric
     ///     The distance metric to use for the index.
     #[pyo3(signature = (
-        collection,
+        entry,
         column,
         time_index,
         num_partitions,
@@ -394,7 +394,7 @@ impl PyStorageNodeClient {
     ))]
     fn create_vector_index(
         &mut self,
-        collection: String,
+        entry: String,
         column: PyComponentColumnSelector,
         time_index: PyIndexColumnSelector,
         num_partitions: u32,
@@ -423,20 +423,18 @@ impl PyStorageNodeClient {
             };
 
             self.client
-                .create_collection_index(
-                    re_protos::remote_store::v0::CreateCollectionIndexRequest {
-                        collection: Some(Collection { name: collection }),
-                        properties: Some(re_protos::remote_store::v0::IndexProperties {
-                            props: Some(Props::Vector(VectorIvfPqIndex {
-                                num_partitions,
-                                num_sub_vectors,
-                                distance_metrics: distance_metric.into(),
-                            })),
-                        }),
-                        column: Some(index_column),
-                        time_index: Some(time_index),
-                    },
-                )
+                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                        props: Some(Props::Vector(VectorIvfPqIndex {
+                            num_partitions,
+                            num_sub_vectors,
+                            distance_metrics: distance_metric.into(),
+                        })),
+                    }),
+                    column: Some(index_column),
+                    time_index: Some(time_index),
+                })
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -448,8 +446,8 @@ impl PyStorageNodeClient {
     ///
     /// Parameters
     /// ----------
-    /// collection : str
-    ///     The name of the collection.
+    /// entry : str
+    ///     The name of the catalog entry to index.
     /// column : ComponentColumnSelector
     ///     The component column to index.
     /// time_index : IndexColumnSelector
@@ -459,7 +457,7 @@ impl PyStorageNodeClient {
     /// base_tokenizer : str
     ///     The base tokenizer to use.
     #[pyo3(signature = (
-        collection,
+        entry,
         column,
         time_index,
         store_position,
@@ -467,7 +465,7 @@ impl PyStorageNodeClient {
     ))]
     fn create_fts_index(
         &mut self,
-        collection: String,
+        entry: String,
         column: PyComponentColumnSelector,
         time_index: PyIndexColumnSelector,
         store_position: bool,
@@ -493,21 +491,19 @@ impl PyStorageNodeClient {
             };
 
             self.client
-                .create_collection_index(
-                    re_protos::remote_store::v0::CreateCollectionIndexRequest {
-                        collection: Some(Collection { name: collection }),
-                        properties: Some(re_protos::remote_store::v0::IndexProperties {
-                            props: Some(Props::Inverted(
-                                re_protos::remote_store::v0::InvertedIndex {
-                                    store_position,
-                                    base_tokenizer: base_tokenizer.to_owned(),
-                                },
-                            )),
-                        }),
-                        column: Some(index_column),
-                        time_index: Some(time_index),
-                    },
-                )
+                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                        props: Some(Props::Inverted(
+                            re_protos::remote_store::v0::InvertedIndex {
+                                store_position,
+                                base_tokenizer: base_tokenizer.to_owned(),
+                            },
+                        )),
+                    }),
+                    column: Some(index_column),
+                    time_index: Some(time_index),
+                })
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -515,16 +511,16 @@ impl PyStorageNodeClient {
         })
     }
 
-    /// Query a vector index.
+    /// Search over a vector index.
     ///
     /// Parameters
     /// ----------
-    /// collection : str
-    ///     The name of the collection.
+    /// entry : str
+    ///     The name of the catalog entry to search.
     /// query : pa.RecordBatch
-    ///     The query to run.
+    ///     The input to search for.
     /// column : ComponentColumnSelector
-    ///     The component column to query.
+    ///     The component column to search over.
     /// top_k : int
     ///     The number of results to return.
     ///
@@ -533,14 +529,14 @@ impl PyStorageNodeClient {
     /// pa.RecordBatchReader
     ///     The results of the query.
     #[pyo3(signature = (
-            collection,
+            entry,
             query,
             column,
             top_k,
         ))]
-    fn query_vector_index(
+    fn search_vector_index(
         &mut self,
-        collection: String,
+        entry: String,
         query: MetadataLike,
         column: PyComponentColumnSelector,
         top_k: u32,
@@ -551,8 +547,8 @@ impl PyStorageNodeClient {
 
             let transport_chunks = self
                 .client
-                .query_collection_index(QueryCollectionIndexRequest {
-                    collection: Some(Collection { name: collection }),
+                .search_index(SearchIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
                     column: Some(IndexColumn {
                         entity_path: Some(EntityPath {
                             path: column_selector.entity_path.to_string(),
@@ -606,16 +602,16 @@ impl PyStorageNodeClient {
         Ok(PyArrowType(Box::new(reader)))
     }
 
-    /// Query a vector index.
+    /// Search over a full-text-search index.
     ///
     /// Parameters
     /// ----------
-    /// collection : str
-    ///     The name of the collection.
+    /// entry : str
+    ///     The name of the catalog entry to search.
     /// query : pa.RecordBatch
-    ///     The query to run.
+    ///     The input to search for.
     /// column : ComponentColumnSelector
-    ///     The component column to query.
+    ///     The component column to search over.
     /// limit : Optional[int]
     ///     The maximum number of results to return.
     ///
@@ -625,14 +621,14 @@ impl PyStorageNodeClient {
     ///     The results of the query.
     #[allow(rustdoc::broken_intra_doc_links)]
     #[pyo3(signature = (
-        collection,
+        entry,
         query,
         column,
         limit = None
     ))]
-    fn query_fts_index(
+    fn search_fts_index(
         &mut self,
-        collection: String,
+        entry: String,
         query: MetadataLike,
         column: PyComponentColumnSelector,
         limit: Option<u32>,
@@ -643,8 +639,8 @@ impl PyStorageNodeClient {
 
             let transport_chunks = self
                 .client
-                .query_collection_index(QueryCollectionIndexRequest {
-                    collection: Some(Collection { name: collection }),
+                .search_index(SearchIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
                     column: Some(IndexColumn {
                         entity_path: Some(EntityPath {
                             path: column_selector.entity_path.to_string(),

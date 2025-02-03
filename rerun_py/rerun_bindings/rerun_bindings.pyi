@@ -699,7 +699,7 @@ class StorageNodeClient:
 
     def create_vector_index(
         self,
-        collection: str,
+        entry: str,
         column: ComponentColumnSelector,
         time_index: IndexColumnSelector,
         num_partitions: int,
@@ -711,8 +711,8 @@ class StorageNodeClient:
 
         Parameters
         ----------
-        collection : str
-            The name of the collection.
+        entry : str
+            The name of the catalog entry to index.
         column : ComponentColumnSelector
             The component column to index.
         time_index : IndexColumnSelector
@@ -729,7 +729,7 @@ class StorageNodeClient:
 
     def create_fts_index(
         self,
-        collection: str,
+        entry: str,
         column: ComponentColumnSelector,
         time_index: IndexColumnSelector,
         store_position: bool,
@@ -740,8 +740,8 @@ class StorageNodeClient:
 
         Parameters
         ----------
-        collection : str
-            The name of the collection.
+        entry : str
+            The name of the catalog entry to index.
         column : ComponentColumnSelector
             The component column to index.
         time_index : IndexColumnSelector
@@ -754,24 +754,24 @@ class StorageNodeClient:
         """
         ...
 
-    def query_vector_index(
+    def search_vector_index(
         self,
-        collection: str,
+        entry: str,
         query: TableLike,
         column: ComponentColumnSelector,
         top_k: int,
     ) -> pa.RecordBatchReader:
         """
-        Query a vector index.
+        Search over a vector index.
 
         Parameters
         ----------
-        collection : str
-            The name of the collection.
+        entry : str
+            The name of the catalog entry to search.
         query : pa.RecordBatch
-            The query to run.
+            The input to search for.
         column : ComponentColumnSelector
-            The component column to query.
+            The component column to search over.
         top_k : int
             The number of results to return.
 
@@ -783,24 +783,24 @@ class StorageNodeClient:
         """
         ...
 
-    def query_fts_index(
+    def search_fts_index(
         self,
-        collection: str,
+        entry: str,
         query: TableLike,
         column: ComponentColumnSelector,
         limit: Optional[int] = None,
     ) -> pa.RecordBatchReader:
         """
-        Query a vector index.
+        Search over a full-text-search index.
 
         Parameters
         ----------
-        collection : str
-            The name of the collection.
+        entry : str
+            The name of the catalog entry to search.
         query : pa.RecordBatch
-            The query to run.
+            The input to search for.
         column : ComponentColumnSelector
-            The component column to query.
+            The component column to search over.
         limit : Optional[int]
             The maximum number of results to return.
 
