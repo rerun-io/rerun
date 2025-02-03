@@ -6813,6 +6813,7 @@ dependencies = [
  "itertools 0.13.0",
  "re_arrow_util",
  "re_chunk_store",
+ "re_component_ui",
  "re_dataframe",
  "re_error",
  "re_format",
@@ -6824,6 +6825,7 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
  "thiserror 1.0.65",
 ]
