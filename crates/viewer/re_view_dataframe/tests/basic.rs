@@ -30,7 +30,7 @@ pub fn test_null_timeline() {
         test_context,
         timeline_a.name(),
         "null_timeline",
-        egui::vec2(500.0, 150.0),
+        egui::vec2(300.0, 150.0),
     );
 }
 
@@ -48,6 +48,7 @@ fn get_test_context() -> TestContext {
     test_context
 }
 
+//TODO(ab): this utility could likely be generalized for all view tests
 fn run_graph_view_and_save_snapshot(
     mut test_context: TestContext,
     timeline_name: &TimelineName,
@@ -78,39 +79,43 @@ fn run_graph_view_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .with_max_steps(256) // Give it some time to settle the graph.
-        .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |ctx| {
-                let view_class = ctx
-                    .view_class_registry
-                    .get_class_or_log_error(DataframeView::identifier());
+        .build(|ctx| {
+            re_ui::apply_style_and_install_loaders(ctx);
 
-                let view_blueprint = ViewBlueprint::try_from_db(
-                    view_id,
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                )
-                .expect("we just created that view");
+            egui::CentralPanel::default().show(ctx, |ui| {
+                test_context.run(ctx, |ctx| {
+                    let view_class = ctx
+                        .view_class_registry
+                        .get_class_or_log_error(DataframeView::identifier());
 
-                let (view_query, system_execution_output) = re_viewport::execute_systems_for_view(
-                    ctx,
-                    &view_blueprint,
-                    ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
-                    &*view_state,
-                );
-
-                view_class
-                    .ui(
-                        ctx,
-                        ui,
-                        &mut *view_state,
-                        &view_query,
-                        system_execution_output,
+                    let view_blueprint = ViewBlueprint::try_from_db(
+                        view_id,
+                        ctx.store_context.blueprint,
+                        ctx.blueprint_query,
                     )
-                    .expect("failed to run graph view ui");
-            });
+                    .expect("we just created that view");
 
-            test_context.handle_system_commands();
+                    let (view_query, system_execution_output) =
+                        re_viewport::execute_systems_for_view(
+                            ctx,
+                            &view_blueprint,
+                            ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
+                            &*view_state,
+                        );
+
+                    view_class
+                        .ui(
+                            ctx,
+                            ui,
+                            &mut *view_state,
+                            &view_query,
+                            system_execution_output,
+                        )
+                        .expect("failed to run graph view ui");
+                });
+
+                test_context.handle_system_commands();
+            });
         });
 
     harness.run();
