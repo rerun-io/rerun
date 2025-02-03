@@ -1,41 +1,51 @@
 use std::collections::HashSet;
 
-use crate::dataframe_ui::HideColumnAction;
-use crate::view_query::Query;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
+use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
+use crate::dataframe_ui::HideColumnAction;
+use crate::view_query::Query;
+
 // Accessors wrapping reads/writes to the blueprint store.
 impl Query {
+    /// Get the query timeline name.
+    ///
+    /// This dis-regards whether a timeline actually exists with this name.
+    pub(crate) fn timeline_name(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> Result<re_log_types::TimelineName, ViewSystemExecutionError> {
+        let timeline_name = self
+            .query_property
+            .component_or_empty::<components::TimelineName>()?;
+
+        // if the timeline is unset, we "freeze" it to the current time panel timeline
+        if let Some(timeline_name) = timeline_name {
+            Ok(timeline_name.into())
+        } else {
+            let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
+            self.save_timeline_name(ctx, &timeline_name);
+
+            Ok(timeline_name)
+        }
+    }
+
     /// Get the query timeline.
     ///
-    /// This tries to read the timeline name from the blueprint. If missing or invalid, the current
-    /// timeline is used and saved back to the blueprint.
+    /// This returns the query timeline if it actually exists, or `None` otherwise.
     pub fn timeline(
         &self,
         ctx: &ViewerContext<'_>,
-    ) -> Result<re_log_types::Timeline, ViewSystemExecutionError> {
-        // read the timeline and make sure it actually exists
-        let timeline = self
-            .query_property
-            .component_or_empty::<components::TimelineName>()?
-            .and_then(|name| {
-                ctx.recording()
-                    .timelines()
-                    .find(|timeline| timeline.name() == &TimelineName::from(name.as_str()))
-                    .copied()
-            });
+    ) -> Result<Option<Timeline>, ViewSystemExecutionError> {
+        let timeline_name = self.timeline_name(ctx)?;
 
-        // if the timeline is unset, we "freeze" it to the current time panel timeline
-        let save_timeline = timeline.is_none();
-        let timeline = timeline.unwrap_or_else(|| *ctx.rec_cfg.time_ctrl.read().timeline());
-        if save_timeline {
-            self.save_timeline_name(ctx, timeline.name());
-        }
-
-        Ok(timeline)
+        Ok(ctx
+            .recording()
+            .timelines()
+            .find(|timeline| timeline.name() == &timeline_name)
+            .copied())
     }
 
     /// Save the timeline to the one specified.
@@ -52,7 +62,6 @@ impl Query {
     }
 
     pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
-        #[allow(clippy::map_unwrap_or)]
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>()?
@@ -198,7 +207,7 @@ impl Query {
             })
             .collect::<HashSet<_>>();
 
-        let query_timeline_name = *self.timeline(ctx)?.name();
+        let query_timeline_name = self.timeline_name(ctx)?;
         let result = view_columns
             .iter()
             .filter(|column| match column {
