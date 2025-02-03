@@ -35,79 +35,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Examples
 ///
-/// ### Update an image over time
+/// ### `image_simple`:
 /// ```ignore
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_row_updates").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image").spawn()?;
 ///
-///     for t in 0..20 {
-///         rec.set_time_sequence("time", t);
+///     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
+///     image.slice_mut(s![.., .., 0]).fill(255);
+///     image.slice_mut(s![50..150, 50..150, 0]).fill(0);
+///     image.slice_mut(s![50..150, 50..150, 1]).fill(255);
 ///
-///         let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
-///         image.slice_mut(s![.., .., 2]).fill(255);
-///         image
-///             .slice_mut(s![50..150, (t * 10)..(t * 10 + 100), 1])
-///             .fill(255);
-///
-///         rec.log(
-///             "image",
-///             &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
-///         )?;
-///     }
-///
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-///   <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" width="640">
-/// </picture>
-/// </center>
-///
-/// ### Update an image over time, in a single operation
-/// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_column_updates").spawn()?;
-///
-///     // Timeline on which the images are distributed.
-///     let times = (0..20).collect::<Vec<i64>>();
-///
-///     // Create a batch of images with a moving rectangle.
-///     let width = 300;
-///     let height = 200;
-///     let mut images = Array::<u8, _>::zeros((times.len(), height, width, 3).f())
-///         .as_standard_layout() // Make sure the data is laid out as we expect it.
-///         .into_owned();
-///     images.slice_mut(s![.., .., .., 2]).fill(255);
-///     for &t in &times {
-///         let t = t as usize;
-///         images
-///             .slice_mut(s![t, 50..150, (t * 10)..(t * 10 + 100), 1])
-///             .fill(255);
-///     }
-///
-///     // Log the ImageFormat and indicator once, as static.
-///     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-///     rec.log_static("images", &rerun::Image::update_fields().with_format(format))?;
-///
-///     // Split up the image data into several components referencing the underlying data.
-///     let image_size_in_bytes = width * height * 3;
-///     let timeline_values = rerun::TimeColumn::new_sequence("step", times.clone());
-///     let buffer = images.into_raw_vec_and_offset().0;
-///     rec.send_columns(
-///         "images",
-///         [timeline_values],
-///         rerun::Image::update_fields()
-///             .with_many_buffer(buffer.chunks(image_size_in_bytes))
-///             .columns_of_unit_batches()?,
+///     rec.log(
+///         "image",
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
 ///     )?;
 ///
 ///     Ok(())
@@ -115,11 +57,77 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-///   <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
+///   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Logging images with various formats
+/// ```ignore
+/// use rerun::external::ndarray;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_formats").spawn()?;
+///
+///     // Simple gradient image
+///     let image = ndarray::Array3::from_shape_fn((256, 256, 3), |(y, x, c)| match c {
+///         0 => x as u8,
+///         1 => (x + y).min(255) as u8,
+///         2 => y as u8,
+///         _ => unreachable!(),
+///     });
+///
+///     // RGB image
+///     rec.log(
+///         "image_rgb",
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image.clone())?,
+///     )?;
+///
+///     // Green channel only (Luminance)
+///     rec.log(
+///         "image_green_only",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::L,
+///             image.slice(ndarray::s![.., .., 1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // BGR image
+///     rec.log(
+///         "image_bgr",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::BGR,
+///             image.slice(ndarray::s![.., .., ..;-1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+///     let mut yuv_bytes = Vec::with_capacity(256 * 256 + 128 * 256 * 2);
+///     yuv_bytes.extend(std::iter::repeat(128).take(256 * 256)); // Fixed value for Y.
+///     yuv_bytes.extend((0..256).flat_map(|_y| (0..128).map(|x| x * 2))); // Gradient for U.
+///     yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat(y as u8).take(128))); // Gradient for V.
+///     rec.log(
+///         "image_yuv422",
+///         &rerun::Image::from_pixel_format(
+///             [256, 256],
+///             rerun::PixelFormat::Y_U_V16_FullRange,
+///             yuv_bytes,
+///         ),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png">
+///   <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]

@@ -39,72 +39,56 @@ class Image(ImageExt, Archetype):
 
     Examples
     --------
-    ### Update an image over time:
+    ### `image_simple`:
     ```python
     import numpy as np
     import rerun as rr
 
-    rr.init("rerun_example_image_row_updates", spawn=True)
+    # Create an image with numpy
+    image = np.zeros((200, 300, 3), dtype=np.uint8)
+    image[:, :, 0] = 255
+    image[50:150, 50:150] = (0, 255, 0)
 
-    for t in range(20):
-        rr.set_time_sequence("time", t)
+    rr.init("rerun_example_image", spawn=True)
 
-        image = np.zeros((200, 300, 3), dtype=np.uint8)
-        image[:, :, 2] = 255
-        image[50:150, (t * 10) : (t * 10 + 100)] = (0, 255, 255)
-
-        rr.log("image", rr.Image(image))
+    rr.log("image", rr.Image(image))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-      <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
+      <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
     </picture>
     </center>
 
-    ### Update an image over time, in a single operation:
+    ### Logging images with various formats:
     ```python
     import numpy as np
     import rerun as rr
 
-    rr.init("rerun_example_image_column_updates", spawn=True)
+    rr.init("rerun_example_image_formats", spawn=True)
 
-    # Timeline on which the images are distributed.
-    times = np.arange(0, 20)
+    # Simple gradient image, logged in different formats.
+    image = np.array([[[x, min(255, x + y), y] for x in range(0, 256)] for y in range(0, 256)], dtype=np.uint8)
+    rr.log("image_rgb", rr.Image(image))
+    rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
+    rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
 
-    # Create a batch of images with a moving rectangle.
-    width, height = 300, 200
-    images = np.zeros((len(times), height, width, 3), dtype=np.uint8)
-    images[:, :, :, 2] = 255
-    for t in times:
-        images[t, 50:150, (t * 10) : (t * 10 + 100), 1] = 255
-
-    # Log the ImageFormat and indicator once, as static.
-    format = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-    rr.log("images", rr.Image.from_fields(format=format), static=True)
-
-    # Send all images at once.
-    rr.send_columns(
-        "images",
-        indexes=[rr.TimeSequenceColumn("step", times)],
-        # Reshape the images so `Image` can tell that this is several blobs.
-        #
-        # Note that the `Image` consumes arrays of bytes, so if you have a different channel
-        # datatype than `U8`, you need to make sure that the data is converted to arrays of bytes
-        # before passing it to `Image`.
-        columns=rr.Image.columns(buffer=images.reshape(len(times), -1)),
-    )
+    # New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+    y = bytes([128 for y in range(0, 256) for x in range(0, 256)])
+    u = bytes([x * 2 for y in range(0, 256) for x in range(0, 128)])  # Half horizontal resolution for chroma.
+    v = bytes([y for y in range(0, 256) for x in range(0, 128)])
+    rr.log("image_yuv422", rr.Image(bytes=y + u + v, width=256, height=256, pixel_format=rr.PixelFormat.Y_U_V16_FullRange))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-      <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png">
+      <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png" width="640">
     </picture>
     </center>
 
