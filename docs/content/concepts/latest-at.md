@@ -24,7 +24,7 @@ Rerun supports multiple timelines (sequences of times), so that you can explore 
 
 ## Core queries
 
-All data that gets sent to the Rerun viewer is stored in an in-memory database, and there are two core types of queries against the database that visualizers run.
+All data that gets sent to the Rerun viewer is stored in an in-memory database, and there are two core types of queries against the database that visualizers in the viewer run.
 
 <picture>
   <img src="https://static.rerun.io/latest-at/2720caee9646a09792cc8fd71ad50503f1cf4dcd/full.png" alt="A diagram showing an overview of a latest-at query in Rerun">
@@ -49,12 +49,14 @@ For example, you might want to update the vertex positions of a mesh while keepi
 **Range queries** instead collect all components associated with times on a time range.
 These queries drive any visualization where data from more than one time is shown at the same time.
 The obvious example is time series plots,
-but it could also be used to e.g. show lidar point clouds from the last 10 frames together.
+but it can also be used to e.g. show lidar point clouds from the last 10 frames together.
+
+The queried range is typically configurable, see for instance [this how-to guide on fixed windows plots](../howto/visualization/fixed-window-plot.md) for more information.
 
 
 ## Partial updates
 
-As mentioned above, the query semantics that power the Rerun Viewer, coupled with our [chunk-based storage](./chunks.md), make it possible to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](./timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
+As mentioned above, the query semantics that power the Rerun Viewer, coupled with our [chunk-based storage](./chunks.md), make it possible to log only the components that haave changed in-between frames (or whatever atomic unit [your timeline](./timelines.md) is using).
 
 Here's an example of updating only some specific properties of a point cloud, over time:
 
