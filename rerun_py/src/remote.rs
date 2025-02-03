@@ -368,22 +368,22 @@ impl PyStorageNodeClient {
         })
     }
 
-    ///    Create a vector index.
+    /// Create a vector index.
     ///
-    ///    Parameters
-    ///    ----------
-    ///    collection : str
-    ///        The name of the collection.
-    ///    column : ComponentColumnSelector
-    ///        The component column to index.
-    ///    time_index : IndexColumnSelector
-    ///        The index column to use for the time index.
-    ///    num_partitions : int
-    ///        The number of partitions for the index.
-    ///    num_sub_vectors : int
-    ///        The number of sub-vectors for the index.
-    ///    distance_metric : VectorDistanceMetric
-    ///        The distance metric to use for the index.
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// num_partitions : int
+    ///     The number of partitions for the index.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors for the index.
+    /// distance_metric : VectorDistanceMetric
+    ///     The distance metric to use for the index.
     #[pyo3(signature = (
         collection,
         column,
@@ -444,20 +444,20 @@ impl PyStorageNodeClient {
         })
     }
 
-    ///    Create a full-text-search index.
+    /// Create a full-text-search index.
     ///
-    ///    Parameters
-    ///    ----------
-    ///    collection : str
-    ///        The name of the collection.
-    ///    column : ComponentColumnSelector
-    ///        The component column to index.
-    ///    time_index : IndexColumnSelector
-    ///        The index column to use for the time index.
-    ///    store_position : bool
-    ///        Whether to store the position of the token in the document.
-    ///    base_tokenizer : str
-    ///        The base tokenizer to use.
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// store_position : bool
+    ///     Whether to store the position of the token in the document.
+    /// base_tokenizer : str
+    ///     The base tokenizer to use.
     #[pyo3(signature = (
         collection,
         column,
@@ -515,23 +515,23 @@ impl PyStorageNodeClient {
         })
     }
 
-    ///    Query a vector index.
+    /// Query a vector index.
     ///
-    ///    Parameters
-    ///    ----------
-    ///    collection : str
-    ///        The name of the collection.
-    ///    query : pa.RecordBatch
-    ///        The query to run.
-    ///    column : ComponentColumnSelector
-    ///        The component column to query.
-    ///    top_k : int
-    ///        The number of results to return.
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// query : pa.RecordBatch
+    ///     The query to run.
+    /// column : ComponentColumnSelector
+    ///     The component column to query.
+    /// top_k : int
+    ///     The number of results to return.
     ///
-    ///    Returns
-    ///    -------
-    ///    pa.RecordBatchReader
-    ///        The results of the query.
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
     #[pyo3(signature = (
             collection,
             query,
@@ -606,23 +606,24 @@ impl PyStorageNodeClient {
         Ok(PyArrowType(Box::new(reader)))
     }
 
-    ///    Query a vector index.
+    /// Query a vector index.
     ///
-    ///    Parameters
-    ///    ----------
-    ///    collection : str
-    ///        The name of the collection.
-    ///    query : pa.RecordBatch
-    ///        The query to run.
-    ///    column : ComponentColumnSelector
-    ///        The component column to query.
-    ///    limit : Optional[u32]
-    ///        The maximum number of results to return.
+    /// Parameters
+    /// ----------
+    /// collection : str
+    ///     The name of the collection.
+    /// query : pa.RecordBatch
+    ///     The query to run.
+    /// column : ComponentColumnSelector
+    ///     The component column to query.
+    /// limit : Optional[int]
+    ///     The maximum number of results to return.
     ///
-    ///    Returns
-    ///    -------
-    ///    pa.RecordBatchReader
-    ///        The results of the query.
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
+    #[allow(rustdoc::broken_intra_doc_links)]
     #[pyo3(signature = (
         collection,
         query,
