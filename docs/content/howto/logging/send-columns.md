@@ -4,7 +4,7 @@ order: 0
 description: How to use the Rerun SDK to log big chunks of data in one call
 ---
 
-The [`log` API](../../getting-started/data-in/python#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
+The [`log` API](../../getting-started/data-in/python.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
 If you already have data stored in something more *column-oriented*, it can be both a lot easier and more efficient to send it to Rerun in that form directly.
 
 This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
