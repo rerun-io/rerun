@@ -6,7 +6,7 @@ order: 475
 <!-- TODO(cmc): talk about `send_dataframe` once it gets fleshed out a bit more -->
 
 A *Chunk* is the core datastructure at the heart of Rerun: it dictates how data gets logged, injected, stored, and queried.
-A basic understanding of chunks is crucial in order to understand why and how Rerun and its APIs work the way they work.
+A basic understanding of chunks is important in order to understand why and how Rerun and its APIs work the way they work.
 
 
 ## How Rerun stores data
@@ -36,7 +36,7 @@ This design allows for keeping chunks within a target size range, even for recor
 </picture>
 
 
-Here's an excerpt from a real-world chunk (taken from the [Helix example](https://app.rerun.io/?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2Flatest%2Fexamples%2Fdna.rrd)) (you might want to open this image in a new tab):
+Here's an excerpt from a real-world chunk (taken from the [Helix example](https://app.rerun.io/?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2Flatest%2Fexamples%2Fdna.rrd)) (you might want to open [this image](https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/full.png) in a new tab):
 
 <picture>
   <img src="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/full.png" alt="A real-world Rerun Chunk">
@@ -62,18 +62,18 @@ You can learn more about chunks and how they came to be in [this blog post](http
 
 ## Getting chunks into Rerun
 
-If you've used the Rerun SDK before, you know it doesn't actually force to manually craft these chunks byte by byte -- that would be *very* cumbersome.
+If you've used the Rerun SDK before, you know it doesn't actually force to manually craft these chunks byte by byte - that would be rather cumbersome!
 
 How does one creates and stores chunks in Rerun, then?
 
 
 ### The row-oriented way: `log`
 
-The `log` API is generally [how users first get introduced to Rerun](https://rerun.io/docs/getting-started/quick-start/python#logging-your-own-data):
+The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/getting-started/quick-start/python#logging-your-own-data) since it's the easiest to use:
 
 snippet: archetypes/scalar_row_updates
 
-The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort from the end user.
+The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort.
 This row-oriented interface makes it very easy to integrate into existing codebase and just start logging data as it comes (hence the name).
 
 Reference:
