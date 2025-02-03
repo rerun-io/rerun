@@ -1,4 +1,6 @@
-// Use the `send_columns` API to send several point clouds over time in a single operation.
+// Update a point cloud over time, in a single operation.
+//
+// This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
 
 #include <array>
 #include <rerun.hpp>

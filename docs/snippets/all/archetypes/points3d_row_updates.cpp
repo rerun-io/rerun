@@ -12,7 +12,7 @@ int main() {
     rec.spawn().exit_on_failure();
 
     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
-    std::vector<std::vector<std::array<float, 3>>> positions = {
+    std::vector<std::array<float, 3>> positions[] = {
         // clang-format off
         {{1.0, 0.0, 1.0}, {0.5, 0.5, 2.0}},
         {{1.5, -0.5, 1.5}, {1.0, 1.0, 2.5}, {-0.5, 1.5, 1.0}, {-1.5, 0.0, 2.0}},

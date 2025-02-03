@@ -40,7 +40,7 @@ int main() {
 
     rec.send_columns(
         "box",
-        rerun::TimeColumn::from_sequence("tick", std::move(ticks)),
+        rerun::TimeColumn::from_sequence("tick", ticks),
         rerun::Transform3D()
             .with_many_translation(translations)
             .with_many_rotation_axis_angle(rotations)

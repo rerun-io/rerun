@@ -1,6 +1,6 @@
 //! Update an image over time, in a single operation.
 //!
-//! This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
+//! This is semantically equivalent to the `image_row_updates` example, albeit much faster.
 
 #include <numeric>
 #include <rerun.hpp>
