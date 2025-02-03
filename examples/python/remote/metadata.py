@@ -17,7 +17,6 @@ if __name__ == "__main__":
     print_schema_cmd = subparsers.add_parser("print-schema", help="Print schema for a recording in the catalog")
     register_cmd = subparsers.add_parser("register", help="Register a new recording")
     update_cmd = subparsers.add_parser("update", help="Update metadata for a recording")
-    create_index_cmd = subparsers.add_parser("create-index", help="Create an index for a collection")
 
     update_cmd.add_argument("id", help="ID of the recording to update")
     update_cmd.add_argument("key", help="Key of the metadata to update")
@@ -29,9 +28,6 @@ if __name__ == "__main__":
     print_cmd.add_argument("--recording-ids", nargs="*", help="Select specific recordings to print")
 
     print_schema_cmd.add_argument("recording_id", help="Recording ID to print schema for")
-
-    create_index_cmd.add_argument("--entity-path", help="entity path of component to index")
-    create_index_cmd.add_argument("--index-column", help="index column name")
 
     args = parser.parse_args()
 
@@ -72,8 +68,3 @@ if __name__ == "__main__":
         schema = conn.get_recording_schema(id)
         for column in schema:
             print(column)
-    elif args.subcommand == "create-index":
-        column = rr.dataframe.ComponentColumnSelector(args.entity_path, args.index_column)
-        index = rr.dataframe.IndexColumnSelector("log_tick")
-
-        conn.create_vector_index("my_collection", column, index, 10, 16, rr.remote.VectorDistanceMetric.L2)
