@@ -18,7 +18,6 @@ if __name__ == "__main__":
     register_cmd = subparsers.add_parser("register", help="Register a new recording")
     update_cmd = subparsers.add_parser("update", help="Update metadata for a recording")
     create_index_cmd = subparsers.add_parser("create-index", help="Create an index for a collection")
-    query_collection_index_cmd = subparsers.add_parser("query-collection-index", help="Query an index for a collection")
 
     update_cmd.add_argument("id", help="ID of the recording to update")
     update_cmd.add_argument("key", help="Key of the metadata to update")
@@ -33,9 +32,6 @@ if __name__ == "__main__":
 
     create_index_cmd.add_argument("--entity-path", help="entity path of component to index")
     create_index_cmd.add_argument("--index-column", help="index column name")
-
-    query_collection_index_cmd.add_argument("--entity-path", help="entity path of component to index")
-    query_collection_index_cmd.add_argument("--index-column", help="index column name")
 
     args = parser.parse_args()
 
@@ -81,10 +77,3 @@ if __name__ == "__main__":
         index = rr.dataframe.IndexColumnSelector("log_tick")
 
         conn.create_vector_index("my_collection", column, index, 10, 16, rr.remote.VectorDistanceMetric.L2)
-    elif args.subcommand == "query-collection-index":
-        column = rr.dataframe.ComponentColumnSelector(args.entity_path, args.index_column)
-        query = pa.array([1, 2, 3], type=pa.int64())
-        properties = rr.remote.VectorIndexQueryProperties(10)
-
-        result = conn.query_collection_index("my_collection", query, column, properties, 10)
-        print(result)
