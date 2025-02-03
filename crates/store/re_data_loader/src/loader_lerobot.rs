@@ -31,7 +31,6 @@ impl DataLoader for LeRobotDatasetLoader {
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        let second_id = StoreId::random(re_log_types::StoreKind::Recording);
         if !crate::le_robot::is_le_robot_dataset(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath));
         }
@@ -45,78 +44,87 @@ impl DataLoader for LeRobotDatasetLoader {
             dataset.metadata.episodes.len()
         );
 
-        let episode_idx = 0;
-        let data = dataset
-            .read_episode_data(episode_idx)
+        for episode in &dataset.metadata.episodes {
+            let episode_idx = episode.episode_index;
+            // re_log::info!("loading episode {episode_idx}");
+            let store_id = StoreId::from_string(
+                re_log_types::StoreKind::Recording,
+                format!("episode_{episode_idx}"),
+            );
+
+            let data = dataset
+                .read_episode_data(episode_idx)
+                .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
+
+            // re_log::info!("episode has {} columns", data.num_columns());
+
+            let frame_indices = Arc::new(
+                data.column_by_name("frame_index")
+                    .expect("failed to get frame index")
+                    .clone(),
+            );
+
+            let mut timepoint = TimePoint::default();
+            let timeline = re_log_types::Timeline::new_sequence("frame_index");
+
+            let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
+                .downcast_array_ref::<Int64Array>()
+                .unwrap()
+                .values();
+
+            let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
+
+            let timelines = std::iter::once((timeline, time_column.clone())).collect();
+
+            let video_chunks = log_episode_video(
+                &dataset,
+                episode_idx,
+                timepoint,
+                &timeline,
+                time_column.clone(),
+            )
             .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
 
-        re_log::info!("episode has {} columns", data.num_columns());
+            for chunk in video_chunks {
+                let data = LoadedData::Chunk(Self::name(&Self), store_id.clone(), chunk);
+                tx.send(data).expect("failed to send video chunk!");
+            }
 
-        let frame_indices = Arc::new(
-            data.column_by_name("frame_index")
-                .expect("failed to get frame index")
-                .clone(),
-        );
+            for idx in 0..data.num_columns() {
+                let field = data.schema_ref().field(idx);
+                // println!("column {}: {}", idx, data.schema().field(idx).name());
+                // println!("   - {:?}", data.schema().field(idx).data_type());
 
-        let mut timepoint = TimePoint::default();
-        let timeline = re_log_types::Timeline::new_sequence("frame_index");
+                match field.data_type() {
+                    // TODO: match on type of element
+                    DataType::FixedSizeList(_element, _) => {
+                        // Unwrap: we know the type of the column
+                        let fixed_size_array = data
+                            .column(idx)
+                            .downcast_array_ref::<FixedSizeListArray>()
+                            .unwrap();
 
-        let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-            .downcast_array_ref::<Int64Array>()
-            .unwrap()
-            .values();
+                        for chunk in make_entity_chunks(field, &timelines, &fixed_size_array) {
+                            let chunk_msg = LoadedData::Chunk(
+                                LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
+                                store_id.clone(),
+                                chunk,
+                            );
 
-        let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
-
-        let timelines = std::iter::once((timeline, time_column.clone())).collect();
-
-        let video_chunks = log_episode_video(
-            &dataset,
-            episode_idx,
-            timepoint,
-            &timeline,
-            time_column.clone(),
-        )
-        .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
-
-        for chunk in video_chunks {
-            let data = LoadedData::Chunk(Self::name(&Self), settings.store_id.clone(), chunk);
-            tx.send(data).expect("failed to send video chunk!");
-        }
-
-        for idx in 0..data.num_columns() {
-            let field = data.schema_ref().field(idx);
-            println!("column {}: {}", idx, data.schema().field(idx).name());
-            println!("   - {:?}", data.schema().field(idx).data_type());
-
-            match field.data_type() {
-                // TODO: match on type of element
-                DataType::FixedSizeList(_element, _) => {
-                    // Unwrap: we know the type of the column
-                    let fixed_size_array = data
-                        .column(idx)
-                        .downcast_array_ref::<FixedSizeListArray>()
-                        .unwrap();
-
-                    for chunk in make_entity_chunks(field, &timelines, &fixed_size_array) {
-                        let chunk_msg = LoadedData::Chunk(
-                            LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
-                            settings.store_id.clone(),
-                            chunk,
-                        );
-
-                        tx.send(chunk_msg).expect("failed to send batch");
+                            tx.send(chunk_msg).expect("failed to send batch");
+                        }
                     }
-                }
-                _ => {
-                    eprintln!(
-                        "field with unknown data type {}: {:?}",
-                        field.name(),
-                        field.data_type()
-                    );
+                    _ => {
+                        // eprintln!(
+                        //     "field with unknown data type {}: {:?}",
+                        //     field.name(),
+                        //     field.data_type()
+                        // );
+                    }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -127,7 +135,7 @@ impl DataLoader for LeRobotDatasetLoader {
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        re_log::info!("loading path: {filepath:?}");
+        // re_log::info!("loading path: {filepath:?}");
         return Err(DataLoaderError::Incompatible(filepath));
     }
 }
@@ -158,7 +166,7 @@ fn log_episode_video(
                 .map_err(re_chunk::ChunkError::from)
                 .expect("failed to create timestamp list array");
 
-            re_log::info!("num timestamps: {:?}", video_timestamps.len());
+            // re_log::info!("num timestamps: {:?}", video_timestamps.len());
 
             // Indicator column.
             let video_frame_reference_indicators =
@@ -220,12 +228,12 @@ fn make_entity_chunks(
 ) -> Vec<Chunk> {
     let num_elements = data.value_length() as usize;
     let num_values = data.len();
-    re_log::info!(
-        "creating {} ({} rows) entities for {}",
-        num_elements,
-        data.len(),
-        field.name()
-    );
+    // re_log::info!(
+    //     "creating {} ({} rows) entities for {}",
+    //     num_elements,
+    //     data.len(),
+    //     field.name()
+    // );
 
     let inner_values = data
         .values()
