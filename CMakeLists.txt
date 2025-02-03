@@ -129,11 +129,6 @@ if(MSVC)
     add_compile_options("/MP")
 endif()
 
-# Arrow requires a C++17 compliant compiler.
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 17)
-endif()
-
 # Signal to all our build scripts that we're inside the Rerun repository.
 set(RERUN_REPOSITORY YES)
 
