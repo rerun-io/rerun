@@ -12,9 +12,7 @@ arrow::Status run_main() {
     const auto rec = rerun::RecordingStream("rerun_example_any_values_row_updates");
     rec.spawn().exit_on_failure();
 
-    constexpr int64_t STEPS = 64;
-
-    for (int64_t i = 0; i < STEPS; i++) {
+    for (int64_t i = 0; i < 64; i++) {
         rec.set_time_sequence("step", i);
 
         std::shared_ptr<arrow::Array> arrow_array;

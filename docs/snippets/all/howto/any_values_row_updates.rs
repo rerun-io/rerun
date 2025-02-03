@@ -11,9 +11,7 @@ use rerun::external::arrow;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values_row_updates").spawn()?;
 
-    const STEPS: i64 = 64;
-
-    for step in 0..STEPS {
+    for step in 0..64 {
         let sin = rerun::SerializedComponentBatch::new(
             Arc::new(arrow::array::Float64Array::from_iter(
                 [((step as f64) / 10.0).sin()], //
