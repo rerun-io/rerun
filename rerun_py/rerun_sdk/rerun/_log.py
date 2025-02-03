@@ -5,6 +5,7 @@ from typing import Any, Iterable
 
 import pyarrow as pa
 import rerun_bindings as bindings
+from typing_extensions import deprecated
 
 from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
@@ -167,6 +168,10 @@ def log(
     )
 
 
+@deprecated(
+    """Use `log` with partial update APIs instead.
+  See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
+)
 @catch_and_log_exceptions()
 def log_components(
     entity_path: str | list[str],
@@ -219,9 +224,60 @@ def log_components(
 
     """
 
-    instanced: dict[ComponentDescriptor, pa.Array] = {}
+    _log_components(
+        entity_path=entity_path,
+        components=list(components),
+        static=static,
+        recording=recording,
+    )
 
-    components = list(components)
+
+def _log_components(
+    entity_path: str | list[str],
+    components: list[DescribedComponentBatch],
+    *,
+    static: bool = False,
+    recording: RecordingStream | None = None,
+) -> None:
+    r"""
+    Internal method to log an entity from a collection of `ComponentBatchLike` objects.
+
+    See also: [`rerun.log`][].
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the entity in the space hierarchy.
+
+        The entity path can either be a string
+        (with special characters escaped, split on unescaped slashes)
+        or a list of unescaped strings.
+        This means that logging to `"world/my\ image\!"` is the same as logging
+        to ["world", "my image!"].
+
+        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
+    components:
+        A collection of `ComponentBatchLike` objects.
+
+    static:
+        If true, the components will be logged as static data.
+
+        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+        any temporal data of the same type.
+
+        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+        [`rerun.set_time_nanos`][] will also be included.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
+        defaults to the current active data recording, if there is one. See
+        also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    instanced: dict[ComponentDescriptor, pa.Array] = {}
 
     descriptors = [comp.component_descriptor() for comp in components]
     arrow_arrays = [comp.as_arrow_array() for comp in components]
