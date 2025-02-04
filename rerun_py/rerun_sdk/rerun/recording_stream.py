@@ -289,7 +289,7 @@ class RecordingStream:
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if recording is not None and not recording.is_forked_child():
-            bindings.flush(blocking=True, recording=recording)  # NOLINT
+            bindings.flush(blocking=False, recording=recording)  # NOLINT
 
 
 def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
