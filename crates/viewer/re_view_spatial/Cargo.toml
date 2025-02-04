@@ -64,8 +64,12 @@ web-time.workspace = true
 
 
 [dev-dependencies]
+re_viewport.workspace = true
+re_viewport_blueprint = { workspace = true, features = ["testing"] }
+
 criterion.workspace = true
 mimalloc.workspace = true
+ndarray.workspace = true
 
 [lib]
 bench = false
