@@ -6,8 +6,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from rerun_notebook import Panel, PanelState
-
     from .blueprint import BlueprintLike
 
 from rerun import bindings
@@ -17,6 +15,8 @@ from .recording_stream import RecordingStream, get_data_recording
 _default_width = 640
 _default_height = 480
 
+_Panel = Literal['top', 'blueprint', 'selection', 'time']
+_PanelState = Literal['expanded', 'collapsed', 'hidden']
 
 def set_default_size(*, width: int | None, height: int | None) -> None:
     """
@@ -200,10 +200,10 @@ class Viewer:
     def update_panels(
         self,
         *,
-        top: PanelState | Literal["default"] | None = None,
-        blueprint: PanelState | Literal["default"] | None = None,
-        selection: PanelState | Literal["default"] | None = None,
-        time: PanelState | Literal["default"] | None = None,
+        top: _PanelState | Literal["default"] | None = None,
+        blueprint: _PanelState | Literal["default"] | None = None,
+        selection: _PanelState | Literal["default"] | None = None,
+        time: _PanelState | Literal["default"] | None = None,
     ) -> None:
         """
         Partially update the state of panels in the viewer.
@@ -236,7 +236,7 @@ class Viewer:
 
         """
 
-        panel_states: dict[Panel, PanelState | Literal["default"]] = {}
+        panel_states: dict[_Panel, _PanelState | Literal["default"]] = {}
         if top:
             panel_states["top"] = top
         if blueprint:
