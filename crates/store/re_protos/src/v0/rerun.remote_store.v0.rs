@@ -46,10 +46,10 @@ impl ::prost::Name for IndexColumn {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateCollectionIndexRequest {
-    /// which collection do we want to create index for
+pub struct CreateIndexRequest {
+    /// which catalog entry do we want to create index for
     #[prost(message, optional, tag = "1")]
-    pub collection: ::core::option::Option<Collection>,
+    pub entry: ::core::option::Option<CatalogEntry>,
     /// what kind of index do we want to create and what are
     /// its index specific properties
     #[prost(message, optional, tag = "2")]
@@ -64,14 +64,14 @@ pub struct CreateCollectionIndexRequest {
     #[prost(message, optional, tag = "4")]
     pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
 }
-impl ::prost::Name for CreateCollectionIndexRequest {
-    const NAME: &'static str = "CreateCollectionIndexRequest";
+impl ::prost::Name for CreateIndexRequest {
+    const NAME: &'static str = "CreateIndexRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateCollectionIndexRequest".into()
+        "rerun.remote_store.v0.CreateIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateCollectionIndexRequest".into()
+        "/rerun.remote_store.v0.CreateIndexRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -152,26 +152,26 @@ impl ::prost::Name for BTreeIndex {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct CreateCollectionIndexResponse {
+pub struct CreateIndexResponse {
     #[prost(uint64, tag = "1")]
     pub indexed_rows: u64,
 }
-impl ::prost::Name for CreateCollectionIndexResponse {
-    const NAME: &'static str = "CreateCollectionIndexResponse";
+impl ::prost::Name for CreateIndexResponse {
+    const NAME: &'static str = "CreateIndexResponse";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateCollectionIndexResponse".into()
+        "rerun.remote_store.v0.CreateIndexResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateCollectionIndexResponse".into()
+        "/rerun.remote_store.v0.CreateIndexResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryCollectionIndexRequest {
-    /// Collection we want to run the query against on
+pub struct SearchIndexRequest {
+    /// The catalog entry that we want to search over
     /// If not specified, the default collection is queried
     #[prost(message, optional, tag = "1")]
-    pub collection: ::core::option::Option<Collection>,
+    pub entry: ::core::option::Option<CatalogEntry>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
@@ -188,14 +188,14 @@ pub struct QueryCollectionIndexRequest {
     #[prost(uint32, optional, tag = "5")]
     pub limit: ::core::option::Option<u32>,
 }
-impl ::prost::Name for QueryCollectionIndexRequest {
-    const NAME: &'static str = "QueryCollectionIndexRequest";
+impl ::prost::Name for SearchIndexRequest {
+    const NAME: &'static str = "SearchIndexRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryCollectionIndexRequest".into()
+        "rerun.remote_store.v0.SearchIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryCollectionIndexRequest".into()
+        "/rerun.remote_store.v0.SearchIndexRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -269,18 +269,18 @@ impl ::prost::Name for BTreeIndexQuery {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Collection {
+pub struct CatalogEntry {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-impl ::prost::Name for Collection {
-    const NAME: &'static str = "Collection";
+impl ::prost::Name for CatalogEntry {
+    const NAME: &'static str = "CatalogEntry";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.Collection".into()
+        "rerun.remote_store.v0.CatalogEntry".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.Collection".into()
+        "/rerun.remote_store.v0.CatalogEntry".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -781,36 +781,36 @@ pub mod storage_node_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        pub async fn create_collection_index(
+        pub async fn create_index(
             &mut self,
-            request: impl tonic::IntoRequest<super::CreateCollectionIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateCollectionIndexResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::CreateIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/CreateCollectionIndex",
+                "/rerun.remote_store.v0.StorageNode/CreateIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
-                "CreateCollectionIndex",
+                "CreateIndex",
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Collection index query response is a RecordBatch with 3 columns:
+        /// The response to `SearchIndex` a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
         /// - timepoint column with the values representing the points in time
         /// where index query matches. What time points are matched depends on the type of
         /// index that is queried. For example for vector search it might be timepoints where
-        /// top-K matches are found within *each* resource in the collection. For inverted index
+        /// top-K matches are found within *each* resource in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
         /// - 'data' column with the data that is returned for the matched timepoints
-        pub async fn query_collection_index(
+        pub async fn search_index(
             &mut self,
-            request: impl tonic::IntoRequest<super::QueryCollectionIndexRequest>,
+            request: impl tonic::IntoRequest<super::SearchIndexRequest>,
         ) -> std::result::Result<
             tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
             tonic::Status,
@@ -820,12 +820,12 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/QueryCollectionIndex",
+                "/rerun.remote_store.v0.StorageNode/SearchIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
-                "QueryCollectionIndex",
+                "SearchIndex",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -985,27 +985,27 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::FetchRecordingRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchRecordingStream>, tonic::Status>;
-        async fn create_collection_index(
+        async fn create_index(
             &self,
-            request: tonic::Request<super::CreateCollectionIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateCollectionIndexResponse>, tonic::Status>;
-        /// Server streaming response type for the QueryCollectionIndex method.
-        type QueryCollectionIndexStream: tonic::codegen::tokio_stream::Stream<
+            request: tonic::Request<super::CreateIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
+        /// Server streaming response type for the SearchIndex method.
+        type SearchIndexStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Collection index query response is a RecordBatch with 3 columns:
+        /// The response to `SearchIndex` a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
         /// - timepoint column with the values representing the points in time
         /// where index query matches. What time points are matched depends on the type of
         /// index that is queried. For example for vector search it might be timepoints where
-        /// top-K matches are found within *each* resource in the collection. For inverted index
+        /// top-K matches are found within *each* resource in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
         /// - 'data' column with the data that is returned for the matched timepoints
-        async fn query_collection_index(
+        async fn search_index(
             &self,
-            request: tonic::Request<super::QueryCollectionIndexRequest>,
-        ) -> std::result::Result<tonic::Response<Self::QueryCollectionIndexStream>, tonic::Status>;
+            request: tonic::Request<super::SearchIndexRequest>,
+        ) -> std::result::Result<tonic::Response<Self::SearchIndexStream>, tonic::Status>;
         /// Server streaming response type for the QueryCatalog method.
         type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
@@ -1198,22 +1198,19 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/CreateCollectionIndex" => {
+                "/rerun.remote_store.v0.StorageNode/CreateIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateCollectionIndexSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::UnaryService<super::CreateCollectionIndexRequest>
-                        for CreateCollectionIndexSvc<T>
-                    {
-                        type Response = super::CreateCollectionIndexResponse;
+                    struct CreateIndexSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode> tonic::server::UnaryService<super::CreateIndexRequest> for CreateIndexSvc<T> {
+                        type Response = super::CreateIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::CreateCollectionIndexRequest>,
+                            request: tonic::Request<super::CreateIndexRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::create_collection_index(&inner, request).await
+                                <T as StorageNode>::create_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1224,7 +1221,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = CreateCollectionIndexSvc(inner);
+                        let method = CreateIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1240,24 +1237,24 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/QueryCollectionIndex" => {
+                "/rerun.remote_store.v0.StorageNode/SearchIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryCollectionIndexSvc<T: StorageNode>(pub Arc<T>);
+                    struct SearchIndexSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
-                        tonic::server::ServerStreamingService<super::QueryCollectionIndexRequest>
-                        for QueryCollectionIndexSvc<T>
+                        tonic::server::ServerStreamingService<super::SearchIndexRequest>
+                        for SearchIndexSvc<T>
                     {
                         type Response = super::DataframePart;
-                        type ResponseStream = T::QueryCollectionIndexStream;
+                        type ResponseStream = T::SearchIndexStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::QueryCollectionIndexRequest>,
+                            request: tonic::Request<super::SearchIndexRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::query_collection_index(&inner, request).await
+                                <T as StorageNode>::search_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1268,7 +1265,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = QueryCollectionIndexSvc(inner);
+                        let method = SearchIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

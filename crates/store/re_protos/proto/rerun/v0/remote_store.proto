@@ -9,16 +9,17 @@ service StorageNode {
     rpc Query(QueryRequest) returns (stream DataframePart) {}
     rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
-    rpc CreateCollectionIndex(CreateCollectionIndexRequest) returns (CreateCollectionIndexResponse) {}
-    // Collection index query response is a RecordBatch with 3 columns:
+    rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+
+    // The response to `SearchIndex` a RecordBatch with 3 columns:
     // - 'resource_id' column with the id of the resource
     // - timepoint column with the values representing the points in time
     // where index query matches. What time points are matched depends on the type of
     // index that is queried. For example for vector search it might be timepoints where
-    // top-K matches are found within *each* resource in the collection. For inverted index
+    // top-K matches are found within *each* resource in the indexed entry. For inverted index
     // it might be timepoints where the query string is found in the indexed column
     // - 'data' column with the data that is returned for the matched timepoints
-    rpc QueryCollectionIndex(QueryCollectionIndexRequest) returns (stream DataframePart) {}
+    rpc SearchIndex(SearchIndexRequest) returns (stream DataframePart) {}
 
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
@@ -43,7 +44,7 @@ message DataframePart {
     bytes payload = 1000;
 }
 
-// ---------------- CreateCollectionIndex ------------------
+// ---------------- CreateIndex ------------------
 
 // used to define which column we want to index
 message IndexColumn {
@@ -57,9 +58,9 @@ message IndexColumn {
     string component_name = 4;
 }
 
-message CreateCollectionIndexRequest {
-    // which collection do we want to create index for
-    Collection collection = 1;
+message CreateIndexRequest {
+    // which catalog entry do we want to create index for
+    CatalogEntry entry = 1;
     // what kind of index do we want to create and what are
     // its index specific properties
     IndexProperties properties = 2;
@@ -103,17 +104,17 @@ message BTreeIndex {
     // TODO(zehiko) add properties as needed
 }
 
-message CreateCollectionIndexResponse {
+message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
 
 
-// ---------------- QueryCollectionIndex ------------------
+// ---------------- SearchIndex ------------------
 
-message QueryCollectionIndexRequest {
-    // Collection we want to run the query against on
+message SearchIndexRequest {
+    // The catalog entry that we want to search over
     // If not specified, the default collection is queried
-    Collection collection = 1;
+    CatalogEntry entry = 1;
     // Index column that is queried
     IndexColumn column = 2;
     // Query data - type of data is index specific. Caller must ensure
@@ -148,7 +149,7 @@ message BTreeIndexQuery {
     // TODO(zehiko) add properties as needed
 }
 
-message Collection {
+message CatalogEntry {
     string name = 1;
 }
 
