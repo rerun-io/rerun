@@ -6,7 +6,7 @@ TODO(andreas): add link to release video
 
 📖 Release blogpost: TODO(andreas): add link
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
 
 ### ✨ Overview & highlights
 
@@ -26,8 +26,7 @@ Stay tuned!
 
 ### ⚠️ Breaking changes
 TODO(andreas): fill in
-
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
 
 ### 🔎 Details
 
@@ -44,7 +43,7 @@ TODO(andreas): fill in
 - Make all C++ archetypes eager serialized & provide generated update/clear APIs [#8779](https://github.com/rerun-io/rerun/pull/8779)
 - C++ `columns` method for convenient `send_columns` call through archetypes [#8828](https://github.com/rerun-io/rerun/pull/8828)
 - Add `with_many_` variants for C++ archetype mono fields & port remaining snippets [#8836](https://github.com/rerun-io/rerun/pull/8836)
-- Require descriptors to be provided on all log calls in C++ (either explicitely or implicitely via archetype) [#8853](https://github.com/rerun-io/rerun/pull/8853)
+- Require descriptors to be provided on all log calls in C++ (either explicitly or implicitly via archetype) [#8853](https://github.com/rerun-io/rerun/pull/8853)
 - Deprecate C++ `TimeColumn::from_sequence_points` in favor of `TimeColumn::from_sequence` [#8882](https://github.com/rerun-io/rerun/pull/8882)
 - `AsComponents::serialize` is now `AsComponents::as_batches` and returns `Collection<ComponentBatch>` [#8884](https://github.com/rerun-io/rerun/pull/8884)
 - Make it easy to log custom arrow data in C++ [#8880](https://github.com/rerun-io/rerun/pull/8880)
