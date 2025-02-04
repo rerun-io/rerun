@@ -30,7 +30,7 @@ pub struct AppState {
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
-    recording_configs: HashMap<StoreId, RecordingConfig>,
+    pub recording_configs: HashMap<StoreId, RecordingConfig>,
     pub blueprint_cfg: RecordingConfig,
 
     /// Maps blueprint id to the current undo state for it.
@@ -630,7 +630,7 @@ fn move_time(
     }
 }
 
-fn recording_config_entry<'cfgs>(
+pub(crate) fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     id: StoreId,
     entity_db: &'_ EntityDb,
