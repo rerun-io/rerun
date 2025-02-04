@@ -6,8 +6,9 @@ import logging
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from .blueprint import BlueprintLike
     from rerun_notebook import Panel, PanelState
+
+    from .blueprint import BlueprintLike
 
 from rerun import bindings
 
@@ -86,6 +87,7 @@ class Viewer:
             is specified.
 
             If this is set to `False`, then `blueprint` is ignored.
+
         """
 
         try:
@@ -215,7 +217,7 @@ class Viewer:
         - `hidden` will be completely invisible, taking up no space.
         - `default` will be reset to the default state.
 
-        The `collapsed` state  is the same as the `hidden` state for panels
+        The `collapsed` state is the same as the `hidden` state for panels
         which do not support the `collapsed` state.
 
         Setting the panel state using this function will also prevent the user
@@ -231,6 +233,7 @@ class Viewer:
             State of the selection panel, positioned on the right side of the viewer.
         time: str
             State of the time panel, positioned on the bottom side of the viewer.
+
         """
 
         panel_states: dict[Panel, PanelState | Literal["default"]] = {}
@@ -261,6 +264,7 @@ class Viewer:
             The ID of the recording to set the viewer to.
 
             Using this requires setting an explicit recording ID when creating the recording.
+
         """
 
         self._viewer.set_active_recording(recording_id)
