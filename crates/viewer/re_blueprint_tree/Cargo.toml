@@ -20,7 +20,12 @@ all-features = true
 
 [features]
 default = []
-testing = ["dep:serde", "smallvec/serde", "re_viewer_context/testing"]
+testing = [
+  "dep:serde",
+  "smallvec/serde",
+  "re_viewer_context/testing",
+  "re_viewport_blueprint/testing",
+]
 
 
 [dependencies]
