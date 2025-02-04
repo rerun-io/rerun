@@ -1218,7 +1218,7 @@ fn highlight_timeline_row(
         None
     };
     if let Some(bg_color) = bg_color {
-        painter.rect_filled(*row_rect, egui::Rounding::ZERO, bg_color);
+        painter.rect_filled(*row_rect, egui::CornerRadius::ZERO, bg_color);
     }
 }
 

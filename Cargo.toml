@@ -598,6 +598,8 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/u
 
 egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
 
+# egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
+
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }

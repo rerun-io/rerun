@@ -21,7 +21,7 @@ pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
     pub bottom_bar_stroke: egui::Stroke,
-    pub bottom_bar_rounding: egui::Rounding,
+    pub bottom_bar_corner_radius: egui::CornerRadius,
     pub shadow_gradient_dark_start: egui::Color32,
     pub tab_bar_color: egui::Color32,
     pub native_frame_stroke: egui::Stroke,
@@ -40,7 +40,7 @@ impl DesignTokens {
             top_bar_color: color_table.gray(S100),
             bottom_bar_color: color_table.gray(S150),
             bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-            bottom_bar_rounding: egui::Rounding {
+            bottom_bar_corner_radius: egui::CornerRadius {
                 nw: 6,
                 ne: 6,
                 sw: 0,
@@ -212,14 +212,14 @@ impl DesignTokens {
         egui_style.visuals.window_stroke = egui::Stroke::NONE;
         egui_style.visuals.panel_fill = panel_bg_color;
 
-        egui_style.visuals.window_rounding = Self::window_rounding().into();
-        egui_style.visuals.menu_rounding = Self::window_rounding().into();
-        let small_rounding = Self::small_rounding().into();
-        egui_style.visuals.widgets.noninteractive.rounding = small_rounding;
-        egui_style.visuals.widgets.inactive.rounding = small_rounding;
-        egui_style.visuals.widgets.hovered.rounding = small_rounding;
-        egui_style.visuals.widgets.active.rounding = small_rounding;
-        egui_style.visuals.widgets.open.rounding = small_rounding;
+        egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = Self::window_corner_radius().into();
+        let small_corner_radius = Self::small_corner_radius().into();
+        egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.active.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
 
         egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         egui_style.spacing.menu_margin = Self::view_padding().into();
@@ -294,15 +294,15 @@ impl DesignTokens {
         egui::Margin::symmetric(Self::view_padding(), 0)
     }
 
-    pub fn window_rounding() -> f32 {
+    pub fn window_corner_radius() -> f32 {
         12.0
     }
 
-    pub fn normal_rounding() -> f32 {
+    pub fn normal_corner_radius() -> f32 {
         6.0
     }
 
-    pub fn small_rounding() -> f32 {
+    pub fn small_corner_radius() -> f32 {
         4.0
     }
 
@@ -337,7 +337,7 @@ impl DesignTokens {
         24.0
     }
 
-    pub fn native_window_rounding() -> u8 {
+    pub fn native_window_corner_radius() -> u8 {
         10
     }
 
@@ -348,8 +348,8 @@ impl DesignTokens {
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.rounding.nw = Self::native_window_rounding();
-            frame.rounding.ne = Self::native_window_rounding();
+            frame.corner_radius.nw = Self::native_window_corner_radius();
+            frame.corner_radius.ne = Self::native_window_corner_radius();
         }
         frame
     }
@@ -379,12 +379,12 @@ impl DesignTokens {
                 bottom: -margin_offset,
             },
             stroke: design_tokens.bottom_bar_stroke,
-            rounding: design_tokens.bottom_bar_rounding,
+            corner_radius: design_tokens.bottom_bar_corner_radius,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.rounding.sw = Self::native_window_rounding();
-            frame.rounding.se = Self::native_window_rounding();
+            frame.corner_radius.sw = Self::native_window_corner_radius();
+            frame.corner_radius.se = Self::native_window_corner_radius();
         }
         frame
     }
