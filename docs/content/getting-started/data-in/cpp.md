@@ -59,12 +59,11 @@ FetchContent_Declare(rerun_sdk URL
     https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 
-# Rerun requires at least C++17, but it should be compatible with newer versions.
-set_property(TARGET example_dna PROPERTY CXX_STANDARD 17)
-
 # Link against rerun_sdk.
 target_link_libraries(example_dna PRIVATE rerun_sdk)
 ```
+
+Note that Rerun requires at least C++17. Depending on the sdk will automatically ensure that C++17 or newer is enabled.
 
 ## Includes
 
