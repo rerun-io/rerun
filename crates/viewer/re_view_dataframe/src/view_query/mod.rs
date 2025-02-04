@@ -33,17 +33,21 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         view_id: ViewId,
-        view_columns: &[ColumnDescriptor],
+        view_columns: Option<&[ColumnDescriptor]>,
     ) -> Result<(), ViewSystemExecutionError> {
+        ui.add_space(4.0);
+
+        let timeline_name = self.timeline_name(ctx)?;
+        self.timeline_ui(ctx, ui, timeline_name)?;
+
         let timeline = self.timeline(ctx)?;
 
-        self.timeline_ui(ctx, ui, &timeline)?;
         ui.separator();
-        self.filter_range_ui(ctx, ui, &timeline)?;
+        self.filter_range_ui(ctx, ui, timeline.as_ref())?;
         ui.separator();
-        self.filter_is_not_null_ui(ctx, ui, &timeline, view_id)?;
+        self.filter_is_not_null_ui(ctx, ui, timeline.as_ref(), view_id)?;
         ui.separator();
-        self.column_visibility_ui(ctx, ui, &timeline, view_columns)?;
+        self.column_visibility_ui(ctx, ui, timeline.as_ref(), view_columns)?;
         ui.separator();
         self.latest_at_ui(ctx, ui)?;
 
