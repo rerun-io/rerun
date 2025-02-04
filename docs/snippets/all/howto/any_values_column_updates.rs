@@ -1,4 +1,6 @@
-//! Use `send_column` to send entire columns of custom data to Rerun.
+//! Update custom user-defined values over time, in a single operation.
+//!
+//! This is semantically equivalent to the `any_values_row_updates` example, albeit much faster.
 
 #![allow(clippy::from_iter_instead_of_collect)]
 
@@ -8,7 +10,7 @@ use rerun::{external::arrow, TimeColumn};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_any_values_send_columns").spawn()?;
+        rerun::RecordingStreamBuilder::new("rerun_example_any_values_column_updates").spawn()?;
 
     const STEPS: i64 = 64;
 

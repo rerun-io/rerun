@@ -2073,7 +2073,7 @@ fn paint_background_fill(ui: &egui::Ui) {
 
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
@@ -2087,7 +2087,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         re_ui::design_tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );

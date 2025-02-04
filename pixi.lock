@@ -26021,8 +26021,6 @@ packages:
   - python >=3.11,<3.12.0a0
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
-  arch: x86_64
-  platform: linux
   license: MIT
   license_family: MIT
   purls:
@@ -26040,8 +26038,6 @@ packages:
   - python >=3.11,<3.12.0a0 *_cpython
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
-  arch: aarch64
-  platform: linux
   license: MIT
   license_family: MIT
   purls:
@@ -26058,8 +26054,6 @@ packages:
   - python >=3.11,<3.12.0a0
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
-  arch: x86_64
-  platform: osx
   license: MIT
   license_family: MIT
   purls:
@@ -26077,8 +26071,6 @@ packages:
   - python >=3.11,<3.12.0a0 *_cpython
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
-  arch: arm64
-  platform: osx
   license: MIT
   license_family: MIT
   purls:
@@ -26097,8 +26089,6 @@ packages:
   - ucrt >=10.0.20348.0
   - vc >=14.2,<15
   - vc14_runtime >=14.29.30139
-  arch: x86_64
-  platform: win
   license: MIT
   license_family: MIT
   purls:
@@ -30376,7 +30366,7 @@ packages:
 - pypi: rerun_py
   name: rerun-sdk
   version: 0.22.0a1+dev
-  sha256: 4a0b3da14f4aef104a2c3c4c8db24f35528b5b96590c282a5e52d53a96aea177
+  sha256: b995e776a4989b0f6daf1266d454f773e3f1ec88dbd0bdf048978bab3489901b
   requires_dist:
   - attrs>=23.1.0
   - numpy>=1.23

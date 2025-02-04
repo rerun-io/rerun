@@ -36,40 +36,25 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(8);
         if (translation.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(translation.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(translation.value().partitioned(lengths_).value_or_throw());
         }
         if (rotation_axis_angle.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(rotation_axis_angle.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(rotation_axis_angle.value().partitioned(lengths_).value_or_throw());
         }
         if (quaternion.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(quaternion.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(quaternion.value().partitioned(lengths_).value_or_throw());
         }
         if (scale.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(scale.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(scale.value().partitioned(lengths_).value_or_throw());
         }
         if (mat3x3.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(mat3x3.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(mat3x3.value().partitioned(lengths_).value_or_throw());
         }
         if (relation.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(relation.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(relation.value().partitioned(lengths_).value_or_throw());
         }
         if (axis_length.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(axis_length.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Transform3D>(static_cast<uint32_t>(lengths_.size()))
@@ -106,7 +91,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Transform3D>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Transform3D>::as_batches(
         const archetypes::Transform3D& archetype
     ) {
         using namespace archetypes;
@@ -140,6 +125,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

@@ -599,6 +599,8 @@ impl QuotedObject {
                     definition_body: quote! {
                         #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
                         #NEWLINE_TOKEN
+                        // `*this` is *always* an lvalue, so we have to move it.
+                        // https://stackoverflow.com/a/25334892
                         return std::move(*this);
                     },
                     inline: true,
@@ -627,6 +629,8 @@ impl QuotedObject {
                     definition_body: quote! {
                         #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
                         #NEWLINE_TOKEN
+                        // `*this` is *always* an lvalue, so we have to move it.
+                        // https://stackoverflow.com/a/25334892
                         return std::move(*this);
                     },
                     inline: true,
@@ -641,7 +645,7 @@ impl QuotedObject {
         Partitions the component data into multiple sub-batches.
 
         Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
-        instead, via `ComponentColumn::from_batch_with_lengths`.
+        instead, via `ComponentBatch::partitioned`.
 
         This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
 
@@ -659,9 +663,7 @@ impl QuotedObject {
                     let field_ident = field_name_ident(field);
                     quote! {
                         if (#field_ident.has_value()) {
-                            columns.push_back(ComponentColumn::from_batch_with_lengths(
-                                #field_ident.value(), lengths_
-                            ).value_or_throw());
+                            columns.push_back(#field_ident.value().partitioned(lengths_).value_or_throw());
                         }
                     }
                 });
@@ -1818,9 +1820,8 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         docs: "Serialize all set component batches.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            // TODO(andreas): Use a rerun::Collection here as well.
-            return_type: quote!(Result<std::vector<ComponentBatch>>),
-            name_and_parameters: quote!(serialize(const #quoted_scoped_archetypes::#type_ident& archetype)),
+            return_type: quote!(Result<Collection<ComponentBatch>>),
+            name_and_parameters: quote!(as_batches(const #quoted_scoped_archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
             using namespace #quoted_scoped_archetypes;
@@ -1837,7 +1838,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return cells;
+            return rerun::take_ownership(std::move(cells));
         },
         inline: false,
     }

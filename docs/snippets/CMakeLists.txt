@@ -33,4 +33,11 @@ foreach(SOURCE_PATH ${sources_list})
 endforeach()
 
 # `text_log_integration` uses `loguru` as the example text logging library.
-target_link_libraries(text_log_integration PRIVATE rerun_sdk loguru::loguru)
+target_link_libraries(text_log_integration PRIVATE loguru::loguru)
+
+# `any_values`-style examples use `arrow` directly.
+target_link_libraries(any_batch_value_column_updates PRIVATE rerun_arrow_target)
+target_link_libraries(any_values PRIVATE rerun_arrow_target)
+target_link_libraries(any_values_column_updates PRIVATE rerun_arrow_target)
+target_link_libraries(any_values_row_updates PRIVATE rerun_arrow_target)
+target_link_libraries(extra_values PRIVATE rerun_arrow_target)

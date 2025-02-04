@@ -21,14 +21,10 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (timestamp.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(timestamp.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(timestamp.value().partitioned(lengths_).value_or_throw());
         }
         if (video_reference.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(video_reference.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(video_reference.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<VideoFrameReference>(
                               static_cast<uint32_t>(lengths_.size())
@@ -50,7 +46,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::VideoFrameReference>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::VideoFrameReference>::as_batches(
         const archetypes::VideoFrameReference& archetype
     ) {
         using namespace archetypes;
@@ -69,6 +65,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

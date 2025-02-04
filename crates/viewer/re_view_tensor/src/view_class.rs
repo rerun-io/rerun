@@ -491,7 +491,7 @@ fn paint_axis_names(
 
     let text_color = ui.visuals().text_color();
 
-    let rounding = re_ui::DesignTokens::normal_rounding();
+    let rounding = re_ui::DesignTokens::normal_corner_radius();
     let inner_margin = rounding;
     let outer_margin = 8.0;
 

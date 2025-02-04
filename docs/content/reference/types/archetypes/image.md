@@ -53,14 +53,46 @@ snippet: archetypes/image_simple
 snippet: archetypes/image_formats
 
 <picture data-inline-viewer="snippets/image_formats">
-  <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png">
+  <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png">
 </picture>
 
 ### Image from file, PIL & OpenCV
 
-snippet: archetypes/image_send_columns
+snippet: archetypes/image_advanced
 
-<picture data-inline-viewer="snippets/image_send_columns">
-  <img src="https://static.rerun.io/image_advanced/81fc8a255488615510790ee41be314e054978d51/full.png">
+<picture data-inline-viewer="snippets/image_advanced">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1200w.png">
+  <img src="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/full.png">
+</picture>
+
+### Update an image over time
+
+snippet: archetypes/image_row_updates
+
+<picture data-inline-viewer="snippets/image_row_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
+</picture>
+
+### Update an image over time, in a single operation
+
+snippet: archetypes/image_column_updates
+
+<picture data-inline-viewer="snippets/image_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
 </picture>
 

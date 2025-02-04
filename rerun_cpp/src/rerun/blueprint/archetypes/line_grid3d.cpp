@@ -28,30 +28,19 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(6);
         if (visible.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
         if (spacing.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(spacing.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(spacing.value().partitioned(lengths_).value_or_throw());
         }
         if (plane.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(plane.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(plane.value().partitioned(lengths_).value_or_throw());
         }
         if (stroke_width.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(stroke_width.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(stroke_width.value().partitioned(lengths_).value_or_throw());
         }
         if (color.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<LineGrid3D>(static_cast<uint32_t>(lengths_.size()))
@@ -82,7 +71,7 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<blueprint::archetypes::LineGrid3D>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<blueprint::archetypes::LineGrid3D>::as_batches(
         const blueprint::archetypes::LineGrid3D& archetype
     ) {
         using namespace blueprint::archetypes;
@@ -110,6 +99,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

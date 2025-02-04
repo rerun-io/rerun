@@ -20,15 +20,10 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (data.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(data.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(data.value().partitioned(lengths_).value_or_throw());
         }
         if (value_range.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(value_range.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(value_range.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Tensor>(static_cast<uint32_t>(lengths_.size()))
@@ -50,7 +45,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Tensor>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Tensor>::as_batches(
         const archetypes::Tensor& archetype
     ) {
         using namespace archetypes;
@@ -69,6 +64,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

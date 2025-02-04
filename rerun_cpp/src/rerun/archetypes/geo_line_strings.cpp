@@ -22,20 +22,13 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
         if (line_strings.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(line_strings.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(line_strings.value().partitioned(lengths_).value_or_throw());
         }
         if (radii.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(radii.value().partitioned(lengths_).value_or_throw());
         }
         if (colors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<GeoLineStrings>(static_cast<uint32_t>(lengths_.size()))
@@ -60,7 +53,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::GeoLineStrings>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::GeoLineStrings>::as_batches(
         const archetypes::GeoLineStrings& archetype
     ) {
         using namespace archetypes;
@@ -82,6 +75,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

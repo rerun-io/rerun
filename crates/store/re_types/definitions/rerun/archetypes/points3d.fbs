@@ -4,10 +4,12 @@ namespace rerun.archetypes;
 
 /// A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \example archetypes/points3d_simple !api title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
-/// \example archetypes/points3d_random title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
-/// \example archetypes/points3d_ui_radius title="Log points with radii given in UI points" image="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png"
-/// \example archetypes/points3d_send_columns title="Send several point clouds with varying point count over time in a single call" image="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1200w.png"
+/// \example archetypes/points3d_simple title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
+/// \example archetypes/points3d_random !api title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
+/// \example archetypes/points3d_ui_radius !api title="Log points with radii given in UI points" image="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png"
+/// \example archetypes/points3d_row_updates title="Update a point cloud over time" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png"
+/// \example archetypes/points3d_column_updates title="Update a point cloud over time, in a single operation" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png"
+/// \example archetypes/points3d_partial_updates title="Update specific properties of a point cloud over time" image="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1200w.png"
 table Points3D (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 3D",

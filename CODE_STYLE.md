@@ -191,7 +191,7 @@ class Rect {
 
     Rect with_color(Color color) && {
         _color = color;
-        return std::move(*this);
+        return std::move(*this); // `*this` is always an lvalue, so we have to move it to avoid a copy.
     }
 }
 ```

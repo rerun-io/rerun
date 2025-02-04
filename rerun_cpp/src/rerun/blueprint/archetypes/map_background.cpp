@@ -18,8 +18,7 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (provider.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(provider.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(provider.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<MapBackground>(static_cast<uint32_t>(lengths_.size()))
@@ -38,8 +37,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::MapBackground>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::MapBackground>::as_batches(
             const blueprint::archetypes::MapBackground& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -55,6 +54,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

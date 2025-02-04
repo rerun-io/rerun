@@ -31,39 +31,25 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(8);
         if (vectors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(vectors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(vectors.value().partitioned(lengths_).value_or_throw());
         }
         if (origins.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(origins.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(origins.value().partitioned(lengths_).value_or_throw());
         }
         if (radii.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(radii.value().partitioned(lengths_).value_or_throw());
         }
         if (colors.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
         if (labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(labels.value().partitioned(lengths_).value_or_throw());
         }
         if (show_labels.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(show_labels.value().partitioned(lengths_).value_or_throw());
         }
         if (class_ids.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Arrows3D>(static_cast<uint32_t>(lengths_.size()))
@@ -100,7 +86,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Arrows3D>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Arrows3D>::as_batches(
         const archetypes::Arrows3D& archetype
     ) {
         using namespace archetypes;
@@ -134,6 +120,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

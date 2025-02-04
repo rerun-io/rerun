@@ -72,80 +72,61 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(20);
         if (fuzz1101.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1101.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1101.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1102.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1102.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1102.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1103.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1103.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1103.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1104.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1104.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1104.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1105.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1105.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1105.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1106.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1106.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1106.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1107.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1107.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1107.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1108.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1108.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1108.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1109.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1109.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1109.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1110.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1110.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1110.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1111.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1111.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1111.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1112.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1112.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1112.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1113.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1113.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1113.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1114.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1114.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1114.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1115.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1115.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1115.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1116.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1116.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1116.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1117.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1117.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1117.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1118.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1118.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1118.value().partitioned(lengths_).value_or_throw());
         }
         if (fuzz1122.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz1122.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(fuzz1122.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<AffixFuzzer2>(static_cast<uint32_t>(lengths_.size()))
@@ -218,7 +199,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::AffixFuzzer2>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::AffixFuzzer2>::as_batches(
         const archetypes::AffixFuzzer2& archetype
     ) {
         using namespace archetypes;
@@ -288,6 +269,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

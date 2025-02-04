@@ -43,43 +43,28 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(9);
         if (container_kind.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(container_kind.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(container_kind.value().partitioned(lengths_).value_or_throw());
         }
         if (display_name.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(display_name.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(display_name.value().partitioned(lengths_).value_or_throw());
         }
         if (contents.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(contents.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(contents.value().partitioned(lengths_).value_or_throw());
         }
         if (col_shares.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(col_shares.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(col_shares.value().partitioned(lengths_).value_or_throw());
         }
         if (row_shares.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(row_shares.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(row_shares.value().partitioned(lengths_).value_or_throw());
         }
         if (active_tab.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(active_tab.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(active_tab.value().partitioned(lengths_).value_or_throw());
         }
         if (visible.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
         if (grid_columns.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(grid_columns.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(grid_columns.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<ContainerBlueprint>(
                               static_cast<uint32_t>(lengths_.size())
@@ -119,8 +104,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::ContainerBlueprint>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::ContainerBlueprint>::as_batches(
             const blueprint::archetypes::ContainerBlueprint& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -157,6 +142,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

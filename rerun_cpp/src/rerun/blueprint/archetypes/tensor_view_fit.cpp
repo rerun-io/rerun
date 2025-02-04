@@ -18,9 +18,7 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (scaling.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(scaling.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(scaling.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<TensorViewFit>(static_cast<uint32_t>(lengths_.size()))
@@ -39,8 +37,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::TensorViewFit>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::TensorViewFit>::as_batches(
             const blueprint::archetypes::TensorViewFit& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -56,6 +54,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

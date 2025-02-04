@@ -21,19 +21,13 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
         if (text.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(text.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(text.value().partitioned(lengths_).value_or_throw());
         }
         if (level.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(level.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(level.value().partitioned(lengths_).value_or_throw());
         }
         if (color.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<TextLog>(static_cast<uint32_t>(lengths_.size()))
@@ -58,7 +52,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::TextLog>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::TextLog>::as_batches(
         const archetypes::TextLog& archetype
     ) {
         using namespace archetypes;
@@ -80,6 +74,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

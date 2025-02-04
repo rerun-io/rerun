@@ -31,24 +31,16 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (width.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(width.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(width.value().partitioned(lengths_).value_or_throw());
         }
         if (height.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(height.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(height.value().partitioned(lengths_).value_or_throw());
         }
         if (indices.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(indices.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(indices.value().partitioned(lengths_).value_or_throw());
         }
         if (slider.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(slider.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(slider.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<TensorSliceSelection>(
                               static_cast<uint32_t>(lengths_.size())
@@ -76,8 +68,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::TensorSliceSelection>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::TensorSliceSelection>::as_batches(
             const blueprint::archetypes::TensorSliceSelection& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -102,6 +94,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

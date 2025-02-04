@@ -19,14 +19,10 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
         if (values.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(values.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(values.value().partitioned(lengths_).value_or_throw());
         }
         if (color.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<BarChart>(static_cast<uint32_t>(lengths_.size()))
@@ -48,7 +44,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::BarChart>::as_batches(
         const archetypes::BarChart& archetype
     ) {
         using namespace archetypes;
@@ -67,6 +63,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

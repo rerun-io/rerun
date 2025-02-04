@@ -28,27 +28,16 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (class_identifier.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(class_identifier.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(class_identifier.value().partitioned(lengths_).value_or_throw());
         }
         if (display_name.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(display_name.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(display_name.value().partitioned(lengths_).value_or_throw());
         }
         if (space_origin.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(space_origin.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(space_origin.value().partitioned(lengths_).value_or_throw());
         }
         if (visible.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<ViewBlueprint>(static_cast<uint32_t>(lengths_.size()))
@@ -76,8 +65,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::ViewBlueprint>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::ViewBlueprint>::as_batches(
             const blueprint::archetypes::ViewBlueprint& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -102,6 +91,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

@@ -1,4 +1,4 @@
-//! Log different transforms with visualized coordinates axes.
+//! Update specific properties of a transform over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
