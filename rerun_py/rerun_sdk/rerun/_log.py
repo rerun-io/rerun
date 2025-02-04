@@ -228,7 +228,7 @@ def log_components(
         entity_path=entity_path,
         components=list(components),
         static=static,
-        recording=recording,
+        recording=recording,  # NOLINT
     )
 
 
