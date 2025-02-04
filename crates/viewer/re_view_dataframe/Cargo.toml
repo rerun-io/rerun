@@ -48,6 +48,7 @@ thiserror.workspace = true
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
+re_view_dataframe = { workspace = true, features = ["testing"] }
 re_viewer_context = { workspace = true, features = ["testing"] }
 re_viewport.workspace = true
 re_viewport_blueprint = { workspace = true, features = ["testing"] }
