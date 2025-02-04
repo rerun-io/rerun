@@ -464,6 +464,20 @@ pub struct ChunkStore {
     pub(crate) event_id: AtomicU64,
 }
 
+impl Drop for ChunkStore {
+    fn drop(&mut self) {
+        // First and foremost, notify per-store subscribers that an entire store was just dropped,
+        // and therefore they can just drop entire chunks of their own state.
+        Self::drop_per_store_subscribers(&self.id());
+
+        if self.config.enable_changelog {
+            // Then, if the changelog is enabled, trigger a full GC: this will notify all remaining
+            // subscribers of all the chunks that were dropped by dropping the store itself.
+            _ = self.gc(&crate::GarbageCollectionOptions::gc_everything());
+        }
+    }
+}
+
 impl Clone for ChunkStore {
     #[inline]
     fn clone(&self) -> Self {
