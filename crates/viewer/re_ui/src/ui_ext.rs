@@ -24,7 +24,7 @@ fn notification_label(
     egui::Frame::new()
         .stroke((1.0, fg_color))
         .fill(error_label_bg_color(fg_color))
-        .rounding(4.0)
+        .corner_radius(4)
         .inner_margin(3.0)
         .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
         .show(ui, |ui| {
@@ -181,7 +181,7 @@ pub trait UiExt {
 
         let button_size = Vec2::splat(22.0);
         let icon_size = Vec2::splat(12.0); // centered inside the button
-        let rounding = 6.0;
+        let corner_radius = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
@@ -195,7 +195,7 @@ pub trait UiExt {
             // let image_rect = image_rect.expand2(expansion); // can make it blurry, so let's not
 
             ui.painter()
-                .rect_filled(rect.expand(visuals.expansion), rounding, bg_fill);
+                .rect_filled(rect.expand(visuals.expansion), corner_radius, bg_fill);
 
             icon.as_image().tint(tint).paint_at(ui, image_rect);
         }
@@ -762,7 +762,7 @@ pub trait UiExt {
 
                 ui.painter().rect(
                     rect,
-                    visuals.rounding,
+                    visuals.corner_radius,
                     visuals.weak_bg_fill,
                     visuals.bg_stroke,
                     egui::StrokeKind::Inside,
@@ -942,11 +942,11 @@ pub trait UiExt {
             let fg_fill = fg_fill_off.lerp_to_gamma(fg_fill_on, how_on);
             let bg_fill_off = visuals.text_color();
 
-            let rounding = 0.5 * expanded_rect.height();
+            let corner_radius = 0.5 * expanded_rect.height();
             ui.painter()
-                .rect_filled(expanded_rect, rounding, bg_fill_off);
+                .rect_filled(expanded_rect, corner_radius, bg_fill_off);
             let circle_x = egui::lerp(
-                (expanded_rect.left() + rounding)..=(expanded_rect.right() - rounding),
+                (expanded_rect.left() + corner_radius)..=(expanded_rect.right() - corner_radius),
                 how_on,
             );
 
@@ -1142,7 +1142,7 @@ pub trait UiExt {
         egui::Frame {
             inner_margin: egui::Margin::same(3),
             stroke: design_tokens().bottom_bar_stroke,
-            rounding: ui.visuals().widgets.hovered.rounding + egui::Rounding::same(3),
+            corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }
         .show(ui, |ui| {

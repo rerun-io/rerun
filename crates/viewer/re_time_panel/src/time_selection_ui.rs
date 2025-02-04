@@ -63,10 +63,10 @@ pub fn loop_selection_ui(
 
             if is_active {
                 let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                let rounding = re_ui::DesignTokens::normal_rounding();
+                let rounding = re_ui::DesignTokens::normal_corner_radius();
                 time_area_painter.rect_filled(full_rect, rounding, selection_color);
             } else {
-                let rounding = re_ui::DesignTokens::normal_rounding();
+                let rounding = re_ui::DesignTokens::normal_corner_radius();
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 

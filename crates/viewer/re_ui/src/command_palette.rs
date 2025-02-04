@@ -117,7 +117,7 @@ impl CommandPalette {
 
             if selected {
                 ui.painter()
-                    .rect_filled(rect, style.rounding, ui.visuals().selection.bg_fill);
+                    .rect_filled(rect, style.corner_radius, ui.visuals().selection.bg_fill);
 
                 if enter_pressed {
                     selected_command = Some(command);

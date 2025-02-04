@@ -174,7 +174,7 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
                     ((thumbnail_width - icon_size.x) / 2.0) as i8,
                     ((row_height - icon_size.y) / 2.0) as i8,
                 ), // should be 62x42 when combined with icon size
-                rounding: egui::Rounding::same(thumbnail_rounding),
+                corner_radius: egui::CornerRadius::same(thumbnail_rounding),
                 fill: re_ui::design_tokens().thumbnail_background_color(),
                 ..Default::default()
             }
