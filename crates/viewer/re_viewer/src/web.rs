@@ -11,6 +11,7 @@ use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 
+use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
 use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
 
@@ -366,13 +367,14 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
+        let rec_cfg =
+            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+
         let Some(timeline) = recording
             .timelines()
             .find(|t| t.name().as_str() == timeline)
         else {
+            re_log::warn!("Failed to find timeline {timeline} for {store_id}");
             return;
         };
 
@@ -429,13 +431,13 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
+        let rec_cfg =
+            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
         let Some(timeline) = recording
             .timelines()
             .find(|t| t.name().as_str() == timeline)
         else {
+            re_log::warn!("Failed to find timeline {timeline} for {store_id}");
             return;
         };
 
@@ -534,9 +536,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, store_id, recording);
 
         let play_state = if value {
             re_viewer_context::PlayState::Playing

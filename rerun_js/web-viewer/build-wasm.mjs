@@ -81,14 +81,16 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   // cleaned up properly.
   // TODO(jprochazk): Can we force these to run before we null `wasm` instead?
   const closure_dtors = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
-    ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(state => {
-    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`;
+        ? { register: () => {}, unregister: () => {} }
+        : new FinalizationRegistry(state => {
+        wasm.__wbindgen_export_4.get(state.dtor)(state.a, state.b)
+    });`;
 
   const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
-    ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(state => {
-    wasm?.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`;
+        ? { register: () => {}, unregister: () => {} }
+        : new FinalizationRegistry(state => {
+        wasm?.__wbindgen_export_4.get(state.dtor)(state.a, state.b)
+    });`;
 
   code = code.replace(closure_dtors, closure_dtors_patch);
 
