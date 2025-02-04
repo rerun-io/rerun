@@ -15,8 +15,9 @@ from .recording_stream import RecordingStream, get_data_recording
 _default_width = 640
 _default_height = 480
 
-_Panel = Literal['top', 'blueprint', 'selection', 'time']
-_PanelState = Literal['expanded', 'collapsed', 'hidden']
+_Panel = Literal["top", "blueprint", "selection", "time"]
+_PanelState = Literal["expanded", "collapsed", "hidden"]
+
 
 def set_default_size(*, width: int | None, height: int | None) -> None:
     """
