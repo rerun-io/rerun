@@ -122,6 +122,41 @@ class Viewer:
         if blueprint is not None:
             self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
+    def add_recording(
+        self,
+        recording: RecordingStream | None = None,
+        blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Adds a recording to the viewer.
+
+        If no recording is specified, the current active recording will be used.
+
+        NOTE: By default all calls to `rr.init()` will re-use the same recording_id, meaning
+        that your recordings will be merged together. If you want to keep them separate, you
+        should call `rr.init("my_app_id", recording_id=uuid.uuid4())`.
+
+        Parameters
+        ----------
+        recording : RecordingStream
+            Specifies the [`rerun.RecordingStream`][] to use.
+            If left unspecified, defaults to the current active data recording, if there is one.
+            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+        blueprint : BlueprintLike
+            A blueprint object to send to the viewer.
+            It will be made active and set as the default blueprint in the recording.
+
+            Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+
+        """
+        bindings.set_callback_sink(
+            recording=RecordingStream.to_native(recording),
+            callback=self._flush_hook,
+        )
+
+        if blueprint is not None:
+            recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+
     def display(self, block_until_ready: bool = True) -> None:
         """
         Display the viewer in the notebook cell immediately.
