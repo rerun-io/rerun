@@ -192,8 +192,8 @@ class RecordingStream:
     to the wrong stream. See: <https://github.com/rerun-io/rerun/issues/6238>. You can work around this
     by using the [`rerun.recording_stream_generator_ctx`][] decorator.
 
-    Flushing or context manager exit guarantees that all
-    previous data sent by the calling thread has been recorded and (if applicable) flushed to the underlying OS-managed file descriptor,
+    Flushing or context manager exit guarantees that all previous data sent by the calling thread
+    has been recorded and (if applicable) flushed to the underlying OS-managed file descriptor,
     but other threads may still have data in flight.
 
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
