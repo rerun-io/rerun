@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD) - Entity filter & 
+## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD) - Entity filter & improved partial update API
 
 TODO: add link to release video
 
@@ -16,10 +16,10 @@ TODO: add link to release video
 * 🖱️ Entity ranges can now be selected with shift + click
 
 #### APIs
-* 🔄 Much easier partial updates of archetypes
-* 📊 Greatly improve ease of use of `send_columns`
+* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates?speculative-link)
+* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns?speculative-link)
 * ⏱️ Python notebooks & JS can now control the timeline with `set_time_ctrl` TODO(#8894): link to the api/an example
-* 📝 Lots of new snippets for demonstrating partial updates & custom data logging in Python/C++/Rust
+* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) for demonstrating partial updates & custom data logging in Python/C++/Rust
 
 The API & related under-the-hood changes pave the way for better support for multiple archetypes on the same entity and components with generic types in future releases.
 Stay tuned!
