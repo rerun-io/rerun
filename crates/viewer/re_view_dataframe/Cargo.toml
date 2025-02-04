@@ -20,10 +20,7 @@ all-features = true
 
 [features]
 default = []
-testing = [
-  "re_viewer_context/testing",
-  "re_viewport_blueprint/testing",
-]
+testing = ["re_viewer_context/testing", "re_viewport_blueprint/testing"]
 
 [dependencies]
 re_arrow_util.workspace = true
