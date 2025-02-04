@@ -21,7 +21,6 @@ all-features = true
 [features]
 default = []
 testing = [
-  "dep:serde",
   "re_viewer_context/testing",
   "re_viewport_blueprint/testing",
 ]
@@ -47,7 +46,6 @@ arrow.workspace = true
 egui_table.workspace = true
 egui.workspace = true
 itertools.workspace = true
-serde = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]

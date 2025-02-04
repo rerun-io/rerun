@@ -6827,7 +6827,6 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
- "serde",
  "thiserror 1.0.65",
 ]
 
