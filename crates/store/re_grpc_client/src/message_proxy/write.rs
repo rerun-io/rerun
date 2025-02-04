@@ -141,7 +141,9 @@ async fn message_proxy_client(
                                 buffered_messages.push(msg);
                             }
                             Some(Cmd::Flush(tx)) => {
-                                re_log::debug!("Flush requested");
+                                re_log::warn_once!(
+                                    "Attempted to flush while gRPC client was connecting."
+                                );
                                 if tx.send(()).is_err() {
                                     re_log::debug!("Failed to respond to flush: channel is closed");
                                     return;

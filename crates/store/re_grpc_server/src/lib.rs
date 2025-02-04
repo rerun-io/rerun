@@ -134,6 +134,7 @@ pub async fn serve_with_send(
     }
 }
 
+/// Spawn the server and subscribe to its message queue.
 pub fn spawn_with_recv(
     addr: SocketAddr,
     memory_limit: MemoryLimit,

@@ -2,6 +2,7 @@ use std::net::IpAddr;
 
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
+use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
@@ -156,6 +157,12 @@ When persisted, the state will be stored at the following locations:
     /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
     serve_web: bool,
+
+    /// Do not attempt to start a new server, instead try to connect to an existing one.
+    ///
+    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    #[clap(long)]
+    connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
     ///
@@ -587,7 +594,7 @@ where
             }
         }
     } else {
-        run_in_tokio(main_thread_token, build_info, call_source, args)
+        run_impl(main_thread_token, build_info, call_source, args)
     };
 
     match res {
@@ -609,29 +616,6 @@ where
     }
 }
 
-/// Ensures that we are running in the context of a tokio runtime.
-fn run_in_tokio(
-    main_thread_token: crate::MainThreadToken,
-    build_info: re_build_info::BuildInfo,
-    call_source: CallSource,
-    args: Args,
-) -> anyhow::Result<()> {
-    // tokio is a hard dependency as of our gRPC migration,
-    // so we must ensure it is always available:
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        // This thread already has a tokio runtime.
-        let _guard = handle.enter();
-        run_impl(main_thread_token, build_info, call_source, args)
-    } else {
-        // We don't have a runtime yet, create one now.
-        let mut builder = tokio::runtime::Builder::new_multi_thread();
-        builder.enable_all();
-        let rt = builder.build()?;
-        let _guard = rt.enter();
-        run_impl(main_thread_token, build_info, call_source, args)
-    }
-}
-
 fn run_impl(
     _main_thread_token: crate::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
@@ -640,7 +624,11 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
-    let mut is_another_viewer_running = false;
+    let mut is_another_server_running = false;
+
+    // NOTE: Be careful about spawning tasks here! We don't want the runtime to run on the main thread,
+    //       as we need that one for our UI. Use `rt.enter()` or `rt.spawn()` if you need to spawn a task.
+    let rt = Runtime::new()?;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -718,13 +706,19 @@ fn run_impl(
             }
         }
 
+        // We may need to spawn tasks from this point on:
+        let _guard = rt.enter();
         let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
-        {
+        if let Some(url) = args.connect {
+            let url = url.unwrap_or_else(|| format!("http://{server_addr}"));
+            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(&url, None)?;
+            rxs.push(rx);
+        } else {
             // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
             if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
@@ -732,7 +726,7 @@ fn run_impl(
                     %server_addr,
                     "A process is already listening at this address. Assuming it's a Rerun Viewer."
                 );
-                is_another_viewer_running = true;
+                is_another_server_running = true;
             } else {
                 let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
                     server_addr,
@@ -803,13 +797,15 @@ fn run_impl(
         }
 
         Ok(())
-    } else if is_another_viewer_running {
+    } else if is_another_server_running {
         // Another viewer is already running on the specified address
         let url = format!("http://{server_addr}")
             .parse()
             .expect("should always be valid");
         re_log::info!(%url, "Another viewer is already running, streaming data to it.");
 
+        // This spawns its own single-threaded runtime on a separate thread,
+        // no need to `rt.enter()`:
         let sink = re_sdk::sink::GrpcSink::new(url);
 
         for rx in rxs {
