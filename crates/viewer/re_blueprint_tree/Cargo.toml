@@ -20,7 +20,12 @@ all-features = true
 
 [features]
 default = []
-testing = ["dep:serde", "smallvec/serde", "re_viewer_context/testing"]
+testing = [
+  "dep:serde",
+  "smallvec/serde",
+  "re_viewer_context/testing",
+  "re_viewport_blueprint/testing",
+]
 
 
 [dependencies]
@@ -46,6 +51,7 @@ smallvec.workspace = true
 re_chunk_store.workspace = true
 re_view_spatial.workspace = true
 re_viewer_context = { workspace = true, features = ["testing"] }
+re_viewport_blueprint = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
 insta = { workspace = true, features = ["redactions", "yaml"] }

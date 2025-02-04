@@ -244,16 +244,19 @@ fn test_all_insta_test_cases() {
                     )
                 });
 
-            let snapshot_name = format!(
-                "{}-{}",
+            let mut settings = insta::Settings::clone_current();
+            settings.set_prepend_module_to_snapshot(false);
+            settings.set_snapshot_path(format!(
+                "snapshots/view_structure_test/{}",
                 filter_query
                     .map(|query| format!("query-{}", query.replace(' ', "_")))
-                    .unwrap_or("no-query".to_owned()),
-                test_case.name
-            );
+                    .unwrap_or("no-query".to_owned())
+            ));
 
-            insta::assert_yaml_snapshot!(snapshot_name, blueprint_tree_data, {
-                ".root_container.id.id" => "<container-id>"
+            settings.bind(|| {
+                insta::assert_yaml_snapshot!(test_case.name, blueprint_tree_data, {
+                    ".root_container.id.id" => "<container-id>"
+                });
             });
         }
     }
