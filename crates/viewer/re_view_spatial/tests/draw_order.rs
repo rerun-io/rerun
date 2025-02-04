@@ -151,9 +151,6 @@ fn get_test_context() -> TestContext {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<re_view_spatial::SpatialView2D>();
 
-    // Make sure we can draw stuff in the table.
-    // test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
-
     test_context
 }
 
