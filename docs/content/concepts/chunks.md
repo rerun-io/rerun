@@ -114,8 +114,7 @@ That row is then passed to a batcher, which appends the values from the row to t
 
 The current chunk is then sent to its destination, either periodically or as soon as it crosses a size threshold.
 Building up small column chunks before sending from the SDK trades off a small amount of latency and memory use in favor of more efficient transfer and ingestion.
-You can read about how to configure the batcher [here](/docs/reference/sdk-micro-batching).
-
+You can read about how to configure the batcher [here](../reference/sdk/micro-batching.md).
 
 ### The column-oriented way: `send_columns`
 
@@ -124,9 +123,9 @@ If you already have data stored in something more *column-oriented*, it can be b
 
 This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
 
-> ⚠️ `send_columns` API bypasses the time context and [micro-batcher](../../reference/sdk/micro-batching.md) ⚠️
+> ⚠️ `send_columns` API bypasses the time context and [micro-batcher](../reference/sdk/micro-batching.md) ⚠️
 >
-> In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
+> In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
 snippet: archetypes/scalar_column_updates
 
