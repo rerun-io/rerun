@@ -149,6 +149,10 @@ class Viewer:
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
 
         """
+        recording = get_data_recording(recording)
+        if recording is None:
+            raise ValueError("No recording specified and no active recording found")
+
         bindings.set_callback_sink(
             recording=RecordingStream.to_native(recording),
             callback=self._flush_hook,
