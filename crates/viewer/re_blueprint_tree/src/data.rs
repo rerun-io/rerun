@@ -455,6 +455,8 @@ impl DataResultData {
                     })
                     .collect_vec();
 
+                // This is needed because `DataResultNode` stores children in a `SmallVec`, offering
+                // no guarantees about ordering.
                 children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
 
                 (is_already_a_match || !children.is_empty()).then(|| Self {
