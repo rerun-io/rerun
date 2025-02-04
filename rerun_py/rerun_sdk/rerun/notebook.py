@@ -56,6 +56,7 @@ class Viewer:
         height: int | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
+        use_global_recording: bool = True,
     ):
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -80,7 +81,11 @@ class Viewer:
             It will be made active and set as the default blueprint in the recording.
 
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+        use_global_recording:
+            Whether or not the Viewer should default to the global recording in case no explicit `recording`
+            is specified.
 
+            If this is set to `False`, then `blueprint` is ignored.
         """
 
         try:
@@ -104,24 +109,23 @@ class Viewer:
             hack: Any = None
             return hack  # type: ignore[no-any-return]
 
-        recording = get_data_recording(recording)
-        if recording is None:
-            raise ValueError("No recording specified and no active recording found")
-
-        self._recording = recording
-
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
         )
 
-        bindings.set_callback_sink(
-            recording=RecordingStream.to_native(self._recording),
-            callback=self._flush_hook,
-        )
+        if use_global_recording:
+            recording = get_data_recording(recording)
+            if recording is None:
+                raise ValueError("No recording specified and no active recording found")
 
-        if blueprint is not None:
-            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+            bindings.set_callback_sink(
+                recording=RecordingStream.to_native(recording),
+                callback=self._flush_hook,
+            )
+
+            if blueprint is not None:
+                recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
     def add_recording(
         self,
