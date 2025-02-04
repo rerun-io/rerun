@@ -192,6 +192,10 @@ class RecordingStream:
     to the wrong stream. See: <https://github.com/rerun-io/rerun/issues/6238>. You can work around this
     by using the [`rerun.recording_stream_generator_ctx`][] decorator.
 
+    Flushing or context manager exit guarantees that all
+    previous data sent by the calling thread has been recorded and (if applicable) flushed to the underlying OS-managed file descriptor,
+    but other threads may still have data in flight.
+
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
     [`rerun.get_thread_local_data_recording`][].
 
@@ -242,6 +246,8 @@ class RecordingStream:
         return self
 
     def __exit__(self, type, value, traceback):  # type: ignore[no-untyped-def]
+        self.flush(blocking=True)
+
         current_recording = active_recording_stream.get(None)
 
         # Restore the context state
@@ -263,6 +269,18 @@ class RecordingStream:
     def to_native(self: RecordingStream | None) -> bindings.PyRecordingStream | None:
         return self.inner if self is not None else None
 
+    def flush(self, blocking: bool = True) -> None:
+        """
+        Initiates a flush the batching pipeline and optionally waits for it to propagate to the underlying file descriptor (if any).
+
+        Parameters
+        ----------
+        blocking:
+            If true, the flush will block until the flush is complete.
+
+        """
+        bindings.flush(blocking, recording=self.to_native())
+
     def __del__(self):  # type: ignore[no-untyped-def]
         recording = RecordingStream.to_native(self)
         # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
@@ -271,7 +289,7 @@ class RecordingStream:
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if recording is not None and not recording.is_forked_child():
-            bindings.flush(blocking=False, recording=recording)  # NOLINT
+            bindings.flush(blocking=True, recording=recording)  # NOLINT
 
 
 def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:

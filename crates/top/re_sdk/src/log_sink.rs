@@ -31,6 +31,7 @@ pub trait LogSink: Send + Sync + 'static {
 
     /// Blocks until all pending data in the sink's send buffers has been fully flushed.
     ///
+    /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
     /// See also [`LogSink::drop_if_disconnected`].
     fn flush_blocking(&self);
 
