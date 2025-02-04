@@ -109,8 +109,7 @@ class ViewerWidget {
   ) => {
     for (const panel of PANELS) {
       // TODO(jprochazk): update `override_panel_state` to accept `PanelState | undefined | null` as value
-      const state: any = new_panel_states?.[panel];
-      this.viewer.override_panel_state(panel, state);
+      this.viewer.override_panel_state(panel, new_panel_states?.[panel]);
     }
     this.panel_states = new_panel_states;
   };

@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import time
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 import anywidget
 import jupyter_ui_poll
@@ -81,7 +81,7 @@ class Viewer(anywidget.AnyWidget):
         width: int | None = None,
         height: int | None = None,
         url: str | None = None,
-        panel_states: dict[Panel, PanelState] | None = None,
+        panel_states: Mapping[Panel, PanelState] | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -91,6 +91,9 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._panel_states = panel_states
         self._data_queue = []
+
+        if panel_states:
+            self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
@@ -129,6 +132,15 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                     return
                 poll(1)
                 time.sleep(0.1)
+
+    def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
+        new_panel_states = {k:v for k,v in self._panel_states.items()} if self._panel_states else {}
+        for panel, state in panel_states.items():
+            if state == "default":
+                new_panel_states.pop(panel, None)
+            else:
+                new_panel_states[panel] = state
+        self._panel_states = new_panel_states
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
         self._time_ctrl = (timeline, time, play)

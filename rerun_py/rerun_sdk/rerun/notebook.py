@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
+    from rerun_notebook import Panel, PanelState
 
 from rerun import bindings
 
@@ -189,6 +190,56 @@ class Viewer:
 
     def _repr_keys(self):  # type: ignore[no-untyped-def]
         return self._viewer._repr_keys()
+
+    def update_panels(
+        self,
+        *,
+        top: PanelState | Literal["default"] | None = None,
+        blueprint: PanelState | Literal["default"] | None = None,
+        selection: PanelState | Literal["default"] | None = None,
+        time: PanelState | Literal["default"] | None = None,
+    ) -> None:
+        """
+        Partially update the state of panels in the viewer.
+
+        Valid states are the strings `expanded`, `collapsed`, `hidden`, `default`, and the value `None`.
+
+        Panels set to:
+        - `None` will be unchanged.
+        - `expanded` will be fully expanded, taking up the most space.
+        - `collapsed` will be smaller and simpler, omitting some information.
+        - `hidden` will be completely invisible, taking up no space.
+        - `default` will be reset to the default state.
+
+        The `collapsed` state  is the same as the `hidden` state for panels
+        which do not support the `collapsed` state.
+
+        Setting the panel state using this function will also prevent the user
+        from modifying that panel's state in the viewer.
+
+        Parameters
+        ----------
+        top: str
+            State of the panel, positioned on the top of the viewer.
+        blueprint: str
+            State of the blueprint panel, positioned on the left side of the viewer.
+        selection: str
+            State of the selection panel, positioned on the right side of the viewer.
+        time: str
+            State of the time panel, positioned on the bottom side of the viewer.
+        """
+
+        panel_states: dict[Panel, PanelState | Literal["default"]] = {}
+        if top:
+            panel_states["top"] = top
+        if blueprint:
+            panel_states["blueprint"] = blueprint
+        if selection:
+            panel_states["selection"] = selection
+        if time:
+            panel_states["time"] = time
+
+        self._viewer.update_panel_states(panel_states)
 
     def set_time_ctrl(
         self,
