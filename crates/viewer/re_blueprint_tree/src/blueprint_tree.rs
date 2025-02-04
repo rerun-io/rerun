@@ -1207,7 +1207,12 @@ fn set_blueprint_to_auto_menu_button(
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
 ) {
-    let enabled = !viewport.auto_layout() || !viewport.auto_views();
+    // Figuring out when resetting to heuristic blueprint is not changing anything is actually quite hard.
+    // There's a wide variety of things to consider that aren't easily caught:
+    // * does running view-generation/layout-generation change anything?
+    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
+    // * any changes in overrides/defaults/view-property means that a reset would change something
+    let enabled = true;
 
     if ui
         .add_enabled(
