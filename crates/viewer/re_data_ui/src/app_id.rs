@@ -50,7 +50,7 @@ impl crate::DataUi for ApplicationId {
                 ui.add_space(8.0);
                 ui.strong("Loaded recordings for this app");
                 for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, true);
+                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
                 }
             });
         }
