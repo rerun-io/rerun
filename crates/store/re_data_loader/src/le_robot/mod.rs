@@ -232,9 +232,8 @@ impl LeRobotDatasetInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
-    dtype: DType,
-    shape: Vec<f32>,
-    names: Option<Vec<String>>,
+    pub dtype: DType,
+    pub shape: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -242,6 +241,7 @@ pub struct Feature {
 pub enum DType {
     Video,
     Image,
+    Bool,
     Float32,
     Float64,
     Int64,

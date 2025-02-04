@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
-use arrow::array::{ArrayRef, FixedSizeListArray, Float32Array, Int64Array};
+use anyhow::{anyhow, Context};
+use arrow::array::{FixedSizeListArray, Int64Array, RecordBatch};
+use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::ArrowArrayDowncastRef;
@@ -12,7 +12,7 @@ use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::le_robot::LeRobotDataset;
+use crate::le_robot::{DType, LeRobotDataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 pub struct LeRobotDatasetLoader;
@@ -33,7 +33,7 @@ impl DataLoader for LeRobotDatasetLoader {
         }
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
-            .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
+            .with_context(|| "Loading LeRobot dataset failed")?;
 
         re_log::info!(
             "Loading LeRobot dataset from `{:?}`, with {} episode(s)",
@@ -50,57 +50,47 @@ impl DataLoader for LeRobotDatasetLoader {
 
             let data = dataset
                 .read_episode_data(episode_idx)
-                .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
+                .with_context(|| format!("Reading data for episode {episode_idx} failed!"))?;
 
-            let frame_indices = Arc::new(
-                data.column_by_name("frame_index")
-                    .expect("failed to get frame index")
-                    .clone(),
-            );
+            let frame_indices = data
+                .column_by_name("frame_index")
+                .ok_or_else(|| anyhow!("failed to get frame index"))?
+                .clone();
 
             let timeline = re_log_types::Timeline::new_sequence("frame_index");
             let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
                 .downcast_array_ref::<Int64Array>()
-                .expect("frame indices are of an unexpected type")
+                .ok_or_else(|| anyhow!("frame indices are of an unexpected type"))?
                 .values();
+
             let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
             let timelines = std::iter::once((timeline, time_column.clone())).collect();
 
             let mut chunks = Vec::new();
 
-            chunks.extend(log_episode_video(
-                &dataset,
-                episode_idx,
-                &timeline,
-                time_column.clone(),
-            )?);
-
-            for idx in 0..data.num_columns() {
-                let field = data.schema_ref().field(idx);
-
-                match field.data_type() {
-                    // TODO(gijsd): match on type of element
-                    DataType::FixedSizeList(_element, _) => {
-                        // Unwrap: we know the type of the column
-                        let fixed_size_array = data
-                            .column(idx)
-                            .downcast_array_ref::<FixedSizeListArray>()
-                            .expect("failed to downcast FixedSizeListArray");
-
-                        chunks.extend(make_entity_chunks(field, &timelines, fixed_size_array)?);
+            for (feature_key, feature) in &dataset.metadata.info.features {
+                match feature.dtype {
+                    DType::Video => {
+                        chunks.extend(log_episode_video(
+                            &dataset,
+                            feature_key,
+                            episode_idx,
+                            &timeline,
+                            time_column.clone(),
+                        )?);
                     }
-                    _ => {
-                        eprintln!(
-                            "field with unknown data type {}: {:?}",
-                            field.name(),
-                            field.data_type()
-                        );
+                    DType::Image | DType::Int64 | DType::Bool => {
+                        // TODO(gijsd): log images
+                        re_log::warn_once!("Logging for dtype {:?} not implemented", feature.dtype);
+                    }
+                    DType::Float32 | DType::Float64 => {
+                        chunks.extend(log_scalar(feature_key, &timelines, &data)?);
                     }
                 }
             }
 
             for chunk in chunks {
-                let data = LoadedData::Chunk(Self::name(&Self), store_id.clone(), chunk);
+                let data = LoadedData::Chunk(self.name(), store_id.clone(), chunk);
                 if tx.send(data).is_err() {
                     break; // The other end has decided to hang up, not our problem.
                 }
@@ -123,13 +113,14 @@ impl DataLoader for LeRobotDatasetLoader {
 
 fn log_episode_video(
     dataset: &LeRobotDataset,
+    observation: &str,
     episode: usize,
     timeline: &Timeline,
     time_column: TimeColumn,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let contents = dataset
-        .read_episode_video_contents("observation.image", episode)
-        .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
+        .read_episode_video_contents(observation, episode)
+        .with_context(|| format!("Reading video contents for episode {episode} failed!"))?;
 
     let video_asset = AssetVideo::new(contents.into_owned());
     let entity_path = "video";
@@ -196,7 +187,39 @@ fn log_episode_video(
     }
 }
 
-fn make_entity_chunks(
+fn log_scalar(
+    feature: &str,
+    timelines: &IntMap<Timeline, TimeColumn>,
+    data: &RecordBatch,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    let field = data
+        .schema_ref()
+        .field_with_name(feature)
+        .with_context(|| format!("Failed to get field for feature {feature} from parquet file"))?;
+
+    if !matches!(field.data_type(), DataType::FixedSizeList(_, _)) {
+        re_log::warn_once!(
+            "Tried logging scalar with unsupported dtype: {}",
+            field.data_type()
+        );
+        return Ok(Either::Left(std::iter::empty()));
+    }
+
+    let fixed_size_array = data
+        .column_by_name(feature)
+        .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
+        .ok_or_else(|| {
+            DataLoaderError::Other(anyhow!("Failed to downcast feature to FixedSizeListArray"))
+        })?;
+
+    Ok(Either::Right(make_scalar_entity_chunks(
+        field,
+        timelines,
+        fixed_size_array,
+    )?))
+}
+
+fn make_scalar_entity_chunks(
     field: &Field,
     timelines: &IntMap<Timeline, TimeColumn>,
     data: &FixedSizeListArray,
@@ -204,26 +227,15 @@ fn make_entity_chunks(
     let num_elements = data.value_length() as usize;
     let num_values = data.len();
 
-    let inner_values = data
-        .values()
-        .as_any()
-        .downcast_ref::<Float32Array>()
-        // TODO(gijsd): what to do with this
-        .ok_or(DataLoaderError::Other(anyhow::format_err!(
-            "Only scalar columns are supported for now."
-        )))?;
-
     let mut chunks = Vec::with_capacity(num_elements);
+    let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
 
     for idx in 0..num_elements {
-        let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
-        let scalar_values = Arc::new(
-            inner_values
-                .slice(idx, num_values)
-                .iter()
-                .map(|v| v.map(f64::from))
-                .collect::<arrow::array::Float64Array>(),
-        ) as ArrayRef;
+        // cast the slice to f64 first, as scalars need an f64
+        let scalar_values = cast(&data.values().slice(idx, num_values), &DataType::Float64)
+            .with_context(|| {
+                format!("Failed to cast scalar feature {} to Float64", field.name())
+            })?;
 
         let sliced = (0..num_values)
             .map(|idx| scalar_values.slice(idx, 1))
@@ -240,7 +252,6 @@ fn make_entity_chunks(
             .unwrap();
 
         let entity_path = format!("{}/{idx}", field.name());
-
         let chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.into(),
