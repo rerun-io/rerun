@@ -123,12 +123,12 @@ impl DataLoader for LeRobotDatasetLoader {
 
 fn log_episode_video(
     dataset: &LeRobotDataset,
-    episode_idx: usize,
+    episode: usize,
     timeline: &Timeline,
     time_column: TimeColumn,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let contents = dataset
-        .read_episode_video_contents(episode_idx)
+        .read_episode_video_contents("observation.image", episode)
         .map_err(|err| DataLoaderError::Other(anyhow::Error::new(err)))?;
 
     let video_asset = AssetVideo::new(contents.into_owned());
@@ -175,7 +175,7 @@ fn log_episode_video(
         }
         Err(err) => {
             re_log::warn_once!(
-                "Failed to read frame timestamps from episode {episode_idx} video: {err}"
+                "Failed to read frame timestamps from episode {episode} video: {err}"
             );
             None
         }

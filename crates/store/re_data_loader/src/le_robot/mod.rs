@@ -38,6 +38,21 @@ pub enum LeRobotError {
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
+    #[error("Invalid feature key: {0}")]
+    InvalidFeatureKey(String),
+
+    #[error(
+        "Invalid feature dtype, expected {key} to be of type {expected:?}, but got {actual:?}"
+    )]
+    InvalidFeatureDtype {
+        key: String,
+        expected: DType,
+        actual: DType,
+    },
+
+    #[error("Invalid chunk index: {0}")]
+    InvalidChunkIndex(usize),
+
     #[error("Invalid episode index: {0}")]
     InvalidEpisodeIndex(usize),
 
@@ -72,13 +87,10 @@ impl LeRobotDataset {
             return Err(LeRobotError::InvalidEpisodeIndex(episode_index));
         }
 
-        let episode_data_file = self
-            .path
-            .join("data")
-            .join("chunk-000") // TODO(gijsd): when does this change?
-            .join(format!("episode_{episode_index:0>6}.parquet"));
+        let episode_data_path = self.metadata.info.episode_data_path(episode_index)?;
+        let episode_parquet_file = self.path.join(episode_data_path);
 
-        let file = File::open(episode_data_file)?;
+        let file = File::open(episode_parquet_file)?;
         let mut reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
 
         reader
@@ -90,14 +102,15 @@ impl LeRobotDataset {
 
     pub fn read_episode_video_contents(
         &self,
+        observation_key: &str,
         episode_index: usize,
     ) -> Result<std::borrow::Cow<'_, [u8]>, LeRobotError> {
-        let videopath = self
-            .path
-            .join("videos")
-            .join("chunk-000") // TODO(gijsd): When does this change?
-            .join("observation.image")
-            .join(format!("episode_{episode_index:0>6}.mp4"));
+        let video_file = self
+            .metadata
+            .info
+            .video_path(observation_key, episode_index)?;
+
+        let videopath = self.path.join(video_file);
 
         re_tracing::profile_function!(videopath.display().to_string());
 
@@ -138,23 +151,82 @@ impl LeRobotDatasetMetadata {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LeRobotDatasetInfo {
     pub robot_type: String,
-    pub total_episodes: u32,
-    pub total_frames: u32,
-    pub total_tasks: u32,
-    pub total_videos: u32,
-    pub total_chunks: u32,
-    pub chunks_size: u32,
-    pub fps: u32,
+    pub codebase_version: String,
+    pub total_episodes: usize,
+    pub total_frames: usize,
+    pub total_tasks: usize,
+    pub total_videos: usize,
+    pub total_chunks: usize,
+    pub chunks_size: usize,
+    pub data_path: String,
+    pub video_path: String,
+    pub fps: usize,
     pub features: HashMap<String, Feature>,
 }
 
 impl LeRobotDatasetInfo {
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_from_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let info_file = File::open(filepath)?;
         let reader = BufReader::new(info_file);
 
         serde_json::from_reader(reader).map_err(|err| err.into())
+    }
+
+    pub fn feature(&self, feature_key: &str) -> Option<&Feature> {
+        self.features.get(feature_key)
+    }
+
+    pub fn get_chunk_index(&self, episode_index: usize) -> Result<usize, LeRobotError> {
+        if episode_index > self.total_episodes {
+            return Err(LeRobotError::InvalidEpisodeIndex(episode_index));
+        }
+
+        // chunk indices start at 0
+        let chunk_idx = episode_index / self.chunks_size;
+        if chunk_idx < self.total_chunks {
+            Ok(chunk_idx)
+        } else {
+            Err(LeRobotError::InvalidChunkIndex(chunk_idx))
+        }
+    }
+
+    pub fn episode_data_path(&self, episode_index: usize) -> Result<PathBuf, LeRobotError> {
+        let chunk = self.get_chunk_index(episode_index)?;
+
+        // TODO(gijsd): Need a better way to handle this, as this only supports the default.
+        Ok(self
+            .data_path
+            .replace("{episode_chunk:03d}", &format!("{chunk:03}"))
+            .replace("{episode_index:06d}", &format!("{episode_index:06}"))
+            .into())
+    }
+
+    /// Get the path to a video observation for a specific episode index.
+    pub fn video_path(
+        &self,
+        observation_key: &str,
+        episode_index: usize,
+    ) -> Result<PathBuf, LeRobotError> {
+        let chunk = self.get_chunk_index(episode_index)?;
+        let feature = self
+            .feature(observation_key)
+            .ok_or(LeRobotError::InvalidFeatureKey(observation_key.to_owned()))?;
+
+        if feature.dtype != DType::Video {
+            return Err(LeRobotError::InvalidFeatureDtype {
+                key: observation_key.to_owned(),
+                expected: DType::Video,
+                actual: feature.dtype,
+            });
+        }
+
+        // TODO(gijsd): Need a better way to handle this, as this only supports the default.
+        Ok(self
+            .video_path
+            .replace("{episode_chunk:03d}", &format!("{chunk:03}"))
+            .replace("{episode_index:06d}", &format!("{episode_index:06}"))
+            .replace("{video_key}", observation_key)
+            .into())
     }
 }
 
@@ -165,7 +237,7 @@ pub struct Feature {
     names: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DType {
     Video,
