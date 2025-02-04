@@ -74,6 +74,7 @@ class Viewer(anywidget.AnyWidget):
         traitlets.Bool(),
         allow_none=True,
     ).tag(sync=True)
+    _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -89,7 +90,6 @@ class Viewer(anywidget.AnyWidget):
         self._width = width
         self._height = height
         self._url = url
-        self._panel_states = panel_states
         self._data_queue = []
 
         if panel_states:
@@ -144,3 +144,6 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
         self._time_ctrl = (timeline, time, play)
+
+    def set_active_recording(self, recording_id: str) -> None:
+        self._recording_id = recording_id

@@ -245,6 +245,26 @@ class Viewer:
 
         self._viewer.update_panel_states(panel_states)
 
+    def set_active_recording(
+        self,
+        *,
+        recording_id: str,
+    ) -> None:
+        """
+        Set the active recording for the viewer.
+
+        This is equivalent to clicking on the given recording in the blueprint panel.
+
+        Parameters
+        ----------
+        recording_id: str
+            The ID of the recording to set the viewer to.
+
+            Using this requires setting an explicit recording ID when creating the recording.
+        """
+
+        self._viewer.set_active_recording(recording_id)
+
     def set_time_ctrl(
         self,
         *,
