@@ -20,7 +20,11 @@ all-features = true
 
 [features]
 default = []
-testing = []
+testing = [
+  "dep:serde",
+  "re_viewer_context/testing",
+  "re_viewport_blueprint/testing",
+]
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -43,12 +47,12 @@ arrow.workspace = true
 egui_table.workspace = true
 egui.workspace = true
 itertools.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
-re_view_dataframe = { workspace = true, features = ["testing"] }
 re_viewer_context = { workspace = true, features = ["testing"] }
 re_viewport.workspace = true
 re_viewport_blueprint = { workspace = true, features = ["testing"] }
