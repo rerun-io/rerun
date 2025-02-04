@@ -388,48 +388,26 @@ See also:
 
 
 
-## Other
+## Rust API changes
 
-
-### Previously deprecated `DisconnectedSpace` archetype/component have been removed
-
-The deprecated `DisconnectedSpace` archetype and `DisconnectedSpace` component have been removed.
-To achieve the same effect, you can log any of the following "invalid" transforms:
-* zeroed 3x3 matrix
-* zero scale
-* zeroed quaternion
-* zero axis on axis-angle rotation
-
-Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
-This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
-By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
-(you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer/through-code-tutorial)).
-
-
-### Removed `num_instances` keyword argument from `rr.log_components()`
-
-For historical reasons, the `rr.log_components()` function of the Python SDK accepts an optional, keyword-only argument `num_instances`.
-It was no longer used for several releases, so we removed it.
-
-**Note**: although `rr.log_components()` is technically a public API, it is undocumented, and we discourage using it.
-For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
-
-
-### Rust's `ViewCoordinates` archetype now has static methods instead of constants
+### `ViewCoordinates` archetype now has static methods instead of constants
 
 As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer constants for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
 
 Instead, there's now methods with the same name, i.e. `ViewCoordinates::RUB()`.
 
 
-### Rust's `Tensor` archetype can no longer access tensor data as `ndarray` view directly
+### `Tensor` archetype can no longer access tensor data as `ndarray` view directly
 
 As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer exposing the `Tensor` **archetype** as `ndarray::ArrayView` directly.
 
 However, it is still possible to do so with the `TensorData` component.
 
 
-### C++ `RecordingStream::log`/`send_column` no longer takes raw component collections
+
+## C++ API changes
+
+### `RecordingStream::log`/`send_column` no longer takes raw component collections
 
 Previously, both `RecordingStream::log` and `RecordingStream::send_column` were able to
 handle raw component collections which then would be serialized to arrow on the fly.
@@ -465,7 +443,7 @@ rec.send_columns("scalars", time_column,
 All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) have been updated accordingly.
 
 
-### C++ `AsComponents::serialize` is now called `AsComponents::as_batches` and returns `rerun::Collection<ComponentBatch>`
+## `AsComponents::serialize` is now called `AsComponents::as_batches` and returns `rerun::Collection<ComponentBatch>`
 
 The `AsComponents`'s `serialize` method has been renamed to `as_batches` and now returns a `rerun::Collection<ComponentBatch>` instead of a `std::vector<ComponentBatch>`.
 
@@ -482,3 +460,30 @@ struct AsComponents<CustomArchetype> {
     static Result<rerun::Collection<ComponentBatch>> operator()(const CustomArchetype& archetype);
 };
 ```
+
+## Python API changes
+
+### `rr.log_components()` is now deprecated & no longer has a `num_instances` keyword argument
+
+For historical reasons, the `rr.log_components()` function of the Python SDK accepts an optional, keyword-only argument `num_instances`.
+It was no longer used for several releases, so we removed it.
+
+Although `rr.log_components()` was technically a public API, it was undocumented and we now deprecated its use.
+For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
+
+
+## Other
+
+### Previously deprecated `DisconnectedSpace` archetype/component have been removed
+
+The deprecated `DisconnectedSpace` archetype and `DisconnectedSpace` component have been removed.
+To achieve the same effect, you can log any of the following "invalid" transforms:
+* zeroed 3x3 matrix
+* zero scale
+* zeroed quaternion
+* zero axis on axis-angle rotation
+
+Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
+This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
+By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
+(you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer/through-code-tutorial)).
