@@ -26,7 +26,7 @@ pub fn test_null_timeline() {
         )
     });
 
-    run_graph_view_and_save_snapshot(
+    run_view_and_save_snapshot(
         test_context,
         timeline_a.name(),
         "null_timeline",
@@ -49,7 +49,7 @@ fn get_test_context() -> TestContext {
 }
 
 //TODO(ab): this utility could likely be generalized for all view tests
-fn run_graph_view_and_save_snapshot(
+fn run_view_and_save_snapshot(
     mut test_context: TestContext,
     timeline_name: &TimelineName,
     name: &str,
