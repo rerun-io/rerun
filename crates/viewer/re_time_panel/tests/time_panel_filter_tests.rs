@@ -1,9 +1,11 @@
+#![cfg(feature = "testing")]
+
 use egui::Vec2;
 
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::TimePoint;
-use re_time_panel::streams_tree_data::StreamsTreeData;
+use re_time_panel::StreamsTreeData;
 use re_time_panel::{TimePanel, TimePanelSource};
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;

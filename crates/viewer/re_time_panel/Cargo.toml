@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 default = []
-testing = []
+testing = ["re_viewer_context/testing", "re_viewport_blueprint/testing"]
 
 [dependencies]
 re_chunk_store.workspace = true

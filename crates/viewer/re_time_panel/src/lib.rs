@@ -6,22 +6,17 @@
 mod data_density_graph;
 mod paint_ticks;
 mod recursive_chunks_per_timeline_subscriber;
+mod streams_tree_data;
 mod time_axis;
 mod time_control_ui;
 mod time_panel;
 mod time_ranges_ui;
 mod time_selection_ui;
 
-#[cfg(feature = "testing")]
-pub mod streams_tree_data;
-
-#[cfg(not(feature = "testing"))]
-mod streams_tree_data;
-
 pub use time_panel::TimePanel;
 
 #[cfg(feature = "testing")]
-pub use time_panel::TimePanelSource;
+pub use {streams_tree_data::StreamsTreeData, time_panel::TimePanelSource};
 
 #[doc(hidden)]
 pub mod __bench {
