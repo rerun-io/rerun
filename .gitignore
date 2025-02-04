@@ -73,3 +73,6 @@ icd.json
 /meilisearch
 
 .pixi/*
+
+*.snap
+
