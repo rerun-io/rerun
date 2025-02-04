@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use loader_lerobot::LeRobotDatasetLoader;
 use once_cell::sync::Lazy;
 
 use re_chunk::{Chunk, ChunkResult};
@@ -35,6 +34,7 @@ pub use self::{
         iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
         EXTERNAL_DATA_LOADER_PREFIX,
     },
+    loader_lerobot::LeRobotDatasetLoader,
 };
 
 // ----------------------------------------------------------------------------
@@ -369,6 +369,7 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
