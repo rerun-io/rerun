@@ -18,9 +18,7 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(2);
         if (zoom.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(zoom.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(zoom.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<MapZoom>(static_cast<uint32_t>(lengths_.size()))
@@ -39,7 +37,7 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<blueprint::archetypes::MapZoom>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<blueprint::archetypes::MapZoom>::as_batches(
         const blueprint::archetypes::MapZoom& archetype
     ) {
         using namespace blueprint::archetypes;
@@ -55,6 +53,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

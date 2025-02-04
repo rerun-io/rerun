@@ -31,32 +31,19 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(6);
         if (translations.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(translations.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(translations.value().partitioned(lengths_).value_or_throw());
         }
         if (rotation_axis_angles.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(rotation_axis_angles.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(rotation_axis_angles.value().partitioned(lengths_).value_or_throw());
         }
         if (quaternions.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(quaternions.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(quaternions.value().partitioned(lengths_).value_or_throw());
         }
         if (scales.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(scales.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(scales.value().partitioned(lengths_).value_or_throw());
         }
         if (mat3x3.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(mat3x3.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(mat3x3.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<InstancePoses3D>(
                               static_cast<uint32_t>(lengths_.size())
@@ -87,7 +74,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::InstancePoses3D>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::InstancePoses3D>::as_batches(
         const archetypes::InstancePoses3D& archetype
     ) {
         using namespace archetypes;
@@ -115,6 +102,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

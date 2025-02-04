@@ -13,7 +13,7 @@ impl Query {
     ///
     /// This tries to read the timeline name from the blueprint. If missing or invalid, the current
     /// timeline is used and saved back to the blueprint.
-    pub(crate) fn timeline(
+    pub fn timeline(
         &self,
         ctx: &ViewerContext<'_>,
     ) -> Result<re_log_types::Timeline, ViewSystemExecutionError> {
@@ -42,7 +42,7 @@ impl Query {
     ///
     /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
     /// invalidated.
-    pub(super) fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
+    pub fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
         self.query_property
             .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
 
@@ -51,7 +51,7 @@ impl Query {
             .clear_blueprint_component::<components::FilterByRange>(ctx);
     }
 
-    pub(crate) fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
+    pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
         #[allow(clippy::map_unwrap_or)]
         Ok(self
             .query_property
@@ -60,7 +60,7 @@ impl Query {
             .unwrap_or(ResolvedTimeRange::EVERYTHING))
     }
 
-    pub(super) fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
+    pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
         if range == ResolvedTimeRange::EVERYTHING {
             self.query_property
                 .clear_blueprint_component::<components::FilterByRange>(ctx);
@@ -73,7 +73,7 @@ impl Query {
     }
 
     /// Get the filter column for the filter-is-not-null feature, if active.
-    pub(crate) fn filter_is_not_null(
+    pub fn filter_is_not_null(
         &self,
     ) -> Result<Option<ComponentColumnSelector>, ViewSystemExecutionError> {
         Ok(self
@@ -88,7 +88,7 @@ impl Query {
     }
 
     /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
-    pub(super) fn filter_is_not_null_raw(
+    pub fn filter_is_not_null_raw(
         &self,
     ) -> Result<Option<components::FilterIsNotNull>, ViewSystemExecutionError> {
         Ok(self
@@ -96,7 +96,7 @@ impl Query {
             .component_or_empty::<components::FilterIsNotNull>()?)
     }
 
-    pub(super) fn save_filter_is_not_null(
+    pub fn save_filter_is_not_null(
         &self,
         ctx: &ViewerContext<'_>,
         filter_is_not_null: &components::FilterIsNotNull,
@@ -105,19 +105,19 @@ impl Query {
             .save_blueprint_component(ctx, filter_is_not_null);
     }
 
-    pub(crate) fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
+    pub fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
             .is_some_and(|comp| *comp.0))
     }
 
-    pub(crate) fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
+    pub fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
         self.query_property
             .save_blueprint_component(ctx, &components::ApplyLatestAt(enabled.into()));
     }
 
-    pub(super) fn save_selected_columns(
+    pub fn save_selected_columns(
         &self,
         ctx: &ViewerContext<'_>,
         columns: impl IntoIterator<Item = ColumnSelector>,
@@ -148,12 +148,12 @@ impl Query {
             .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
     }
 
-    pub(super) fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
+    pub fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .clear_blueprint_component::<components::SelectedColumns>(ctx);
     }
 
-    pub(super) fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
+    pub fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .save_blueprint_component(ctx, &components::SelectedColumns::default());
     }
@@ -165,7 +165,7 @@ impl Query {
     ///
     /// Returns `Ok(None)` if all columns should be displayed (aka a column selection isn't provided
     /// in the blueprint).
-    pub(crate) fn apply_column_visibility_to_view_columns(
+    pub fn apply_column_visibility_to_view_columns(
         &self,
         ctx: &ViewerContext<'_>,
         view_columns: &[ColumnDescriptor],

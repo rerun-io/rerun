@@ -1,10 +1,12 @@
-// Send multiple images at once using `send_columns`.
+//! Update an image over time, in a single operation.
+//!
+//! This is semantically equivalent to the `image_row_updates` example, albeit much faster.
 
 #include <numeric>
 #include <rerun.hpp>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_image_send_columns");
+    auto rec = rerun::RecordingStream("rerun_example_image_column_updates");
     rec.spawn().exit_on_failure();
 
     // Timeline on which the images are distributed.
@@ -44,7 +46,7 @@ int main() {
     // Send all images at once.
     rec.send_columns(
         "images",
-        rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+        rerun::TimeColumn::from_sequence("step", std::move(times)),
         rerun::Image().with_many_buffer(std::move(image_data)).columns()
     );
 }

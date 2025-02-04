@@ -482,8 +482,8 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<std::vector<ComponentBatch>> serialization_result =
-                        AsComponents<Ts>().serialize(as_components);
+                    const Result<Collection<ComponentBatch>> serialization_result =
+                        AsComponents<Ts>().as_batches(as_components);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                         return;
@@ -491,7 +491,7 @@ namespace rerun {
 
                     if (serialized_columns.empty()) {
                         // Fast path for the first batch (which is usually the only one!)
-                        serialized_columns = std::move(serialization_result.value);
+                        serialized_columns = std::move(serialization_result.value).to_vector();
                     } else {
                         serialized_columns.insert(
                             serialized_columns.end(),

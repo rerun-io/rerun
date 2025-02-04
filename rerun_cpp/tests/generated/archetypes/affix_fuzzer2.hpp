@@ -389,7 +389,7 @@ namespace rerun::archetypes {
         /// Partitions the component data into multiple sub-batches.
         ///
         /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
-        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        /// instead, via `ComponentBatch::partitioned`.
         ///
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
@@ -414,7 +414,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::AffixFuzzer2> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(
+        static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::AffixFuzzer2& archetype
         );
     };

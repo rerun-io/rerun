@@ -3,9 +3,6 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 mod app;
 mod app_blueprint;
 mod app_state;
@@ -243,7 +240,7 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
             }
             re_log::trace!("Shutting down ui_waker thread");
         })
-        .unwrap();
+        .expect("Failed to spawn UI waker thread");
     new_rx
 }
 

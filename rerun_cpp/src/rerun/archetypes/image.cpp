@@ -24,23 +24,16 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (buffer.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(buffer.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(buffer.value().partitioned(lengths_).value_or_throw());
         }
         if (format.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(format.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(format.value().partitioned(lengths_).value_or_throw());
         }
         if (opacity.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(opacity.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(opacity.value().partitioned(lengths_).value_or_throw());
         }
         if (draw_order.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(draw_order.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Image>(static_cast<uint32_t>(lengths_.size()))
@@ -68,7 +61,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Image>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Image>::as_batches(
         const archetypes::Image& archetype
     ) {
         using namespace archetypes;
@@ -93,6 +86,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

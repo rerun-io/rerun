@@ -7,7 +7,7 @@ use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
 /// Wrapper over the `DataframeQuery` blueprint archetype that can also display some UI.
-pub(crate) struct Query {
+pub struct Query {
     query_property: ViewProperty,
 }
 
@@ -15,7 +15,7 @@ impl Query {
     /// Create a query object from the blueprint store.
     ///
     /// See the `blueprint_io` module for more related accessors.
-    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, view_id: ViewId) -> Self {
+    pub fn from_blueprint(ctx: &ViewerContext<'_>, view_id: ViewId) -> Self {
         Self {
             query_property: ViewProperty::from_archetype::<archetypes::DataframeQuery>(
                 ctx.blueprint_db(),

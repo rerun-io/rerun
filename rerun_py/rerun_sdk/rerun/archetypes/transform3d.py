@@ -136,6 +136,151 @@ class Transform3D(Transform3DExt, Archetype):
     </picture>
     </center>
 
+    ### Update a transform over time:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_row_updates", spawn=True)
+
+    rr.set_time_sequence("tick", 0)
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    for t in range(100):
+        rr.set_time_sequence("tick", t + 1)
+        rr.log(
+            "box",
+            rr.Transform3D(
+                clear=False,
+                translation=[0, 0, t / 10.0],
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)),
+            ),
+        )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+      <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update a transform over time, in a single operation:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_column_updates", spawn=True)
+
+    rr.set_time_sequence("tick", 0)
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    rr.send_columns(
+        "box",
+        indexes=[rr.TimeSequenceColumn("tick", range(1, 101))],
+        columns=rr.Transform3D.columns(
+            translation=[[0, 0, t / 10.0] for t in range(100)],
+            rotation_axis_angle=[
+                rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)) for t in range(100)
+            ],
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+      <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update specific properties of a transform over time:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_partial_updates", spawn=True)
+
+    # Set up a 3D box.
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    # Update only the rotation of the box.
+    for deg in range(46):
+        rad = truncated_radians(deg * 4)
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            ),
+        )
+
+    # Update only the position of the box.
+    for t in range(51):
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(translation=[0, 0, t / 10.0]),
+        )
+
+    # Update only the rotation of the box.
+    for deg in range(46):
+        rad = truncated_radians((deg + 45) * 4)
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            ),
+        )
+
+    # Clear all of the box's attributes, and reset its axis length.
+    rr.log(
+        "box",
+        rr.Transform3D.from_fields(clear_unset=True, axis_length=15),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png">
+      <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     # __init__ can be found in transform3d_ext.py

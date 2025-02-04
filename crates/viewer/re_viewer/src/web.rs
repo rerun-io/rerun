@@ -53,7 +53,12 @@ impl WebHandle {
 
         let canvas = if let Some(canvas_id) = canvas.as_string() {
             // For backwards compatibility with old JS/HTML written before 2024-08-30
-            let document = web_sys::window().unwrap().document().unwrap();
+            let document = web_sys::window()
+                .ok_or_else(|| "Failed to get window. Are we not in a browser?".to_owned())?
+                .document()
+                .ok_or_else(|| {
+                    "Failed to get window.document. Are we not in a browser?".to_owned()
+                })?;
             let element = document
                 .get_element_by_id(&canvas_id)
                 .ok_or_else(|| format!("Canvas element '{canvas_id}' not found."))?;
@@ -729,6 +734,7 @@ fn create_app(
 /// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
 #[wasm_bindgen]
+#[allow(clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());

@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Logging images with various formats
-    /// ![image](https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png)
+    /// ![image](https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png)
     ///
     /// ```cpp
     /// #include <algorithm>
@@ -402,7 +402,7 @@ namespace rerun::archetypes {
         /// Partitions the component data into multiple sub-batches.
         ///
         /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
-        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        /// instead, via `ComponentBatch::partitioned`.
         ///
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
@@ -427,6 +427,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Image> {
         /// Serialize all set component batches.
-        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Image& archetype);
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Image& archetype);
     };
 } // namespace rerun

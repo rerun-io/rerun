@@ -18,6 +18,10 @@ namespace arrow {
 struct rr_component_batch;
 
 namespace rerun {
+    struct ComponentColumn;
+}
+
+namespace rerun {
     /// Arrow-encoded data of a single batch of components together with a component descriptor.
     ///
     /// Component descriptors are registered when first encountered.
@@ -37,55 +41,27 @@ namespace rerun {
 
         /// Creates a new component batch from a collection of component instances.
         ///
-        /// Automatically registers the component type the first time this type is encountered.
+        /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
             const rerun::Collection<T>& components,
             const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
-
         ) {
             static_assert(
                 rerun::is_loggable<T>,
                 "The given type does not implement the rerun::Loggable trait."
             );
 
-            // The template is over the `Loggable` itself, but a single `Loggable` might have any number of
-            // descriptors/tags associated with it, therefore a static `ComponentTypeHandle` is not enough,
-            // we need a map.
-            static std::unordered_map<ComponentDescriptorHash, ComponentTypeHandle>
-                comp_types_per_descr;
-
-            ComponentTypeHandle comp_type_handle;
-
-            auto descr_hash = descriptor.hashed();
-
-            auto search = comp_types_per_descr.find(descr_hash);
-            if (search != comp_types_per_descr.end()) {
-                comp_type_handle = search->second;
-            } else {
-                auto comp_type = ComponentType(descriptor, Loggable<T>::arrow_datatype());
-
-                const Result<ComponentTypeHandle> comp_type_handle_result =
-                    comp_type.register_component();
-                RR_RETURN_NOT_OK(comp_type_handle_result.error);
-
-                comp_type_handle = comp_type_handle_result.value;
-                comp_types_per_descr.insert({descr_hash, comp_type_handle});
-            }
-
             /// TODO(#4257) should take a rerun::Collection instead of pointer and size.
             auto array = Loggable<T>::to_arrow(components.data(), components.size());
             RR_RETURN_NOT_OK(array.error);
 
-            ComponentBatch component_batch;
-            component_batch.array = std::move(array.value);
-            component_batch.component_type = comp_type_handle;
-            return component_batch;
+            return from_arrow_array(std::move(array.value), descriptor);
         }
 
         /// Creates a new component batch from a single component instance.
         ///
-        /// Automatically registers the component type the first time this type is encountered.
+        /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
             const T& component,
@@ -100,7 +76,7 @@ namespace rerun {
         ///
         /// None is represented as a data cell with 0 instances.
         ///
-        /// Automatically registers the component type the first time this type is encountered.
+        /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
             const std::optional<T>& component,
@@ -117,7 +93,7 @@ namespace rerun {
         ///
         /// None is represented as a data cell with 0 instances.
         ///
-        /// Automatically registers the component type the first time this type is encountered.
+        /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
             const std::optional<rerun::Collection<T>>& components,
@@ -138,6 +114,46 @@ namespace rerun {
                 Loggable<typename Archetype::IndicatorComponent>::Descriptor
             );
         }
+
+        /// Creates a new component batch from an already existing arrow array.
+        ///
+        /// Automatically registers the descriptor the first time it is encountered.
+        static Result<ComponentBatch> from_arrow_array(
+            std::shared_ptr<arrow::Array> array, const ComponentDescriptor& descriptor
+        );
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
+        /// this specifies the number of components at each time point.
+        /// The sum of the lengths must be equal to the number of components in the batch.
+        Result<ComponentColumn> partitioned(const Collection<uint32_t>& lengths) &&;
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        Result<ComponentColumn> partitioned() &&;
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
+        /// this specifies the number of components at each time point.
+        /// The sum of the lengths must be equal to the number of components in the batch.
+        Result<ComponentColumn> partitioned(const Collection<uint32_t>& lengths) const&;
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into a `ComponentColumn`.
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        Result<ComponentColumn> partitioned() const&;
 
         /// Size in the number of elements the underlying arrow array contains.
         size_t length() const;

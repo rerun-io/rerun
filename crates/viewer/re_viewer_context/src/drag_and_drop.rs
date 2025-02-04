@@ -254,7 +254,7 @@ fn drag_pill_frame(droppable: bool) -> egui::Frame {
             1.0,
             re_ui::design_tokens().color(ColorToken::new(hue, S375)),
         ),
-        rounding: 2.0.into(),
+        corner_radius: 2.into(),
         inner_margin: egui::Margin {
             left: 6,
             right: 9,

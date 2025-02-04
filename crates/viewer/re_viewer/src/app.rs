@@ -961,7 +961,9 @@ impl App {
 
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
-                self.run_copy_direct_link_command(store_context);
+                if self.run_copy_direct_link_command(store_context).is_none() {
+                    re_log::error!("Failed to copy direct link to clipboard. Is this not running in a browser?");
+                }
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -1016,11 +1018,16 @@ impl App {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let location = web_sys::window().unwrap().location();
-        let origin = location.origin().unwrap();
-        let host = location.host().unwrap();
-        let pathname = location.pathname().unwrap();
+    fn run_copy_direct_link_command(
+        &mut self,
+        store_context: Option<&StoreContext<'_>>,
+    ) -> Option<()> {
+        use crate::web_tools::JsResultExt as _;
+
+        let location = web_sys::window()?.location();
+        let origin = location.origin().ok_or_log_js_error_once()?;
+        let host = location.host().ok_or_log_js_error_once()?;
+        let pathname = location.pathname().ok_or_log_js_error_once()?;
 
         let hosted_viewer_path = if self.build_info.is_final() {
             // final release, use version tag
@@ -1050,6 +1057,8 @@ impl App {
         self.egui_ctx.copy_text(direct_link.clone());
         self.notifications
             .success(format!("Copied {direct_link:?} to clipboard"));
+
+        Some(())
     }
 
     fn memory_panel_ui(
@@ -1148,11 +1157,11 @@ impl App {
 
                 self.egui_debug_panel_ui(ui);
 
-                // TODO(andreas): store the re_renderer somewhere else.
-                let egui_renderer = {
-                    let render_state = frame.wgpu_render_state().unwrap();
-                    &mut render_state.renderer.write()
-                };
+                let egui_renderer = &mut frame
+                    .wgpu_render_state()
+                    .expect("Failed to get frame render state")
+                    .renderer
+                    .write();
 
                 if let Some(render_ctx) = egui_renderer
                     .callback_resources
@@ -1815,7 +1824,10 @@ impl eframe::App for App {
         }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
-        let mut store_hub = self.store_hub.take().unwrap();
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
@@ -1863,14 +1875,16 @@ impl eframe::App for App {
         let gpu_resource_stats = {
             re_tracing::profile_scope!("gpu_resource_stats");
 
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
-            };
+            let egui_renderer = frame
+                .wgpu_render_state()
+                .expect("Failed to get frame render state")
+                .renderer
+                .read();
+
             let render_ctx = egui_renderer
                 .callback_resources
                 .get::<re_renderer::RenderContext>()
-                .unwrap();
+                .expect("Failed to get render context");
 
             // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
@@ -1889,14 +1903,16 @@ impl eframe::App for App {
         self.purge_memory_if_needed(&mut store_hub);
 
         {
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
-            };
+            let egui_renderer = frame
+                .wgpu_render_state()
+                .expect("Failed to get frame render state")
+                .renderer
+                .read();
+
             let render_ctx = egui_renderer
                 .callback_resources
                 .get::<re_renderer::RenderContext>()
-                .unwrap();
+                .expect("Failed to get render context");
 
             // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
             let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
@@ -2036,7 +2052,7 @@ fn paint_background_fill(ui: &egui::Ui) {
 
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
@@ -2050,7 +2066,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         re_ui::design_tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );

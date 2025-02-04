@@ -30,24 +30,16 @@ namespace rerun::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
         if (image_from_camera.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(image_from_camera.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(image_from_camera.value().partitioned(lengths_).value_or_throw());
         }
         if (resolution.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(resolution.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(resolution.value().partitioned(lengths_).value_or_throw());
         }
         if (camera_xyz.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(camera_xyz.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(camera_xyz.value().partitioned(lengths_).value_or_throw());
         }
         if (image_plane_distance.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(image_plane_distance.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(image_plane_distance.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Pinhole>(static_cast<uint32_t>(lengths_.size()))
@@ -75,7 +67,7 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
+    Result<Collection<ComponentBatch>> AsComponents<archetypes::Pinhole>::as_batches(
         const archetypes::Pinhole& archetype
     ) {
         using namespace archetypes;
@@ -100,6 +92,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

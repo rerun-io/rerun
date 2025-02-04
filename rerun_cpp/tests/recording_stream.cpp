@@ -44,7 +44,7 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        static rerun::Result<std::vector<rerun::ComponentBatch>> serialize(const BadArchetype&) {
+        static rerun::Result<Collection<rerun::ComponentBatch>> as_batches(const BadArchetype&) {
             return Loggable<BadComponent>::error;
         }
     };

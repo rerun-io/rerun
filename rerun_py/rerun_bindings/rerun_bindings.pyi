@@ -1,9 +1,18 @@
 import os
+from enum import Enum
 from typing import Iterator, Optional, Sequence, Union
 
 import pyarrow as pa
 
-from .types import AnyColumn, AnyComponentColumn, ComponentLike, IndexValuesLike, TableLike, ViewContentsLike
+from .types import (
+    AnyColumn,
+    AnyComponentColumn,
+    ComponentLike,
+    IndexValuesLike,
+    TableLike,
+    VectorDistanceMetricLike,
+    ViewContentsLike,
+)
 
 class IndexColumnDescriptor:
     """
@@ -133,6 +142,15 @@ class ComponentColumnSelector:
         This property is read-only.
         """
         ...
+
+class VectorDistanceMetric(Enum):
+    """Which distance metric for use for vector index."""
+
+    L2: VectorDistanceMetric
+    COSINE: VectorDistanceMetric
+    DOT: VectorDistanceMetric
+    HAMMING: VectorDistanceMetric
+    ...
 
 class Schema:
     """
@@ -675,6 +693,121 @@ class StorageNodeClient:
         -------
         Recording
             The opened recording.
+
+        """
+        ...
+
+    def create_vector_index(
+        self,
+        entry: str,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        num_partitions: int,
+        num_sub_vectors: int,
+        distance_metric: VectorDistanceMetricLike,
+    ) -> None:
+        """
+        Create a vector index.
+
+        Parameters
+        ----------
+        entry : str
+            The name of the catalog entry to index.
+        column : ComponentColumnSelector
+            The component column to index.
+        time_index : IndexColumnSelector
+            The index column to use for the time index.
+        num_partitions : int
+            The number of partitions for the index.
+        num_sub_vectors : int
+            The number of sub-vectors for the index.
+        distance_metric : VectorDistanceMetric
+            The distance metric to use for the index.
+
+        """
+        ...
+
+    def create_fts_index(
+        self,
+        entry: str,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        store_position: bool,
+        base_tokenizer: str,
+    ) -> None:
+        """
+        Create a full-text-search index.
+
+        Parameters
+        ----------
+        entry : str
+            The name of the catalog entry to index.
+        column : ComponentColumnSelector
+            The component column to index.
+        time_index : IndexColumnSelector
+            The index column to use for the time index.
+        store_position : bool
+            Whether to store the position of the token in the document.
+        base_tokenizer : str
+            The base tokenizer to use.
+
+        """
+        ...
+
+    def search_vector_index(
+        self,
+        entry: str,
+        query: TableLike,
+        column: ComponentColumnSelector,
+        top_k: int,
+    ) -> pa.RecordBatchReader:
+        """
+        Search over a vector index.
+
+        Parameters
+        ----------
+        entry : str
+            The name of the catalog entry to search.
+        query : pa.RecordBatch
+            The input to search for.
+        column : ComponentColumnSelector
+            The component column to search over.
+        top_k : int
+            The number of results to return.
+
+        Returns
+        -------
+        pa.RecordBatchReader
+            The results of the query.
+
+        """
+        ...
+
+    def search_fts_index(
+        self,
+        entry: str,
+        query: TableLike,
+        column: ComponentColumnSelector,
+        limit: Optional[int] = None,
+    ) -> pa.RecordBatchReader:
+        """
+        Search over a full-text-search index.
+
+        Parameters
+        ----------
+        entry : str
+            The name of the catalog entry to search.
+        query : pa.RecordBatch
+            The input to search for.
+        column : ComponentColumnSelector
+            The component column to search over.
+        limit : Optional[int]
+            The maximum number of results to return.
+
+        Returns
+        -------
+        pa.RecordBatchReader
+            The results of the query.
 
         """
         ...

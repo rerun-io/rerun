@@ -497,14 +497,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             0.5,
         );
 
-        let frame = egui::Frame {
-            inner_margin: egui::Margin::same(0),
-            outer_margin: egui::Margin::same(0),
-            rounding: egui::Rounding::ZERO,
-            shadow: Default::default(),
-            fill: egui::Color32::TRANSPARENT,
-            stroke: egui::Stroke::NONE,
-        };
+        let frame = egui::Frame::NONE;
 
         frame.show(ui, |ui| {
             tab_widget.paint(ui);

@@ -1,11 +1,15 @@
-"""Use the `send_columns` API to send several point clouds over time in a single call."""
+"""
+Update a point cloud over time, in a single operation.
+
+This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 import rerun as rr
 
-rr.init("rerun_example_points3d_send_columns", spawn=True)
+rr.init("rerun_example_points3d_column_updates", spawn=True)
 
 # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)

@@ -1,15 +1,18 @@
-"""Use `AnyValues` and `send_column` to send entire columns of custom data to Rerun."""
+"""
+Update custom user-defined values over time, in a single operation.
+
+This is semantically equivalent to the `any_values_row_updates` example, albeit much faster.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 import rerun as rr
 
-rr.init("rerun_example_any_values_send_columns", spawn=True)
+rr.init("rerun_example_any_values_column_updates", spawn=True)
 
 timestamps = np.arange(0, 64)
 
-# Log two component columns, named "sin" and "cos", with the corresponding values
 rr.send_columns(
     "/",
     indexes=[rr.TimeSequenceColumn("step", timestamps)],

@@ -36,31 +36,19 @@ namespace rerun::blueprint::archetypes {
         std::vector<ComponentColumn> columns;
         columns.reserve(6);
         if (timeline.has_value()) {
-            columns.push_back(ComponentColumn::from_batch_with_lengths(timeline.value(), lengths_)
-                                  .value_or_throw());
+            columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
         }
         if (filter_by_range.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(filter_by_range.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(filter_by_range.value().partitioned(lengths_).value_or_throw());
         }
         if (filter_is_not_null.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(filter_is_not_null.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(filter_is_not_null.value().partitioned(lengths_).value_or_throw());
         }
         if (apply_latest_at.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(apply_latest_at.value(), lengths_)
-                    .value_or_throw()
-            );
+            columns.push_back(apply_latest_at.value().partitioned(lengths_).value_or_throw());
         }
         if (select.has_value()) {
-            columns.push_back(
-                ComponentColumn::from_batch_with_lengths(select.value(), lengths_).value_or_throw()
-            );
+            columns.push_back(select.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<DataframeQuery>(static_cast<uint32_t>(lengths_.size()))
@@ -91,8 +79,8 @@ namespace rerun::blueprint::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<ComponentBatch>>
-        AsComponents<blueprint::archetypes::DataframeQuery>::serialize(
+    Result<Collection<ComponentBatch>>
+        AsComponents<blueprint::archetypes::DataframeQuery>::as_batches(
             const blueprint::archetypes::DataframeQuery& archetype
         ) {
         using namespace blueprint::archetypes;
@@ -120,6 +108,6 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
 
-        return cells;
+        return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun

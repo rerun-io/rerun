@@ -7,8 +7,8 @@ use std::sync::Arc;
 use rerun::{external::arrow, TimeColumn};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_any_batch_value_send_columns").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_batch_value_column_updates")
+        .spawn()?;
 
     const STEPS: i64 = 64;
 

@@ -152,6 +152,18 @@ pub trait AsyncDecoder: Send + Sync {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     fn reset(&mut self) -> Result<()>;
+
+    /// Minimum number of samples the decoder requests to stay head of the currently requested sample.
+    ///
+    /// I.e. if sample N is requested, then the encoder would like to see at least all the samples from
+    /// [start of N's GOP] until [N + `min_num_samples_to_enqueue_ahead`].
+    /// Codec specific constraints regarding what samples can be decoded (samples may depend on other samples in their GOP)
+    /// still apply independently of this.
+    ///
+    /// This can be used as a workaround for decoders that are known to need additional samples to produce outputs.
+    fn min_num_samples_to_enqueue_ahead(&self) -> usize {
+        0
+    }
 }
 
 /// Creates a new async decoder for the given `video` data.
