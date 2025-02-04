@@ -711,11 +711,12 @@ pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     store_id: &re_log_types::StoreId,
+    ui_layout: UiLayout,
 ) {
     if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-        entity_db_button_ui(ctx, ui, entity_db, true);
+        entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
-        ui.label(store_id.to_string());
+        ui_layout.label(ui, store_id.to_string());
     }
 }
 
@@ -729,6 +730,7 @@ pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
+    ui_layout: UiLayout,
     include_app_id: bool,
 ) {
     use re_byte_size::SizeBytes as _;
@@ -761,17 +763,18 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let item_content = list_item::LabelContent::new(title)
-        .with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active recording or not:
-            let color = if ctx.store_context.is_active(&store_id) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icon.as_image().tint(color).paint_at(ui, rect);
-        })
-        .with_buttons(|ui| {
+    let mut item_content = list_item::LabelContent::new(title).with_icon_fn(|ui, rect, visuals| {
+        // Color icon based on whether this is the active recording or not:
+        let color = if ctx.store_context.is_active(&store_id) {
+            visuals.fg_stroke.color
+        } else {
+            ui.visuals().widgets.noninteractive.fg_stroke.color
+        };
+        icon.as_image().tint(color).paint_at(ui, rect);
+    });
+
+    if ui_layout.is_selection_panel() {
+        item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::REMOVE)
@@ -789,6 +792,7 @@ pub fn entity_db_button_ui(
             }
             resp
         });
+    }
 
     let mut list_item = ui
         .list_item()

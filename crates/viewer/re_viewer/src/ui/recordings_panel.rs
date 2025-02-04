@@ -212,7 +212,13 @@ fn app_and_its_recordings_ui(
                 } else {
                     for entity_db in entity_dbs {
                         let include_app_id = false; // we already show it in the parent
-                        entity_db_button_ui(ctx, ui, entity_db, include_app_id);
+                        entity_db_button_ui(
+                            ctx,
+                            ui,
+                            entity_db,
+                            UiLayout::SelectionPanel,
+                            include_app_id,
+                        );
                     }
                 }
             })

@@ -49,7 +49,7 @@ impl crate::DataUi for EntityDb {
 
                 if let Some(cloned_from) = cloned_from {
                     ui.grid_left_hand_label("Clone of");
-                    crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
+                    crate::item_ui::store_id_button_ui(ctx, ui, cloned_from, ui_layout);
                     ui.end_row();
                 }
 

@@ -56,7 +56,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
                 ui.add_space(8.0);
                 ui.strong("Recordings from this data source");
                 for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, true);
+                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
                 }
             }
 
@@ -64,7 +64,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
                 ui.add_space(8.0);
                 ui.strong("Blueprints from this data source");
                 for entity_db in blueprints {
-                    entity_db_button_ui(ctx, ui, entity_db, true);
+                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
                 }
             }
         });
