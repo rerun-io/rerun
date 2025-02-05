@@ -1,8 +1,8 @@
-/// A unique ID for a [`crate::Chunk`].
+/// A unique ID for a `Chunk`.
 ///
 /// `Chunk`s are the atomic unit of ingestion, transport, storage, events and GC in Rerun.
 ///
-/// Internally, a [`crate::Chunk`] is made up of rows, which are themselves uniquely identified by
+/// Internally, a `Chunk` is made up of rows, which are themselves uniquely identified by
 /// their [`RowId`].
 ///
 /// There is no relationship whatsoever between a [`ChunkId`] and the [`RowId`]s within that chunk.
@@ -114,7 +114,7 @@ impl std::ops::DerefMut for ChunkId {
     }
 }
 
-re_types_core::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId");
+crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId");
 
 // ---
 
@@ -251,4 +251,4 @@ impl std::ops::DerefMut for RowId {
     }
 }
 
-re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
+crate::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
