@@ -2,7 +2,6 @@ use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools;
-use nohash_hasher::IntMap;
 use smallvec::SmallVec;
 
 use crate::{list_item, UiExt as _};
@@ -226,11 +225,11 @@ impl FilterMatcher {
             None => Some(PathRanges::default()),
             Some([]) => None,
             Some(keywords) => {
-                let hierarchy = path.into_iter().map(str::to_lowercase).collect_vec();
+                let path = path.into_iter().map(str::to_lowercase).collect_vec();
 
                 let all_ranges = keywords
                     .iter()
-                    .map(|keyword| keyword.match_path(hierarchy.iter().map(String::as_str)))
+                    .map(|keyword| keyword.match_path(path.iter().map(String::as_str)))
                     .collect_vec();
 
                 // all keywords must match!
@@ -256,13 +255,12 @@ impl FilterMatcher {
 /// `match_from_first_part_start` and/or `match_to_last_part_end`, which have the same behavior as
 /// regex's `^` and `$`.
 ///
-/// If the keyword has multiple parts, the tested path must have at least one instance of contiguous
+/// If the keyword has multiple parts, e.g. "first/second", the tested path must have at least one instance of contiguous
 /// parts which match the corresponding keyword parts. In that context, the keyword parts have the
 /// following behavior:
 /// - First keyword part: `^part$` if `match_from_first_part_start`, `part$` otherwise
 /// - Last keyword part: `^part$` if `match_to_last_part_end`, `^part` otherwise
 /// - Other keyword parts: `^part$`
-
 #[derive(Debug, Clone, PartialEq)]
 struct Keyword {
     /// The parts of a keyword.
@@ -279,6 +277,8 @@ impl Keyword {
     ///
     /// The string must not contain any whitespace!
     fn new(mut keyword: &str) -> Self {
+        // Invariant: keywords are not empty
+        debug_assert!(!keyword.is_empty());
         debug_assert!(!keyword.contains(char::is_whitespace));
 
         let match_from_first_part_start = if let Some(k) = keyword.strip_prefix('/') {
@@ -307,16 +307,25 @@ impl Keyword {
     /// Match the keyword against the provided path.
     ///
     /// An empty [`PathRanges`] means that the keyword didn't match the path.
-    fn match_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> PathRanges {
+    ///
+    /// Implementation notes:
+    /// - This function is akin to a "sliding window" of the keyword parts against the path parts,
+    ///   trying to find some "alignment" yielding a match.
+    /// - We must be thorough as we want to find _all_ match highlights (i.e., we don't early out as
+    ///   soon as we find a match).
+    fn match_path<'a>(&self, lowercase_path: impl ExactSizeIterator<Item = &'a str>) -> PathRanges {
         let mut state_machines = vec![];
 
-        for (part_index, part) in path.into_iter().enumerate() {
-            let lowercase_part = part.to_lowercase();
+        let path_length = lowercase_path.len();
 
-            state_machines.push(MatchStateMachine::new(self));
+        for (path_part_index, path_part) in lowercase_path.into_iter().enumerate() {
+            // Only start a new state machine if it has a chance to be matched entirely.
+            if self.parts.len() <= (path_length - path_part_index) {
+                state_machines.push(MatchStateMachine::new(self));
+            }
 
             for state_machine in &mut state_machines {
-                state_machine.step(&lowercase_part, part_index);
+                state_machine.process_next_path_part(path_part, path_part_index);
             }
         }
 
@@ -342,7 +351,7 @@ impl Keyword {
 /// merged when read, which only happens with [`Self::remove`].
 #[derive(Debug, Default)]
 pub struct PathRanges {
-    ranges: IntMap<usize, Vec<Range<usize>>>,
+    ranges: ahash::HashMap<usize, Vec<Range<usize>>>,
 }
 
 impl PathRanges {
@@ -435,7 +444,7 @@ impl<'a> MatchStateMachine<'a> {
         matches!(self.state, MatchState::Match)
     }
 
-    fn step(&mut self, part: &str, part_index: usize) {
+    fn process_next_path_part(&mut self, part: &str, part_index: usize) {
         if matches!(self.state, MatchState::Match | MatchState::NoMatch) {
             return;
         }
@@ -694,17 +703,17 @@ mod test {
 
     #[test]
     fn test_keyword_match_path() {
-        fn match_and_normalize(query: &str, path: &[&str]) -> Vec<Vec<Range<usize>>> {
-            let keyword = Keyword::new(query);
-            let path = path.to_vec();
-            keyword.match_path(path.clone()).into_vec(path.len())
+        fn match_and_normalize(query: &str, lowercase_path: &[&str]) -> Vec<Vec<Range<usize>>> {
+            Keyword::new(query)
+                .match_path(lowercase_path.iter().copied())
+                .into_vec(lowercase_path.len())
         }
 
         assert_eq!(match_and_normalize("a", &["a"]), vec![vec![0..1]]);
         assert_eq!(match_and_normalize("a", &["aaa"]), vec![vec![0..3]]);
 
         assert_eq!(
-            match_and_normalize("A/", &["aaa", "aaa"]),
+            match_and_normalize("a/", &["aaa", "aaa"]),
             vec![vec![2..3], vec![2..3]]
         );
 
@@ -737,7 +746,7 @@ mod test {
         );
 
         assert!(
-            match_and_normalize("a/B/c/", &["aaa", "b", "cccc"])
+            match_and_normalize("a/b/c/", &["aaa", "b", "cccc"])
                 .into_iter()
                 .flatten()
                 .count()
@@ -745,12 +754,12 @@ mod test {
         );
 
         assert_eq!(
-            match_and_normalize("ab/cd", &["xxxAb", "cDaB", "Cdxxx"]),
+            match_and_normalize("ab/cd", &["xxxab", "cdab", "cdxxx"]),
             vec![vec![3..5], vec![0..4], vec![0..2]]
         );
 
         assert_eq!(
-            match_and_normalize("ab/ab", &["xxxAb", "aB", "aBxxx"]),
+            match_and_normalize("ab/ab", &["xxxab", "ab", "abxxx"]),
             vec![vec![3..5], vec![0..2], vec![0..2]]
         );
     }
@@ -758,10 +767,8 @@ mod test {
     #[test]
     fn test_match_path() {
         fn match_and_normalize(query: &str, path: &[&str]) -> Option<Vec<Vec<Range<usize>>>> {
-            let matcher = FilterMatcher::new(Some(query));
-            let path = path.to_vec();
-            matcher
-                .match_path(path.clone())
+            FilterMatcher::new(Some(query))
+                .match_path(path.iter().copied())
                 .map(|ranges| ranges.into_vec(path.len()))
         }
 

@@ -406,6 +406,7 @@ impl DataResultData {
             NotLeaf(&'a DataResultNode),
         }
 
+        /// Temporary structure to hold local information.
         struct NodeInfo<'a> {
             leaf_or_not: LeafOrNot<'a>,
             kind: DataResultKind,
@@ -523,27 +524,30 @@ impl DataResultData {
                 }
             };
 
-            let highlight_sections = hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
+            is_this_a_match.then(|| {
+                let highlight_sections =
+                    hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
 
-            // never highlight the placeholder
-            let highlight_sections =
-                if node_info.kind == DataResultKind::OriginProjectionPlaceholder {
-                    SmallVec::new()
-                } else {
-                    highlight_sections
-                        .map(Iterator::collect)
-                        .unwrap_or_default()
-                };
+                // never highlight the placeholder
+                let highlight_sections =
+                    if node_info.kind == DataResultKind::OriginProjectionPlaceholder {
+                        SmallVec::new()
+                    } else {
+                        highlight_sections
+                            .map(Iterator::collect)
+                            .unwrap_or_default()
+                    };
 
-            is_this_a_match.then(|| Self {
-                kind: node_info.kind,
-                entity_path,
-                visible,
-                view_id: view_blueprint.id,
-                label,
-                highlight_sections,
-                default_open: node_info.default_open,
-                children,
+                Self {
+                    kind: node_info.kind,
+                    entity_path,
+                    visible,
+                    view_id: view_blueprint.id,
+                    label,
+                    highlight_sections,
+                    default_open: node_info.default_open,
+                    children,
+                }
             })
         });
 

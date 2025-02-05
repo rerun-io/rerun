@@ -128,6 +128,7 @@ impl EntityData {
         // Gather some info about the current node…
         //
 
+        /// Temporary structure to hold local information.
         struct NodeInfo {
             is_leaf: bool,
             is_this_a_match: bool,
