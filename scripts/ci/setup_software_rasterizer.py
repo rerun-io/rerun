@@ -189,7 +189,7 @@ def vulkan_info(extra_env_vars: dict[str, str]) -> None:
     if os.name == "nt":
         vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
     else:
-        vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
+        vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfo"
     print(run([vulkaninfo_path], env=env).stdout)
 
 
