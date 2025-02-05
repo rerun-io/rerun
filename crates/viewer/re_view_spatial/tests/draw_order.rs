@@ -139,7 +139,9 @@ pub fn test_draw_order() {
         &mut test_context,
         view_id,
         "draw_order",
-        egui::vec2(300.0, 150.0) * 2.0,
+        // NOTE: A lot of pixels won't pass the diff because of anti-aliasing.
+        // By bumping the resolution, we lessen the weight of edges.
+        egui::vec2(300.0, 150.0) * 4.0,
     );
 }
 
@@ -223,7 +225,7 @@ fn run_view_ui_and_save_snapshot(
 
     harness.run();
 
-    let broken_percent_threshold = 0.01;
+    let broken_percent_threshold = 0.003;
     let num_pixels = (size.x * size.y).ceil() as f64;
 
     use re_viewer_context::external::egui_kittest;
@@ -240,7 +242,7 @@ fn run_view_ui_and_save_snapshot(
                 re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
                 assert!(
                     broken_percent <= broken_percent_threshold,
-                    "{name} failed because {broken_percent} > {broken_percent_threshold}"
+                    "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
                 )
             }
 
