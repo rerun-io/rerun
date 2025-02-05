@@ -117,7 +117,7 @@ jobs:
             name: "windows"
 
     # Note: we can't use `matrix.os` here because its evaluated before the matrix stuff.
-    if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
+    # if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
