@@ -24,8 +24,8 @@ impl crate::DataLoader for DirectoryLoader {
             return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 
-        if crate::le_robot::is_le_robot_dataset(&dirpath) {
-            // le_robot dataset is loaded by LeRobotDatasetLoader
+        if crate::lerobot::is_le_robot_dataset(&dirpath) {
+            // LeRobot dataset is loaded by LeRobotDatasetLoader
             return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 

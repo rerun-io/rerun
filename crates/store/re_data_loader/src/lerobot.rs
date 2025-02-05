@@ -206,36 +206,6 @@ impl LeRobotDatasetInfo {
             .into())
     }
 
-    pub fn image_path(
-        &self,
-        observation_key: &str,
-        episode_index: usize,
-    ) -> Result<PathBuf, LeRobotError> {
-        let chunk = self.chunk_index(episode_index)?;
-        let feature = self
-            .feature(observation_key)
-            .ok_or(LeRobotError::InvalidFeatureKey(observation_key.to_owned()))?;
-
-        if feature.dtype != DType::Image {
-            return Err(LeRobotError::InvalidFeatureDtype {
-                key: observation_key.to_owned(),
-                expected: DType::Video,
-                actual: feature.dtype,
-            });
-        }
-
-        // TODO(gijsd): Need a better way to handle this, as this only supports the default.
-        self.image_path
-            .as_ref()
-            .ok_or_else(|| LeRobotError::MissingDatasetInfo("video_path".to_owned()))
-            .map(|path| {
-                path.replace("{episode_chunk:03d}", &format!("{chunk:03}"))
-                    .replace("{episode_index:06d}", &format!("{episode_index:06}"))
-                    .replace("{video_key}", observation_key)
-                    .into()
-            })
-    }
-
     /// Get the path to a video observation for a specific episode index.
     pub fn video_path(
         &self,

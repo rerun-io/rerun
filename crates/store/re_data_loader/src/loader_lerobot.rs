@@ -12,7 +12,7 @@ use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::le_robot::{DType, LeRobotDataset};
+use crate::lerobot::{is_le_robot_dataset, DType, LeRobotDataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 pub struct LeRobotDatasetLoader;
@@ -28,7 +28,7 @@ impl DataLoader for LeRobotDatasetLoader {
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        if !crate::le_robot::is_le_robot_dataset(&filepath) {
+        if !is_le_robot_dataset(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath));
         }
 

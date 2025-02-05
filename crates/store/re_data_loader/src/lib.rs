@@ -15,7 +15,8 @@ mod loader_directory;
 mod loader_rrd;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub mod le_robot;
+mod lerobot;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_lerobot;
 
