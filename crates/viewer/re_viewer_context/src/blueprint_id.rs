@@ -117,7 +117,6 @@ impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
 }
 
 impl<T: BlueprintIdRegistry> From<re_types::datatypes::Uuid> for BlueprintId<T> {
-    // hello
     #[inline]
     fn from(id: re_types::datatypes::Uuid) -> Self {
         Self {
