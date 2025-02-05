@@ -27,8 +27,8 @@ pub fn is_le_robot_dataset(path: impl AsRef<Path>) -> bool {
 /// Errors that might happen when loading data through a [`super::LeRobotDataset`].
 #[derive(thiserror::Error, Debug)]
 pub enum LeRobotError {
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
+    #[error("IO error occurred on path: {1}")]
+    IO(#[source] std::io::Error, std::path::PathBuf),
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -95,7 +95,8 @@ impl LeRobotDataset {
         let episode_data_path = self.metadata.info.episode_data_path(episode_index)?;
         let episode_parquet_file = self.path.join(episode_data_path);
 
-        let file = File::open(episode_parquet_file)?;
+        let file = File::open(&episode_parquet_file)
+            .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?;
         let mut reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
 
         reader
@@ -122,9 +123,7 @@ impl LeRobotDataset {
 
         let contents = {
             re_tracing::profile_scope!("fs::read");
-            std::fs::read(&videopath)?
-            // TODO(gijsd): Look into using anyhow again?
-            // .with_context(|| format!("Failed to read file {videopath:?}"))?
+            std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath))?
         };
 
         Ok(Cow::Owned(contents))
@@ -173,7 +172,8 @@ pub struct LeRobotDatasetInfo {
 
 impl LeRobotDatasetInfo {
     pub fn load_from_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
-        let info_file = File::open(filepath)?;
+        let info_file = File::open(filepath.as_ref())
+            .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?;
         let reader = BufReader::new(info_file);
 
         serde_json::from_reader(reader).map_err(|err| err.into())
@@ -293,7 +293,8 @@ fn load_jsonl_file<D>(filepath: impl AsRef<Path>) -> Result<Vec<D>, LeRobotError
 where
     D: DeserializeOwned,
 {
-    let entries = std::fs::read_to_string(filepath)?
+    let entries = std::fs::read_to_string(filepath.as_ref())
+        .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?
         .lines()
         .map(|line| serde_json::from_str(line))
         .collect::<Result<Vec<D>, _>>()?;
