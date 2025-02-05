@@ -5775,7 +5775,6 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
- "serde",
  "similar-asserts",
  "tap",
  "thiserror 1.0.65",
