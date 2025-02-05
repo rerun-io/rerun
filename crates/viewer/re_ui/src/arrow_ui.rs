@@ -18,7 +18,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
         if array.is_empty() {
-            ui.monospace("[]");
+            ui_layout.data_label(ui, "[]");
             return;
         }
 
@@ -62,7 +62,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             .with_display_error(true);
         if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
             if instance_count == 1 {
-                ui.monospace(formatter.value(0).to_string());
+                ui_layout.data_label(ui, formatter.value(0).to_string());
             } else if instance_count < 10
                 && (array.data_type().is_primitive()
                     || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
@@ -74,7 +74,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                         .map(|index| formatter.value(index).to_string())
                         .join(", ")
                 );
-                ui_layout.label(ui, list_string);
+                ui_layout.data_label(ui, list_string);
             } else {
                 let instance_count_str = re_format::format_uint(instance_count);
 
