@@ -51,5 +51,5 @@ root_container:
                       id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                     label: to
                     highlight_sections: []
-                    default_open: true
+                    default_open: false
                     children: []
