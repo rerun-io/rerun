@@ -214,12 +214,6 @@ jobs:
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
         run: pixi run -e wheel-test-min cpp-build-snippets
 
-      - name: Download test assets
-        if: ${{ !inputs.FAST }}
-        # Separated out of compare_snippet_output.py run so we control the pixi environment.
-        # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
-
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
