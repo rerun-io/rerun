@@ -1,6 +1,7 @@
 use arrow::{
     array::Array,
     datatypes::DataType,
+    error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
 use itertools::Itertools as _;
@@ -55,29 +56,21 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             }
         }
 
-        let instance_count = array.len();
-
-        let options = FormatOptions::default()
-            .with_null("null")
-            .with_display_error(true);
-        let Ok(formatter) = ArrayFormatter::try_new(array, &options) else {
+        let Ok(array_formatter) = make_formatter(array) else {
             // This is unreachable because we use `.with_display_error(true)` above.
             return;
         };
 
+        let instance_count = array.len();
+
         if instance_count == 1 {
-            ui_layout.data_label(ui, formatter.value(0).to_string());
+            ui_layout.data_label(ui, array_formatter(0));
         } else if instance_count < 10
             && (array.data_type().is_primitive()
                 || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
         {
             // A short list of floats, strings, etc. Show it to the user.
-            let list_string = format!(
-                "[{}]",
-                (0..instance_count)
-                    .map(|index| formatter.value(index).to_string())
-                    .join(", ")
-            );
+            let list_string = format!("[{}]", (0..instance_count).map(array_formatter).join(", "));
             ui_layout.data_label(ui, list_string);
         } else {
             let instance_count_str = re_format::format_uint(instance_count);
@@ -89,21 +82,17 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             } else {
                 format!("{instance_count_str} items")
             };
-            let response = ui_layout.label(ui, string);
-
-            if instance_count < 100 {
-                response.on_hover_ui(|ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                    ui.monospace(format!(
-                        "[{}]",
-                        (0..instance_count)
-                            .map(|index| formatter.value(index).to_string())
-                            .join(", ")
-                    ));
-                });
-            }
+            ui_layout.label(ui, string);
         }
     });
+}
+
+fn make_formatter(array: &dyn Array) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
+    let options = FormatOptions::default()
+        .with_null("null")
+        .with_display_error(true);
+    let formatter = ArrayFormatter::try_new(array, &options)?;
+    Ok(Box::new(move |index| formatter.value(index).to_string()))
 }
 
 // TODO(emilk): there is some overlap here with `re_format_arrow`.
