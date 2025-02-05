@@ -237,6 +237,7 @@ fn run_view_ui_and_save_snapshot(
                 diff_path,
             } => {
                 let broken_percent = num_broken_pixels as f64 / num_pixels;
+                re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
                 assert!(
                     broken_percent <= broken_percent_threshold,
                     "{name} failed because {broken_percent} > {broken_percent_threshold}"
