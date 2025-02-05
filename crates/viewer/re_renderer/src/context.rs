@@ -503,22 +503,23 @@ impl ActiveFrameContext {
 fn log_adapter_info(info: &wgpu::AdapterInfo) {
     re_tracing::profile_function!();
 
+    // See https://github.com/rerun-io/rerun/issues/3089
     let is_software_rasterizer_with_known_crashes = {
-        // See https://github.com/rerun-io/rerun/issues/3089
-        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
-            // Some versions of lavapipe are problematic (we observed crashes in the past),
-            // but we haven't isolated for what versions this happens.
-            // (we are happily using lavapipe without any issues on CI)
-            //"lavapipe", // Vulkan software rasterizer
-            "llvmpipe", // OpenGL software rasterizer
-        ];
+        // `llvmpipe` is Mesa's software rasterizer.
+        // It may describe EITHER a Vulkan or OpenGL software rasterizer.
+        // `lavapipe` is the name given to the Vulkan software rasterizer,
+        // but this name doesn't seem to show up in the info string.
+        let is_mesa_software_rasterizer = info.driver == "llvmpipe";
 
-        // I'm not sure where the incriminating string will appear, so check all fields at once:
-        let info_string = format!("{info:?}").to_lowercase();
-
-        KNOWN_SOFTWARE_RASTERIZERS
-            .iter()
-            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+        // TODO(andreas):
+        // Some versions of lavapipe are problematic (we observed crashes in the past),
+        // but we haven't isolated for what versions this happens.
+        // (we are happily using lavapipe without any issues on CI)
+        // However, there's reason to be more skeptical of OpenGL software rasterizers,
+        // so we mark those as problematic regardless.
+        // A user might as well just use Vulkan software rasterizer if they're in a situation where they
+        // can't use a GPU for which we do have test coverage.
+        info.backend == wgpu::Backend::Gl && is_mesa_software_rasterizer
     };
 
     let human_readable_summary = adapter_info_summary(info);
