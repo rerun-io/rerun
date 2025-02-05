@@ -139,7 +139,7 @@ pub fn test_draw_order() {
         &mut test_context,
         view_id,
         "draw_order",
-        // NOTE: A lot of pixels won't pass the diff because of anti-aliasing.
+        // TODO(#8924): A lot of pixels won't pass the diff because of anti-aliasing.
         // By bumping the resolution, we lessen the weight of edges.
         egui::vec2(300.0, 150.0) * 4.0,
     );
@@ -225,6 +225,8 @@ fn run_view_ui_and_save_snapshot(
 
     harness.run();
 
+    // TODO: put in ext trait
+    // TODO(emilk/egui#5683)
     let broken_percent_threshold = 0.003;
     let num_pixels = (size.x * size.y).ceil() as f64;
 
@@ -243,7 +245,7 @@ fn run_view_ui_and_save_snapshot(
                 assert!(
                     broken_percent <= broken_percent_threshold,
                     "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
-                )
+                );
             }
 
             _ => panic!("{name} failed: {err}"),
