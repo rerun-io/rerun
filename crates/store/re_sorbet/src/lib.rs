@@ -7,6 +7,7 @@ mod data_column_schema;
 mod index_column_schema;
 mod ipc;
 mod metadata;
+mod row_id_column_schema;
 
 pub use self::{
     column_schema::{ColumnDescriptor, ColumnError},
@@ -17,4 +18,5 @@ pub use self::{
         ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
         MissingMetadataKey,
     },
+    row_id_column_schema::{RowIdColumnDescriptor, WrongDatatypeError},
 };
