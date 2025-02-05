@@ -7,7 +7,7 @@ use egui::Vec2;
 use re_chunk_store::{Chunk, RowId};
 use re_entity_db::EntityPath;
 use re_types::{components, Component as _};
-use re_view_graph::{GraphView, GraphViewState};
+use re_view_graph::GraphView;
 use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -134,8 +134,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         view_id
     });
 
-    let mut view_state = GraphViewState::default();
-
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
@@ -153,21 +151,18 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
                 )
                 .expect("we just created that view");
 
+                let mut view_states = test_context.view_states.lock();
+                let view_state = view_states.get_mut_or_create(view_id, view_class);
+
                 let (view_query, system_execution_output) = re_viewport::execute_systems_for_view(
                     ctx,
                     &view_blueprint,
                     ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
-                    &view_state,
+                    view_state,
                 );
 
                 view_class
-                    .ui(
-                        ctx,
-                        ui,
-                        &mut view_state,
-                        &view_query,
-                        system_execution_output,
-                    )
+                    .ui(ctx, ui, view_state, &view_query, system_execution_output)
                     .expect("failed to run graph view ui");
             });
 
