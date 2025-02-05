@@ -53,9 +53,7 @@ jobs:
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
-    #runs-on: ubuntu-22.04-large
-    # TODO(#8929): Temp workaround for vulkan.lunarg.com being down.
-    runs-on: "macos-latest"
+    runs-on: ubuntu-22.04-large
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,8 +63,7 @@ jobs:
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
-          # TODO(#8929): Temp workaround for vulkan.lunarg.com being down.
-          cache_key: "build-macos"
+          cache_key: "build-linux"
           save_cache: true
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -77,18 +74,16 @@ jobs:
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
-      # TODO(#8929): Temp workaround for vulkan.lunarg.com being down.
-      # - name: Install Vulkan SDK
-      #   uses: jakoch/install-vulkan-sdk-action@v1.0.5
-      #   with:
-      #     vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
-      #     install_runtime: true
-      #     cache: true
-      #     stripdown: true
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.0.5
+        with:
+          vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
+          install_runtime: true
+          cache: true
+          stripdown: true
 
-      # TODO(#8929): Temp workaround for vulkan.lunarg.com being down.
-      # - name: Setup software rasterizer
-      #   run: pixi run python ./scripts/ci/setup_software_rasterizer.py
+      - name: Setup software rasterizer
+        run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
       - name: Rust checks (PR subset)
         if: ${{ inputs.CHANNEL == 'pr' }}
@@ -116,9 +111,8 @@ jobs:
     strategy:
       matrix:
         include:
-          # TODO(#8929): Temp workaround for vulkan.lunarg.com being down. (MacOS is what we did on tests above already now)
-          # - os: "macos-latest"
-          #   name: "macos"
+          - os: "macos-latest"
+            name: "macos"
           - os: "windows-latest-8-cores"
             name: "windows"
 
