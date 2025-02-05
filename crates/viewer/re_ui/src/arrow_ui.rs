@@ -60,47 +60,48 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         let options = FormatOptions::default()
             .with_null("null")
             .with_display_error(true);
-        if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
-            if instance_count == 1 {
-                ui_layout.data_label(ui, formatter.value(0).to_string());
-            } else if instance_count < 10
-                && (array.data_type().is_primitive()
-                    || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
-            {
-                // A short list of floats, strings, etc. Show it to the user.
-                let list_string = format!(
-                    "[{}]",
-                    (0..instance_count)
-                        .map(|index| formatter.value(index).to_string())
-                        .join(", ")
-                );
-                ui_layout.data_label(ui, list_string);
-            } else {
-                let instance_count_str = re_format::format_uint(instance_count);
-
-                let string = if array.data_type() == &DataType::UInt8 {
-                    re_format::format_bytes(instance_count as _)
-                } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
-                    format!("{instance_count_str} items of {dtype}")
-                } else {
-                    format!("{instance_count_str} items")
-                };
-                let response = ui_layout.label(ui, string);
-
-                if instance_count < 100 {
-                    response.on_hover_ui(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.monospace(format!(
-                            "[{}]",
-                            (0..instance_count)
-                                .map(|index| formatter.value(index).to_string())
-                                .join(", ")
-                        ));
-                    });
-                }
-            }
-        } else {
+        let Ok(formatter) = ArrayFormatter::try_new(array, &options) else {
             // This is unreachable because we use `.with_display_error(true)` above.
+            return;
+        };
+
+        if instance_count == 1 {
+            ui_layout.data_label(ui, formatter.value(0).to_string());
+        } else if instance_count < 10
+            && (array.data_type().is_primitive()
+                || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
+        {
+            // A short list of floats, strings, etc. Show it to the user.
+            let list_string = format!(
+                "[{}]",
+                (0..instance_count)
+                    .map(|index| formatter.value(index).to_string())
+                    .join(", ")
+            );
+            ui_layout.data_label(ui, list_string);
+        } else {
+            let instance_count_str = re_format::format_uint(instance_count);
+
+            let string = if array.data_type() == &DataType::UInt8 {
+                re_format::format_bytes(instance_count as _)
+            } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
+                format!("{instance_count_str} items of {dtype}")
+            } else {
+                format!("{instance_count_str} items")
+            };
+            let response = ui_layout.label(ui, string);
+
+            if instance_count < 100 {
+                response.on_hover_ui(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                    ui.monospace(format!(
+                        "[{}]",
+                        (0..instance_count)
+                            .map(|index| formatter.value(index).to_string())
+                            .join(", ")
+                    ));
+                });
+            }
         }
     });
 }
