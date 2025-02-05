@@ -8,6 +8,11 @@
     "files.autoGuessEncoding": true,
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
+    "protoc": {
+        "options": [
+            "--proto_path=crates/store/re_protos/proto",
+        ]
+    },
     // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
     "rust-analyzer.check.workspace": false,
     "rust-analyzer.cargo.allTargets": true,
@@ -42,12 +47,10 @@
     },
     "rust-analyzer.diagnostics.enable": false, // False positives
     "rust-analyzer.showUnlinkedFileNotification": false,
-
     // Uncomment the following options and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
     // Don't forget to put it in a comment again before committing.
     // "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
     // "rust-analyzer.cargo.cfgs": ["web","webgl","webgpu"],
-
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
     "C_Cpp.autoAddFileAssociations": false,
     "cmake.buildDirectory": "${workspaceRoot}/build/debug",
@@ -63,6 +66,9 @@
     ],
     "prettier.requireConfig": true,
     "prettier.configPath": ".prettierrc.toml",
+    "[proto3]": {
+        "editor.defaultFormatter": "zxh404.vscode-proto3"
+    },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
     },
