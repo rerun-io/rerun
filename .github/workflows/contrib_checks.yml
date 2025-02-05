@@ -111,7 +111,7 @@ jobs:
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: false
+          cache: true
           stripdown: true
 
       - name: Setup software rasterizer
