@@ -1,5 +1,6 @@
 use arrow::{
     array::Array,
+    datatypes::DataType,
     util::display::{ArrayFormatter, FormatOptions},
 };
 use itertools::Itertools as _;
@@ -63,7 +64,16 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             if instance_count == 1 {
                 ui.monospace(formatter.value(0).to_string());
             } else {
-                let response = ui_layout.label(ui, format!("{instance_count} items"));
+                let instance_count_str = re_format::format_uint(instance_count);
+
+                let string = if array.data_type() == &DataType::UInt8 {
+                    re_format::format_bytes(instance_count as _)
+                } else if let Some(dtype) = datatype_string(array.data_type()) {
+                    format!("{instance_count_str} items of {dtype}")
+                } else {
+                    format!("{instance_count_str} items")
+                };
+                let response = ui_layout.label(ui, string);
 
                 if instance_count < 100 {
                     response.on_hover_ui(|ui| {
@@ -81,4 +91,26 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             // This is unreachable because we use `.with_display_error(true)` above.
         }
     });
+}
+
+// TODO(emilk): there is some overlap here with `re_format_arrow`.
+fn datatype_string(datatype: &DataType) -> Option<&'static str> {
+    match datatype {
+        DataType::Null => Some("null"),
+        DataType::Boolean => Some("bool"),
+        DataType::Int8 => Some("int8"),
+        DataType::Int16 => Some("int16"),
+        DataType::Int32 => Some("int32"),
+        DataType::Int64 => Some("int64"),
+        DataType::UInt8 => Some("uint8"),
+        DataType::UInt16 => Some("uint16"),
+        DataType::UInt32 => Some("uint32"),
+        DataType::UInt64 => Some("uint64"),
+        DataType::Float16 => Some("float16"),
+        DataType::Float32 => Some("float32"),
+        DataType::Float64 => Some("float64"),
+        DataType::Utf8 | DataType::LargeUtf8 => Some("utf8"),
+        DataType::Binary => Some("binary"),
+        _ => None,
+    }
 }
