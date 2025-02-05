@@ -133,7 +133,7 @@ impl EntityData {
 
             //TODO: rename this
             let hierarchy_highlights =
-                filter_matcher.matches_hierarchy_v2(hierarchy.iter().map(String::as_str));
+                filter_matcher.matches_hierarchy(hierarchy.iter().map(String::as_str));
 
             if let Some(hierarchy_highlights) = hierarchy_highlights {
                 hierarchy_ranges.merge(hierarchy_highlights);
