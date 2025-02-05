@@ -96,6 +96,11 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
         Some("path"),
         Some("ath t"),
         Some("ath left"),
+        Some("to/the"),
+        Some("/to/the/"),
+        Some("to/the oid"),
+        Some("/path/to /rig"),
+        Some("/path/to/th"),
     ]
     .into_iter()
 }
