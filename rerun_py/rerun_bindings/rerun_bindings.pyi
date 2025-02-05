@@ -11,6 +11,7 @@ from .types import (
     IndexValuesLike,
     TableLike,
     VectorDistanceMetricLike,
+    VectorLike,
     ViewContentsLike,
 )
 
@@ -757,7 +758,7 @@ class StorageNodeClient:
     def search_vector_index(
         self,
         entry: str,
-        query: TableLike,
+        query: VectorLike,
         column: ComponentColumnSelector,
         top_k: int,
     ) -> pa.RecordBatchReader:
@@ -768,7 +769,7 @@ class StorageNodeClient:
         ----------
         entry : str
             The name of the catalog entry to search.
-        query : pa.RecordBatch
+        query : VectorLike
             The input to search for.
         column : ComponentColumnSelector
             The component column to search over.
@@ -786,7 +787,7 @@ class StorageNodeClient:
     def search_fts_index(
         self,
         entry: str,
-        query: TableLike,
+        query: str,
         column: ComponentColumnSelector,
         limit: Optional[int] = None,
     ) -> pa.RecordBatchReader:
@@ -797,7 +798,7 @@ class StorageNodeClient:
         ----------
         entry : str
             The name of the catalog entry to search.
-        query : pa.RecordBatch
+        query : str
             The input to search for.
         column : ComponentColumnSelector
             The component column to search over.

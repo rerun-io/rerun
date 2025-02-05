@@ -1,10 +1,10 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use arrow::{
-    array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
-    datatypes::Schema as ArrowSchema,
+    array::{Float32Array, RecordBatch, RecordBatchIterator, RecordBatchReader, StringArray},
+    datatypes::{Field, Schema as ArrowSchema},
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
@@ -517,7 +517,7 @@ impl PyStorageNodeClient {
     /// ----------
     /// entry : str
     ///     The name of the catalog entry to search.
-    /// query : pa.RecordBatch
+    /// query : VectorLike
     ///     The input to search for.
     /// column : ComponentColumnSelector
     ///     The component column to search over.
@@ -537,13 +537,13 @@ impl PyStorageNodeClient {
     fn search_vector_index(
         &mut self,
         entry: String,
-        query: MetadataLike,
+        query: VectorLike<'_>,
         column: PyComponentColumnSelector,
         top_k: u32,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
             let column_selector: ComponentColumnSelector = column.into();
-            let query = query.into_record_batch()?;
+            let query = query.to_record_batch()?;
 
             let transport_chunks = self
                 .client
@@ -608,7 +608,7 @@ impl PyStorageNodeClient {
     /// ----------
     /// entry : str
     ///     The name of the catalog entry to search.
-    /// query : pa.RecordBatch
+    /// query : str
     ///     The input to search for.
     /// column : ComponentColumnSelector
     ///     The component column to search over.
@@ -629,13 +629,24 @@ impl PyStorageNodeClient {
     fn search_fts_index(
         &mut self,
         entry: String,
-        query: MetadataLike,
+        query: String,
         column: PyComponentColumnSelector,
         limit: Option<u32>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
             let column_selector: ComponentColumnSelector = column.into();
-            let query = query.into_record_batch()?;
+
+            let schema = arrow::datatypes::Schema::new(vec![Field::new(
+                "items",
+                arrow::datatypes::DataType::Utf8,
+                false,
+            )]);
+
+            let query = RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(StringArray::from_iter_values([query]))],
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let transport_chunks = self
                 .client
@@ -922,6 +933,47 @@ impl MetadataLike {
 
         arrow::compute::concat_batches(&schema, &batches)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+/// A type alias for a vector (vector search input data).
+#[derive(FromPyObject)]
+enum VectorLike<'py> {
+    NumPy(numpy::PyArrayLike1<'py, f32>),
+    Vector(Vec<f32>),
+}
+
+impl VectorLike<'_> {
+    fn to_record_batch(&self) -> PyResult<RecordBatch> {
+        let schema = arrow::datatypes::Schema::new(vec![Field::new(
+            "items",
+            arrow::datatypes::DataType::Float32,
+            false,
+        )]);
+
+        match self {
+            VectorLike::NumPy(array) => {
+                let floats: Vec<f32> = array
+                    .as_array()
+                    .as_slice()
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err(format!("Failed to convert numpy array to slice"))
+                    })?
+                    .to_vec();
+
+                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
+                    .map_err(|err| {
+                        PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+                    })
+            }
+            VectorLike::Vector(floats) => RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(Float32Array::from(floats.clone()))],
+            )
+            .map_err(|err| {
+                PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+            }),
+        }
     }
 }
 
