@@ -36,6 +36,8 @@ impl Snippets {
         let snippet_root = snippets_dir.join("all");
         let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
+        let progress = MultiProgress::new();
+
         println!("Running {} snippets…", snippets.len());
         let results: Vec<anyhow::Result<PathBuf>> = snippets
             .into_par_iter()
