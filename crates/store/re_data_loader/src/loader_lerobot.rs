@@ -83,8 +83,10 @@ impl DataLoader for LeRobotDatasetLoader {
                         chunks.extend(log_episode_images(feature_key, &timeline, &data)?);
                     }
                     DType::Int64 | DType::Bool => {
-                        // TODO(gijsd): log images
-                        re_log::warn_once!("Logging for dtype {:?} not implemented", feature.dtype);
+                        re_log::warn_once!(
+                            "Loading LeRobot dtype {:?} into Rerun is not yet implemented",
+                            feature.dtype
+                        );
                     }
                     DType::Float32 | DType::Float64 => {
                         chunks.extend(log_scalar(feature_key, &timelines, &data)?);

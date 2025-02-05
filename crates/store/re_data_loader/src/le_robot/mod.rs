@@ -119,8 +119,6 @@ impl LeRobotDataset {
 
         let videopath = self.path.join(video_file);
 
-        re_tracing::profile_function!(videopath.display().to_string());
-
         let contents = {
             re_tracing::profile_scope!("fs::read");
             std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath))?
@@ -183,7 +181,7 @@ impl LeRobotDatasetInfo {
         self.features.get(feature_key)
     }
 
-    pub fn get_chunk_index(&self, episode_index: usize) -> Result<usize, LeRobotError> {
+    pub fn chunk_index(&self, episode_index: usize) -> Result<usize, LeRobotError> {
         if episode_index > self.total_episodes {
             return Err(LeRobotError::InvalidEpisodeIndex(episode_index));
         }
@@ -198,7 +196,7 @@ impl LeRobotDatasetInfo {
     }
 
     pub fn episode_data_path(&self, episode_index: usize) -> Result<PathBuf, LeRobotError> {
-        let chunk = self.get_chunk_index(episode_index)?;
+        let chunk = self.chunk_index(episode_index)?;
 
         // TODO(gijsd): Need a better way to handle this, as this only supports the default.
         Ok(self
@@ -213,7 +211,7 @@ impl LeRobotDatasetInfo {
         observation_key: &str,
         episode_index: usize,
     ) -> Result<PathBuf, LeRobotError> {
-        let chunk = self.get_chunk_index(episode_index)?;
+        let chunk = self.chunk_index(episode_index)?;
         let feature = self
             .feature(observation_key)
             .ok_or(LeRobotError::InvalidFeatureKey(observation_key.to_owned()))?;
@@ -244,7 +242,7 @@ impl LeRobotDatasetInfo {
         observation_key: &str,
         episode_index: usize,
     ) -> Result<PathBuf, LeRobotError> {
-        let chunk = self.get_chunk_index(episode_index)?;
+        let chunk = self.chunk_index(episode_index)?;
         let feature = self
             .feature(observation_key)
             .ok_or(LeRobotError::InvalidFeatureKey(observation_key.to_owned()))?;
