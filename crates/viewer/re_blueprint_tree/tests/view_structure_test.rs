@@ -89,7 +89,15 @@ fn base_test_cases() -> impl Iterator<Item = TestCase> {
 }
 
 fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
-    [None, Some("t"), Some("void"), Some("path")].into_iter()
+    [
+        None,
+        Some("t"),
+        Some("void"),
+        Some("path"),
+        Some("ath t"),
+        Some("ath left"),
+    ]
+    .into_iter()
 }
 
 fn test_context(test_case: &TestCase) -> TestContext {
@@ -202,7 +210,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     let options = SnapshotOptions::default().output_path(format!(
         "tests/snapshots/view_structure_test/{}",
         filter_query
-            .map(|query| format!("query-{query}"))
+            .map(|query| format!("query-{}", query.replace(' ', "_")))
             .unwrap_or("no-query".to_owned())
     ));
     harness.try_snapshot_options(test_case.name, &options)
@@ -236,16 +244,19 @@ fn test_all_insta_test_cases() {
                     )
                 });
 
-            let snapshot_name = format!(
-                "{}-{}",
+            let mut settings = insta::Settings::clone_current();
+            settings.set_prepend_module_to_snapshot(false);
+            settings.set_snapshot_path(format!(
+                "snapshots/view_structure_test/{}",
                 filter_query
-                    .map(|query| format!("query-{query}"))
-                    .unwrap_or("no-query".to_owned()),
-                test_case.name
-            );
+                    .map(|query| format!("query-{}", query.replace(' ', "_")))
+                    .unwrap_or("no-query".to_owned())
+            ));
 
-            insta::assert_yaml_snapshot!(snapshot_name, blueprint_tree_data, {
-                ".root_container.id.id" => "<container-id>"
+            settings.bind(|| {
+                insta::assert_yaml_snapshot!(test_case.name, blueprint_tree_data, {
+                    ".root_container.id.id" => "<container-id>"
+                });
             });
         }
     }

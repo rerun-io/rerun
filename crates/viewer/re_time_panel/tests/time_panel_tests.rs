@@ -1,3 +1,5 @@
+#![cfg(feature = "testing")]
+
 use egui::Vec2;
 
 use re_chunk_store::{LatestAtQuery, RowId};

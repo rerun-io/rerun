@@ -30,7 +30,8 @@ service StorageNode {
     rpc RegisterRecording(RegisterRecordingRequest) returns (DataframePart) {}
 
     rpc UnregisterRecording(UnregisterRecordingRequest) returns (UnregisterRecordingResponse) {}
-    rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest) returns (UnregisterAllRecordingsResponse) {}
+    rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest)
+        returns (UnregisterAllRecordingsResponse) {}
 }
 
 // ---------------- Common response message ------------------
@@ -83,7 +84,7 @@ message IndexProperties {
 
 message InvertedIndex {
     bool store_position = 1;
-    string base_tokenizer  = 2;
+    string base_tokenizer = 2;
     // TODO(zehiko) add other properties as needed
 }
 
@@ -107,7 +108,6 @@ message BTreeIndex {
 message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
-
 
 // ---------------- SearchIndex ------------------
 
@@ -187,7 +187,6 @@ message UnregisterRecordingResponse {}
 
 message UnregisterAllRecordingsRequest {}
 message UnregisterAllRecordingsResponse {}
-
 
 // ---------------- UpdateCatalog  -----------------
 
