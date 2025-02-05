@@ -17,35 +17,53 @@
 # Tip: use UTF8 NBSPs (https://unicode-explorer.com/c/00A0) as needed.
 [snippets_ref]
 features = [
-  ["Update rows", [
-    "archetypes/scalar_row_updates",
-    "archetypes/points3d_row_updates",
-    "archetypes/transform3d_row_updates",
-  ]],
-  ["Update columns", [
-    "archetypes/scalar_column_updates",
-    "archetypes/points3d_column_updates",
-    "archetypes/transform3d_column_updates",
-    "archetypes/image_column_updates",  # bonus!
-  ]],
-  ["Partial updates", [
-    "archetypes/points3d_partial_updates",
-    "archetypes/transform3d_partial_updates",
-    "archetypes/mesh3d_partial_updates",
-  ]],
-  ["Send custom data", [
-    "tutorials/any_values",
-    "tutorials/extra_values",
-    "tutorials/custom_data",
-  ]],
-  ["Send columns of custom data", [
-    "howto/any_values_column_updates",
-    "howto/any_batch_value_column_updates",
-  ]],
-  ["Query dataframes", [
-    "reference/dataframe_query",
-    "reference/dataframe_view_query",
-  ]],
+  [
+    "Update rows",
+    [
+      "archetypes/scalar_row_updates",
+      "archetypes/points3d_row_updates",
+      "archetypes/transform3d_row_updates",
+    ],
+  ],
+  [
+    "Update columns",
+    [
+      "archetypes/scalar_column_updates",
+      "archetypes/points3d_column_updates",
+      "archetypes/transform3d_column_updates",
+      "archetypes/image_column_updates",       # bonus!
+    ],
+  ],
+  [
+    "Partial updates",
+    [
+      "archetypes/points3d_partial_updates",
+      "archetypes/transform3d_partial_updates",
+      "archetypes/mesh3d_partial_updates",
+    ],
+  ],
+  [
+    "Send custom data",
+    [
+      "tutorials/any_values",
+      "tutorials/extra_values",
+      "tutorials/custom_data",
+    ],
+  ],
+  [
+    "Send columns of custom data",
+    [
+      "howto/any_values_column_updates",
+      "howto/any_batch_value_column_updates",
+    ],
+  ],
+  [
+    "Query dataframes",
+    [
+      "reference/dataframe_query",
+      "reference/dataframe_view_query",
+    ],
+  ],
 ]
 
 # These entries won't run at all.
@@ -200,8 +218,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/arrows3d_simple" = [ # Python uses doubles
-  "py",
+"archetypes/arrows3d_simple" = [
+  "py",  # Python uses doubles
+  "cpp", # Trigonometry doesn't work out the same with all C++ toolchains (*some* Windows machines yield a different result)
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",

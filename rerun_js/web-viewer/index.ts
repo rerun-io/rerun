@@ -484,7 +484,7 @@ export class WebViewer {
    * @param panel
    * @param state
    */
-  override_panel_state(panel: Panel, state: PanelState) {
+  override_panel_state(panel: Panel, state: PanelState | undefined | null) {
     if (!this.#handle) {
       throw new Error(
         `attempted to set ${panel} panel to ${state} in a stopped web viewer`,

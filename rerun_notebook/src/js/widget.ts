@@ -19,6 +19,8 @@ interface WidgetModel {
 
   _url?: string;
   _panel_states?: PanelStates;
+  _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
+  _recording_id?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -43,7 +45,10 @@ class ViewerWidget {
 
     model.on("msg:custom", this.on_custom_message);
 
-    model.on("change:_time_ctrl", (_, [timeline, time, play]) => this.on_time_ctrl(null, timeline, time, play));
+    model.on("change:_time_ctrl", (_, [timeline, time, play]) =>
+      this.on_time_ctrl(null, timeline, time, play),
+    );
+    model.on("change:_recording_id", this.on_set_recording_id);
 
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
@@ -109,8 +114,7 @@ class ViewerWidget {
   ) => {
     for (const panel of PANELS) {
       // TODO(jprochazk): update `override_panel_state` to accept `PanelState | undefined | null` as value
-      const state: any = new_panel_states?.[panel];
-      this.viewer.override_panel_state(panel, state);
+      this.viewer.override_panel_state(panel, new_panel_states?.[panel]);
     }
     this.panel_states = new_panel_states;
   };
@@ -125,7 +129,12 @@ class ViewerWidget {
     }
   };
 
-  on_time_ctrl = (_: unknown, timeline: string | null, time: number | null, play: boolean) => {
+  on_time_ctrl = (
+    _: unknown,
+    timeline: string | null,
+    time: number | null,
+    play: boolean,
+  ) => {
     let recording_id = this.viewer.get_active_recording_id();
     if (recording_id === null) {
       return;
@@ -150,7 +159,15 @@ class ViewerWidget {
     if (time !== null) {
       this.viewer.set_current_time(recording_id, timeline, time);
     }
-  }
+  };
+
+  on_set_recording_id = (_: unknown, recording_id: string | null) => {
+    if (recording_id === null) {
+      return;
+    }
+
+    this.viewer.set_active_recording_id(recording_id);
+  };
 }
 
 const render: Render<WidgetModel> = ({ model, el }) => {

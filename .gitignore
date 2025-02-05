@@ -34,6 +34,7 @@ __pycache__
 *.pyd
 *.so
 **/.pytest_cache
+**/.ipynb_checkpoints/
 
 # Pixi environment
 .pixi
