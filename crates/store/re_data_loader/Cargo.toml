@@ -43,15 +43,15 @@ itertools.workspace = true
 notify.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-parquet = { workspace = true, features = ["arrow", "snap"] }
 rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
+parquet = { workspace = true, features = ["arrow", "snap"] }
 re_crash_handler.workspace = true
 
 [dev-dependencies]

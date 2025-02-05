@@ -1,4 +1,4 @@
-/// Recursively oads entire directories, using the appropriate [`crate::DataLoader`]:s for each
+/// Recursively loads entire directories, using the appropriate [`crate::DataLoader`]:s for each
 /// files within.
 //
 // TODO(cmc): There are a lot more things than can be done be done when it comes to the semantics

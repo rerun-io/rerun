@@ -1,20 +1,38 @@
 use anyhow::{anyhow, Context};
-use arrow::array::{BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray};
+use arrow::array::{
+    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
+};
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::ArrowArrayDowncastRef;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{ArrowArray, Chunk, ChunkId, RowId, TimeColumn, TimeInt, TimePoint, Timeline};
+use re_chunk::{
+    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+};
 
 use re_log_types::StoreId;
 use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_le_robot_dataset, DType, LeRobotDataset};
+use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, LeRobotDataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
+/// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
+const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] = &[
+    "episode_index",
+    "task_index",
+    "index",
+    "frame_index",
+    "timestamp",
+];
+
+/// A [`DataLoader`] for `LeRobot` datasets.
+///
+/// An example dataset which can be loaded can be found on Hugging Face: [lerobot/pusht_image](https://huggingface.co/datasets/lerobot/pusht_image)
+///
+/// See [`crate::lerobot`] for more on the `LeRobot` dataset format.
 pub struct LeRobotDatasetLoader;
 
 impl DataLoader for LeRobotDatasetLoader {
@@ -33,34 +51,34 @@ impl DataLoader for LeRobotDatasetLoader {
         }
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
-            .with_context(|| "Loading LeRobot dataset failed")?;
+            .map_err(|e| anyhow!("Loading LeRobot dataset failed: {e:?}"))?;
 
         re_log::info!(
-            "Loading LeRobot dataset from `{:?}`, with {} episode(s)",
+            "Loading LeRobot dataset from {:?}, with {} episode(s)",
             dataset.path,
             dataset.metadata.episodes.len()
         );
 
         for episode in &dataset.metadata.episodes {
-            let episode_idx = episode.episode_index;
+            let episode_idx = episode.index;
             let store_id = StoreId::from_string(
                 re_log_types::StoreKind::Recording,
-                format!("episode_{episode_idx}"),
+                format!("episode_{}", episode_idx.0),
             );
 
             let data = dataset
                 .read_episode_data(episode_idx)
-                .with_context(|| format!("Reading data for episode {episode_idx} failed!"))?;
+                .map_err(|e| anyhow!("Reading data for episode {episode_idx:?} failed: {e:?}"))?;
 
             let frame_indices = data
                 .column_by_name("frame_index")
-                .ok_or_else(|| anyhow!("failed to get frame index"))?
+                .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
                 .clone();
 
             let timeline = re_log_types::Timeline::new_sequence("frame_index");
             let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
                 .downcast_array_ref::<Int64Array>()
-                .ok_or_else(|| anyhow!("frame indices are of an unexpected type"))?
+                .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
                 .values();
 
             let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
@@ -68,7 +86,13 @@ impl DataLoader for LeRobotDatasetLoader {
 
             let mut chunks = Vec::new();
 
-            for (feature_key, feature) in &dataset.metadata.info.features {
+            for (feature_key, feature) in dataset
+                .metadata
+                .info
+                .features
+                .iter()
+                .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
+            {
                 match feature.dtype {
                     DType::Video => {
                         chunks.extend(log_episode_video(
@@ -84,12 +108,13 @@ impl DataLoader for LeRobotDatasetLoader {
                     }
                     DType::Int64 | DType::Bool => {
                         re_log::warn_once!(
-                            "Loading LeRobot dtype {:?} into Rerun is not yet implemented",
+                            "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
+                            feature_key,
                             feature.dtype
                         );
                     }
                     DType::Float32 | DType::Float64 => {
-                        chunks.extend(log_scalar(feature_key, &timelines, &data)?);
+                        chunks.extend(load_scalar(feature_key, &timelines, &data)?);
                     }
                 }
             }
@@ -151,13 +176,13 @@ fn log_episode_images(
 fn log_episode_video(
     dataset: &LeRobotDataset,
     observation: &str,
-    episode: usize,
+    episode: EpisodeIndex,
     timeline: &Timeline,
     time_column: TimeColumn,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let contents = dataset
         .read_episode_video_contents(observation, episode)
-        .with_context(|| format!("Reading video contents for episode {episode} failed!"))?;
+        .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
 
     let video_asset = AssetVideo::new(contents.into_owned());
     let entity_path = observation;
@@ -203,7 +228,7 @@ fn log_episode_video(
         }
         Err(err) => {
             re_log::warn_once!(
-                "Failed to read frame timestamps from episode {episode} video: {err}"
+                "Failed to read frame timestamps from episode {episode:?} video: {err}"
             );
             None
         }
@@ -224,39 +249,79 @@ fn log_episode_video(
     }
 }
 
-fn log_scalar(
+/// Helper type similar to [`Either`], but with 3 variants.
+enum ScalarChunkIterator {
+    Empty(std::iter::Empty<Chunk>),
+    Batch(Box<dyn ExactSizeIterator<Item = Chunk>>),
+    Single(std::iter::Once<Chunk>),
+}
+
+impl Iterator for ScalarChunkIterator {
+    type Item = Chunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Empty(iter) => iter.next(),
+            Self::Batch(iter) => iter.next(),
+            Self::Single(iter) => iter.next(),
+        }
+    }
+}
+
+impl ExactSizeIterator for ScalarChunkIterator {}
+
+fn load_scalar(
     feature: &str,
     timelines: &IntMap<Timeline, TimeColumn>,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<ScalarChunkIterator, DataLoaderError> {
     let field = data
         .schema_ref()
         .field_with_name(feature)
         .with_context(|| format!("Failed to get field for feature {feature} from parquet file"))?;
 
-    if !matches!(field.data_type(), DataType::FixedSizeList(_, _)) {
-        re_log::warn_once!(
-            "Tried logging scalar with unsupported dtype: {}",
-            field.data_type()
-        );
-        return Ok(Either::Left(std::iter::empty()));
+    match field.data_type() {
+        DataType::FixedSizeList(_, _) => {
+            let fixed_size_array = data
+                .column_by_name(feature)
+                .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
+                .ok_or_else(|| {
+                    DataLoaderError::Other(anyhow!(
+                        "Failed to downcast feature to FixedSizeListArray"
+                    ))
+                })?;
+
+            let batch_chunks = make_scalar_batch_entity_chunks(field, timelines, fixed_size_array)?;
+            Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
+        }
+        DataType::Float32 => {
+            let feature_data = data.column_by_name(feature).ok_or_else(|| {
+                DataLoaderError::Other(anyhow!(
+                    "Failed to get LeRobot dataset column data for: {:?}",
+                    field.name()
+                ))
+            })?;
+
+            Ok(ScalarChunkIterator::Single(std::iter::once(
+                make_scalar_entity_chunk(
+                    field.name().clone().into(),
+                    timelines,
+                    &feature_data.clone(),
+                )?,
+            )))
+        }
+        _ => {
+            re_log::warn_once!(
+                "Tried logging scalar {} with unsupported dtype: {}",
+                field.name(),
+                field.data_type()
+            );
+            Ok(ScalarChunkIterator::Empty(std::iter::empty()))
+        }
     }
-
-    let fixed_size_array = data
-        .column_by_name(feature)
-        .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
-        .ok_or_else(|| {
-            DataLoaderError::Other(anyhow!("Failed to downcast feature to FixedSizeListArray"))
-        })?;
-
-    Ok(Either::Right(make_scalar_entity_chunks(
-        field,
-        timelines,
-        fixed_size_array,
-    )?))
 }
 
-fn make_scalar_entity_chunks(
+fn make_scalar_batch_entity_chunks(
     field: &Field,
     timelines: &IntMap<Timeline, TimeColumn>,
     data: &FixedSizeListArray,
@@ -265,43 +330,55 @@ fn make_scalar_entity_chunks(
     let num_values = data.len();
 
     let mut chunks = Vec::with_capacity(num_elements);
-    let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
 
     for idx in 0..num_elements {
-        // cast the slice to f64 first, as scalars need an f64
-        let scalar_values = cast(&data.values().slice(idx, num_values), &DataType::Float64)
-            .with_context(|| {
-                format!("Failed to cast scalar feature {} to Float64", field.name())
-            })?;
-
-        let sliced = (0..num_values)
-            .map(|idx| scalar_values.slice(idx, 1))
-            .collect::<Vec<_>>();
-
-        let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
-
-        #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let data_field_array: arrow::array::ListArray =
-            re_arrow_util::arrow_util::arrays_to_list_array(
-                data_field_inner.data_type().clone(),
-                &data_arrays,
-            )
-            .unwrap();
-
         let entity_path = format!("{}/{idx}", field.name());
-        let chunk = Chunk::from_auto_row_ids(
-            ChunkId::new(),
+        chunks.push(make_scalar_entity_chunk(
             entity_path.into(),
-            timelines.clone(),
-            std::iter::once((
-                <Scalar as Component>::descriptor().clone(),
-                data_field_array,
-            ))
-            .collect(),
-        )?;
-
-        chunks.push(chunk);
+            timelines,
+            &data.values().slice(idx, num_values),
+        )?);
     }
 
     Ok(chunks.into_iter())
+}
+
+fn make_scalar_entity_chunk(
+    entity_path: EntityPath,
+    timelines: &IntMap<Timeline, TimeColumn>,
+    data: &ArrayRef,
+) -> Result<Chunk, DataLoaderError> {
+    // cast the slice to f64 first, as scalars need an f64
+    let scalar_values = cast(&data, &DataType::Float64).with_context(|| {
+        format!(
+            "Failed to cast scalar feature {:?} to Float64",
+            entity_path.clone()
+        )
+    })?;
+
+    let sliced = (0..data.len())
+        .map(|idx| scalar_values.slice(idx, 1))
+        .collect::<Vec<_>>();
+
+    let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
+
+    let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
+    #[allow(clippy::unwrap_used)] // we know we've given the right field type
+    let data_field_array: arrow::array::ListArray =
+        re_arrow_util::arrow_util::arrays_to_list_array(
+            data_field_inner.data_type().clone(),
+            &data_arrays,
+        )
+        .unwrap();
+
+    Ok(Chunk::from_auto_row_ids(
+        ChunkId::new(),
+        entity_path,
+        timelines.clone(),
+        std::iter::once((
+            <Scalar as Component>::descriptor().clone(),
+            data_field_array,
+        ))
+        .collect(),
+    )?)
 }

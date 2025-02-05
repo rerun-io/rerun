@@ -17,6 +17,7 @@ mod loader_rrd;
 #[cfg(not(target_arch = "wasm32"))]
 mod lerobot;
 
+// This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_lerobot;
 
