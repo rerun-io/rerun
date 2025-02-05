@@ -20,6 +20,12 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
         Some("path"),
         Some("ath t"),
         Some("ath left"),
+        Some("to/the"),
+        Some("/to/the"),
+        Some("to/the/"),
+        Some("/to/the/"),
+        Some("to/the oid"),
+        Some("/path/to /rig"),
     ]
     .into_iter()
 }
@@ -42,7 +48,7 @@ pub fn test_various_filter_ui_snapshot() {
             &format!(
                 "various_filters-{}",
                 filter_query
-                    .map(|s| s.replace(' ', "_").replace('/', "|"))
+                    .map(|s| s.replace(' ', ",").replace('/', "_"))
                     .unwrap_or("none".to_owned())
             ),
         );
@@ -71,7 +77,7 @@ pub fn test_various_filter_insta_snapshot() {
         let snapshot_name = format!(
             "various_filters-{}",
             filter_query
-                .map(|s| s.replace(' ', "_").replace('/', "|"))
+                .map(|s| s.replace(' ', ",").replace('/', "_"))
                 .unwrap_or("none".to_owned())
         );
 
