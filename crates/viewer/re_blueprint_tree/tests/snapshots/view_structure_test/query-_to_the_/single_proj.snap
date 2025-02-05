@@ -16,40 +16,48 @@ root_container:
           id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
         class_identifier: 3D
         name:
-          Placeholder: path/to
+          Placeholder: center/way
         visible: true
         default_open: true
         origin_tree: ~
         projection_trees:
           - kind: EntityPart
-            entity_path: []
+            entity_path:
+              - path
+              - to
             visible: true
             view_id:
               id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
-            label: / (root)
-            highlight_sections: []
+            label: to
+            highlight_sections:
+              - start: 0
+                end: 2
             default_open: true
             children:
               - kind: EntityPart
                 entity_path:
                   - path
+                  - to
+                  - the
                 visible: true
                 view_id:
                   id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
-                label: path
+                label: the
                 highlight_sections:
-                  - start: 1
-                    end: 4
+                  - start: 0
+                    end: 3
                 default_open: true
                 children:
-                  - kind: OriginProjectionPlaceholder
+                  - kind: EntityPart
                     entity_path:
                       - path
                       - to
+                      - the
+                      - void
                     visible: true
                     view_id:
                       id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
-                    label: to
+                    label: void
                     highlight_sections: []
                     default_open: true
                     children: []

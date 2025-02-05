@@ -20,6 +20,12 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
         Some("path"),
         Some("ath t"),
         Some("ath left"),
+        Some("to/the"),
+        Some("/to/the"),
+        Some("to/the/"),
+        Some("/to/the/"),
+        Some("to/the oid"),
+        Some("/path/to /rig"),
     ]
     .into_iter()
 }
@@ -42,7 +48,7 @@ pub fn test_various_filter_ui_snapshot() {
             &format!(
                 "various_filters-{}",
                 filter_query
-                    .map(|s| s.replace(' ', "_"))
+                    .map(|s| s.replace(' ', ",").replace('/', "_"))
                     .unwrap_or("none".to_owned())
             ),
         );
@@ -71,11 +77,15 @@ pub fn test_various_filter_insta_snapshot() {
         let snapshot_name = format!(
             "various_filters-{}",
             filter_query
-                .map(|s| s.replace(' ', "_"))
+                .map(|s| s.replace(' ', ",").replace('/', "_"))
                 .unwrap_or("none".to_owned())
         );
 
-        insta::assert_yaml_snapshot!(snapshot_name, streams_tree_data);
+        let mut settings = insta::Settings::clone_current();
+        settings.set_prepend_module_to_snapshot(false);
+        settings.bind(|| {
+            insta::assert_yaml_snapshot!(snapshot_name, streams_tree_data);
+        });
     }
 }
 
@@ -85,6 +95,7 @@ fn prepare_test_context() -> TestContext {
     test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
     test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
     test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
     test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
 
     // also populate some "intermediate" entities so we see components

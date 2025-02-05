@@ -96,6 +96,11 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
         Some("path"),
         Some("ath t"),
         Some("ath left"),
+        Some("to/the"),
+        Some("/to/the/"),
+        Some("to/the oid"),
+        Some("/path/to /rig"),
+        Some("/path/to/th"),
     ]
     .into_iter()
 }
@@ -111,6 +116,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
             test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
             test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
             test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
+            test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
             test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
         }
     }
@@ -210,7 +216,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     let options = SnapshotOptions::default().output_path(format!(
         "tests/snapshots/view_structure_test/{}",
         filter_query
-            .map(|query| format!("query-{}", query.replace(' ', "_")))
+            .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
             .unwrap_or("no-query".to_owned())
     ));
     harness.try_snapshot_options(test_case.name, &options)
@@ -249,7 +255,7 @@ fn test_all_insta_test_cases() {
             settings.set_snapshot_path(format!(
                 "snapshots/view_structure_test/{}",
                 filter_query
-                    .map(|query| format!("query-{}", query.replace(' ', "_")))
+                    .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
                     .unwrap_or("no-query".to_owned())
             ));
 

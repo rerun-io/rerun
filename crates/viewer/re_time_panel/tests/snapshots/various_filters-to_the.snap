@@ -11,40 +11,46 @@ children:
       - entity_path:
           - path
         label: path/
-        highlight_sections:
-          - start: 1
-            end: 4
+        highlight_sections: []
         default_open: true
         children:
+          - entity_path:
+              - path
+              - onto
+            label: onto/
+            highlight_sections:
+              - start: 2
+                end: 4
+            default_open: true
+            children:
+              - entity_path:
+                  - path
+                  - onto
+                  - their
+                label: their/
+                highlight_sections:
+                  - start: 0
+                    end: 3
+                default_open: true
+                children:
+                  - entity_path:
+                      - path
+                      - onto
+                      - their
+                      - coils
+                    label: coils
+                    highlight_sections: []
+                    default_open: false
+                    children: []
           - entity_path:
               - path
               - to
             label: to/
             highlight_sections:
               - start: 0
-                end: 1
+                end: 2
             default_open: true
             children:
-              - entity_path:
-                  - path
-                  - to
-                  - left
-                label: left
-                highlight_sections:
-                  - start: 3
-                    end: 4
-                default_open: false
-                children: []
-              - entity_path:
-                  - path
-                  - to
-                  - right
-                label: right
-                highlight_sections:
-                  - start: 4
-                    end: 5
-                default_open: false
-                children: []
               - entity_path:
                   - path
                   - to
@@ -52,7 +58,7 @@ children:
                 label: the/
                 highlight_sections:
                   - start: 0
-                    end: 1
+                    end: 3
                 default_open: true
                 children:
                   - entity_path:
