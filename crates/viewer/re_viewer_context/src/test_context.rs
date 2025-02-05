@@ -17,6 +17,48 @@ use crate::{
     SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
 };
 
+pub trait HarnessExt {
+    /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
+    //
+    // TODO(emilk/egui#5683): this should be natively supported by kittest
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    );
+}
+
+impl HarnessExt for egui_kittest::Harness<'_> {
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) {
+        match self.try_snapshot(name) {
+            Ok(_) => {}
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    assert!(
+                        broken_percent <= broken_percent_threshold,
+                        "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                    );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+}
+
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
 /// Example:

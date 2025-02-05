@@ -225,30 +225,9 @@ fn run_view_ui_and_save_snapshot(
 
     harness.run();
 
-    // TODO: put in ext trait
-    // TODO(emilk/egui#5683)
     let broken_percent_threshold = 0.003;
-    let num_pixels = (size.x * size.y).ceil() as f64;
+    let num_pixels = (size.x * size.y).ceil() as u64;
 
-    use re_viewer_context::external::egui_kittest;
-    match harness.try_snapshot(name) {
-        Ok(_) => {}
-
-        Err(err) => match err {
-            egui_kittest::SnapshotError::Diff {
-                name,
-                diff: num_broken_pixels,
-                diff_path,
-            } => {
-                let broken_percent = num_broken_pixels as f64 / num_pixels;
-                re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
-                assert!(
-                    broken_percent <= broken_percent_threshold,
-                    "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
-                );
-            }
-
-            _ => panic!("{name} failed: {err}"),
-        },
-    }
+    use re_viewer_context::test_context::HarnessExt as _;
+    harness.snapshot_with_broken_pixels_threshold(name, num_pixels, broken_percent_threshold);
 }
