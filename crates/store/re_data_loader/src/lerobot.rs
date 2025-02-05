@@ -89,7 +89,7 @@ pub enum LeRobotError {
 /// │  └── chunk-000
 /// │      ├── episode_000000.parquet
 /// │      ├── episode_000001.parquet
-/// │      ├── ...
+/// │      ├── …
 /// ├── meta
 /// │  ├── episodes.jsonl
 /// │  ├── info.json
@@ -100,7 +100,7 @@ pub enum LeRobotError {
 ///         └── observation.image
 ///             ├── episode_000000.mp4
 ///             ├── episode_000001.mp4
-///             ├── ...
+///             ├── …
 /// ```
 ///
 /// ## File layout
@@ -222,30 +222,42 @@ impl LeRobotDatasetMetadata {
 pub struct LeRobotDatasetInfo {
     /// The type of the robot.
     pub robot_type: String,
+
     /// The version of the `LeRobot` codebase the dataset was created for.
     pub codebase_version: String,
+
     /// The total number of unique episodes in the dataset.
     pub total_episodes: usize,
+
     /// The total number of unique frames in the dataset.
     pub total_frames: usize,
+
     /// The total number of unique tasks in the dataset.
     pub total_tasks: usize,
+
     /// The total amount of videos in the dataset.
     pub total_videos: usize,
+
     /// The total number of unique chunks in the dataset.
     pub total_chunks: usize,
+
     /// The amount of episodes per chunk.
     ///
     /// This is used to determine the path to video and data files.
     pub chunks_size: usize,
+
     /// The path template for accessing episode data files.
     pub data_path: String,
+
     /// The path template for accessing video files for an episode.
     pub video_path: Option<String>,
+
     /// The path template for accessing image files for an episode.
     pub image_path: Option<String>,
+
     /// The frame rate of the recorded episode data.
     pub fps: usize,
+
     /// A mapping of feature names to their respective [`Feature`] definitions.
     pub features: HashMap<String, Feature>,
 }

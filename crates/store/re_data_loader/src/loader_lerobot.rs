@@ -51,7 +51,7 @@ impl DataLoader for LeRobotDatasetLoader {
         }
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
-            .map_err(|e| anyhow!("Loading LeRobot dataset failed: {e:?}"))?;
+            .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
 
         re_log::info!(
             "Loading LeRobot dataset from {:?}, with {} episode(s)",
@@ -68,7 +68,7 @@ impl DataLoader for LeRobotDatasetLoader {
 
             let data = dataset
                 .read_episode_data(episode_idx)
-                .map_err(|e| anyhow!("Reading data for episode {episode_idx:?} failed: {e:?}"))?;
+                .map_err(|err| anyhow!("Reading data for episode {episode_idx:?} failed: {err}"))?;
 
             let frame_indices = data
                 .column_by_name("frame_index")
