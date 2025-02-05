@@ -779,7 +779,5 @@ mod test {
             match_and_normalize("ab/cd bla", &["xxxAb", "cDaB", "Cdxxx"]),
             None
         );
-
-        //TODO: moar tests
     }
 }
