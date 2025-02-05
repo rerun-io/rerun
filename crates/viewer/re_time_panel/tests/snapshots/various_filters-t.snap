@@ -33,6 +33,34 @@ children:
         children:
           - entity_path:
               - path
+              - onto
+            label: onto/
+            highlight_sections:
+              - start: 2
+                end: 3
+            default_open: true
+            children:
+              - entity_path:
+                  - path
+                  - onto
+                  - their
+                label: their/
+                highlight_sections:
+                  - start: 0
+                    end: 1
+                default_open: true
+                children:
+                  - entity_path:
+                      - path
+                      - onto
+                      - their
+                      - coils
+                    label: coils
+                    highlight_sections: []
+                    default_open: false
+                    children: []
+          - entity_path:
+              - path
               - to
             label: to/
             highlight_sections:

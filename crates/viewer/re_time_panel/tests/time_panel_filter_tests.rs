@@ -89,7 +89,7 @@ fn prepare_test_context() -> TestContext {
     test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
     test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
     test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
-    //test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
     test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
 
     // also populate some "intermediate" entities so we see components
