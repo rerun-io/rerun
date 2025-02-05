@@ -27,6 +27,7 @@ mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
 mod component_descriptor;
+mod id;
 mod loggable;
 mod loggable_batch;
 pub mod reflection;
@@ -43,6 +44,7 @@ pub use self::{
     arrow_string::ArrowString,
     as_components::AsComponents,
     component_descriptor::ComponentDescriptor,
+    id::{ChunkId, RowId},
     loggable::{
         Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
         UnorderedComponentNameSet,

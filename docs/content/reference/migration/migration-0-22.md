@@ -416,7 +416,7 @@ handle raw component collections which then would be serialized to arrow on the 
 #### `log`
 
 Under the hood we allow any type that implements the `AsComponents` trait.
-However, `AsComponents` is no longer implemented for collections of components / implementors of `Loggable`.
+However, `AsComponents` is no longer implemented for collections of components / implementers of `Loggable`.
 
 Instead, you're encouraged to use archetypes for cases where you'd previously use loose collections of components.
 This is made easier by the fact that archetypes can now be created without specifying required components.
