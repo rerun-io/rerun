@@ -420,7 +420,7 @@ impl MemoryPanel {
 
         use itertools::Itertools as _;
 
-        fn to_line(history: &egui::util::History<i64>) -> egui_plot::Line {
+        fn to_line(history: &egui::util::History<i64>) -> egui_plot::Line<'_> {
             egui_plot::Line::new(
                 history
                     .iter()
