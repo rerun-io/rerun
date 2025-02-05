@@ -36,10 +36,6 @@ impl Snippets {
         let snippet_root = snippets_dir.join("all");
         let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
-        println!("Download test assets…");
-        let progress = MultiProgress::new();
-        download_test_assets(&progress)?;
-
         println!("Running {} snippets…", snippets.len());
         let results: Vec<anyhow::Result<PathBuf>> = snippets
             .into_par_iter()
@@ -192,13 +188,4 @@ struct Config {
 struct OptOut {
     /// example name -> languages
     run: HashMap<String, Vec<String>>,
-}
-
-fn download_test_assets(progress: &MultiProgress) -> anyhow::Result<()> {
-    let download_script = re_build_tools::cargo_metadata()?
-        .workspace_root
-        .join("tests/assets/download_test_assets.py");
-    let mut cmd = Command::new("python3");
-    cmd.arg(download_script.as_str());
-    wait_for_output(cmd, "download test assets", progress)
 }
