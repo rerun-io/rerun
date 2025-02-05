@@ -108,7 +108,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 {
                     batch_data
                         .positions
-                        .push(walkers::Position::from_lat_lon(position[0], position[1]));
+                        .push(walkers::lat_lon(position[0], position[1]));
                     batch_data.radii.push(Radius((*radius).into()));
                     batch_data.colors.push(*color);
                     batch_data
@@ -140,7 +140,7 @@ impl GeoPointsVisualizer {
             self.batches
                 .iter()
                 .flat_map(|(_, batch)| batch.positions.iter())
-                .map(|pos| (pos.lat(), pos.lon())),
+                .map(|pos| (pos.lat(), pos.lng())),
         )
     }
 
