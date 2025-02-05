@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -41,6 +42,9 @@ pub enum LeRobotError {
     #[error("Invalid feature key: {0}")]
     InvalidFeatureKey(String),
 
+    #[error("Missing dataset info: {0}")]
+    MissingDatasetInfo(String),
+
     #[error(
         "Invalid feature dtype, expected {key} to be of type {expected:?}, but got {actual:?}"
     )]
@@ -77,6 +81,7 @@ impl LeRobotDataset {
         })
     }
 
+    /// Read the parquet file for the provided episode index.
     pub fn read_episode_data(&self, episode_index: usize) -> Result<RecordBatch, LeRobotError> {
         if !self
             .metadata
@@ -100,11 +105,12 @@ impl LeRobotDataset {
             .map_err(LeRobotError::Arrow)?
     }
 
+    /// Read video feature for the provided episode.
     pub fn read_episode_video_contents(
         &self,
         observation_key: &str,
         episode_index: usize,
-    ) -> Result<std::borrow::Cow<'_, [u8]>, LeRobotError> {
+    ) -> Result<Cow<'_, [u8]>, LeRobotError> {
         let video_file = self
             .metadata
             .info
@@ -121,7 +127,7 @@ impl LeRobotDataset {
             // .with_context(|| format!("Failed to read file {videopath:?}"))?
         };
 
-        Ok(std::borrow::Cow::Owned(contents))
+        Ok(Cow::Owned(contents))
     }
 }
 
@@ -159,7 +165,8 @@ pub struct LeRobotDatasetInfo {
     pub total_chunks: usize,
     pub chunks_size: usize,
     pub data_path: String,
-    pub video_path: String,
+    pub video_path: Option<String>,
+    pub image_path: Option<String>,
     pub fps: usize,
     pub features: HashMap<String, Feature>,
 }
@@ -201,6 +208,36 @@ impl LeRobotDatasetInfo {
             .into())
     }
 
+    pub fn image_path(
+        &self,
+        observation_key: &str,
+        episode_index: usize,
+    ) -> Result<PathBuf, LeRobotError> {
+        let chunk = self.get_chunk_index(episode_index)?;
+        let feature = self
+            .feature(observation_key)
+            .ok_or(LeRobotError::InvalidFeatureKey(observation_key.to_owned()))?;
+
+        if feature.dtype != DType::Image {
+            return Err(LeRobotError::InvalidFeatureDtype {
+                key: observation_key.to_owned(),
+                expected: DType::Video,
+                actual: feature.dtype,
+            });
+        }
+
+        // TODO(gijsd): Need a better way to handle this, as this only supports the default.
+        self.image_path
+            .as_ref()
+            .ok_or_else(|| LeRobotError::MissingDatasetInfo("video_path".to_owned()))
+            .map(|path| {
+                path.replace("{episode_chunk:03d}", &format!("{chunk:03}"))
+                    .replace("{episode_index:06d}", &format!("{episode_index:06}"))
+                    .replace("{video_key}", observation_key)
+                    .into()
+            })
+    }
+
     /// Get the path to a video observation for a specific episode index.
     pub fn video_path(
         &self,
@@ -221,12 +258,15 @@ impl LeRobotDatasetInfo {
         }
 
         // TODO(gijsd): Need a better way to handle this, as this only supports the default.
-        Ok(self
-            .video_path
-            .replace("{episode_chunk:03d}", &format!("{chunk:03}"))
-            .replace("{episode_index:06d}", &format!("{episode_index:06}"))
-            .replace("{video_key}", observation_key)
-            .into())
+        self.video_path
+            .as_ref()
+            .ok_or_else(|| LeRobotError::MissingDatasetInfo("video_path".to_owned()))
+            .map(|path| {
+                path.replace("{episode_chunk:03d}", &format!("{chunk:03}"))
+                    .replace("{episode_index:06d}", &format!("{episode_index:06}"))
+                    .replace("{video_key}", observation_key)
+                    .into()
+            })
     }
 }
 

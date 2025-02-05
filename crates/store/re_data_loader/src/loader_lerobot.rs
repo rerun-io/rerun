@@ -1,14 +1,14 @@
 use anyhow::{anyhow, Context};
-use arrow::array::{FixedSizeListArray, Int64Array, RecordBatch};
+use arrow::array::{BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray};
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::ArrowArrayDowncastRef;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{ArrowArray, Chunk, ChunkId, RowId, TimeColumn, TimePoint, Timeline};
+use re_chunk::{ArrowArray, Chunk, ChunkId, RowId, TimeColumn, TimeInt, TimePoint, Timeline};
 
 use re_log_types::StoreId;
-use re_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
@@ -79,7 +79,10 @@ impl DataLoader for LeRobotDatasetLoader {
                             time_column.clone(),
                         )?);
                     }
-                    DType::Image | DType::Int64 | DType::Bool => {
+                    DType::Image => {
+                        chunks.extend(log_episode_images(feature_key, &timeline, &data)?);
+                    }
+                    DType::Int64 | DType::Bool => {
                         // TODO(gijsd): log images
                         re_log::warn_once!("Logging for dtype {:?} not implemented", feature.dtype);
                     }
@@ -111,6 +114,38 @@ impl DataLoader for LeRobotDatasetLoader {
     }
 }
 
+fn log_episode_images(
+    observation: &str,
+    timeline: &Timeline,
+    data: &RecordBatch,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    let image_bytes = data
+        .column_by_name(observation)
+        .and_then(|c| c.downcast_array_ref::<StructArray>())
+        .and_then(|a| a.column_by_name("bytes"))
+        .and_then(|a| a.downcast_array_ref::<BinaryArray>())
+        .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
+
+    let mut chunk = Chunk::builder(observation.into());
+    let mut row_id = RowId::new();
+    let mut time_int = TimeInt::ZERO;
+
+    for idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(idx);
+        let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
+        let mut timepoint = TimePoint::default();
+        timepoint.insert(*timeline, time_int);
+        chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
+
+        row_id = row_id.next();
+        time_int = time_int.inc();
+    }
+
+    Ok(std::iter::once(chunk.build().with_context(|| {
+        format!("Failed to build image chunk for image: {observation}")
+    })?))
+}
+
 fn log_episode_video(
     dataset: &LeRobotDataset,
     observation: &str,
@@ -123,7 +158,7 @@ fn log_episode_video(
         .with_context(|| format!("Reading video contents for episode {episode} failed!"))?;
 
     let video_asset = AssetVideo::new(contents.into_owned());
-    let entity_path = "video";
+    let entity_path = observation;
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
         Ok(frame_timestamps_ns) => {
