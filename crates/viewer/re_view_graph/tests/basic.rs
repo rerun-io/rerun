@@ -1,16 +1,13 @@
 //! Basic tests for the graph view, mostly focused on edge cases (pun intended).
 
-use std::sync::Arc;
-
 use egui::Vec2;
 
-use re_chunk_store::{Chunk, RowId};
-use re_entity_db::EntityPath;
-use re_types::{components, Component as _};
+use re_chunk_store::RowId;
+use re_log_types::TimePoint;
+use re_types::archetypes;
 use re_view_graph::GraphView;
 use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
 
 #[test]
 pub fn coincident_nodes() {
@@ -22,38 +19,21 @@ pub fn coincident_nodes() {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<re_view_graph::GraphView>();
 
-    let entity_path = EntityPath::from(name);
-
-    let nodes = [
-        components::GraphNode("A".into()),
-        components::GraphNode("B".into()),
-    ];
-
-    let edges = [components::GraphEdge(("A", "B").into())];
-
-    let directed = components::GraphType::Directed;
-
-    let positions = [
-        components::Position2D([42.0, 42.0].into()),
-        components::Position2D([42.0, 42.0].into()),
-    ];
-
-    let mut builder = Chunk::builder(entity_path.clone());
-    builder = builder.with_sparse_component_batches(
-        RowId::new(),
-        [(test_context.active_timeline(), 1)],
-        [
-            (components::GraphNode::descriptor(), Some(&nodes as _)),
-            (components::Position2D::descriptor(), Some(&positions as _)),
-            (components::GraphEdge::descriptor(), Some(&edges as _)),
-            (components::GraphType::descriptor(), Some(&[directed] as _)),
-        ],
-    );
-
-    test_context
-        .recording_store
-        .add_chunk(&Arc::new(builder.build().unwrap()))
-        .unwrap();
+    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    test_context.log_entity(name.into(), |builder| {
+        builder
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &archetypes::GraphNodes::new(["A", "B"])
+                    .with_positions([[42.0, 42.0], [42.0, 42.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &archetypes::GraphEdges::new([("A", "B")]).with_directed_edges(),
+            )
+    });
 
     run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0));
 }
@@ -71,53 +51,37 @@ pub fn self_and_multi_edges() {
         .add_class::<GraphView>()
         .unwrap();
 
-    let entity_path = EntityPath::from(name);
-
-    let nodes = [
-        components::GraphNode("A".into()),
-        components::GraphNode("B".into()),
-    ];
-
-    let edges = [
-        // self-edges
-        components::GraphEdge(("A", "A").into()),
-        components::GraphEdge(("B", "B").into()),
-        // duplicated edges
-        components::GraphEdge(("A", "B").into()),
-        components::GraphEdge(("A", "B").into()),
-        components::GraphEdge(("B", "A").into()),
-        // duplicated self-edges
-        components::GraphEdge(("A", "A").into()),
-        // TODO(grtlr): investigate instabilities in the graph layout to be able
-        // to test dynamically placed nodes.
-        // implicit edges
-        // components::GraphEdge(("B", "C").into()),
-        // components::GraphEdge(("C", "C").into()),
-    ];
-
-    let directed = components::GraphType::Directed;
-
-    let positions = [
-        components::Position2D([0.0, 0.0].into()),
-        components::Position2D([200.0, 200.0].into()),
-    ];
-
-    let mut builder = Chunk::builder(entity_path.clone());
-    builder = builder.with_sparse_component_batches(
-        RowId::new(),
-        [(test_context.active_timeline(), 1)],
-        [
-            (components::GraphNode::descriptor(), Some(&nodes as _)),
-            (components::Position2D::descriptor(), Some(&positions as _)),
-            (components::GraphEdge::descriptor(), Some(&edges as _)),
-            (components::GraphType::descriptor(), Some(&[directed] as _)),
-        ],
-    );
-
-    test_context
-        .recording_store
-        .add_chunk(&Arc::new(builder.build().unwrap()))
-        .unwrap();
+    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    test_context.log_entity(name.into(), |builder| {
+        builder
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &archetypes::GraphNodes::new(["A", "B"])
+                    .with_positions([[0.0, 0.0], [200.0, 200.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &archetypes::GraphEdges::new([
+                    // self-edges
+                    ("A", "A"),
+                    ("B", "B"),
+                    // duplicated edges
+                    ("A", "B"),
+                    ("A", "B"),
+                    ("B", "A"),
+                    // duplicated self-edges
+                    ("A", "A"),
+                    // TODO(grtlr): investigate instabilities in the graph layout to be able
+                    // to test dynamically placed nodes.
+                    // implicit edges
+                    // ("B", "C"),
+                    // ("C", "C"),
+                ])
+                .with_directed_edges(),
+            )
+    });
 
     run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
 }
