@@ -506,7 +506,10 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
     let is_software_rasterizer_with_known_crashes = {
         // See https://github.com/rerun-io/rerun/issues/3089
         const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
-            "lavapipe", // Vulkan software rasterizer
+            // Some versions of lavapipe are problematic (we observed crashes in the past),
+            // but we haven't isolated for what versions this happens.
+            // (we are happily using lavapipe without any issues on CI)
+            //"lavapipe", // Vulkan software rasterizer
             "llvmpipe", // OpenGL software rasterizer
         ];
 
@@ -520,7 +523,10 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
 
     let human_readable_summary = adapter_info_summary(info);
 
-    if is_software_rasterizer_with_known_crashes {
+    if cfg!(test) {
+        // If we're testing then software rasterizers are just fine, preferred even!
+        re_log::debug!("wgpu adapter {human_readable_summary}");
+    } else if is_software_rasterizer_with_known_crashes {
         re_log::warn!("Bad software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
         re_log::info!("wgpu adapter {human_readable_summary}");
     } else if info.device_type == wgpu::DeviceType::Cpu {
