@@ -81,7 +81,7 @@ impl DataLoader for LeRobotDatasetLoader {
                 .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
                 .values();
 
-            let time_column = re_chunk::TimeColumn::new(Some(true), timeline, times.clone());
+            let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
             let timelines = std::iter::once((timeline, time_column.clone())).collect();
 
             let mut chunks = Vec::new();
