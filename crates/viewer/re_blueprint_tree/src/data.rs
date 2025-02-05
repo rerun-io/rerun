@@ -28,7 +28,7 @@ use crate::data_result_node_or_path::DataResultNodeOrPath;
 
 /// Top-level blueprint tree structure.
 #[derive(Debug, Default)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct BlueprintTreeData {
     pub root_container: Option<ContainerData>,
 }
@@ -71,7 +71,7 @@ impl BlueprintTreeData {
 
 /// Data for either a container or a view (both of which possible child of a container).
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum ContentsData {
     Container(ContainerData),
     View(ViewData),
@@ -91,8 +91,9 @@ impl ContentsData {
 
 /// Data related to a single container and its children.
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ContainerData {
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub id: ContainerId,
     pub name: ContentsName,
     pub kind: egui_tiles::ContainerKind,
@@ -178,8 +179,9 @@ impl ContainerData {
 
 /// Data related to a single view and its content.
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ViewData {
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub id: ViewId,
 
     pub class_identifier: ViewClassIdentifier,
@@ -326,7 +328,7 @@ impl ViewData {
 
 /// The various kind of things that may be represented in a data result tree.
 #[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum DataResultKind {
     /// This is a regular entity part of a data result (or the tree that contains it).
     EntityPart,
@@ -341,12 +343,13 @@ pub enum DataResultKind {
 }
 
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct DataResultData {
     pub kind: DataResultKind,
     pub entity_path: EntityPath,
     pub visible: bool,
 
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub view_id: ViewId,
 
     /// Label that should be used for display.

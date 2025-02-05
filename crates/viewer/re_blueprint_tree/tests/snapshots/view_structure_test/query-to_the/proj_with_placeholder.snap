@@ -3,8 +3,6 @@ source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
 expression: blueprint_tree_data
 ---
 root_container:
-  id:
-    id: "<container-id>"
   name:
     Placeholder: Grid
   kind: Grid
@@ -12,8 +10,6 @@ root_container:
   default_open: true
   children:
     - View:
-        id:
-          id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
         class_identifier: 3D
         name:
           Placeholder: path/to
@@ -25,8 +21,6 @@ root_container:
             - path
             - to
           visible: true
-          view_id:
-            id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
           label: to
           highlight_sections:
             - start: 0
@@ -39,8 +33,6 @@ root_container:
                 - to
                 - the
               visible: true
-              view_id:
-                id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
               label: the
               highlight_sections:
                 - start: 0
@@ -54,8 +46,6 @@ root_container:
                     - the
                     - void
                   visible: true
-                  view_id:
-                    id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                   label: void
                   highlight_sections: []
                   default_open: true
@@ -64,8 +54,6 @@ root_container:
           - kind: EntityPart
             entity_path: []
             visible: true
-            view_id:
-              id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
             label: / (root)
             highlight_sections: []
             default_open: true
@@ -74,8 +62,6 @@ root_container:
                 entity_path:
                   - path
                 visible: true
-                view_id:
-                  id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                 label: path
                 highlight_sections: []
                 default_open: true
@@ -85,8 +71,6 @@ root_container:
                       - path
                       - onto
                     visible: true
-                    view_id:
-                      id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                     label: onto
                     highlight_sections:
                       - start: 2
@@ -99,8 +83,6 @@ root_container:
                           - onto
                           - their
                         visible: true
-                        view_id:
-                          id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                         label: their
                         highlight_sections:
                           - start: 0
@@ -114,8 +96,6 @@ root_container:
                               - their
                               - coils
                             visible: true
-                            view_id:
-                              id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                             label: coils
                             highlight_sections: []
                             default_open: true

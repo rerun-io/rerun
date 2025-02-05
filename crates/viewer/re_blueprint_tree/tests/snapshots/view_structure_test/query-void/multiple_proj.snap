@@ -3,8 +3,6 @@ source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
 expression: blueprint_tree_data
 ---
 root_container:
-  id:
-    id: "<container-id>"
   name:
     Placeholder: Grid
   kind: Grid
@@ -12,8 +10,6 @@ root_container:
   default_open: true
   children:
     - View:
-        id:
-          id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
         class_identifier: 3D
         name:
           Placeholder: center/way
@@ -27,8 +23,6 @@ root_container:
               - to
               - the
             visible: true
-            view_id:
-              id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
             label: the
             highlight_sections: []
             default_open: true
@@ -40,8 +34,6 @@ root_container:
                   - the
                   - void
                 visible: true
-                view_id:
-                  id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
                 label: void
                 highlight_sections:
                   - start: 0
