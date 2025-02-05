@@ -11,7 +11,7 @@ use crate::UiLayout;
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
 
-    use arrow::array::{LargeStringArray, StringArray};
+    use arrow::array::{LargeListArray, LargeStringArray, ListArray, StringArray};
 
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -35,6 +35,22 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                 let string = entries.value(0);
                 ui_layout.data_label(ui, string);
                 return;
+            }
+        }
+
+        // Special-treat batches that are themselves unit-lists (i.e. blobs).
+        //
+        // What we really want to display in these instances in the underlying array, otherwise we'll
+        // bring down the entire viewer trying to render a list whose single entry might itself be
+        // an array with millions of values.
+        if let Some(entries) = array.downcast_array_ref::<ListArray>() {
+            if entries.len() == 1 {
+                return arrow_ui(ui, ui_layout, entries.values());
+            }
+        }
+        if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
+            if entries.len() == 1 {
+                return arrow_ui(ui, ui_layout, entries.values());
             }
         }
 
