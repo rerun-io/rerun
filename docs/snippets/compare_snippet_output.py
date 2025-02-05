@@ -71,7 +71,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
     parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
-    parser.add_argument("--no-asset-download", action="store_true", help="Skip downloading test assets")
     # We don't allow skipping Rust - it is what we compate to at the moment
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
@@ -137,13 +136,6 @@ def main() -> None:
     examples.sort()
 
     print("----------------------------------------------------------")
-
-    if not args.no_asset_download:
-        print("Downloading test assets…")
-        run(["pixi", "run", "python3", "./tests/assets/download_test_assets.py"])
-        print("")
-
-        print("----------------------------------------------------------")
 
     active_languages = ["rust"]
     if not args.no_cpp:
