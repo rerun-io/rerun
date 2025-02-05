@@ -13,7 +13,7 @@ pub use self::{
     time::{Time, Timescale},
 };
 
-/// Returns information about this crate
+/// Returns information about this crate.
 pub fn build_info() -> re_build_info::BuildInfo {
     re_build_info::build_info!()
 }
