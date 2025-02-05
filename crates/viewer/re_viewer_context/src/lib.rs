@@ -96,6 +96,9 @@ pub use re_ui::UiLayout; // Historical reasons
 pub mod external {
     pub use nohash_hasher;
     pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
+
+    #[cfg(feature = "testing")]
+    pub use egui_kittest;
 }
 
 // ---------------------------------------------------------------------------

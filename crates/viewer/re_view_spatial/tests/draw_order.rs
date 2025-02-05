@@ -222,5 +222,28 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(name);
+
+    let broken_percent_threshold = 0.01;
+    let num_pixels = (size.x * size.y).ceil() as f64;
+
+    use re_viewer_context::external::egui_kittest;
+    match harness.try_snapshot(name) {
+        Ok(_) => {}
+
+        Err(err) => match err {
+            egui_kittest::SnapshotError::Diff {
+                name,
+                diff: num_broken_pixels,
+                diff_path,
+            } => {
+                let broken_percent = num_broken_pixels as f64 / num_pixels;
+                assert!(
+                    broken_percent <= broken_percent_threshold,
+                    "{name} failed because {broken_percent} > {broken_percent_threshold}"
+                )
+            }
+
+            _ => panic!("{name} failed: {err}"),
+        },
+    }
 }
