@@ -31,8 +31,6 @@ const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] = &[
 /// A [`DataLoader`] for `LeRobot` datasets.
 ///
 /// An example dataset which can be loaded can be found on Hugging Face: [lerobot/pusht_image](https://huggingface.co/datasets/lerobot/pusht_image)
-///
-/// See [`crate::lerobot`] for more on the `LeRobot` dataset format.
 pub struct LeRobotDatasetLoader;
 
 impl DataLoader for LeRobotDatasetLoader {
