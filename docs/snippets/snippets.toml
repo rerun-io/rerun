@@ -290,7 +290,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
-# Note that the snippet comparison tool will automatically run `/tests/assets/download_test_assets.py` before running the snippets.
 [extra_args]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
