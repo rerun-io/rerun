@@ -163,11 +163,6 @@ fn run_view_selection_panel_ui_and_save_snapshot(
     name: &str,
     size: egui::Vec2,
 ) {
-    let mut view_state = test_context
-        .view_class_registry
-        .get_class_or_log_error(DataframeView::identifier())
-        .new_state();
-
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
@@ -191,11 +186,14 @@ fn run_view_selection_panel_ui_and_save_snapshot(
                     ui.list_item_scope("test_harness", |ui| {
                         ui.spacing_mut().item_spacing = spacing;
 
+                        let mut view_states = test_context.view_states.lock();
+                        let view_state = view_states.get_mut_or_create(view_id, view_class);
+
                         view_class
                             .selection_ui(
                                 ctx,
                                 ui,
-                                &mut *view_state,
+                                view_state,
                                 &view_blueprint.space_origin,
                                 view_id,
                             )

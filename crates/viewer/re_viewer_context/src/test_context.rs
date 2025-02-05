@@ -14,7 +14,7 @@ use re_types_core::reflection::Reflection;
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
+    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
 
 pub trait HarnessExt {
@@ -77,6 +77,7 @@ pub struct TestContext {
     pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
+    pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
     pub query_results: HashMap<ViewId, DataQueryResult>,
@@ -118,6 +119,7 @@ impl Default for TestContext {
             view_class_registry: Default::default(),
             selection_state: Default::default(),
             recording_config,
+            view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
             component_ui_registry,
@@ -296,6 +298,9 @@ impl TestContext {
             hub: &Default::default(),
             should_enable_heuristics: false,
         };
+        let indicated_entities_per_visualizer = self
+            .view_class_registry
+            .indicated_entities_per_visualizer(&store_context.recording.store_id());
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -316,7 +321,7 @@ impl TestContext {
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
-            indicated_entities_per_visualizer: &Default::default(),
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,
             blueprint_cfg: &Default::default(),
