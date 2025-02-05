@@ -140,7 +140,7 @@ impl GeoPointsVisualizer {
             self.batches
                 .iter()
                 .flat_map(|(_, batch)| batch.positions.iter())
-                .map(|pos| (pos.lat(), pos.lng())),
+                .map(|pos| (pos.y(), pos.x())),
         )
     }
 
