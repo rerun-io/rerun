@@ -63,6 +63,7 @@ impl TestContextExt for TestContext {
                         &self.recording_store.store_id(),
                     );
                 let mut query_results = HashMap::default();
+
                 self.run(egui_ctx, |ctx| {
                     viewport_blueprint.visit_contents(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
@@ -71,27 +72,47 @@ impl TestContextExt for TestContext {
                                 .expect("view is known to exist");
                             let class_identifier = view_blueprint.class_identifier();
 
-                            let data_query_result = {
-                                let visualizable_entities = ctx
-                                    .view_class_registry
-                                    .class(class_identifier)
-                                    .expect("The class must be registered beforehand")
-                                    .determine_visualizable_entities(
-                                        &maybe_visualizable_entities_per_visualizer,
-                                        ctx.recording(),
-                                        &ctx.view_class_registry
-                                            .new_visualizer_collection(class_identifier),
-                                        &view_blueprint.space_origin,
-                                    );
+                            let visualizable_entities = ctx
+                                .view_class_registry
+                                .class(class_identifier)
+                                .expect("The class must be registered beforehand")
+                                .determine_visualizable_entities(
+                                    &maybe_visualizable_entities_per_visualizer,
+                                    ctx.recording(),
+                                    &ctx.view_class_registry
+                                        .new_visualizer_collection(class_identifier),
+                                    &view_blueprint.space_origin,
+                                );
 
-                                view_blueprint.contents.execute_query(
-                                    ctx.store_context,
-                                    ctx.view_class_registry,
-                                    ctx.blueprint_query,
-                                    *view_id,
-                                    &visualizable_entities,
-                                )
-                            };
+                            let indicated_entities_per_visualizer = ctx
+                                .view_class_registry
+                                .indicated_entities_per_visualizer(&ctx.recording().store_id());
+
+                            let mut data_query_result = view_blueprint.contents.execute_query(
+                                ctx.store_context,
+                                ctx.view_class_registry,
+                                ctx.blueprint_query,
+                                *view_id,
+                                &visualizable_entities,
+                            );
+
+                            let resolver = view_blueprint.contents.build_resolver(
+                                ctx.view_class_registry,
+                                view_blueprint,
+                                &maybe_visualizable_entities_per_visualizer,
+                                &visualizable_entities,
+                                &indicated_entities_per_visualizer,
+                            );
+
+                            resolver.update_overrides(
+                                ctx.store_context.blueprint,
+                                ctx.blueprint_query,
+                                ctx.rec_cfg.time_ctrl.read().timeline(),
+                                ctx.view_class_registry,
+                                &mut data_query_result,
+                                &mut self.view_states.lock(),
+                            );
+
                             query_results.insert(*view_id, data_query_result);
                         }
 

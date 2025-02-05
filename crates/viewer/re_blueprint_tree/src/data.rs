@@ -15,9 +15,9 @@ use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
-use re_log_types::{EntityPath, EntityPathPart};
+use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::filter_widget::FilterMatcher;
+use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
     ViewId, ViewerContext, VisitorControlFlow,
@@ -28,7 +28,7 @@ use crate::data_result_node_or_path::DataResultNodeOrPath;
 
 /// Top-level blueprint tree structure.
 #[derive(Debug, Default)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct BlueprintTreeData {
     pub root_container: Option<ContainerData>,
 }
@@ -71,7 +71,7 @@ impl BlueprintTreeData {
 
 /// Data for either a container or a view (both of which possible child of a container).
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum ContentsData {
     Container(ContainerData),
     View(ViewData),
@@ -91,8 +91,9 @@ impl ContentsData {
 
 /// Data related to a single container and its children.
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ContainerData {
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub id: ContainerId,
     pub name: ContentsName,
     pub kind: egui_tiles::ContainerKind,
@@ -178,8 +179,9 @@ impl ContainerData {
 
 /// Data related to a single view and its content.
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ViewData {
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub id: ViewId,
 
     pub class_identifier: ViewClassIdentifier,
@@ -216,6 +218,7 @@ impl ViewData {
         //
 
         let mut hierarchy = Vec::with_capacity(10);
+        let mut hierarchy_highlights = PathRanges::default();
         let origin_tree = DataResultData::from_data_result_and_filter(
             ctx,
             view_blueprint,
@@ -223,12 +226,13 @@ impl ViewData {
             &DataResultNodeOrPath::from_path_lookup(result_tree, &view_blueprint.space_origin),
             false,
             &mut hierarchy,
+            &mut hierarchy_highlights,
             filter_matcher,
-            false,
         );
 
         debug_assert!(hierarchy.is_empty());
         hierarchy.clear();
+        hierarchy_highlights.clear();
 
         //
         // Data results outside the view origin subtree (a.k.a projections)
@@ -266,12 +270,13 @@ impl ViewData {
                     &DataResultNodeOrPath::DataResultNode(node),
                     true,
                     &mut hierarchy,
+                    &mut hierarchy_highlights,
                     filter_matcher,
-                    false,
                 );
 
                 debug_assert!(hierarchy.is_empty());
                 hierarchy.clear();
+                hierarchy_highlights.clear();
 
                 projection_tree
             })
@@ -322,8 +327,8 @@ impl ViewData {
 // ---
 
 /// The various kind of things that may be represented in a data result tree.
-#[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum DataResultKind {
     /// This is a regular entity part of a data result (or the tree that contains it).
     EntityPart,
@@ -338,12 +343,13 @@ pub enum DataResultKind {
 }
 
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct DataResultData {
     pub kind: DataResultKind,
     pub entity_path: EntityPath,
     pub visible: bool,
 
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub view_id: ViewId,
 
     /// Label that should be used for display.
@@ -367,9 +373,9 @@ impl DataResultData {
         query_result: &DataQueryResult,
         data_result_or_path: &DataResultNodeOrPath<'_>,
         projection: bool,
-        hierarchy: &mut Vec<EntityPathPart>,
+        hierarchy: &mut Vec<String>,
+        hierarchy_highlights: &mut PathRanges,
         filter_matcher: &FilterMatcher,
-        mut is_already_a_match: bool,
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
@@ -382,116 +388,54 @@ impl DataResultData {
         let data_result_node = data_result_or_path.data_result_node();
         let visible = data_result_node.is_some_and(|node| node.data_result.is_visible(ctx));
 
-        let (label, should_pop) = if let Some(entity_part) = entity_path.last() {
-            hierarchy.push(entity_part.clone());
-            (entity_part.ui_string(), true)
+        let entity_part_ui_string = entity_path
+            .last()
+            .map(|entity_part| entity_part.ui_string());
+
+        let (label, should_pop) = if let Some(entity_part_ui_string) = entity_part_ui_string.clone()
+        {
+            hierarchy.push(entity_part_ui_string.clone());
+            (entity_part_ui_string, true)
         } else {
             ("/ (root)".to_owned(), false)
         };
 
         //
-        // Filtering
+        // Gather some info about the current node…
         //
 
-        // TODO(ab): we're currently only matching on the last part of `hierarchy`. Technically,
-        // this means that `hierarchy` is not needed at all. It will however be needed when we match
-        // across multiple parts, so it's good to have it already.
-        let (entity_part_matches, highlight_sections) = if filter_matcher.matches_everything() {
-            // fast path (filter is inactive)
-            (true, SmallVec::new())
-        } else if let Some(entity_part) = hierarchy.last() {
-            // Nominal case of matching the hierarchy.
-            if let Some(match_sections) = filter_matcher.find_matches(&entity_part.ui_string()) {
-                (true, match_sections.collect())
-            } else {
-                (false, SmallVec::new())
-            }
-        } else {
-            // `entity_path` is the root, it can never match anything
-            (false, SmallVec::new())
-        };
+        enum LeafOrNot<'a> {
+            Leaf,
+            NotLeaf(&'a DataResultNode),
+        }
 
-        // We want to keep entire branches if a single of its node matches. So we must propagate the
-        // "matched" state so we can make the right call when we reach leaf nodes.
-        is_already_a_match |= entity_part_matches;
+        /// Temporary structure to hold local information.
+        struct NodeInfo<'a> {
+            leaf_or_not: LeafOrNot<'a>,
+            kind: DataResultKind,
+            default_open: bool,
+        }
 
-        //
-        // "Nominal" data result node (extracted for deduplication).
-        //
-
-        let view_id = view_blueprint.id;
-        let mut from_data_result_node = |data_result_node: &DataResultNode,
-                                         highlight_sections: SmallVec<_>,
-                                         entity_path: EntityPath,
-                                         label,
-                                         default_open| {
-            let mut children = data_result_node
-                .children
-                .iter()
-                .filter_map(|child_handle| {
-                    let child_node = query_result.tree.lookup_node(*child_handle);
-
-                    debug_assert!(
-                        child_node.is_some(),
-                        "DataResultNode {data_result_node:?} has an invalid child"
-                    );
-
-                    child_node.and_then(|child_node| {
-                        Self::from_data_result_and_filter(
-                            ctx,
-                            view_blueprint,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(child_node),
-                            projection,
-                            hierarchy,
-                            filter_matcher,
-                            is_already_a_match,
-                        )
-                    })
-                })
-                .collect_vec();
-
-            children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
-
-            (is_already_a_match || !children.is_empty()).then(|| Self {
-                kind: DataResultKind::EntityPart,
-                entity_path,
-                visible,
-                view_id,
-                label,
-                highlight_sections,
-                default_open,
-                children,
-            })
-        };
-
-        //
-        // Handle all situations
-        //
-
-        let result = if projection {
-            //  projections are collapsed by default
-            let default_open = filter_matcher.is_active();
-
+        #[expect(clippy::manual_map)]
+        let node_info = if projection {
             if entity_path == view_blueprint.space_origin {
-                is_already_a_match.then(|| Self {
+                Some(NodeInfo {
+                    leaf_or_not: LeafOrNot::Leaf,
                     kind: DataResultKind::OriginProjectionPlaceholder,
-                    entity_path,
-                    visible,
-                    view_id,
-                    label,
-                    highlight_sections,
-                    default_open,
-                    children: vec![],
+                    // not hierarchical anyway
+                    default_open: false,
                 })
             } else if let Some(data_result_node) = data_result_node {
-                from_data_result_node(
-                    data_result_node,
-                    highlight_sections,
-                    entity_path,
-                    label,
-                    filter_matcher.is_active(),
-                )
+                Some(NodeInfo {
+                    leaf_or_not: if data_result_node.children.is_empty() {
+                        LeafOrNot::Leaf
+                    } else {
+                        LeafOrNot::NotLeaf(data_result_node)
+                    },
+                    kind: DataResultKind::EntityPart,
+                    // projections are collapsed by default
+                    default_open: filter_matcher.is_active(),
+                })
             } else {
                 // TODO(ab): what are the circumstances for this? Should we warn about it?
                 None
@@ -499,34 +443,119 @@ impl DataResultData {
         } else {
             // empty origin case
             if entity_path == view_blueprint.space_origin && data_result_node.is_none() {
-                is_already_a_match.then(|| Self {
+                Some(NodeInfo {
+                    leaf_or_not: LeafOrNot::Leaf,
                     kind: DataResultKind::EmptyOriginPlaceholder,
-                    entity_path,
-                    visible,
-                    view_id,
-                    label,
-                    highlight_sections,
-                    default_open: false, // not hierarchical anyway
-                    children: vec![],
+                    // not hierarchical anyway
+                    default_open: false,
                 })
             } else if let Some(data_result_node) = data_result_node {
-                let default_open = filter_matcher.is_active()
-                    || default_open_for_data_result(data_result_node.children.len());
-
-                from_data_result_node(
-                    data_result_node,
-                    highlight_sections,
-                    entity_path,
-                    label,
-                    default_open,
-                )
+                Some(NodeInfo {
+                    leaf_or_not: if data_result_node.children.is_empty() {
+                        LeafOrNot::Leaf
+                    } else {
+                        LeafOrNot::NotLeaf(data_result_node)
+                    },
+                    kind: DataResultKind::EntityPart,
+                    default_open: filter_matcher.is_active()
+                        || default_open_for_data_result(data_result_node.children.len()),
+                })
             } else {
                 // TODO(ab): what are the circumstances for this? Should we warn about it?
                 None
             }
         };
 
+        //
+        // …then handle the node accordingly.
+        //
+
+        let result = node_info.and_then(|node_info| {
+            let (is_this_a_match, children) = match node_info.leaf_or_not {
+                LeafOrNot::Leaf => {
+                    // Key insight: we only ever need to match the hierarchy from the leaf nodes.
+                    // Non-leaf nodes know they are a match if any child remains after walking their
+                    // subtree.
+
+                    let highlights =
+                        filter_matcher.match_path(hierarchy.iter().map(String::as_str));
+
+                    let is_this_a_match = if let Some(highlights) = highlights {
+                        hierarchy_highlights.merge(highlights);
+                        true
+                    } else {
+                        false
+                    };
+
+                    (is_this_a_match, vec![])
+                }
+
+                LeafOrNot::NotLeaf(data_result_node) => {
+                    let mut children = data_result_node
+                        .children
+                        .iter()
+                        .filter_map(|child_handle| {
+                            let child_node = query_result.tree.lookup_node(*child_handle);
+
+                            debug_assert!(
+                                child_node.is_some(),
+                                "DataResultNode {data_result_node:?} has an invalid child"
+                            );
+
+                            child_node.and_then(|child_node| {
+                                Self::from_data_result_and_filter(
+                                    ctx,
+                                    view_blueprint,
+                                    query_result,
+                                    &DataResultNodeOrPath::DataResultNode(child_node),
+                                    projection,
+                                    hierarchy,
+                                    hierarchy_highlights,
+                                    filter_matcher,
+                                )
+                            })
+                        })
+                        .collect_vec();
+
+                    // This is needed because `DataResultNode` stores children in a `SmallVec`, offering
+                    // no guarantees about ordering.
+                    children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
+
+                    let is_this_a_match = !children.is_empty();
+
+                    (is_this_a_match, children)
+                }
+            };
+
+            is_this_a_match.then(|| {
+                let highlight_sections =
+                    hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
+
+                // never highlight the placeholder
+                let highlight_sections =
+                    if node_info.kind == DataResultKind::OriginProjectionPlaceholder {
+                        SmallVec::new()
+                    } else {
+                        highlight_sections
+                            .map(Iterator::collect)
+                            .unwrap_or_default()
+                    };
+
+                Self {
+                    kind: node_info.kind,
+                    entity_path,
+                    visible,
+                    view_id: view_blueprint.id,
+                    label,
+                    highlight_sections,
+                    default_open: node_info.default_open,
+                    children,
+                }
+            })
+        });
+
         if should_pop {
+            hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
             hierarchy.pop();
         }
 

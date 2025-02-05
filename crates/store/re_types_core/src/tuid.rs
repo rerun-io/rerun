@@ -149,7 +149,7 @@ macro_rules! delegate_arrow_tuid {
 
             #[inline]
             fn to_arrow_opt<'a>(
-                values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                _values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
             ) -> $crate::SerializationResult<arrow::array::ArrayRef>
             where
                 Self: 'a,

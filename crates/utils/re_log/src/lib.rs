@@ -95,7 +95,7 @@ pub fn default_log_filter() -> String {
         if cfg!(debug_assertions) {
             "debug".to_owned()
         } else {
-            "info".to_owned()
+            "warn".to_owned()
         }
     });
 

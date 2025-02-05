@@ -37,7 +37,7 @@ impl GeoSpan {
     }
 
     pub fn center(&self) -> walkers::Position {
-        walkers::Position::from_lat_lon(
+        walkers::lat_lon(
             (self.min_latitude + self.max_latitude) / 2.0,
             (self.min_longitude + self.max_longitude) / 2.0,
         )

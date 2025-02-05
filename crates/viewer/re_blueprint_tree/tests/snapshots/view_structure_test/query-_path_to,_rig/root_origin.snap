@@ -1,0 +1,59 @@
+---
+source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
+expression: blueprint_tree_data
+---
+root_container:
+  name:
+    Placeholder: Grid
+  kind: Grid
+  visible: true
+  default_open: true
+  children:
+    - View:
+        class_identifier: 3D
+        name:
+          Placeholder: /
+        visible: true
+        default_open: true
+        origin_tree:
+          kind: EntityPart
+          entity_path: []
+          visible: true
+          label: / (root)
+          highlight_sections: []
+          default_open: true
+          children:
+            - kind: EntityPart
+              entity_path:
+                - path
+              visible: true
+              label: path
+              highlight_sections:
+                - start: 0
+                  end: 4
+              default_open: true
+              children:
+                - kind: EntityPart
+                  entity_path:
+                    - path
+                    - to
+                  visible: true
+                  label: to
+                  highlight_sections:
+                    - start: 0
+                      end: 2
+                  default_open: true
+                  children:
+                    - kind: EntityPart
+                      entity_path:
+                        - path
+                        - to
+                        - right
+                      visible: true
+                      label: right
+                      highlight_sections:
+                        - start: 0
+                          end: 3
+                      default_open: true
+                      children: []
+        projection_trees: []

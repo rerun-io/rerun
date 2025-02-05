@@ -721,9 +721,9 @@ impl RecordingStreamBuilder {
 ///   thread originally sent them in, from its point of view.
 /// - There isn't any well defined global order across multiple threads.
 ///
-/// This means that e.g. flushing the pipeline ([`Self::flush_blocking`]) guarantees that all
-/// previous data sent by the calling thread has been recorded; no more, no less.
-/// (e.g. it does not mean that all file caches are flushed)
+/// This means that e.g. flushing the pipeline ([`Self::flush_blocking`]) guarantees that all previous data sent by the calling thread
+/// has been recorded and (if applicable) flushed to the underlying OS-managed file descriptor,
+/// but other threads may still have data in flight.
 ///
 /// ## Shutdown
 ///

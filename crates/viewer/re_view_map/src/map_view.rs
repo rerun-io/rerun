@@ -47,7 +47,7 @@ impl Default for MapViewState {
 
             // default to Rerun HQ whenever we have no data (either now or historically) to provide
             // a better location
-            last_center_position: walkers::Position::from_lat_lon(59.319224, 18.075514),
+            last_center_position: walkers::lat_lon(59.319224, 18.075514),
             last_gpu_picking_result: None,
         }
     }

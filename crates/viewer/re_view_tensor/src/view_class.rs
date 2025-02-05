@@ -177,9 +177,9 @@ Note: select the view to configure which dimensions are shown."
             if ui
                 .add_enabled(
                     slice_property.any_non_empty(),
-                    egui::Button::new("Reset to default"),
+                    egui::Button::new("Reset to heuristic"),
                 )
-                .on_hover_text("Reset dimension mapping to the default, i.e. as if never set")
+                .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
                 .on_disabled_hover_text("No custom dimension mapping set")
                 .clicked()
             {

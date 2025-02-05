@@ -14,8 +14,50 @@ use re_types_core::reflection::Reflection;
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
+    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
+
+pub trait HarnessExt {
+    /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
+    //
+    // TODO(emilk/egui#5683): this should be natively supported by kittest
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    );
+}
+
+impl HarnessExt for egui_kittest::Harness<'_> {
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) {
+        match self.try_snapshot(name) {
+            Ok(_) => {}
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    assert!(
+                        broken_percent <= broken_percent_threshold,
+                        "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                    );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+}
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -35,6 +77,7 @@ pub struct TestContext {
     pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
+    pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
     pub query_results: HashMap<ViewId, DataQueryResult>,
@@ -52,9 +95,7 @@ pub struct TestContext {
 
 impl Default for TestContext {
     fn default() -> Self {
-        // We rely a lot on logging in the viewer to identify issues.
-        // Make sure logging is set up if it hasn't been done yet.
-        let _ = env_logger::builder().is_test(true).try_init();
+        re_log::setup_logging();
 
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
@@ -78,6 +119,7 @@ impl Default for TestContext {
             view_class_registry: Default::default(),
             selection_state: Default::default(),
             recording_config,
+            view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
             component_ui_registry,
@@ -256,6 +298,9 @@ impl TestContext {
             hub: &Default::default(),
             should_enable_heuristics: false,
         };
+        let indicated_entities_per_visualizer = self
+            .view_class_registry
+            .indicated_entities_per_visualizer(&store_context.recording.store_id());
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -276,7 +321,7 @@ impl TestContext {
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
-            indicated_entities_per_visualizer: &Default::default(),
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,
             blueprint_cfg: &Default::default(),

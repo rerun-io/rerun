@@ -58,6 +58,11 @@ pub trait ChunkStoreSubscriber: std::any::Any + Send + Sync {
     /// }
     /// ```
     fn on_events(&mut self, events: &[ChunkStoreEvent]);
+
+    /// Notifies a subscriber that an entire store was dropped.
+    fn on_drop(&mut self, store_id: &StoreId) {
+        _ = store_id;
+    }
 }
 
 /// A [`ChunkStoreSubscriber`] that is instantiated for each unique [`StoreId`].
@@ -171,6 +176,15 @@ impl ChunkStore {
         ChunkStoreSubscriberHandle(subscribers.len() as u32 - 1)
     }
 
+    /// Notifies all [`PerStoreChunkSubscriber`]s that a store was dropped.
+    pub fn drop_per_store_subscribers(store_id: &StoreId) {
+        let subscribers = SUBSCRIBERS.read();
+        for subscriber in &*subscribers {
+            let mut subscriber = subscriber.write();
+            subscriber.on_drop(store_id);
+        }
+    }
+
     /// Passes a reference to the downcasted per-store subscriber to the given `FnMut` callback.
     ///
     /// Returns `None` if the subscriber doesn't exist or downcasting failed.
@@ -282,6 +296,10 @@ impl<S: PerStoreChunkSubscriber + 'static> ChunkStoreSubscriber
                 .or_default()
                 .on_events(events);
         }
+    }
+
+    fn on_drop(&mut self, store_id: &StoreId) {
+        self.subscribers.remove(store_id);
     }
 }
 
