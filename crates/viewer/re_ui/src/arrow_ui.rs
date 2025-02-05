@@ -63,12 +63,24 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
             if instance_count == 1 {
                 ui.monospace(formatter.value(0).to_string());
+            } else if instance_count < 10
+                && (array.data_type().is_primitive()
+                    || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
+            {
+                // A short list of floats, strings, etc. Show it to the user.
+                let list_string = format!(
+                    "[{}]",
+                    (0..instance_count)
+                        .map(|index| formatter.value(index).to_string())
+                        .join(", ")
+                );
+                ui_layout.label(ui, list_string);
             } else {
                 let instance_count_str = re_format::format_uint(instance_count);
 
                 let string = if array.data_type() == &DataType::UInt8 {
                     re_format::format_bytes(instance_count as _)
-                } else if let Some(dtype) = datatype_string(array.data_type()) {
+                } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
                     format!("{instance_count_str} items of {dtype}")
                 } else {
                     format!("{instance_count_str} items")
@@ -94,7 +106,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 }
 
 // TODO(emilk): there is some overlap here with `re_format_arrow`.
-fn datatype_string(datatype: &DataType) -> Option<&'static str> {
+fn simple_datatype_string(datatype: &DataType) -> Option<&'static str> {
     match datatype {
         DataType::Null => Some("null"),
         DataType::Boolean => Some("bool"),
@@ -110,7 +122,7 @@ fn datatype_string(datatype: &DataType) -> Option<&'static str> {
         DataType::Float32 => Some("float32"),
         DataType::Float64 => Some("float64"),
         DataType::Utf8 | DataType::LargeUtf8 => Some("utf8"),
-        DataType::Binary => Some("binary"),
+        DataType::Binary | DataType::LargeBinary => Some("binary"),
         _ => None,
     }
 }
