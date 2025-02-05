@@ -6713,6 +6713,7 @@ dependencies = [
  "egui_tiles",
  "getrandom",
  "itertools 0.13.0",
+ "nohash-hasher",
  "once_cell",
  "parking_lot",
  "rand",

@@ -51,6 +51,7 @@ getrandom.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 smallvec.workspace = true

@@ -2,8 +2,8 @@ use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools;
-
-use re_entity_db::external::re_chunk_store::external::re_chunk::external::nohash_hasher::IntMap;
+use nohash_hasher::IntMap;
+use smallvec::SmallVec;
 
 use crate::{list_item, UiExt as _};
 
@@ -178,6 +178,8 @@ impl FilterState {
 // --
 
 /// Full-text, case-insensitive matcher.
+///
+/// All keywords must match for the filter to match (`AND` semantics).
 pub struct FilterMatcher {
     /// Lowercase keywords.
     ///
@@ -214,27 +216,28 @@ impl FilterMatcher {
             .is_some_and(|keywords| keywords.is_empty())
     }
 
-    //TODO
-    pub fn matches_hierarchy<'a>(
-        &self,
-        hierarchy: impl IntoIterator<Item = &'a str>,
-    ) -> Option<HierarchyRanges> {
+    /// Match a path and return the highlight ranges if any.
+    ///
+    /// `None`: the filter is active, but the path didn't match the keyword
+    /// `Some(ranges)`: either the filter is inactive (i.e., it matches everything), or it is active
+    /// and all keywords matched at least once.
+    pub fn match_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> Option<PathRanges> {
         match self.keywords.as_deref() {
-            None => Some(HierarchyRanges::default()),
+            None => Some(PathRanges::default()),
             Some([]) => None,
             Some(keywords) => {
-                let hierarchy = hierarchy.into_iter().map(str::to_lowercase).collect_vec();
+                let hierarchy = path.into_iter().map(str::to_lowercase).collect_vec();
 
                 let all_ranges = keywords
                     .iter()
-                    .map(|keyword| keyword.match_hierarchy(hierarchy.iter().map(String::as_str)))
+                    .map(|keyword| keyword.match_path(hierarchy.iter().map(String::as_str)))
                     .collect_vec();
 
                 // all keywords must match!
                 if all_ranges.iter().any(|ranges| ranges.is_empty()) {
                     None
                 } else {
-                    let mut result = HierarchyRanges::default();
+                    let mut result = PathRanges::default();
                     for ranges in all_ranges {
                         result.merge(ranges);
                     }
@@ -245,12 +248,29 @@ impl FilterMatcher {
     }
 }
 
+/// A single keyword from a query.
+///
+/// ## Semantics
+///
+/// If the keyword has a single part, it can match anywhere in any part of the tested path, unless
+/// `match_from_first_part_start` and/or `match_to_last_part_end`, which have the same behavior as
+/// regex's `^` and `$`.
+///
+/// If the keyword has multiple parts, the tested path must have at least one instance of contiguous
+/// parts which match the corresponding keyword parts. In that context, the keyword parts have the
+/// following behavior:
+/// - First keyword part: `^part$` if `match_from_first_part_start`, `part$` otherwise
+/// - Last keyword part: `^part$` if `match_to_last_part_end`, `^part` otherwise
+/// - Other keyword parts: `^part$`
+
 #[derive(Debug, Clone, PartialEq)]
 struct Keyword {
+    /// The parts of a keyword.
+    ///
+    /// To match, a path needs to have some contiguous parts which each match the corresponding
+    /// keyword parts.
     parts: Vec<String>,
-
     match_from_first_part_start: bool,
-
     match_to_last_part_end: bool,
 }
 
@@ -284,11 +304,13 @@ impl Keyword {
         }
     }
 
-    //TODO: docstring / ranges are not sorted nor merged
-    fn match_hierarchy<'a>(&self, hierarchy: impl IntoIterator<Item = &'a str>) -> HierarchyRanges {
+    /// Match the keyword against the provided path.
+    ///
+    /// An empty [`PathRanges`] means that the keyword didn't match the path.
+    fn match_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> PathRanges {
         let mut state_machines = vec![];
 
-        for (part_index, part) in hierarchy.into_iter().enumerate() {
+        for (part_index, part) in path.into_iter().enumerate() {
             let lowercase_part = part.to_lowercase();
 
             state_machines.push(MatchStateMachine::new(self));
@@ -301,25 +323,30 @@ impl Keyword {
         state_machines
             .into_iter()
             .filter_map(|state_machine| {
-                if state_machine.matches() {
+                if state_machine.did_match() {
                     Some(state_machine.ranges)
                 } else {
                     None
                 }
             })
-            .fold(HierarchyRanges::default(), |mut acc, ranges| {
+            .fold(PathRanges::default(), |mut acc, ranges| {
                 acc.merge(ranges);
                 acc
             })
     }
 }
 
+/// Accumulates highlight ranges for the various parts of a path.
+///
+/// The ranges are accumulated and stored unmerged and unordered, but are _always_ ordered and
+/// merged when read, which only happens with [`Self::remove`].
 #[derive(Debug, Default)]
-pub struct HierarchyRanges {
+pub struct PathRanges {
     ranges: IntMap<usize, Vec<Range<usize>>>,
 }
 
-impl HierarchyRanges {
+impl PathRanges {
+    /// Merge another [`Self`].
     pub fn merge(&mut self, other: Self) {
         for (part_index, part_ranges) in other.ranges {
             self.ranges
@@ -329,14 +356,17 @@ impl HierarchyRanges {
         }
     }
 
+    /// Add ranges to a given part index.
     pub fn extend(&mut self, part_index: usize, ranges: impl IntoIterator<Item = Range<usize>>) {
         self.ranges.entry(part_index).or_default().extend(ranges);
     }
 
+    /// Add a single range to a given part index.
     pub fn push(&mut self, part_index: usize, range: Range<usize>) {
         self.ranges.entry(part_index).or_default().push(range);
     }
 
+    /// Remove the ranges for the given part and (if any) return them sorted and merged.
     pub fn remove(&mut self, part_index: usize) -> Option<impl Iterator<Item = Range<usize>>> {
         self.ranges.remove(&part_index).map(MergeRanges::new)
     }
@@ -348,7 +378,25 @@ impl HierarchyRanges {
     pub fn clear(&mut self) {
         self.ranges.clear();
     }
+
+    /// Convert to a `Vec` based structure.
+    #[cfg(test)]
+    fn into_vec(mut self, length: usize) -> Vec<Vec<Range<usize>>> {
+        let result = (0..length)
+            .map(|i| {
+                self.remove(i)
+                    .map(|iter| iter.collect_vec())
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        debug_assert!(self.is_empty());
+
+        result
+    }
 }
+
+// ---
 
 #[derive(Debug)]
 enum MatchState {
@@ -357,12 +405,20 @@ enum MatchState {
     NoMatch,
 }
 
+/// State machine used to test a given keyword against a given sequence of path parts.
 #[derive(Debug)]
 struct MatchStateMachine<'a> {
+    /// The keyword we're matching with.
     keyword: &'a Keyword,
+
+    /// Which part of the keyword are we currently matching?
     current_keyword_part: usize,
+
+    /// Our current state.
     state: MatchState,
-    ranges: HierarchyRanges,
+
+    /// The highlight ranges we've gathered so far.
+    ranges: PathRanges,
 }
 
 impl<'a> MatchStateMachine<'a> {
@@ -375,7 +431,7 @@ impl<'a> MatchStateMachine<'a> {
         }
     }
 
-    fn matches(&self) -> bool {
+    fn did_match(&self) -> bool {
         matches!(self.state, MatchState::Match)
     }
 
@@ -391,7 +447,7 @@ impl<'a> MatchStateMachine<'a> {
         let must_match_from_start = has_part_before || self.keyword.match_from_first_part_start;
         let must_match_to_end = has_part_after || self.keyword.match_to_last_part_end;
 
-        let mut ranges = vec![];
+        let mut ranges = SmallVec::<[Range<usize>; 2]>::new();
         match (must_match_from_start, must_match_to_end) {
             (false, false) => {
                 ranges.extend(single_keyword_matches(part, keyword_part));
@@ -428,6 +484,8 @@ impl<'a> MatchStateMachine<'a> {
         }
     }
 }
+
+// ---
 
 /// Given a list of highlight sections defined by start/end indices and a string, produce a properly
 /// highlighted [`egui::WidgetText`].
@@ -498,6 +556,8 @@ fn single_keyword_matches<'a>(
         Some(start_index..(start_index + keyword_len))
     })
 }
+
+// ---
 
 /// Given a vector of ranges, iterate over the sorted, merged ranges.
 struct MergeRanges {
@@ -633,25 +693,11 @@ mod test {
     }
 
     #[test]
-    fn test_keyword_match_hierarchy() {
-        fn match_and_normalize(query: &str, hierarchy: &[&str]) -> Vec<Vec<Range<usize>>> {
+    fn test_keyword_match_path() {
+        fn match_and_normalize(query: &str, path: &[&str]) -> Vec<Vec<Range<usize>>> {
             let keyword = Keyword::new(query);
-            let hierarchy = hierarchy.to_vec();
-
-            let mut ranges = keyword.match_hierarchy(hierarchy.clone());
-
-            let result = (0..hierarchy.len())
-                .map(|i| {
-                    ranges
-                        .remove(i)
-                        .map(|iter| iter.collect_vec())
-                        .unwrap_or_default()
-                })
-                .collect();
-
-            assert!(ranges.is_empty());
-
-            result
+            let path = path.to_vec();
+            keyword.match_path(path.clone()).into_vec(path.len())
         }
 
         assert_eq!(match_and_normalize("a", &["a"]), vec![vec![0..1]]);
@@ -710,27 +756,13 @@ mod test {
     }
 
     #[test]
-    fn test_matches_hierarchy_v2() {
-        fn match_and_normalize(query: &str, hierarchy: &[&str]) -> Option<Vec<Vec<Range<usize>>>> {
+    fn test_match_path() {
+        fn match_and_normalize(query: &str, path: &[&str]) -> Option<Vec<Vec<Range<usize>>>> {
             let matcher = FilterMatcher::new(Some(query));
-            let hierarchy = hierarchy.to_vec();
-
+            let path = path.to_vec();
             matcher
-                .matches_hierarchy(hierarchy.clone())
-                .map(|mut ranges| {
-                    let result = (0..hierarchy.len())
-                        .map(|i| {
-                            ranges
-                                .remove(i)
-                                .map(|iter| iter.collect_vec())
-                                .unwrap_or_default()
-                        })
-                        .collect();
-
-                    assert!(ranges.is_empty());
-
-                    result
-                })
+                .match_path(path.clone())
+                .map(|ranges| ranges.into_vec(path.len()))
         }
 
         assert_eq!(

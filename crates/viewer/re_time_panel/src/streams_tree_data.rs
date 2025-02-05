@@ -8,7 +8,7 @@ use re_data_ui::sorted_component_list_for_ui;
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::EntityPath;
 use re_types_core::ComponentName;
-use re_ui::filter_widget::{FilterMatcher, HierarchyRanges};
+use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 
 use crate::time_panel::TimePanelSource;
@@ -33,12 +33,12 @@ impl StreamsTreeData {
         };
 
         let mut hierarchy = Vec::default();
-        let mut hierarchy_ranges = HierarchyRanges::default();
+        let mut hierarchy_highlights = PathRanges::default();
         let root_data = EntityData::from_entity_tree_and_filter(
             db.tree(),
             filter_matcher,
             &mut hierarchy,
-            &mut hierarchy_ranges,
+            &mut hierarchy_highlights,
         );
 
         // We show "/" on top only for recording streams, because the `/` entity in blueprint
@@ -104,7 +104,7 @@ impl EntityData {
         entity_tree: &EntityTree,
         filter_matcher: &FilterMatcher,
         hierarchy: &mut Vec<String>,
-        hierarchy_ranges: &mut HierarchyRanges,
+        hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
         // Early out
         if filter_matcher.matches_nothing() {
@@ -125,36 +125,35 @@ impl EntityData {
         };
 
         //
-        // Recurse
+        // Gather some info about the current node…
         //
 
-        let result = if entity_tree.children.is_empty() {
-            // We're a child node, so we must decide if the hierarchy matches the filter.
+        struct NodeInfo {
+            is_leaf: bool,
+            is_this_a_match: bool,
+            children: Vec<EntityData>,
+            default_open: bool,
+        }
 
-            //TODO: rename this
-            let hierarchy_highlights =
-                filter_matcher.matches_hierarchy(hierarchy.iter().map(String::as_str));
+        let node_info = if entity_tree.children.is_empty() {
+            // Key insight: we only ever need to match the hierarchy from the leaf nodes.
+            // Non-leaf nodes know they are a match if any child remains after walking their
+            // subtree.
 
-            if let Some(hierarchy_highlights) = hierarchy_highlights {
-                hierarchy_ranges.merge(hierarchy_highlights);
+            let highlights = filter_matcher.match_path(hierarchy.iter().map(String::as_str));
 
-                let highlight_sections = hierarchy_ranges
-                    .remove(hierarchy.len().saturating_sub(1))
-                    .map(Iterator::collect)
-                    .unwrap_or_default();
-
-                // Leaf items are always collapsed by default, even when the filter is active.
-                let default_open = false;
-
-                Some(Self {
-                    entity_path: entity_tree.path.clone(),
-                    label,
-                    highlight_sections,
-                    default_open,
-                    children: vec![],
-                })
+            let is_this_a_match = if let Some(highlights) = highlights {
+                hierarchy_highlights.merge(highlights);
+                true
             } else {
-                None
+                false
+            };
+
+            NodeInfo {
+                is_leaf: true,
+                is_this_a_match,
+                children: vec![],
+                default_open: false,
             }
         } else {
             let children = entity_tree
@@ -165,41 +164,49 @@ impl EntityData {
                         sub_tree,
                         filter_matcher,
                         hierarchy,
-                        hierarchy_ranges,
+                        hierarchy_highlights,
                     )
                 })
                 .collect_vec();
 
-            if children.is_empty() {
-                None
-            } else {
-                // Only top-level non-leaf entities are expanded by default, unless the filter is
-                // active.
-                let default_open = filter_matcher.is_active() || entity_tree.path.len() <= 1;
+            let is_this_a_match = !children.is_empty();
+            let default_open = filter_matcher.is_active() || entity_tree.path.len() <= 1;
 
-                let highlight_sections = hierarchy_ranges
-                    .remove(hierarchy.len().saturating_sub(1))
-                    .map(Iterator::collect)
-                    .unwrap_or_default();
-
-                Some(Self {
-                    entity_path: entity_tree.path.clone(),
-                    label: if children.is_empty() || entity_tree.path.is_root() {
-                        label
-                    } else {
-                        // Indicate that we have children
-                        label.push('/');
-                        label
-                    },
-                    highlight_sections,
-                    default_open,
-                    children,
-                })
+            NodeInfo {
+                is_leaf: false,
+                is_this_a_match,
+                children,
+                default_open,
             }
         };
 
+        //
+        // …then handle the node accordingly.
+        //
+
+        let result = node_info.is_this_a_match.then(|| {
+            let highlight_sections = hierarchy_highlights
+                .remove(hierarchy.len().saturating_sub(1))
+                .map(Iterator::collect)
+                .unwrap_or_default();
+
+            Self {
+                entity_path: entity_tree.path.clone(),
+                label: if node_info.is_leaf || entity_tree.path.is_root() {
+                    label
+                } else {
+                    // Indicate that we have children
+                    label.push('/');
+                    label
+                },
+                highlight_sections,
+                default_open: node_info.default_open,
+                children: node_info.children,
+            }
+        });
+
         if must_pop {
-            hierarchy_ranges.remove(hierarchy.len().saturating_sub(1));
+            hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
             hierarchy.pop();
         }
 

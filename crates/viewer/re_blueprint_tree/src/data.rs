@@ -17,7 +17,7 @@ use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::filter_widget::{FilterMatcher, HierarchyRanges};
+use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
     ViewId, ViewerContext, VisitorControlFlow,
@@ -216,7 +216,7 @@ impl ViewData {
         //
 
         let mut hierarchy = Vec::with_capacity(10);
-        let mut hierarchy_ranges = HierarchyRanges::default();
+        let mut hierarchy_highlights = PathRanges::default();
         let origin_tree = DataResultData::from_data_result_and_filter(
             ctx,
             view_blueprint,
@@ -224,13 +224,13 @@ impl ViewData {
             &DataResultNodeOrPath::from_path_lookup(result_tree, &view_blueprint.space_origin),
             false,
             &mut hierarchy,
-            &mut hierarchy_ranges,
+            &mut hierarchy_highlights,
             filter_matcher,
         );
 
         debug_assert!(hierarchy.is_empty());
         hierarchy.clear();
-        hierarchy_ranges.clear();
+        hierarchy_highlights.clear();
 
         //
         // Data results outside the view origin subtree (a.k.a projections)
@@ -268,13 +268,13 @@ impl ViewData {
                     &DataResultNodeOrPath::DataResultNode(node),
                     true,
                     &mut hierarchy,
-                    &mut hierarchy_ranges,
+                    &mut hierarchy_highlights,
                     filter_matcher,
                 );
 
                 debug_assert!(hierarchy.is_empty());
                 hierarchy.clear();
-                hierarchy_ranges.clear();
+                hierarchy_highlights.clear();
 
                 projection_tree
             })
@@ -371,7 +371,7 @@ impl DataResultData {
         data_result_or_path: &DataResultNodeOrPath<'_>,
         projection: bool,
         hierarchy: &mut Vec<String>,
-        hierarchy_ranges: &mut HierarchyRanges,
+        hierarchy_highlights: &mut PathRanges,
         filter_matcher: &FilterMatcher,
     ) -> Option<Self> {
         re_tracing::profile_function!();
@@ -398,7 +398,7 @@ impl DataResultData {
         };
 
         //
-        // Figure out what sort of node this is.
+        // Gather some info about the current node…
         //
 
         enum LeafOrNot<'a> {
@@ -463,18 +463,21 @@ impl DataResultData {
         };
 
         //
-        // Handle the node accordingly.
+        // …then handle the node accordingly.
         //
 
         let result = node_info.and_then(|node_info| {
             let (is_this_a_match, children) = match node_info.leaf_or_not {
                 LeafOrNot::Leaf => {
-                    //TODO: rename this
-                    let hierarchy_highlights =
-                        filter_matcher.matches_hierarchy(hierarchy.iter().map(String::as_str));
+                    // Key insight: we only ever need to match the hierarchy from the leaf nodes.
+                    // Non-leaf nodes know they are a match if any child remains after walking their
+                    // subtree.
 
-                    let is_this_a_match = if let Some(hierarchy_highlights) = hierarchy_highlights {
-                        hierarchy_ranges.merge(hierarchy_highlights);
+                    let highlights =
+                        filter_matcher.match_path(hierarchy.iter().map(String::as_str));
+
+                    let is_this_a_match = if let Some(highlights) = highlights {
+                        hierarchy_highlights.merge(highlights);
                         true
                     } else {
                         false
@@ -503,7 +506,7 @@ impl DataResultData {
                                     &DataResultNodeOrPath::DataResultNode(child_node),
                                     projection,
                                     hierarchy,
-                                    hierarchy_ranges,
+                                    hierarchy_highlights,
                                     filter_matcher,
                                 )
                             })
@@ -520,7 +523,7 @@ impl DataResultData {
                 }
             };
 
-            let highlight_sections = hierarchy_ranges.remove(hierarchy.len().saturating_sub(1));
+            let highlight_sections = hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
 
             // never highlight the placeholder
             let highlight_sections =
@@ -545,7 +548,7 @@ impl DataResultData {
         });
 
         if should_pop {
-            hierarchy_ranges.remove(hierarchy.len().saturating_sub(1));
+            hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
             hierarchy.pop();
         }
 

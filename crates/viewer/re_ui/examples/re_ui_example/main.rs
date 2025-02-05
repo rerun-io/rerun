@@ -266,7 +266,7 @@ impl eframe::App for ExampleApp {
 
                 let filter = self.filter_state.filter();
                 for name in names {
-                    if let Some(mut hierarchy_ranges) = filter.matches_hierarchy([name]) {
+                    if let Some(mut hierarchy_ranges) = filter.match_path([name]) {
                         let widget_text = format_matching_text(
                             ui.ctx(),
                             name,
