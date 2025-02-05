@@ -99,7 +99,7 @@ impl BlueprintTree {
                     .menu_button(&re_ui::icons::MORE, |ui| {
                         add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
                         set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, viewport_blueprint, ui);
+                        set_blueprint_to_auto_menu_button(ctx, ui);
                     }),
                 );
             });
@@ -1202,12 +1202,13 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     }
 }
 
-fn set_blueprint_to_auto_menu_button(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &mut egui::Ui,
-) {
-    let enabled = !viewport.auto_layout() || !viewport.auto_views();
+fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    // Figuring out when resetting to heuristic blueprint is not changing anything is actually quite hard.
+    // There's a wide variety of things to consider that aren't easily caught:
+    // * does running view-generation/layout-generation change anything?
+    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
+    // * any changes in overrides/defaults/view-property means that a reset would change something
+    let enabled = true;
 
     if ui
         .add_enabled(
