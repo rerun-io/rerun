@@ -7,7 +7,6 @@
 mod builder;
 mod chunk;
 mod helpers;
-mod id;
 mod iter;
 mod latest_at;
 mod merge;
@@ -25,7 +24,6 @@ pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };
 pub use self::helpers::{ChunkShared, UnitChunkShared};
-pub use self::id::{ChunkId, RowId};
 pub use self::iter::{
     ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
 };
@@ -45,7 +43,7 @@ pub use arrow::array::Array as ArrowArray;
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 #[doc(no_inline)]
-pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentName};
+pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId};
 
 pub mod external {
     pub use arrow;
