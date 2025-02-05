@@ -7103,7 +7103,6 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "emath",
- "env_logger",
  "glam",
  "half",
  "home",
