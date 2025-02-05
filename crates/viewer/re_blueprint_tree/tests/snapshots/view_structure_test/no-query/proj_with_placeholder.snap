@@ -121,6 +121,42 @@ root_container:
                 highlight_sections: []
                 default_open: false
                 children:
+                  - kind: EntityPart
+                    entity_path:
+                      - path
+                      - onto
+                    visible: true
+                    view_id:
+                      id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                    label: onto
+                    highlight_sections: []
+                    default_open: false
+                    children:
+                      - kind: EntityPart
+                        entity_path:
+                          - path
+                          - onto
+                          - their
+                        visible: true
+                        view_id:
+                          id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                        label: their
+                        highlight_sections: []
+                        default_open: false
+                        children:
+                          - kind: EntityPart
+                            entity_path:
+                              - path
+                              - onto
+                              - their
+                              - coils
+                            visible: true
+                            view_id:
+                              id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                            label: coils
+                            highlight_sections: []
+                            default_open: false
+                            children: []
                   - kind: OriginProjectionPlaceholder
                     entity_path:
                       - path
