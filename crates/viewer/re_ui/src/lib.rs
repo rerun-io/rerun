@@ -7,6 +7,8 @@ mod context_ext;
 mod design_tokens;
 pub mod drag_and_drop;
 pub mod filter_widget;
+pub mod help;
+pub mod icon_text;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
