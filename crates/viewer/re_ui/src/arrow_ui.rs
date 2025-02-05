@@ -24,6 +24,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         }
 
         // Special-treat text.
+        // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.
         if let Some(entries) = array.downcast_array_ref::<StringArray>() {
             if entries.len() == 1 {
@@ -88,6 +89,9 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 }
 
 fn make_formatter(array: &dyn Array) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
+    // It would be nice to add quotes around strings,
+    // but we already special-case single strings so that we can show them as links,
+    // so we if we change things here we need to change that too. Maybe we should.
     let options = FormatOptions::default()
         .with_null("null")
         .with_display_error(true);
