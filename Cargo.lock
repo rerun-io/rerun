@@ -6965,6 +6965,7 @@ dependencies = [
  "once_cell",
  "ordered-float 4.4.0",
  "re_chunk_store",
+ "re_component_ui",
  "re_data_ui",
  "re_entity_db",
  "re_error",
