@@ -64,7 +64,7 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(

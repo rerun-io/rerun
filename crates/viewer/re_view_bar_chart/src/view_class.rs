@@ -44,7 +44,7 @@ impl ViewClass for BarChartView {
         Box::<()>::default()
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))

@@ -49,7 +49,7 @@ impl ViewClass for GraphView {
         &re_ui::icons::VIEW_GRAPH
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(

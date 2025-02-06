@@ -102,7 +102,7 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))

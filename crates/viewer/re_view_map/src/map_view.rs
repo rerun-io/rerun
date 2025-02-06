@@ -102,7 +102,7 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
