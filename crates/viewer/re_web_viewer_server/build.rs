@@ -3,7 +3,7 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(disable_web_viewer_server)");
 
     // See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg.
-    #[cfg(not(feature = "__ci"))]
+    #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
     {
         let viewer_js_path = std::path::Path::new("./web_viewer/re_viewer.js");
         let viewer_wasm_path = std::path::Path::new("./web_viewer/re_viewer_bg.wasm");
