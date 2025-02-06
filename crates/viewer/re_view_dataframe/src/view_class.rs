@@ -74,14 +74,16 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new("Dataframe view").markdown(
-            "This view displays entity content in a tabular form.
+        Help::new("Dataframe view")
+            .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
+            .markdown(
+                "This view displays entity content in a tabular form.
 
 Configure in the selection panel:
  - Handling of empty cells
  - Column visibility
  - Row filtering by time range",
-        )
+            )
     }
 
     fn on_register(

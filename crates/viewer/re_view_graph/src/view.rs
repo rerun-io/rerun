@@ -64,8 +64,8 @@ Display a graph of nodes and edges.
     }
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new("Map view")
-            .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+        Help::new("Graph view")
+            .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(
                 "Pan",
                 icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),

@@ -64,12 +64,6 @@ macro_rules! icon_text {
     }};
 }
 
-// impl From<Modifiers> for IconTextItem<'static> {
-//     fn from(value: Modifiers) -> Self {
-//         let text = ModifierNames::NAMES.format(&value);
-//     }
-// }
-
 pub struct ModifiersText<'a>(pub Modifiers, pub &'a egui::Context);
 
 impl<'a> From<ModifiersText<'a>> for IconTextItem<'static> {
