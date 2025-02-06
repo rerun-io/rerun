@@ -1,5 +1,4 @@
 use ahash::HashSet;
-use egui::Context;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
@@ -10,11 +9,7 @@ use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component, View,
     ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, UiExt as _};
-use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER,
-};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,

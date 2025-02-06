@@ -4,7 +4,7 @@ use egui::Sense;
 use re_types::View;
 use re_types::ViewClassIdentifier;
 use re_ui::Help;
-use re_ui::{icon_text, UiExt as _};
+use re_ui::UiExt as _;
 use re_view::suggest_view_for_each_entity;
 
 use re_viewer_context::Item;

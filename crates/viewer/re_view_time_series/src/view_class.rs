@@ -10,11 +10,11 @@ use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
 use re_ui::{
-    icon_text, icons, list_item, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    icon_text, icons, list_item, Help, ModifiersText,
     MouseButtonText, UiExt as _,
 };
 use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
+    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
     SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
 };
 use re_view::{controls, view_property_ui};

@@ -1,5 +1,4 @@
 use ahash::HashSet;
-use egui::Context;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
@@ -10,8 +9,7 @@ use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     ComponentName, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, Help, UiExt as _};
-use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
+use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,

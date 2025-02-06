@@ -17,11 +17,11 @@ use re_types::{
     view_coordinates::SignedAxis3,
 };
 use re_ui::{
-    icon_text, icons, ContextExt, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    icon_text, icons, ContextExt, Help, ModifiersText,
     MouseButtonText,
 };
 use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{

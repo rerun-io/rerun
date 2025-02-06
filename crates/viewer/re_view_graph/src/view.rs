@@ -10,7 +10,7 @@ use re_types::{
     ViewClassIdentifier,
 };
 use re_ui::{
-    self, icon_text, icons, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    self, icon_text, icons, Help, ModifiersText,
     MouseButtonText, UiExt as _,
 };
 use re_view::{

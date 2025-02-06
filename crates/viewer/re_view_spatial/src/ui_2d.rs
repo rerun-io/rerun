@@ -9,7 +9,7 @@ use re_types::blueprint::{
     components as blueprint_components,
 };
 use re_ui::{
-    icon_text, icons, ContextExt as _, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    icon_text, icons, ContextExt as _, Help, ModifiersText,
     MouseButtonText,
 };
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};

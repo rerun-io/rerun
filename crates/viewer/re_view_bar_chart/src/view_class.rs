@@ -5,11 +5,11 @@ use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
 use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
 use re_ui::{
-    icon_text, icons, list_item, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    icon_text, icons, list_item, Help, ModifiersText,
     MouseButtonText,
 };
 use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
+    ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
 };
 use re_view::{controls, suggest_view_for_each_entity, view_property_ui};

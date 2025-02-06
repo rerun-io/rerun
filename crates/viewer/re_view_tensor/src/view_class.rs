@@ -1,4 +1,4 @@
-use egui::{epaint::TextShape, Align2, Context, NumExt as _, Vec2};
+use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
@@ -12,7 +12,7 @@ use re_types::{
     datatypes::TensorData,
     View, ViewClassIdentifier,
 };
-use re_ui::{icon_text, list_item, Help, UiExt as _};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
