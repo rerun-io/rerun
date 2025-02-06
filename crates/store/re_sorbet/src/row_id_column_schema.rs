@@ -49,6 +49,7 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        // TODO: check `rerun.kind`
         if field.data_type() == &RowId::arrow_datatype() {
             Ok(Self {})
         } else {
