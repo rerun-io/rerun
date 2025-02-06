@@ -121,6 +121,7 @@ pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ComponentName;
 );
 
@@ -238,6 +239,7 @@ impl re_byte_size::SizeBytes for ComponentName {
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct DatatypeName;
 );
 
