@@ -113,9 +113,9 @@ impl<'a> Help<'a> {
                                 Scale::S700
                             }));
 
-                            ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
-
                             ui.label(RichText::new("Docs").color(tint).size(11.0));
+
+                            ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
                         })
                         .response;
 
