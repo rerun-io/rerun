@@ -2,6 +2,7 @@ use crate::{icons, Icon};
 use egui::{ModifierNames, Modifiers};
 use std::borrow::Cow;
 
+#[derive(Debug, Clone)]
 pub enum IconTextItem<'a> {
     Icon(Icon),
     Text(Cow<'a, str>),
@@ -17,6 +18,7 @@ impl<'a> IconTextItem<'a> {
     }
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct IconText<'a>(pub Vec<IconTextItem<'a>>);
 
 impl<'a> IconText<'a> {

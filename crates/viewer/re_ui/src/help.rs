@@ -1,27 +1,28 @@
 use crate::icon_text::{IconText, IconTextItem};
-use crate::{design_tokens, icons, ColorToken, DesignTokens, Icon, Scale, UiExt};
-use eframe::emath::Align;
-use egui::{
-    Color32, Layout, OpenUrl, Response, RichText, Sense, TextBuffer, Ui, UiBuilder, Widget,
-};
+use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt};
+use egui::{OpenUrl, RichText, Sense, TextBuffer, Ui, UiBuilder};
 
+#[derive(Debug, Clone)]
 pub struct Help<'a> {
     title: String,
     docs_link: Option<String>,
     sections: Vec<HelpSection<'a>>,
 }
 
+#[derive(Debug, Clone)]
 enum HelpSection<'a> {
     Markdown(String),
     Controls(Vec<ControlRow<'a>>),
 }
 
+#[derive(Debug, Clone)]
 pub struct ControlRow<'a> {
     text: String,
     items: IconText<'a>,
 }
 
 impl<'a> ControlRow<'a> {
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(text: impl ToString, items: IconText<'a>) -> Self {
         Self {
             text: text.to_string(),
@@ -31,6 +32,7 @@ impl<'a> ControlRow<'a> {
 }
 
 impl<'a> Help<'a> {
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(title: impl ToString) -> Self {
         Self {
             title: title.to_string(),
@@ -39,11 +41,13 @@ impl<'a> Help<'a> {
         }
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
         self.docs_link = Some(docs_link.to_string());
         self
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn markdown(mut self, markdown: impl ToString) -> Self {
         self.sections
             .push(HelpSection::Markdown(markdown.to_string()));
