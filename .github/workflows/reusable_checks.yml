@@ -108,6 +108,9 @@ jobs:
       - name: Check example manifest coverage
         run: pixi run ./scripts/check_example_manifest_coverage.py
 
+      - name: Check the migration guide redirect
+        run: pixi run python scripts/ci/check_migration_guide_redirect.py
+
   lint-md:
     name: Lint markdown
     runs-on: ubuntu-latest
