@@ -13,7 +13,8 @@
 namespace rerun::components {
     /// **Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
     ///
-    /// If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+    /// If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
+    /// angle is zero in which case it is treated as an identity.
     struct PoseRotationAxisAngle {
         rerun::datatypes::RotationAxisAngle rotation;
 

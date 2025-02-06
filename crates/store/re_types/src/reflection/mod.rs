@@ -648,7 +648,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <PoseRotationAxisAngle as Component>::name(),
             ComponentReflection {
-                docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform.",
+                docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the\nangle is zero in which case it is treated as an identity.",
                 custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
                 datatype: PoseRotationAxisAngle::arrow_datatype(),
             },
@@ -736,7 +736,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RotationAxisAngle as Component>::name(),
             ComponentReflection {
-                docstring_md: "3D rotation represented by a rotation around a given axis.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform.",
+                docstring_md: "3D rotation represented by a rotation around a given axis.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the\nangle is zero in which case it is treated as an identity.",
                 custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
                 datatype: RotationAxisAngle::arrow_datatype(),
             },

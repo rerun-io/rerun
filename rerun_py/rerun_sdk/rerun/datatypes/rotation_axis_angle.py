@@ -37,7 +37,8 @@ class RotationAxisAngle(RotationAxisAngleExt):
     #
     # This is not required to be normalized.
     # However, if normalization of the rotation axis fails (typically due to a zero vector)
-    # the rotation is treated as an invalid transform.
+    # the rotation is treated as an invalid transform, unless the angle is zero in which case
+    # it is treated as an identity.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
