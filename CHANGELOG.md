@@ -2,7 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD) - Entity filter & improved partial update API
 
-TODO(andreas): add link to release video
+https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
 
 📖 Release blogpost: TODO(andreas): add link
 
