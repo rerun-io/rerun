@@ -61,8 +61,8 @@ rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, 
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_partial_updates.py)
-* [Example: Partial updates of a `Mesh3D` archetype](../../../snippets/all/archetypes/mesh3d_partial_updates.py)
+* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.py)
+* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.py)
 
 
 #### Rust
@@ -118,8 +118,8 @@ rec.log("points", &rerun::Points3D::clear_fields().with_positions(positions()).w
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_partial_updates.rs)
-* [Example: Partial updates of a `Mesh3D` archetype](../../../snippets/all/archetypes/mesh3d_partial_updates.rs)
+* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.rs)
+* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.rs)
 
 
 #### C++
@@ -193,8 +193,8 @@ rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_partial_updates.cpp)
-* [Example: Partial updates of a `Mesh3D` archetype](../../../snippets/all/archetypes/mesh3d_partial_updates.cpp)
+* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.cpp)
+* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.cpp)
 
 
 ### Columnar updates
@@ -270,9 +270,9 @@ rr.send_columns(
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](../../../snippets/all/archetypes/scalar_column_updates.py)
-* [Example: Columnar updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_column_updates.py)
-* [Example: Columnar updates of an `Image` archetype](../../../snippets/all/archetypes/image_column_updates.py)
+* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.py)
+* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.py)
+* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.py)
 
 
 #### Rust
@@ -305,9 +305,9 @@ rec.send_columns("points", [times], position.chain(color_and_radius))?;
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](../../../snippets/all/archetypes/scalar_column_updates.rs)
-* [Example: Columnar updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_column_updates.rs)
-* [Example: Columnar updates of an `Image` archetype](../../../snippets/all/archetypes/image_column_updates.rs)
+* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.rs)
+* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.rs)
+* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.rs)
 
 
 #### C++
@@ -382,9 +382,9 @@ rec.send_columns("points", time_column, position, color_and_radius);
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](../../../snippets/all/archetypes/scalar_column_updates.cpp)
-* [Example: Columnar updates of a `Transform3D` archetype](../../../snippets/all/archetypes/transform3d_column_updates.cpp)
-* [Example: Columnar updates of an `Image` archetype](../../../snippets/all/archetypes/image_column_updates.cpp)
+* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.cpp)
+* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.cpp)
+* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.cpp)
 
 
 
