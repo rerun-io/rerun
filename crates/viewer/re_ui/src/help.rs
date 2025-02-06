@@ -42,24 +42,29 @@ impl<'a> Help<'a> {
     }
 
     #[allow(clippy::needless_pass_by_value)]
+    #[inline]
     pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
         self.docs_link = Some(docs_link.to_string());
         self
     }
 
     #[allow(clippy::needless_pass_by_value)]
+    #[inline]
     pub fn markdown(mut self, markdown: impl ToString) -> Self {
         self.sections
             .push(HelpSection::Markdown(markdown.to_string()));
         self
     }
 
+    #[inline]
     pub fn controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
         self.sections.push(HelpSection::Controls(controls));
         self
     }
 
-    pub fn control(mut self, label: &'a str, items: IconText<'a>) -> Self {
+    #[allow(clippy::needless_pass_by_value)]
+    #[inline]
+    pub fn control(mut self, label: impl ToString, items: IconText<'a>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {
             controls.push(ControlRow::new(label, items));
         } else {
@@ -69,6 +74,7 @@ impl<'a> Help<'a> {
         self
     }
 
+    #[inline]
     pub fn control_separator(mut self) -> Self {
         self.sections.push(HelpSection::Controls(vec![]));
         self

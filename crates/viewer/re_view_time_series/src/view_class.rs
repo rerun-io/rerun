@@ -9,13 +9,10 @@ use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
-use re_ui::{
-    icon_text, icons, list_item, Help, ModifiersText,
-    MouseButtonText, UiExt as _,
-};
+use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
 use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
-    SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
+    ZOOM_SCROLL_MODIFIER,
 };
 use re_view::{controls, view_property_ui};
 use re_viewer_context::{
@@ -127,13 +124,13 @@ impl ViewClass for TimeSeriesView {
                 icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
             )
             .control(
-                "Move time cursor", // TODO: I changed this from "Place cursor in view", which is a bit confusing I think?
+                "Move time cursor",
                 icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
             .control_separator()
             .control(
-                "Hide/show series", // TODO: Changed from "Toggle legend visibility"
+                "Hide/show series",
                 icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
             )
             .control(
