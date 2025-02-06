@@ -229,6 +229,7 @@ positions_arr = np.concatenate(positions)
 
 # At each timestep, all points in the cloud share the same but changing color and radius.
 colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
+radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
 rr.send_columns(
     "points",
@@ -237,6 +238,7 @@ rr.send_columns(
         rr.Points3D.indicator(),
         rr.components.Position3DBatch(positions_arr).partition([len(row) for row in positions]),
         rr.components.ColorBatch(colors),
+        rr.components.RadiusBatch(radii),
     ],
 )
 ```
@@ -327,6 +329,7 @@ std::vector<std::array<float, 3>> positions = {
 
 // At each timestep, all points in the cloud share the same but changing color and radius.
 std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
 
 // Log at seconds 10-14
 auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
@@ -341,6 +344,9 @@ auto position_batch = rerun::ComponentColumn::from_loggable_with_lengths(
 auto color_batch = rerun::ComponentColumn::from_loggable(
     rerun::Collection<rerun::components::Color>(std::move(colors))
 );
+auto radius_batch = rerun::ComponentColumn::from_loggable(
+    rerun::Collection<rerun::components::Radius>(std::move(radii))
+);
 
 rec.send_columns(
     "points",
@@ -349,6 +355,7 @@ rec.send_columns(
         indicator_batch.value_or_throw(),
         position_batch.value_or_throw(),
         color_batch.value_or_throw(),
+        radius_batch.value_or_throw(),
     }
 );
 ```
