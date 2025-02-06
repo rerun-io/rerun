@@ -10,10 +10,10 @@ use rayon::prelude::ParallelIterator;
 use rustdoc_types::Crate;
 use rustdoc_types::Id as ItemId;
 use rustdoc_types::Impl;
-use rustdoc_types::Import;
 use rustdoc_types::Item;
 use rustdoc_types::ItemEnum;
 use rustdoc_types::Type;
+use rustdoc_types::Use;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
@@ -154,7 +154,7 @@ impl<'a> Visitor<'a> {
         if self.visited.contains(id) {
             return;
         }
-        self.visited.insert(id.clone());
+        self.visited.insert(*id);
 
         let mut module_path = &path[..path.len() - 1];
         let name = path.last().unwrap();
@@ -231,7 +231,7 @@ impl<'a> Visitor<'a> {
                 }
                 self.module_path.pop();
             }
-            I::Import(import) => self.visit_import(import),
+            I::Use(import) => self.visit_import(import),
             I::Impl(impl_) => {
                 // we only care about inherent impls of the form:
                 //   impl Thing {}
@@ -291,13 +291,13 @@ impl<'a> Visitor<'a> {
             | I::ExternCrate { .. }
             | I::TraitAlias(_)
             | I::Static(_)
-            | I::ForeignType
+            | I::ExternType
             | I::ProcMacro(_)
             | I::Primitive(_) => {}
         }
     }
 
-    fn visit_import(&mut self, import: &Import) {
+    fn visit_import(&mut self, import: &Use) {
         let Some(id) = import.id.as_ref() else {
             return;
         };
@@ -317,7 +317,7 @@ impl<'a> Visitor<'a> {
         }
 
         let item = &self.krate.index[id];
-        if import.glob {
+        if import.is_glob {
             let ItemEnum::Module(module) = &item.inner else {
                 unreachable!()
             };
