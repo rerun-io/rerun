@@ -537,7 +537,7 @@ impl PyStorageNodeClient {
     fn search_vector_index(
         &mut self,
         entry: String,
-        query: VectorLike<'_>,
+        query: &VectorLike<'_>,
         column: PyComponentColumnSelector,
         top_k: u32,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
@@ -636,11 +636,10 @@ impl PyStorageNodeClient {
         let reader = self.runtime.block_on(async {
             let column_selector: ComponentColumnSelector = column.into();
 
-            let schema = arrow::datatypes::Schema::new(vec![Field::new(
-                "items",
-                arrow::datatypes::DataType::Utf8,
-                false,
-            )]);
+            let schema = arrow::datatypes::Schema::new_with_metadata(
+                vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
+                Default::default(),
+            );
 
             let query = RecordBatch::try_new(
                 Arc::new(schema),
@@ -945,11 +944,14 @@ enum VectorLike<'py> {
 
 impl VectorLike<'_> {
     fn to_record_batch(&self) -> PyResult<RecordBatch> {
-        let schema = arrow::datatypes::Schema::new(vec![Field::new(
-            "items",
-            arrow::datatypes::DataType::Float32,
-            false,
-        )]);
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new(
+                "items",
+                arrow::datatypes::DataType::Float32,
+                false,
+            )],
+            Default::default(),
+        );
 
         match self {
             VectorLike::NumPy(array) => {
@@ -957,7 +959,7 @@ impl VectorLike<'_> {
                     .as_array()
                     .as_slice()
                     .ok_or_else(|| {
-                        PyRuntimeError::new_err(format!("Failed to convert numpy array to slice"))
+                        PyRuntimeError::new_err("Failed to convert numpy array to slice".to_owned())
                     })?
                     .to_vec();
 
