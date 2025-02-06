@@ -118,10 +118,10 @@ Displays geospatial primitives on a map.
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Map view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
-            .with_control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
-            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

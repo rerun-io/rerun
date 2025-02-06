@@ -65,9 +65,9 @@ Display a 1D tensor as a bar chart.
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Bar chart view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
-            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
-            .with_control(
+            .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control(
                 "Zoom",
                 icon_text!(
                     ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
@@ -75,7 +75,7 @@ Display a 1D tensor as a bar chart.
                     icons::SCROLL
                 ),
             )
-            .with_control(
+            .control(
                 "Zoom only x-axis",
                 icon_text!(
                     ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
@@ -83,11 +83,11 @@ Display a 1D tensor as a bar chart.
                     icons::SCROLL
                 ),
             )
-            .with_control(
+            .control(
                 "Zoom to selection",
                 icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
             )
-            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

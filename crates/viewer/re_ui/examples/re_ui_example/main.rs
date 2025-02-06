@@ -482,8 +482,8 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
             ui.label("Help").on_hover_ui(|ui| {
                 Help::new("Help")
-                    .with_docs_link("https://docs.rs/re_ui/latest/re_ui/help/struct.Help.html")
-                    .with_controls(vec![
+                    .docs_link("https://docs.rs/re_ui/latest/re_ui/help/struct.Help.html")
+                    .controls(vec![
                         ControlRow::new("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, " + drag")),
                         ControlRow::new("Zoom", icon_text!("Ctrl / Cmd +", icons::SCROLL)),
                         ControlRow::new(

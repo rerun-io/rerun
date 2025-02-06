@@ -67,8 +67,8 @@ Note: select the View for filtering options."
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text log view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/text_log")
-            .with_markdown(
+            .docs_link("https://rerun.io/docs/reference/types/views/text_log")
+            .markdown(
                 "TextLog entries over time.
 
 Filter message types and toggle column visibility in a selection panel.",

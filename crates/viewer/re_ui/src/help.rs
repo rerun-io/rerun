@@ -7,9 +7,13 @@ use egui::{
 
 pub struct Help<'a> {
     title: String,
-    markdown: Option<String>,
     docs_link: Option<String>,
-    controls: Vec<ControlRow<'a>>,
+    sections: Vec<HelpSection<'a>>,
+}
+
+enum HelpSection<'a> {
+    Markdown(String),
+    Controls(Vec<ControlRow<'a>>),
 }
 
 pub struct ControlRow<'a> {
@@ -30,29 +34,39 @@ impl<'a> Help<'a> {
     pub fn new(title: impl ToString) -> Self {
         Self {
             title: title.to_string(),
-            markdown: None,
             docs_link: None,
-            controls: Vec::new(),
+            sections: Vec::new(),
         }
     }
 
-    pub fn with_markdown(mut self, markdown: impl ToString) -> Self {
-        self.markdown = Some(markdown.to_string());
-        self
-    }
-
-    pub fn with_docs_link(mut self, docs_link: impl ToString) -> Self {
+    pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
         self.docs_link = Some(docs_link.to_string());
         self
     }
 
-    pub fn with_controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
-        self.controls = controls;
+    pub fn markdown(mut self, markdown: impl ToString) -> Self {
+        self.sections
+            .push(HelpSection::Markdown(markdown.to_string()));
         self
     }
 
-    pub fn with_control(mut self, label: &'a str, items: IconText<'a>) -> Self {
-        self.controls.push(ControlRow::new(label, items));
+    pub fn controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
+        self.sections.push(HelpSection::Controls(controls));
+        self
+    }
+
+    pub fn control(mut self, label: &'a str, items: IconText<'a>) -> Self {
+        if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {
+            controls.push(ControlRow::new(label, items));
+        } else {
+            self.sections
+                .push(HelpSection::Controls(vec![ControlRow::new(label, items)]));
+        }
+        self
+    }
+
+    pub fn control_separator(mut self) -> Self {
+        self.sections.push(HelpSection::Controls(vec![]));
         self
     }
 
@@ -101,39 +115,46 @@ impl<'a> Help<'a> {
                 }
             },
         );
-        if let Some(markdown) = &self.markdown {
-            Self::separator(ui);
-            ui.markdown_ui(markdown);
-        }
 
-        if !self.controls.is_empty() {
+        for section in &self.sections {
             Self::separator(ui);
-        }
-
-        for row in &self.controls {
-            egui::Sides::new().spacing(4.0).show(
-                ui,
-                |ui| {
-                    ui.strong(RichText::new(&row.text).size(11.0));
-                },
-                |ui| {
-                    ui.set_height(DesignTokens::small_icon_size().y);
-                    for item in row.items.0.iter().rev() {
-                        match item {
-                            IconTextItem::Icon(icon) => {
-                                ui.small_icon(icon, None);
-                            }
-                            IconTextItem::Text(text) => {
-                                ui.label(
-                                    RichText::new(text.as_str()).monospace().size(11.0).color(
-                                        design_tokens().color(ColorToken::gray(Scale::S700)),
-                                    ),
-                                );
-                            }
-                        }
+            match section {
+                HelpSection::Markdown(md) => {
+                    ui.markdown_ui(md);
+                }
+                HelpSection::Controls(controls) => {
+                    for row in controls {
+                        egui::Sides::new().show(
+                            ui,
+                            |ui| {
+                                ui.strong(RichText::new(&row.text).size(11.0));
+                                ui.add_space(8.0);
+                            },
+                            |ui| {
+                                ui.set_height(DesignTokens::small_icon_size().y);
+                                for item in row.items.0.iter().rev() {
+                                    match item {
+                                        IconTextItem::Icon(icon) => {
+                                            ui.small_icon(icon, None);
+                                        }
+                                        IconTextItem::Text(text) => {
+                                            ui.label(
+                                                RichText::new(text.as_str())
+                                                    .monospace()
+                                                    .size(11.0)
+                                                    .color(
+                                                        design_tokens()
+                                                            .color(ColorToken::gray(Scale::S700)),
+                                                    ),
+                                            );
+                                        }
+                                    }
+                                }
+                            },
+                        );
                     }
-                },
-            );
+                }
+            }
         }
     }
 }

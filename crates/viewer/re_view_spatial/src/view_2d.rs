@@ -68,12 +68,12 @@ impl ViewClass for SpatialView2D {
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("2D view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
-            .with_control(
+            .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
+            .control(
                 "Pan",
                 icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
             )
-            .with_control(
+            .control(
                 "Zoom",
                 icon_text!(
                     ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
@@ -81,7 +81,7 @@ impl ViewClass for SpatialView2D {
                     icons::SCROLL
                 ),
             )
-            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

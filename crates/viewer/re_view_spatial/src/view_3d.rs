@@ -73,17 +73,17 @@ impl ViewClass for SpatialView3D {
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("3D view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
-            .with_control(
+            .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
+            .control(
                 "Pan",
                 icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+ drag"),
             )
-            .with_control("Zoom", icon_text!(icons::SCROLL))
-            .with_control(
+            .control("Zoom", icon_text!(icons::SCROLL))
+            .control(
                 "Rotate",
                 icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+ drag"),
             )
-            .with_control(
+            .control(
                 "Roll",
                 icon_text!(
                     MouseButtonText(ROLL_MOUSE_ALT),
@@ -91,8 +91,8 @@ impl ViewClass for SpatialView3D {
                     ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
                 ),
             )
-            .with_control("Navigate", icon_text!("WASD / QE"))
-            .with_control(
+            .control("Navigate", icon_text!("WASD / QE"))
+            .control(
                 "Slow down / speed up",
                 icon_text!(
                     ModifiersText(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
@@ -100,11 +100,11 @@ impl ViewClass for SpatialView3D {
                     ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
                 ),
             )
-            .with_control(
+            .control(
                 "Focus",
                 icon_text!("double", icons::LEFT_MOUSE_CLICK, "object"),
             )
-            .with_control(
+            .control(
                 "Reset view",
                 icon_text!("double", icons::LEFT_MOUSE_CLICK, "background"),
             )

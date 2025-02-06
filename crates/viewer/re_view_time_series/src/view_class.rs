@@ -131,9 +131,9 @@ Display time series data in a plot.
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Time series view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
-            .with_control(
+            .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control(
                 "Zoom",
                 icon_text!(
                     ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
@@ -141,7 +141,7 @@ Display time series data in a plot.
                     icons::SCROLL
                 ),
             )
-            .with_control(
+            .control(
                 "Zoom only x-axis",
                 icon_text!(
                     ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
@@ -149,21 +149,21 @@ Display time series data in a plot.
                     icons::SCROLL
                 ),
             )
-            .with_control(
+            .control(
                 "Zoom to selection",
                 icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
             )
-            .with_control(
+            .control(
                 "Move time cursor", // TODO: I changed this from "Place cursor in view", which is a bit confusing I think?
                 icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
             )
-            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
-            // TODO(lucasmerlin) In the design there is a seperator here, but this isn't possible right now
-            .with_control(
-                "Hide/show series",
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control_separator()
+            .control(
+                "Hide/show series", // TODO: Changed from "Toggle legend visibility"
                 icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
-            ) // TODO: Changed from "Toggle legend visibility"
-            .with_control(
+            )
+            .control(
                 "Hide/show other series",
                 icon_text!(
                     ModifiersText(egui::Modifiers::ALT, egui_ctx),

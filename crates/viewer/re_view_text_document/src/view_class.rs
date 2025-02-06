@@ -70,8 +70,8 @@ Displays text from a text component, as raw text or markdown."
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text document view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
-            .with_markdown("Supports raw text and markdown.")
+            .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
+            .markdown("Supports raw text and markdown.")
     }
 
     fn on_register(

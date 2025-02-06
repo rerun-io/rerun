@@ -76,8 +76,8 @@ Note: select the view to configure which dimensions are shown."
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Tensor view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
-            .with_markdown(
+            .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
+            .markdown(
                 "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
 
 Set the displayed dimensions in a selection panel.",

@@ -74,7 +74,7 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new("Dataframe view").with_markdown(
+        Help::new("Dataframe view").markdown(
             "This view displays entity content in a tabular form.
 
 Configure in the selection panel:

@@ -65,16 +65,16 @@ Display a graph of nodes and edges.
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Map view")
-            .with_docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .with_control(
+            .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+            .control(
                 "Pan",
                 icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
             )
-            .with_control(
+            .control(
                 "Zoom",
                 icon_text!(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
             )
-            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.
