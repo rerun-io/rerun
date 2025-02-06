@@ -4,11 +4,8 @@ use re_types::blueprint::archetypes::PlotLegend;
 use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
 use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
-use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown};
-use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
-    ZOOM_SCROLL_MODIFIER,
-};
+use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText};
+use re_view::controls::{ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_view::{controls, suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -41,24 +38,31 @@ impl ViewClass for BarChartView {
         Box::<()>::default()
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "# Bar chart view
-
-Display a 1D tensor as a bar chart.
-
-## Navigation controls
-
-- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
-- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
-- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
-- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
-- Double-click to reset the view.",
-            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
-            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
-            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
-        )
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Bar chart view")
+            .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .control(
+                "Zoom only x-axis",
+                icon_text!(
+                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .control(
+                "Zoom to selection",
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+            )
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

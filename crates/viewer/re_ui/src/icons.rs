@@ -138,3 +138,9 @@ pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");
 
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.png");
+
+/// Shortcut icons
+pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.png");
+pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.png");
+pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.png");
+pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");

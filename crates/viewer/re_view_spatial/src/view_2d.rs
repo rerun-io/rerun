@@ -9,7 +9,7 @@ use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     ComponentName, ViewClassIdentifier,
 };
-use re_ui::UiExt as _;
+use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
@@ -58,8 +58,8 @@ impl ViewClass for SpatialView2D {
         &re_ui::icons::VIEW_2D
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_2d::help_markdown(egui_ctx)
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        super::ui_2d::help(egui_ctx)
     }
 
     fn on_register(

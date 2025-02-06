@@ -16,10 +16,10 @@ use re_types::{
     components::ViewCoordinates,
     view_coordinates::SignedAxis3,
 };
-use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
+use re_ui::{icon_text, icons, ContextExt, Help, ModifiersText, MouseButtonText};
 use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
+    SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
     gpu_bridge, Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -386,36 +386,43 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_markdown(egui_ctx: &egui::Context) -> String {
-    // TODO(#6876): this line was removed to from the help text, because the corresponding feature no
-    // longer works. To be restored when it works again (or deleted forever).
-    /* - Reset the view again with {TRACKED_OBJECT_RESTORE_KEY}.*/
-
-    format!(
-        "# 3D view
-
-Display 3D content in the reference frame defined by the space origin.
-
-## Navigation controls
-
-- Click and drag the {rotate3d_button} to rotate.
-- Click and drag with the {drag_pan3d_button} to pan.
-- Drag with the {roll_mouse} (or the {roll_mouse_alt} + holding {roll_mouse_modifier}) to roll the view.
-- Scroll or pinch to zoom.
-- While hovering the 3D view, navigate with the `WASD` and `QE` keys.
-- {slow_down} slows down, {speed_up_3d_modifier} speeds up.
-- Double-click an object to focus the view on it.
-- Double-click on an empty space to reset the view.",
-        rotate3d_button = MouseButtonMarkdown(ROTATE3D_BUTTON),
-        drag_pan3d_button = MouseButtonMarkdown(DRAG_PAN3D_BUTTON),
-        roll_mouse = MouseButtonMarkdown(ROLL_MOUSE),
-        roll_mouse_alt = MouseButtonMarkdown(ROLL_MOUSE_ALT),
-        roll_mouse_modifier = ModifiersMarkdown(ROLL_MOUSE_MODIFIER, egui_ctx),
-        slow_down = ModifiersMarkdown(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
-        speed_up_3d_modifier = ModifiersMarkdown(SPEED_UP_3D_MODIFIER, egui_ctx),
-        // TODO(#6876): see above
-        /*TRACKED_OBJECT_RESTORE_KEY = KeyMarkdown(TRACKED_OBJECT_RESTORE_KEY),*/
-    )
+pub fn help(egui_ctx: &egui::Context) -> Help<'static> {
+    Help::new("3D view")
+        .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
+        .control(
+            "Pan",
+            icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+ drag"),
+        )
+        .control("Zoom", icon_text!(icons::SCROLL))
+        .control(
+            "Rotate",
+            icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+ drag"),
+        )
+        .control(
+            "Roll",
+            icon_text!(
+                MouseButtonText(ROLL_MOUSE_ALT),
+                "+",
+                ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
+            ),
+        )
+        .control("Navigate", icon_text!("WASD / QE"))
+        .control(
+            "Slow down / speed up",
+            icon_text!(
+                ModifiersText(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+                "/",
+                ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
+            ),
+        )
+        .control(
+            "Focus",
+            icon_text!("double", icons::LEFT_MOUSE_CLICK, "object"),
+        )
+        .control(
+            "Reset view",
+            icon_text!("double", icons::LEFT_MOUSE_CLICK, "background"),
+        )
 }
 
 impl SpatialView3D {

@@ -3,11 +3,11 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use re_ui::filter_widget::format_matching_text;
-use re_ui::notifications;
 use re_ui::{
-    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens,
+    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens, Help,
     UICommand, UICommandSender, UiExt as _,
 };
+use re_ui::{icon_text, icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -478,6 +478,15 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
                 .on_hover_text("This is a tooltip");
+
+            ui.label("Help").on_hover_ui(|ui| {
+                Help::new("Help example")
+                    .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+                    .control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
+                    .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+                    .ui(ui);
+            });
 
             ui.label(
                 egui::RichText::new("Welcome to the ReUi example")

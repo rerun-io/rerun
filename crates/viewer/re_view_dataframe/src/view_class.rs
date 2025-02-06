@@ -4,7 +4,7 @@ use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
-use re_ui::UiExt;
+use re_ui::{Help, UiExt};
 use re_viewer_context::{
     Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt, ViewSystemExecutionError, ViewerContext,
@@ -50,26 +50,17 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Dataframe view
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Dataframe view")
+            .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
+            .markdown(
+                "This view displays entity content in a tabular form.
 
-This view displays the content of the entities it contains in tabular form.
-
-## View types
-
-The Dataframe view operates in two modes: the _latest-at_ mode and the _time range_ mode. You can
-select the mode in the selection panel.
-
-In the _latest-at_ mode, the view displays the latest data for the timeline and time set in the time
-panel. A row is shown for each entity instance.
-
-In the _time range_ mode, the view displays all the data logged within the time range set for each
-view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
-if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
-
-Note that the default visible time range depends on the selected mode. In particular, the time range
-mode sets the default time range to _everything_. You can override this in the selection panel."
-            .to_owned()
+Configure in the selection panel:
+ - Handling of empty cells
+ - Column visibility
+ - Row filtering by time range",
+            )
     }
 
     fn on_register(
