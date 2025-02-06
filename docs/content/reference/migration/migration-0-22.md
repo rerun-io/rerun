@@ -440,7 +440,7 @@ rec.send_columns("scalars", time_column,
     rerun::Scalar().with_many_scalar(scalar_data).columns()
 );
 ```
-All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) have been updated accordingly.
+All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) have been updated accordingly.
 
 
 ## `AsComponents::serialize` is now called `AsComponents::as_batches` and returns `rerun::Collection<ComponentBatch>`

@@ -6,7 +6,7 @@ https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
 
 📖 Release blogpost: TODO(andreas): add link
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
 
 ### ✨ Overview & highlights
 
@@ -16,17 +16,17 @@ https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
 * 🖱️ Entity ranges can now be selected with shift + click
 
 #### APIs
-* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates?speculative-link)
-* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns?speculative-link)
-* ⏱️ Python notebooks & JS can now control the timeline with `set_time_ctrl` TODO(#8894): link to the api/an example
-* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) for demonstrating partial updates & custom data logging in Python/C++/Rust
+* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates)
+* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns)
+* ⏱️ Python notebooks & JS can now control the timeline with `set_time_ctrl` TODO(#8894): link to the API/an example
+* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) for demonstrating partial updates & custom data logging in Python/C++/Rust
 
 The API & related under-the-hood changes pave the way for better support for multiple archetypes on the same entity and components with generic types in future releases.
 Stay tuned!
 
 ### ⚠️ Breaking changes
 TODO(andreas): fill in
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
 
 ### 🔎 Details
 
