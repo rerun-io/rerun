@@ -1,9 +1,9 @@
 # Rerun changelog
 
-## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.1...HEAD) - Entity filter & improved partial update API
+## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.1...HEAD)
+
 
 ## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
-
 
 The new entity filtering:
 
