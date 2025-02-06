@@ -20,7 +20,7 @@ New help texts for all our views:
 
 ![image](https://github.com/user-attachments/assets/8b2546c7-c54f-4c25-8b82-fd9abdc6c31e)
 
-📖 Release blogpost: TODO(andreas): add link
+📖 Release blogpost: https://rerun.io/blog/graphs
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
 
@@ -41,8 +41,9 @@ The API & related under-the-hood changes pave the way for better support for mul
 Stay tuned!
 
 ### ⚠️ Breaking changes
-TODO(andreas): fill in
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
+Passing raw batches of components is no longer supported. Instead, use the partial update APIs (or in rare cases, explicitly serialize the components).
+
+Check the [🧳 Migration guide](https://rerun.io/docs/reference/migration/migration-0-22) for before/after snippets for all languages for this and other smaller breaking changes.
 
 ### 🔎 Details
 
