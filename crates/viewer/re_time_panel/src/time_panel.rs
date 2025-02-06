@@ -1324,7 +1324,6 @@ fn paint_range_highlight(
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    // TODO(andreas): Nicer help text like on views.
     ui.help_hover_button().on_hover_ui(|ui| {
         Help::new("Timeline")
             .control("Play/Pause", icon_text!("Space"))

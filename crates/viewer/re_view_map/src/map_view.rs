@@ -1,4 +1,4 @@
-use egui::{Context, NumExt as _, Rect, Response};
+use egui::{Context, Modifiers, NumExt as _, Rect, Response};
 use re_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
@@ -14,7 +14,7 @@ use re_types::{
     },
     View, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help};
+use re_ui::{icon_text, icons, list_item, Help, ModifiersText};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -102,11 +102,18 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
-            .control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
+            .control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(Modifiers::COMMAND, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 

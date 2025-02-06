@@ -480,16 +480,11 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                 .on_hover_text("This is a tooltip");
 
             ui.label("Help").on_hover_ui(|ui| {
-                Help::new("Help")
-                    .docs_link("https://docs.rs/re_ui/latest/re_ui/help/struct.Help.html")
-                    .controls(vec![
-                        ControlRow::new("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, " + drag")),
-                        ControlRow::new("Zoom", icon_text!("Ctrl / Cmd +", icons::SCROLL)),
-                        ControlRow::new(
-                            "Reset view",
-                            icon_text!("double", icons::LEFT_MOUSE_CLICK),
-                        ),
-                    ])
+                Help::new("Help example")
+                    .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+                    .control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
+                    .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
                     .ui(ui);
             });
 
