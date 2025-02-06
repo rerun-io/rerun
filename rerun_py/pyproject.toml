@@ -144,6 +144,8 @@ required-imports = ["from __future__ import annotations"]
 combine-as-imports = true                                 # needed so keep rerun_sdk/__init__.py clean
 
 [tool.maturin]
+features = ["redap"]
+
 # We use a python package from inside the rerun_sdk folder to avoid conflicting
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.

@@ -23,6 +23,7 @@ extra = []
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 pypi = ["extension-module", "nasm", "web_viewer", "remote"]
+redap = ["extension-module", "nasm", "remote"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
