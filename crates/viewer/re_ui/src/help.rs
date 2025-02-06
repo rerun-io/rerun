@@ -155,7 +155,13 @@ impl<'a> Help<'a> {
                                 for item in row.items.0.iter().rev() {
                                     match item {
                                         IconTextItem::Icon(icon) => {
-                                            ui.small_icon(icon, None);
+                                            ui.small_icon(
+                                                icon,
+                                                Some(
+                                                    design_tokens()
+                                                        .color(ColorToken::gray(Scale::S700)),
+                                                ),
+                                            );
                                         }
                                         IconTextItem::Text(text) => {
                                             ui.label(
