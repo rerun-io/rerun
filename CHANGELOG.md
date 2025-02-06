@@ -1,6 +1,7 @@
 # Rerun changelog
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD) - Entity filter & improved partial update API
+
+## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
 
 https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
 
@@ -311,12 +312,14 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Clean up pass over all superfluous hashing happening on the query path [#8207](https://github.com/rerun-io/rerun/pull/8207)
 - Improve performance of time panel [#8224](https://github.com/rerun-io/rerun/pull/8224)
 
+
 ## [0.20.3](https://github.com/rerun-io/rerun/compare/0.20.2...0.20.3) - Web viewer fix
 
 ### 🔎 Details
 
 #### 🪳 Bug fixes
 - Fix web viewer feature flags [#8295](https://github.com/rerun-io/rerun/pull/8295)
+
 
 ## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
 
