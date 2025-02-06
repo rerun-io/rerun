@@ -217,6 +217,7 @@ fn run_view_ui_and_save_snapshot(
 
     harness.run();
 
+    // TODO(#8924): To account for platform-specific AA.
     let broken_percent_threshold = 0.003;
     let num_pixels = (size.x * size.y).ceil() as u64;
 

@@ -136,7 +136,9 @@ pub fn test_transform_clamping() {
         &mut test_context,
         view_ids,
         "transform_clamping",
-        egui::vec2(300.0, 300.0),
+        // TODO(#8924): A lot of pixels won't pass the diff because of anti-aliasing.
+        // By bumping the resolution, we lessen the weight of edges.
+        egui::vec2(300.0, 300.0) * 3.0,
     );
 }
 
@@ -255,7 +257,17 @@ fn run_view_ui_and_save_snapshot(
                 modifiers: egui::Modifiers::default(),
             });
             harness.run_steps(10);
-            harness.snapshot(&name);
+
+            // TODO(#8924): To account for platform-specific AA.
+            let broken_percent_threshold = 0.003;
+            let num_pixels = (size.x * size.y).ceil() as u64;
+
+            use re_viewer_context::test_context::HarnessExt as _;
+            harness.snapshot_with_broken_pixels_threshold(
+                &name,
+                num_pixels,
+                broken_percent_threshold,
+            );
         }
     }
 }
