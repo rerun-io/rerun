@@ -10,7 +10,8 @@ table RotationAxisAngle (
   ///
   /// This is not required to be normalized.
   /// However, if normalization of the rotation axis fails (typically due to a zero vector)
-  /// the rotation is treated as an invalid transform.
+  /// the rotation is treated as an invalid transform, unless the angle is zero in which case
+  /// it is treated as an identity.
   axis: rerun.datatypes.Vec3D (order: 100);
 
   /// How much to rotate around the axis.
