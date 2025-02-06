@@ -12,6 +12,10 @@ The new notification panel:
 
 ![notification-panel](https://github.com/user-attachments/assets/0fb651d7-256a-48d7-a78e-81776ec39ba8)
 
+Copy any view as screenshot with right-click (now works in web-viewer):
+
+![image](https://github.com/user-attachments/assets/bf36ee0b-2f64-473e-af48-dfd22c887b9c)
+
 📖 Release blogpost: TODO(andreas): add link
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
