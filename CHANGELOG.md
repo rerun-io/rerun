@@ -16,6 +16,10 @@ Copy any view as screenshot with right-click (now works in web-viewer):
 
 ![image](https://github.com/user-attachments/assets/bf36ee0b-2f64-473e-af48-dfd22c887b9c)
 
+New help texts for all our views:
+
+![image](https://github.com/user-attachments/assets/8b2546c7-c54f-4c25-8b82-fd9abdc6c31e)
+
 📖 Release blogpost: TODO(andreas): add link
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
