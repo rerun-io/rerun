@@ -2,8 +2,8 @@
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_sorbet.svg)](https://crates.io/crates/store/re_sorbet?speculative-link)
-[![Documentation](https://docs.rs/re_sorbet/badge.svg)](https://docs.rs/re_sorbet?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_sorbet.svg)](https://crates.io/crates/store/re_sorbet)
+[![Documentation](https://docs.rs/re_sorbet/badge.svg)](https://docs.rs/re_sorbet)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 

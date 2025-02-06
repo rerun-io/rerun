@@ -170,7 +170,7 @@ def log(
 
 @deprecated(
     """Use `log` with partial update APIs instead.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+  See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
 )
 @catch_and_log_exceptions()
 def log_components(
