@@ -15,6 +15,13 @@ mod loader_directory;
 mod loader_rrd;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod lerobot;
+
+// This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
+#[cfg(not(target_arch = "wasm32"))]
+mod loader_lerobot;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
 pub use self::{
@@ -29,6 +36,7 @@ pub use self::{
         iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
         EXTERNAL_DATA_LOADER_PREFIX,
     },
+    loader_lerobot::LeRobotDatasetLoader,
 };
 
 // ----------------------------------------------------------------------------
@@ -363,6 +371,8 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
     ]
