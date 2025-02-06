@@ -4,9 +4,10 @@ use re_types::blueprint::archetypes::PlotLegend;
 use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
 use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
-use re_ui::help::Help;
-use re_ui::icon_text::{ModifiersText, MouseButtonText};
-use re_ui::{icon_text, icons, list_item, ModifiersMarkdown, MouseButtonMarkdown};
+use re_ui::{
+    icon_text, icons, list_item, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    MouseButtonText,
+};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,

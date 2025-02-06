@@ -9,9 +9,10 @@ use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
-use re_ui::help::Help;
-use re_ui::icon_text::{ModifiersText, MouseButtonText};
-use re_ui::{icon_text, icons, list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::{
+    icon_text, icons, list_item, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    MouseButtonText, UiExt as _,
+};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
     SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,

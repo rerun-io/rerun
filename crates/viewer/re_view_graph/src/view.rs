@@ -9,9 +9,10 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::help::Help;
-use re_ui::icon_text::{ModifiersText, MouseButtonText};
-use re_ui::{self, icon_text, icons, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::{
+    self, icon_text, icons, Help, ModifiersMarkdown, ModifiersText, MouseButtonMarkdown,
+    MouseButtonText, UiExt as _,
+};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,

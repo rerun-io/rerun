@@ -10,9 +10,7 @@ use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     ComponentName, ViewClassIdentifier,
 };
-use re_ui::help::Help;
-use re_ui::icon_text::{ModifiersText, MouseButtonText};
-use re_ui::{icon_text, icons, UiExt as _};
+use re_ui::{icon_text, icons, Help, UiExt as _};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_view::view_property_ui;
 use re_viewer_context::{

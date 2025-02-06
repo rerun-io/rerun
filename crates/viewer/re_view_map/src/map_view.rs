@@ -14,8 +14,7 @@ use re_types::{
     },
     View, ViewClassIdentifier,
 };
-use re_ui::help::{ControlRow, Help};
-use re_ui::{icon_text, icons, list_item};
+use re_ui::{icon_text, icons, list_item, Help};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,

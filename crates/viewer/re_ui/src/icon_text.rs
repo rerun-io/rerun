@@ -58,7 +58,7 @@ impl<'a> From<String> for IconTextItem<'a> {
 #[macro_export]
 macro_rules! icon_text {
     ($($item:expr),* $(,)?) => {{
-        let mut icon_text = $crate::icon_text::IconText::new();
+        let mut icon_text = $crate::IconText::new();
         $(icon_text.add($item);)*
         icon_text
     }};
