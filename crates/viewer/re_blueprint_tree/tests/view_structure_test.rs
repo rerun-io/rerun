@@ -260,9 +260,7 @@ fn test_all_insta_test_cases() {
             ));
 
             settings.bind(|| {
-                insta::assert_yaml_snapshot!(test_case.name, blueprint_tree_data, {
-                    ".root_container.id.id" => "<container-id>"
-                });
+                insta::assert_yaml_snapshot!(test_case.name, blueprint_tree_data);
             });
         }
     }
