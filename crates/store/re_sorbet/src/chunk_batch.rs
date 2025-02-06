@@ -1,24 +1,65 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::{
+    array::RecordBatch as ArrowRecordBatch,
+    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
+};
 
 use re_log_types::EntityPath;
+use re_types_core::ChunkId;
 
-#[derive(thiserror::Error, Debug)]
-pub enum ChunkBatchError {
-    #[error("Missing record batch metadata key `{0}`")]
-    MissingRecordBatchMetadataKey(&'static str),
-}
+use crate::{chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema};
 
 /// The arrow [`ArrowRecordBatch`] representation of a Rerun chunk.
 ///
 /// This is a wrapper around a [`ArrowRecordBatch`].
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
-/// It walwyas have a [`RowId`] column.
+/// It always has a [`RowId`] column.
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
-    entity_path: EntityPath,
+    schema: ChunkSchema,
     batch: ArrowRecordBatch,
+}
+
+impl ChunkBatch {
+    /// The parsed rerun schema of this chunk.
+    #[inline]
+    pub fn chunk_schema(&self) -> &ChunkSchema {
+        &self.schema
+    }
+
+    /// The globally unique ID of this chunk.
+    #[inline]
+    pub fn chunk_id(&self) -> ChunkId {
+        self.schema.chunk_id()
+    }
+
+    /// Which entity is this chunk for?
+    #[inline]
+    pub fn entity_path(&self) -> &EntityPath {
+        self.schema.entity_path()
+    }
+
+    /// The heap size of this chunk in bytes, if known.
+    #[inline]
+    pub fn heap_size_bytes(&self) -> Option<u64> {
+        self.schema.heap_size_bytes()
+    }
+
+    /// Are we sorted by the row id column?
+    #[inline]
+    pub fn is_sorted(&self) -> bool {
+        self.schema.is_sorted()
+    }
+
+    #[inline]
+    pub fn fields(&self) -> &ArrowFields {
+        &self.schema_ref().fields
+    }
+
+    #[inline]
+    pub fn arrow_bacth_metadata(&self) -> &ArrowBatchMetadata {
+        &self.batch.schema_ref().metadata
+    }
 }
 
 impl std::fmt::Display for ChunkBatch {
@@ -51,58 +92,29 @@ impl From<ChunkBatch> for ArrowRecordBatch {
     }
 }
 
-impl TryFrom<ArrowRecordBatch> for ChunkBatch {
-    type Error = ChunkBatchError;
-
-    fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
-        let mut schema = ArrowSchema::clone(&*batch.schema());
-        let metadata = &mut schema.metadata;
-
-        {
-            // Verify version
-            if let Some(batch_version) = metadata.get(Self::CHUNK_METADATA_KEY_VERSION) {
-                if batch_version != Self::CHUNK_METADATA_VERSION {
-                    re_log::warn_once!(
-                        "ChunkBatch version mismatch. Expected {:?}, got {batch_version:?}",
-                        Self::CHUNK_METADATA_VERSION
-                    );
-                }
-            }
-            metadata.insert(
-                Self::CHUNK_METADATA_KEY_VERSION.to_owned(),
-                Self::CHUNK_METADATA_VERSION.to_owned(),
-            );
-        }
-
-        let entity_path =
-            if let Some(entity_path) = metadata.get(Self::CHUNK_METADATA_KEY_ENTITY_PATH) {
-                EntityPath::parse_forgiving(entity_path)
-            } else {
-                return Err(ChunkBatchError::MissingRecordBatchMetadataKey(
-                    Self::CHUNK_METADATA_KEY_ENTITY_PATH,
-                ));
-            };
-
-        Ok(Self { entity_path, batch })
+impl From<&ChunkBatch> for ArrowRecordBatch {
+    #[inline]
+    fn from(chunk: &ChunkBatch) -> Self {
+        chunk.batch.clone()
     }
 }
 
-/// ## Metadata keys for the record batch metadata
-impl ChunkBatch {
-    /// The key used to identify the version of the Rerun schema.
-    const CHUNK_METADATA_KEY_VERSION: &'static str = "rerun.version";
+impl TryFrom<ArrowRecordBatch> for ChunkBatch {
+    type Error = InvalidChunkSchema;
 
-    /// The version of the Rerun schema.
-    const CHUNK_METADATA_VERSION: &'static str = "1";
+    fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
+        let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
-    /// The key used to identify a Rerun [`EntityPath`] in the record batch metadata.
-    const CHUNK_METADATA_KEY_ENTITY_PATH: &'static str = "rerun.entity_path";
-}
+        // Extend with any metadata that might have been missing:
+        let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());
+        arrow_schema
+            .metadata
+            .extend(chunk_schema.arrow_batch_metadata());
+        let batch = batch.with_schema(arrow_schema.into()).expect("Can't fail");
 
-impl ChunkBatch {
-    /// Returns the [`EntityPath`] of the batch.
-    #[inline]
-    pub fn entity_path(&self) -> &EntityPath {
-        &self.entity_path
+        Ok(Self {
+            schema: chunk_schema,
+            batch,
+        })
     }
 }

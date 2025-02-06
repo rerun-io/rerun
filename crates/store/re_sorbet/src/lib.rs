@@ -2,6 +2,7 @@
 //!
 //! Handles the structure of arrow record batches and their meta data for different use cases for Rerun.
 
+mod chunk_batch;
 mod chunk_schema;
 mod column_schema;
 mod data_column_schema;
@@ -11,6 +12,7 @@ mod metadata;
 mod row_id_column_schema;
 
 pub use self::{
+    chunk_batch::ChunkBatch,
     chunk_schema::ChunkSchema,
     column_schema::{ColumnDescriptor, ColumnError},
     data_column_schema::ComponentColumnDescriptor,

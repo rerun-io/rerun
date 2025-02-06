@@ -6586,6 +6586,7 @@ name = "re_sorbet"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tuid",
