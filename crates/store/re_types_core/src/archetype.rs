@@ -134,6 +134,7 @@ pub trait ArchetypeReflectionMarker {}
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points3D`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ArchetypeName;
 );
 
@@ -180,6 +181,7 @@ impl re_byte_size::SizeBytes for ArchetypeName {
 
 re_string_interner::declare_new_type!(
     /// The name of an [`Archetype`]'s field, e.g. `positions`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ArchetypeFieldName;
 );
 

@@ -14,11 +14,7 @@ pub struct Repl {
     #[argh(positional, default = "DEFAULT_INDEX.into()")]
     index_name: String,
 
-    #[argh(
-        option,
-        default = "false",
-        description = "ingest before starting the repl"
-    )]
+    #[argh(switch, description = "ingest before starting the repl")]
     ingest: bool,
 
     /// meilisearch URL
@@ -43,7 +39,11 @@ impl Repl {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
 
         if self.ingest {
-            let documents = ingest::run(self.release_version.clone(), &self.exclude_crates)?;
+            let documents = ingest::run(
+                self.release_version.clone(),
+                &self.exclude_crates,
+                "nightly",
+            )?;
             client.index(&self.index_name, &documents)?;
         }
 
@@ -67,7 +67,11 @@ impl Repl {
         match line {
             "quit" | "q" | "" => return Ok(ControlFlow::Break(())),
             "reindex" => {
-                let documents = ingest::run(self.release_version.clone(), &self.exclude_crates)?;
+                let documents = ingest::run(
+                    self.release_version.clone(),
+                    &self.exclude_crates,
+                    "nightly",
+                )?;
                 search.index(&self.index_name, &documents)?;
             }
             _ => {
