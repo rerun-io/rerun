@@ -1,3 +1,4 @@
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{collections::BTreeSet, sync::Arc};
@@ -537,7 +538,7 @@ impl PyStorageNodeClient {
     fn search_vector_index(
         &mut self,
         entry: String,
-        query: &VectorLike<'_>,
+        query: VectorLike<'_>,
         column: PyComponentColumnSelector,
         top_k: u32,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
