@@ -3,7 +3,14 @@
 
 ## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
 
+
+The new entity filtering:
+
 https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
+
+The new notification panel:
+
+![notification-panel](https://github.com/user-attachments/assets/0fb651d7-256a-48d7-a78e-81776ec39ba8)
 
 📖 Release blogpost: TODO(andreas): add link
 
