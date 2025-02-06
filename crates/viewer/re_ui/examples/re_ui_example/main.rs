@@ -4,8 +4,8 @@ mod right_panel;
 
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _,
-    DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens, Help,
+    UICommand, UICommandSender, UiExt as _,
 };
 use re_ui::{icon_text, icons, notifications};
 
