@@ -30,6 +30,9 @@ New help texts for all our views:
 * 🔎 Added entity filtering/searching
 * 🔔 Recent notifications show now in a dedicated panel
 * 🖱️ Entity ranges can now be selected with shift + click
+* ❓ Improved panel help
+* 🖼️ Crisper UI rendering
+* 🧊 Faster 3D transforms
 
 #### APIs
 * 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates)
