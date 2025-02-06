@@ -1,5 +1,5 @@
 use crate::icon_text::{IconText, IconTextItem};
-use crate::{design_tokens, icons, ColorToken, Icon, Scale, UiExt};
+use crate::{design_tokens, icons, ColorToken, DesignTokens, Icon, Scale, UiExt};
 use eframe::emath::Align;
 use egui::{
     Color32, Layout, OpenUrl, Response, RichText, Sense, TextBuffer, Ui, UiBuilder, Widget,
@@ -72,7 +72,7 @@ impl<'a> Help<'a> {
         egui::Sides::new().show(
             ui,
             |ui| {
-                ui.strong(&self.title);
+                ui.label(RichText::new(&self.title).strong().size(11.0));
             },
             |ui| {
                 if let Some(docs_link) = &self.docs_link {
@@ -91,7 +91,7 @@ impl<'a> Help<'a> {
 
                             ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
 
-                            ui.label(RichText::new("Docs").color(tint));
+                            ui.label(RichText::new("Docs").color(tint).size(11.0));
                         })
                         .response;
 
@@ -110,12 +110,14 @@ impl<'a> Help<'a> {
             Self::separator(ui);
         }
 
-        // TODO: Id
-        egui::Grid::new("help").num_columns(2).show(ui, |ui| {
-            for row in &self.controls {
-                ui.strong(RichText::new(&row.text).size(11.0));
-
-                ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+        for row in &self.controls {
+            egui::Sides::new().spacing(4.0).show(
+                ui,
+                |ui| {
+                    ui.strong(RichText::new(&row.text).size(11.0));
+                },
+                |ui| {
+                    ui.set_height(DesignTokens::small_icon_size().y);
                     for item in row.items.0.iter().rev() {
                         match item {
                             IconTextItem::Icon(icon) => {
@@ -123,27 +125,15 @@ impl<'a> Help<'a> {
                             }
                             IconTextItem::Text(text) => {
                                 ui.label(
-                                    RichText::new(text.as_str()).monospace().color(
+                                    RichText::new(text.as_str()).monospace().size(11.0).color(
                                         design_tokens().color(ColorToken::gray(Scale::S700)),
                                     ),
                                 );
                             }
                         }
                     }
-
-                    ui.add_space(4.0);
-                });
-
-                ui.end_row();
-            }
-        });
-
-        // egui::Sides::new()
-        //     .show(ui, |ui| {
-        //         for row in &self.controls {
-        //             ui.label(&row.text);
-        //         }
-        //     }, |ui| {});
-        // Add labels
+                },
+            );
+        }
     }
 }
