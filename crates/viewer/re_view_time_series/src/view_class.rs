@@ -101,34 +101,6 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "# Time series view
-
-Display time series data in a plot.
-
-## Navigation controls
-
-- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
-- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
-- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
-- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
-- Click the {move_time_cursor_button} to move the time cursor.
-- Double-click to reset the view.
-
-## Legend interactions
-
-- Click on a series in the legend to show/hide it.
-- {alt_modifier}-Click on a series to show/hide all other series.",
-            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
-            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
-            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
-            move_time_cursor_button = MouseButtonMarkdown(MOVE_TIME_CURSOR_BUTTON),
-            alt_modifier = ModifiersMarkdown(egui::Modifiers::ALT, egui_ctx),
-        )
-    }
-
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")

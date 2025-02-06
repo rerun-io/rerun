@@ -51,28 +51,6 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Dataframe view
-
-This view displays the content of the entities it contains in tabular form.
-
-## View types
-
-The Dataframe view operates in two modes: the _latest-at_ mode and the _time range_ mode. You can
-select the mode in the selection panel.
-
-In the _latest-at_ mode, the view displays the latest data for the timeline and time set in the time
-panel. A row is shown for each entity instance.
-
-In the _time range_ mode, the view displays all the data logged within the time range set for each
-view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
-if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
-
-Note that the default visible time range depends on the selected mode. In particular, the time range
-mode sets the default time range to _everything_. You can override this in the selection panel."
-            .to_owned()
-    }
-
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Dataframe view")
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")

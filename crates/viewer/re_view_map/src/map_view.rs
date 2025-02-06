@@ -103,19 +103,6 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Map view
-
-Displays geospatial primitives on a map.
-
-## Navigation controls
-
-- Pan by dragging.
-- Zoom with pinch gesture.
-- Double-click to reset the view."
-            .to_owned()
-    }
-
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")

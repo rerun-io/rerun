@@ -67,47 +67,8 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_3d::help_markdown(egui_ctx)
-    }
-
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new("3D view")
-            .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
-            .control(
-                "Pan",
-                icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+ drag"),
-            )
-            .control("Zoom", icon_text!(icons::SCROLL))
-            .control(
-                "Rotate",
-                icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+ drag"),
-            )
-            .control(
-                "Roll",
-                icon_text!(
-                    MouseButtonText(ROLL_MOUSE_ALT),
-                    "+",
-                    ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
-                ),
-            )
-            .control("Navigate", icon_text!("WASD / QE"))
-            .control(
-                "Slow down / speed up",
-                icon_text!(
-                    ModifiersText(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
-                    "/",
-                    ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
-                ),
-            )
-            .control(
-                "Focus",
-                icon_text!("double", icons::LEFT_MOUSE_CLICK, "object"),
-            )
-            .control(
-                "Reset view",
-                icon_text!("double", icons::LEFT_MOUSE_CLICK, "background"),
-            )
+        super::ui_3d::help(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {

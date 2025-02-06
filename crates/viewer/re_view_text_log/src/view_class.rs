@@ -56,15 +56,6 @@ impl ViewClass for TextView {
         &re_ui::icons::VIEW_LOG
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Text log view
-
-Shows `TextLog` entries over time.
-
-Note: select the View for filtering options."
-            .to_owned()
-    }
-
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text log view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_log")

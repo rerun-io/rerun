@@ -62,9 +62,6 @@ pub trait ViewClass: Send + Sync {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    /// Help text describing how to interact with this view in the ui.
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String;
-
     fn help(&self, egui_ctx: &egui::Context) -> re_ui::help::Help;
 
     /// Called once upon registration of the class

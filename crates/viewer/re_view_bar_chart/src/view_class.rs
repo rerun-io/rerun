@@ -43,26 +43,6 @@ impl ViewClass for BarChartView {
         Box::<()>::default()
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "# Bar chart view
-
-Display a 1D tensor as a bar chart.
-
-## Navigation controls
-
-- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
-- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
-- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
-- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
-- Double-click to reset the view.",
-            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
-            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
-            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
-        )
-    }
-
     fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
