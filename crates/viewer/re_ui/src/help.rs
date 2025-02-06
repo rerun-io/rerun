@@ -10,7 +10,7 @@ pub struct Help<'a> {
     sections: Vec<HelpSection<'a>>,
 }
 
-/// A single section, seperated by a [`egui::Separator`].
+/// A single section, separated by a [`egui::Separator`].
 #[derive(Debug, Clone)]
 enum HelpSection<'a> {
     Markdown(String),
