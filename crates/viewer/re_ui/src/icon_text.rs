@@ -79,14 +79,16 @@ pub struct ModifiersText<'a>(pub Modifiers, pub &'a egui::Context);
 
 impl<'a> From<ModifiersText<'a>> for IconTextItem<'static> {
     fn from(value: ModifiersText<'a>) -> Self {
+        let ModifiersText(modifiers, ctx) = value;
+
         let is_mac = matches!(
-            value.1.os(),
+            ctx.os(),
             egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
         );
 
         let mut names = ModifierNames::NAMES;
         names.concat = " + ";
-        let text = names.format(&value.0, is_mac);
+        let text = names.format(&modifiers, is_mac);
 
         // Only shift has an icon for now
         if text == "Shift" {
