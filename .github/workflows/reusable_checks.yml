@@ -109,7 +109,7 @@ jobs:
         run: pixi run ./scripts/check_example_manifest_coverage.py
 
       - name: Check the migration guide redirects
-        run: pixi run ./scripts/ci/check_migration_guide_redirects.py
+        run: pixi run python scripts/ci/check_migration_guide_redirect.py
 
   lint-md:
     name: Lint markdown
