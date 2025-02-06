@@ -9,7 +9,9 @@ use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
-use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::help::Help;
+use re_ui::icon_text::{ModifiersText, MouseButtonText};
+use re_ui::{icon_text, icons, list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
     SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
@@ -125,6 +127,51 @@ Display time series data in a plot.
             move_time_cursor_button = MouseButtonMarkdown(MOVE_TIME_CURSOR_BUTTON),
             alt_modifier = ModifiersMarkdown(egui::Modifiers::ALT, egui_ctx),
         )
+    }
+
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new("Time series view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
+            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .with_control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .with_control(
+                "Zoom only x-axis",
+                icon_text!(
+                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .with_control(
+                "Zoom to selection",
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+            )
+            .with_control(
+                "Move time cursor", // TODO: I changed this from "Place cursor in view", which is a bit confusing I think?
+                icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
+            )
+            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            // TODO(lucasmerlin) In the design there is a seperator here, but this isn't possible right now
+            .with_control(
+                "Hide/show series",
+                icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
+            ) // TODO: Changed from "Toggle legend visibility"
+            .with_control(
+                "Hide/show other series",
+                icon_text!(
+                    ModifiersText(egui::Modifiers::ALT, egui_ctx),
+                    "+",
+                    icons::LEFT_MOUSE_CLICK,
+                    "legend"
+                ),
+            )
     }
 
     fn on_register(

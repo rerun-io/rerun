@@ -488,7 +488,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                         ControlRow::new("Zoom", icon_text!("Ctrl / Cmd +", icons::SCROLL)),
                         ControlRow::new(
                             "Reset view",
-                            icon_text!("double ", icons::LEFT_MOUSE_CLICK),
+                            icon_text!("double", icons::LEFT_MOUSE_CLICK),
                         ),
                     ])
                     .ui(ui);

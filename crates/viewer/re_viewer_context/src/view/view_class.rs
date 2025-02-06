@@ -65,6 +65,8 @@ pub trait ViewClass: Send + Sync {
     /// Help text describing how to interact with this view in the ui.
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String;
 
+    fn help(&self, egui_ctx: &egui::Context) -> re_ui::help::Help;
+
     /// Called once upon registration of the class
     ///
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::VisualizerSystem`].

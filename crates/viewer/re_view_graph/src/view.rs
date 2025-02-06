@@ -9,7 +9,9 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::help::Help;
+use re_ui::icon_text::{ModifiersText, MouseButtonText};
+use re_ui::{self, icon_text, icons, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -59,6 +61,20 @@ Display a graph of nodes and edges.
             zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
             drag_pan2d_button = MouseButtonMarkdown(DRAG_PAN2D_BUTTON),
         )
+    }
+
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new("Map view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/map_view")
+            .with_control(
+                "Pan",
+                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+            )
+            .with_control(
+                "Zoom",
+                icon_text!(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
+            )
+            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.

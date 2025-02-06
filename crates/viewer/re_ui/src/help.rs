@@ -1,22 +1,24 @@
 use crate::icon_text::{IconText, IconTextItem};
 use crate::{design_tokens, icons, ColorToken, Icon, Scale, UiExt};
 use eframe::emath::Align;
-use egui::{Color32, Layout, OpenUrl, Response, RichText, Sense, Ui, UiBuilder, Widget};
+use egui::{
+    Color32, Layout, OpenUrl, Response, RichText, Sense, TextBuffer, Ui, UiBuilder, Widget,
+};
 
-pub struct Help {
+pub struct Help<'a> {
     title: String,
     markdown: Option<String>,
     docs_link: Option<String>,
-    controls: Vec<ControlRow>,
+    controls: Vec<ControlRow<'a>>,
 }
 
-pub struct ControlRow {
+pub struct ControlRow<'a> {
     text: String,
-    items: IconText<'static>,
+    items: IconText<'a>,
 }
 
-impl ControlRow {
-    pub fn new(text: impl ToString, items: IconText<'static>) -> Self {
+impl<'a> ControlRow<'a> {
+    pub fn new(text: impl ToString, items: IconText<'a>) -> Self {
         Self {
             text: text.to_string(),
             items,
@@ -24,7 +26,7 @@ impl ControlRow {
     }
 }
 
-impl Help {
+impl<'a> Help<'a> {
     pub fn new(title: impl ToString) -> Self {
         Self {
             title: title.to_string(),
@@ -44,9 +46,26 @@ impl Help {
         self
     }
 
-    pub fn with_controls(mut self, controls: Vec<ControlRow>) -> Self {
+    pub fn with_controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
         self.controls = controls;
         self
+    }
+
+    pub fn with_control(mut self, label: &'a str, items: IconText<'a>) -> Self {
+        self.controls.push(ControlRow::new(label, items));
+        self
+    }
+
+    fn separator(ui: &mut Ui) {
+        ui.scope(|ui| {
+            ui.style_mut()
+                .visuals
+                .widgets
+                .noninteractive
+                .bg_stroke
+                .color = design_tokens().color_table.gray(Scale::S400);
+            ui.separator();
+        });
     }
 
     pub fn ui(&self, ui: &mut Ui) {
@@ -83,26 +102,18 @@ impl Help {
             },
         );
         if let Some(markdown) = &self.markdown {
-            ui.separator();
+            Self::separator(ui);
             ui.markdown_ui(markdown);
         }
 
         if !self.controls.is_empty() {
-            ui.scope(|ui| {
-                ui.style_mut()
-                    .visuals
-                    .widgets
-                    .noninteractive
-                    .bg_stroke
-                    .color = design_tokens().color_table.gray(Scale::S400);
-                ui.separator();
-            });
+            Self::separator(ui);
         }
 
         // TODO: Id
         egui::Grid::new("help").num_columns(2).show(ui, |ui| {
             for row in &self.controls {
-                ui.strong(&row.text);
+                ui.strong(RichText::new(&row.text).size(11.0));
 
                 ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                     for item in row.items.0.iter().rev() {
@@ -112,13 +123,15 @@ impl Help {
                             }
                             IconTextItem::Text(text) => {
                                 ui.label(
-                                    RichText::new(&**text).monospace().color(
+                                    RichText::new(text.as_str()).monospace().color(
                                         design_tokens().color(ColorToken::gray(Scale::S700)),
                                     ),
                                 );
                             }
                         }
                     }
+
+                    ui.add_space(4.0);
                 });
 
                 ui.end_row();

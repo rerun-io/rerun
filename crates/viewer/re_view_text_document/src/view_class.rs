@@ -3,7 +3,8 @@ use egui::Label;
 use egui::Sense;
 use re_types::View;
 use re_types::ViewClassIdentifier;
-use re_ui::UiExt as _;
+use re_ui::help::Help;
+use re_ui::{icon_text, UiExt as _};
 use re_view::suggest_view_for_each_entity;
 
 use re_viewer_context::Item;
@@ -65,6 +66,12 @@ impl ViewClass for TextDocumentView {
 
 Displays text from a text component, as raw text or markdown."
             .to_owned()
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new("Text document view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
+            .with_markdown("Supports raw text and markdown.")
     }
 
     fn on_register(

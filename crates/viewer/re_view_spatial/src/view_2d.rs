@@ -1,4 +1,5 @@
 use ahash::HashSet;
+use egui::Context;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
@@ -9,7 +10,10 @@ use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     ComponentName, ViewClassIdentifier,
 };
-use re_ui::UiExt as _;
+use re_ui::help::Help;
+use re_ui::icon_text::{ModifiersText, MouseButtonText};
+use re_ui::{icon_text, icons, UiExt as _};
+use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_view::view_property_ui;
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
@@ -60,6 +64,24 @@ impl ViewClass for SpatialView2D {
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
         super::ui_2d::help_markdown(egui_ctx)
+    }
+
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new("2D view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
+            .with_control(
+                "Pan",
+                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+            )
+            .with_control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

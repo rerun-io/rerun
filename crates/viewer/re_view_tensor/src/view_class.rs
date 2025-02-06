@@ -1,4 +1,4 @@
-use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
+use egui::{epaint::TextShape, Align2, Context, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
@@ -12,7 +12,8 @@ use re_types::{
     datatypes::TensorData,
     View, ViewClassIdentifier,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::help::Help;
+use re_ui::{icon_text, list_item, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
@@ -71,6 +72,16 @@ Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
 
 Note: select the view to configure which dimensions are shown."
             .to_owned()
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new("Tensor view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
+            .with_markdown(
+                "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
+
+Set the displayed dimensions in a selection panel.",
+            )
     }
 
     fn on_register(

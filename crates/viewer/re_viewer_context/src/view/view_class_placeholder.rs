@@ -1,4 +1,5 @@
 use re_types::ViewClassIdentifier;
+use re_ui::help::Help;
 use re_ui::UiExt;
 
 use crate::{
@@ -25,6 +26,10 @@ impl ViewClass for ViewClassPlaceholder {
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
         "Placeholder view for unknown view class".to_owned()
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new("Placeholder view").with_markdown("Placeholder view for unknown view class")
     }
 
     fn on_register(

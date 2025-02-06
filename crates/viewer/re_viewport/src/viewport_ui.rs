@@ -572,9 +572,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 );
             });
 
-        let help_markdown = view_class.help_markdown(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_ui(|ui| {
-            ui.markdown_ui(&help_markdown);
+            view_class.help(ui.ctx()).ui(ui);
         });
     }
 

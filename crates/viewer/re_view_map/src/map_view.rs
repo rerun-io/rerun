@@ -14,7 +14,8 @@ use re_types::{
     },
     View, ViewClassIdentifier,
 };
-use re_ui::list_item;
+use re_ui::help::{ControlRow, Help};
+use re_ui::{icon_text, icons, list_item};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -113,6 +114,14 @@ Displays geospatial primitives on a map.
 - Zoom with pinch gesture.
 - Double-click to reset the view."
             .to_owned()
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new("Map view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/map_view")
+            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .with_control("Zoom", icon_text!("Ctrl/Cmd +", icons::SCROLL))
+            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

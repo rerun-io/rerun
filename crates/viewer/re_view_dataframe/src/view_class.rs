@@ -4,6 +4,7 @@ use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
+use re_ui::help::Help;
 use re_ui::UiExt;
 use re_viewer_context::{
     Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
@@ -70,6 +71,17 @@ if multiple `rr.log()` calls were made for the same entity/time. Static data is 
 Note that the default visible time range depends on the selected mode. In particular, the time range
 mode sets the default time range to _everything_. You can override this in the selection panel."
             .to_owned()
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new("Dataframe view").with_markdown(
+            "This view displays entity content in a tabular form.
+
+Configure in the selection panel:
+ - Handling of empty cells
+ - Column visibility
+ - Row filtering by time range",
+        )
     }
 
     fn on_register(

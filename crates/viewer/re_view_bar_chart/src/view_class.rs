@@ -4,7 +4,9 @@ use re_types::blueprint::archetypes::PlotLegend;
 use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
 use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
-use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown};
+use re_ui::help::Help;
+use re_ui::icon_text::{ModifiersText, MouseButtonText};
+use re_ui::{icon_text, icons, list_item, ModifiersMarkdown, MouseButtonMarkdown};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
@@ -59,6 +61,33 @@ Display a 1D tensor as a bar chart.
             aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
             selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
         )
+    }
+
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new("Bar chart view")
+            .with_docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
+            .with_control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .with_control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .with_control(
+                "Zoom only x-axis",
+                icon_text!(
+                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .with_control(
+                "Zoom to selection",
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+            )
+            .with_control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
