@@ -18,22 +18,28 @@ impl<'a> IconTextItem<'a> {
     }
 }
 
+/// Helper to show text with icons in a row.
+/// Usually created via the [`crate::icon_text!`] macro.
 #[derive(Default, Debug, Clone)]
 pub struct IconText<'a>(pub Vec<IconTextItem<'a>>);
 
 impl<'a> IconText<'a> {
+    /// Create a new, empty `IconText`.
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
+    /// Add an icon to the row.
     pub fn icon(&mut self, icon: Icon) {
         self.0.push(IconTextItem::Icon(icon));
     }
 
+    /// Add text to the row.
     pub fn text(&mut self, text: impl Into<Cow<'a, str>>) {
         self.0.push(IconTextItem::Text(text.into()));
     }
 
+    /// Add an item to the row.
     pub fn add(&mut self, item: impl Into<IconTextItem<'a>>) {
         self.0.push(item.into());
     }
@@ -57,6 +63,7 @@ impl<'a> From<String> for IconTextItem<'a> {
     }
 }
 
+/// Create an [`IconText`] with the given items.
 #[macro_export]
 macro_rules! icon_text {
     ($($item:expr),* $(,)?) => {{
@@ -66,6 +73,8 @@ macro_rules! icon_text {
     }};
 }
 
+/// Helper to add [`egui::Modifiers`] as text with icons.
+/// Will automatically show Cmd/Ctrl based on the OS.
 pub struct ModifiersText<'a>(pub Modifiers, pub &'a egui::Context);
 
 impl<'a> From<ModifiersText<'a>> for IconTextItem<'static> {
@@ -88,6 +97,7 @@ impl<'a> From<ModifiersText<'a>> for IconTextItem<'static> {
     }
 }
 
+/// Helper to show mouse buttons as text/icons.
 pub struct MouseButtonText(pub egui::PointerButton);
 
 impl From<MouseButtonText> for IconTextItem<'static> {

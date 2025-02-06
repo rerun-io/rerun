@@ -2,6 +2,7 @@ use crate::icon_text::{IconText, IconTextItem};
 use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt};
 use egui::{OpenUrl, RichText, Sense, TextBuffer, Ui, UiBuilder};
 
+/// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
 pub struct Help<'a> {
     title: String,
@@ -9,12 +10,14 @@ pub struct Help<'a> {
     sections: Vec<HelpSection<'a>>,
 }
 
+/// A single section, seperated by a [`egui::Separator`].
 #[derive(Debug, Clone)]
 enum HelpSection<'a> {
     Markdown(String),
     Controls(Vec<ControlRow<'a>>),
 }
 
+/// A single row in the controls table.
 #[derive(Debug, Clone)]
 pub struct ControlRow<'a> {
     text: String,
@@ -22,6 +25,7 @@ pub struct ControlRow<'a> {
 }
 
 impl<'a> ControlRow<'a> {
+    /// Create a new control row.
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(text: impl ToString, items: IconText<'a>) -> Self {
         Self {
@@ -32,6 +36,7 @@ impl<'a> ControlRow<'a> {
 }
 
 impl<'a> Help<'a> {
+    /// Create a new help popup.
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(title: impl ToString) -> Self {
         Self {
@@ -41,6 +46,7 @@ impl<'a> Help<'a> {
         }
     }
 
+    /// Add a docs link, to be shown in the top right corner.
     #[allow(clippy::needless_pass_by_value)]
     #[inline]
     pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
@@ -48,6 +54,7 @@ impl<'a> Help<'a> {
         self
     }
 
+    /// Add a markdown section.
     #[allow(clippy::needless_pass_by_value)]
     #[inline]
     pub fn markdown(mut self, markdown: impl ToString) -> Self {
@@ -56,12 +63,14 @@ impl<'a> Help<'a> {
         self
     }
 
+    /// Add a controls section.
     #[inline]
     pub fn controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
         self.sections.push(HelpSection::Controls(controls));
         self
     }
 
+    /// Add a single control row to the last controls section.
     #[allow(clippy::needless_pass_by_value)]
     #[inline]
     pub fn control(mut self, label: impl ToString, items: IconText<'a>) -> Self {
@@ -74,6 +83,7 @@ impl<'a> Help<'a> {
         self
     }
 
+    /// Create a new empty control section.
     #[inline]
     pub fn control_separator(mut self) -> Self {
         self.sections.push(HelpSection::Controls(vec![]));
@@ -92,6 +102,7 @@ impl<'a> Help<'a> {
         });
     }
 
+    /// Show the help popup. Usually you want to show this in [`egui::Response::on_hover_ui`].
     pub fn ui(&self, ui: &mut Ui) {
         egui::Sides::new().show(
             ui,
@@ -134,11 +145,10 @@ impl<'a> Help<'a> {
                 }
                 HelpSection::Controls(controls) => {
                     for row in controls {
-                        egui::Sides::new().show(
+                        egui::Sides::new().spacing(8.0).show(
                             ui,
                             |ui| {
                                 ui.strong(RichText::new(&row.text).size(11.0));
-                                ui.add_space(8.0);
                             },
                             |ui| {
                                 ui.set_height(DesignTokens::small_icon_size().y);
