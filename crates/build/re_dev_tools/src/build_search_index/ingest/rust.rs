@@ -38,7 +38,11 @@ use std::sync::mpsc;
 /// - associated `fn`
 ///
 /// It will also walk through any `pub mod`, and correctly resolve `pub use mod::item` where `mod` is not `pub`.
-pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
+pub fn ingest(
+    ctx: &Context,
+    exclude_crates: &[String],
+    rust_toolchain: &str,
+) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("rustdoc");
 
     let mut crates = Vec::new();
@@ -69,7 +73,7 @@ pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
         }
 
         let path = rustdoc_json::Builder::default()
-            .toolchain("nightly-2024-08-10")
+            .toolchain(rust_toolchain)
             .all_features(true)
             .quiet(true)
             .manifest_path(&pkg.manifest_path)
