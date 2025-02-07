@@ -206,3 +206,88 @@ message Tuid {
     // then incremented for each new `Tuid` being allocated.
     fixed64 inc = 2;
 }
+
+// DataframePart is arrow IPC encoded RecordBatch
+message DataframePart {
+    // encoder version used to encode the data
+    rerun.common.v0.EncoderVersion encoder_version = 1;
+
+    // Data payload is Arrow IPC encoded RecordBatch
+    bytes payload = 1000;
+}
+
+message ColumnProjection {
+    repeated string columns = 1;
+}
+
+message PropertiesFilter {
+    // Filtering is very simple right now, we can only select
+    // recordings by their ids.
+    repeated rerun.common.v0.RecordingId recording_ids = 1;
+
+    // TODO: Other filter types
+}
+
+message IndexProperties {
+    oneof props {
+        InvertedIndex inverted = 1;
+        VectorIvfPqIndex vector = 2;
+        BTreeIndex btree = 3;
+    }
+}
+
+// used to define which column we want to index
+message IndexColumn {
+    // The path of the entity.
+    rerun.common.v0.EntityPath entity_path = 1;
+    // Optional name of the `Archetype` associated with this data.
+    optional string archetype_name = 2;
+    // Optional name of the field within `Archetype` associated with this data.
+    optional string archetype_field_name = 3;
+    // Semantic name associated with this data.
+    string component_name = 4;
+}
+
+message InvertedIndex {
+    bool store_position = 1;
+    string base_tokenizer = 2;
+    // TODO(zehiko) add other properties as needed
+}
+
+message VectorIvfPqIndex {
+    uint32 num_partitions = 1;
+    uint32 num_sub_vectors = 2;
+    VectorDistanceMetric distance_metrics = 3;
+}
+
+enum VectorDistanceMetric {
+    L2 = 0;
+    COSINE = 1;
+    DOT = 2;
+    HAMMING = 3;
+}
+
+message BTreeIndex {
+    // TODO(zehiko) add properties as needed
+}
+
+message IndexQueryProperties {
+    // specific index query properties based on the index type
+    oneof props {
+        InvertedIndexQuery inverted = 1;
+        VectorIndexQuery vector = 2;
+        BTreeIndexQuery btree = 3;
+    }
+}
+
+message InvertedIndexQuery {
+    // TODO(zehiko) add properties as needed
+}
+
+message VectorIndexQuery {
+    uint32 top_k = 2;
+}
+
+message BTreeIndexQuery {
+    // TODO(zehiko) add properties as needed
+}

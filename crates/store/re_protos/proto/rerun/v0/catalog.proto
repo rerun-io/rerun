@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package rerun.redap.v0;
+
+import "rerun/v0/common.proto";
+
+// The RerunCatalog service is a common API set exposed by:
+// - The Rerun Catalog Server
+// - Any Rerun Storage Node
+//
+// Some Important terminology:
+// - Resource: A resource is any data that can be mapped to a single recording or table in the Rerun data model.
+//   - Examples: A single Rerun recording, an MCAP file, parquet table, etc.
+//   - Every resource across the catalog has a unique identifier.
+// - Collection: A collection contains multiple resources of a similar type.
+//   - Every collection includes a "Property Table" of properties associated with the resources in a collection.
+// - Catalog Entry: An entry within a catalog is a named interface that facilitates access to resources or collections.
+//   - Examples: A collection of recordings, a table of training data, a view created from a query.
+//
+// A Rerun Storage Node generally acts as a single-entry catalog, serving all
+// the recordings stored in the node as a single collection along with a single
+// property-table.  This makes it convenient to directly connect to a Storage Node
+// with the Rerun Viewer in minimal deployments without the need to set up a
+// separate catalog server.
+//
+// This also extends to the Viewer itself, which contains a minimal implementation of a fully
+// in-memory storage node. Each recording sent directly to the viewer from the Rerun SDK will
+// be stored in the viewer's local collection.
+service RerunCatalog {
+    // ---------------- Shared Catalog APIs ------------------
+
+    // List all the Entries in the catalog
+    //
+    // The storage node will only return a single entry for its collection.
+    rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse) {}
+
+    // ---------------- Catalog-Only Catalog APIs ------------------
+    // These APIs are not implemented in the Storage Node
+
+    // Add a new entry to the catalog
+    rpc AddEntry(AddEntryRequest) returns (AddEntryResponse) {}
+
+    // Remove an entry from the catalog
+    rpc RemoveEntry(RemoveEntryRequest) returns (RemoveEntryResponse) {}
+    // Remove an entry from the catalog
+
+    // ---------------- Shared Collection APIs ------------------
+    // APIs for interacting with catalog entries which are collections
+    //
+    // All of the Request messages include a `catalog_entry` field. This can be omitted
+    // when interacting with a Storage Node.
+
+    // Get the Schema of the property table for a particular catalog entry
+    rpc GetPropertyTableSchema(GetPropertyTableSchemaRequest)
+        returns (GetPropertyTableSchemaResponse) {}
+
+    // Set the properties of one or more resources within a catalog entry
+    //
+    // May fail if the catalog entry is not writable.
+    rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
+        returns (UpdateResourcePropertiesResponse) {}
+
+    // Retrieve the table of properties for all resources stored in the collection.
+    //
+    // Possibly filtered / column projected.
+    //
+    // The schema of the returned Dataframe should match the results of `PropertyTableSchema`.
+    rpc GetResourceProperties(GetResourcePropertiesRequest)
+        returns (stream rerun.common.v0.DataframePart) {}
+
+    // ---------------- Catalog-Only Collection APIs ------------------
+
+    // Register one or more resources with catalog entry
+    //
+    // This API is only supported for some catalog entries.
+    rpc RegisterResources(RegisterResourcesRequest) returns (rerun.common.v0.DataframePart) {}
+
+    // Remove a resource from the a manually-managed catalog entry
+    //
+    // This API is only supported for some catalog entries.
+    rpc UnregisterResource(UnregisterResourcesRequest) returns (UnregisterResourceResponse) {}
+
+    // Remove all resources from a manually-managed catalog entry
+    //
+    // This API is only supported for some catalog entries.
+    rpc UnregisterAllResources(UnregisterAllResourcesRequest)
+        returns (UnregisterAllResourcesResponse) {}
+
+    // Create an index for a specific column in the catalog entry
+    rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+
+    // Search over an existing index  in the catalog entry.
+    //
+    // The response to `SearchIndex` a RecordBatch with 3 columns:
+    // - 'resource_id' column with the id of the resource
+    // - timepoint column with the values representing the points in time
+    // where index query matches. What time points are matched depends on the type of
+    // index that is queried. For example for vector search it might be timepoints where
+    // top-K matches are found within *each* resource in the indexed entry. For inverted index
+    // it might be timepoints where the query string is found in the indexed column
+    // - 'data' column with the data that is returned for the matched timepoints
+    rpc SearchIndex(SearchIndexRequest) returns (stream rerun.common.v0.DataframePart) {}
+
+    // ---------------- Resource APIs ------------------
+    // These APIs do not need to be mediated by a catalog entry
+    // The resource-id is sufficient to uniquely locate the resource within the catalog.
+
+    rpc GetResourceSchema(GetResourceSchemaRequest) returns (GetResourceSchemaResponse) {}
+
+    rpc ListChunks(ListChunksRequest) returns (stream ChunkInfo) {}
+
+    rpc GetChunks(stream GetChunkRequest) returns (stream rerun.common.v0.RerunChunk) {}
+
+    // Run a Query against a single resource in the storage node
+    rpc ResourceQuery(ResourceQueryRequest) returns (stream rerun.common.v0.DataframePart) {}
+}
+
+message CatalogEntry {
+    string name = 1;
+}
+
+// ---------------- Catalog APIs ------------------
+
+// TODO
+message ListEntriesRequest {}
+message ListEntriesResponse {}
+
+// TODO
+message AddEntryRequest {}
+message AddEntryResponse {}
+
+// TODO
+message RemoveEntryRequest {}
+message RemoveEntryResponse {}
+
+// ---------------- Collection APIs ------------------
+
+message GetPropertyTableSchemaRequest {
+    CatalogEntry entry = 1;
+}
+
+message GetPropertyTableSchemaResponse {
+    // The schema of the property table for the given catalog entry.
+    rerun.common.v0.Schema schema = 1;
+}
+
+message UpdateResourcePropertiesRequest {
+    CatalogEntry entry = 1;
+
+    // This dataframe must contain a column indicating the resource_id
+    rerun.common.v0.DataframePart properties = 2;
+}
+
+message UpdateResourcePropertiesResponse {}
+
+message GetResourcePropertiesRequest {
+    CatalogEntry entry = 1;
+
+    // Column projection - define which columns should be returned.
+    // Providing it is optional, if not provided, all columns should be returned
+    rerun.common.v0.ColumnProjection column_projection = 2;
+
+    // Filter specific recordings that match the criteria (selection)
+    rerun.common.v0.PropertiesFilter filter = 3;
+}
+
+message CreateIndexRequest {
+    CatalogEntry entry = 1;
+
+    // what kind of index do we want to create and what are
+    // its index specific properties
+    rerun.common.v0.IndexProperties properties = 2;
+    // Component / column we want to index
+    rerun.common.v0.IndexColumn column = 3;
+    // What is the filter index i.e. timeline for which we
+    // will query the timepoints
+    // TODO(zehiko) this might go away and we might just index
+    // across all the timelines
+    rerun.common.v0.IndexColumnSelector time_index = 4;
+}
+
+message CreateIndexResponse {
+    uint64 indexed_resources = 1;
+    uint64 indexed_rows = 2;
+}
+
+message SearchIndexRequest {
+    CatalogEntry entry = 1;
+
+    // Index column that is queried
+    rerun.common.v0.IndexColumn column = 2;
+    // Query data - type of data is index specific. Caller must ensure
+    // to provide the right type. For vector search this should
+    // be a vector of appropriate size, for inverted index this should be a string.
+    // Query data is represented as a unit (single row) RecordBatch with 1 column.
+    rerun.common.v0.DataframePart query = 3;
+    // Index type specific properties
+    rerun.common.v0.IndexQueryProperties properties = 4;
+    // max number of rows to be returned
+    optional uint32 limit = 5;
+}
+
+message RegisterResourcesRequest {
+    CatalogEntry entry = 1;
+
+    // This has required columns based on the handler of the particular managed catalog entry
+    rerun.common.v0.DataframePart resource = 4;
+}
+
+message UnregisterResourcesRequest {}
+message UnregisterResourceResponse {}
+
+message UnregisterAllResourcesRequest {}
+message UnregisterAllResourcesResponse {}
+
+// ---------------- Resource APIs ------------------
+
+message GetResourceSchemaRequest {
+    rerun.common.v0.RecordingId recording_id = 1;
+}
+
+message GetResourceSchemaResponse {
+    rerun.common.v0.Schema schema = 1;
+}
+
+message ListChunksRequest {
+    rerun.common.v0.RecordingId recording_id = 1;
+
+    // TODO: Chunk-filtering options
+    // Time-range
+    // Entity-paths
+}
+
+message GetChunkRequest {
+    rerun.common.v0.Tuid chunk_id = 1;
+}
+
+message ChunkInfo {
+    rerun.common.v0.Tuid chunk_id = 1;
+
+    // TODO: Other chunk metadata
+}
+
+message ResourceQueryRequest {
+    // unique identifier of the recording
+    rerun.common.v0.RecordingId resource_id = 1;
+    // query to execute
+    rerun.common.v0.Query query = 2;
+}
