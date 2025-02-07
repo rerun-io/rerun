@@ -42,7 +42,7 @@ class Result:
 
 def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Result:
     args = ["cargo", cargo_cmd]
-    if cargo_cmd not in ["deny", "fmt", "format"]:
+    if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
         args.append("--quiet")
     if cargo_cmd == "nextest":
         args.append("--cargo-quiet")
@@ -261,13 +261,13 @@ def tests(results: list[Result]) -> None:
     results.append(run_cargo("nextest", "--all-targets --all-features"))
 
     # Cargo nextest doesn't support doc tests yet, run those separately.
-    results.append(run_cargo("test", "--all-targets --doc"))
+    results.append(run_cargo("test", "--all-features --doc"))
+
 
 def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
     results.append(run_cargo("test", "--all-targets --no-run"))
     results.append(run_cargo("nextest", "--all-targets"))
-
 
 
 if __name__ == "__main__":
