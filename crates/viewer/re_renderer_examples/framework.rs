@@ -7,7 +7,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use web_time::Instant;
 
-use re_renderer::{config::DeviceCaps, view_builder::ViewBuilder, RenderContext};
+use re_renderer::{device_caps::DeviceCaps, view_builder::ViewBuilder, RenderContext};
 
 use winit::{
     application::ApplicationHandler,
@@ -109,7 +109,7 @@ impl<E: Example + 'static> Application<E> {
     async fn new(window: Window) -> anyhow::Result<Self> {
         let window = Arc::new(window);
 
-        let mut instance_desc = re_renderer::config::instance_descriptor(None);
+        let mut instance_desc = re_renderer::device_caps::instance_descriptor(None);
         // Run without validation layers, they can be annoying on shader reload depending on the backend.
         instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
 

@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceCaps, WgpuBackendType},
+    device_caps::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -26,7 +26,7 @@ pub enum RenderContextError {
         "The GPU/graphics driver is lacking some abilities: {0}. \
         Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
-    InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
+    InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
 }
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.

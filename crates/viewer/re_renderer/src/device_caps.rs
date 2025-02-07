@@ -10,7 +10,7 @@
 ///
 /// See also `global_bindings.wgsl`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DeviceTier {
+pub enum DeviceCapabilityTier {
     /// Limited feature support as provided by WebGL and some OpenGL drivers.
     ///
     /// On desktop this happens typically with GLES 2 & OpenGL 3.x, as well as some OpenGL 4.x drivers
@@ -28,7 +28,7 @@ pub enum DeviceTier {
     //HighEnd
 }
 
-impl std::fmt::Display for DeviceTier {
+impl std::fmt::Display for DeviceCapabilityTier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Limited => "limited",
@@ -37,7 +37,7 @@ impl std::fmt::Display for DeviceTier {
     }
 }
 
-impl DeviceTier {
+impl DeviceCapabilityTier {
     /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
@@ -174,7 +174,7 @@ pub enum InsufficientDeviceCapabilities {
 /// as many as possible capabilities with the device tier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeviceCaps {
-    pub tier: DeviceTier,
+    pub tier: DeviceCapabilityTier,
 
     /// Maximum texture dimension in pixels in both width and height.
     ///
@@ -204,14 +204,14 @@ impl DeviceCaps {
         // Note that non-GL backend doesn't automatically mean we support all downlevel flags.
         // (practically that's only the case for a handful of Vulkan/Metal devices and even so that's rare.
         // Practically all issues are with GL)
-        let tier = if DeviceTier::FullWebGpuSupport
+        let tier = if DeviceCapabilityTier::FullWebGpuSupport
             .check_required_downlevel_capabilities(&downlevel_caps)
             .is_ok()
         {
             // We pass the WebGPU min-spec!
-            DeviceTier::FullWebGpuSupport
+            DeviceCapabilityTier::FullWebGpuSupport
         } else {
-            DeviceTier::Limited
+            DeviceCapabilityTier::Limited
         };
 
         let backend_type = match adapter.get_info().backend {
@@ -249,7 +249,7 @@ impl DeviceCaps {
         caps.tier
             .check_required_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
 
-        if caps.tier == DeviceTier::Limited {
+        if caps.tier == DeviceCapabilityTier::Limited {
             // Check texture format support. If `WEBGPU_TEXTURE_FORMAT_SUPPORT` is enabled, we're generally fine.
             // This is an implicit requirement for the WebGPU tier and above.
             if !adapter

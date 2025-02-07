@@ -10,7 +10,7 @@
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
-pub mod config;
+pub mod device_caps;
 pub mod importer;
 pub mod mesh;
 pub mod renderer;

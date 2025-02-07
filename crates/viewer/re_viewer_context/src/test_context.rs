@@ -205,9 +205,9 @@ static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(&re_renderer::config::testing_instance_descriptor());
-    let adapter = re_renderer::config::select_testing_adapter(&instance);
-    let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
+    let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
+    let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+    let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
         pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
