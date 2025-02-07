@@ -64,7 +64,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// Example:
 /// ```rust
 /// use re_viewer_context::test_context::TestContext;
-/// use re_viewer_context::ViewerContext;1
+/// use re_viewer_context::ViewerContext;
 ///
 /// let mut test_context = TestContext::default();
 /// test_context.run_in_egui_central_panel(|ctx: &ViewerContext, _| {
