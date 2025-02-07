@@ -123,12 +123,7 @@ fn run_view_ui_and_save_snapshot(
                     let view_state = view_states.get_mut_or_create(view_id, view_class);
 
                     let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(
-                            ctx,
-                            &view_blueprint,
-                            ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
-                            view_state,
-                        );
+                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
 
                     view_class
                         .ui(ctx, ui, view_state, &view_query, system_execution_output)

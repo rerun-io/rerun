@@ -341,13 +341,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             return Default::default();
         }
 
-        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
-            ui.centered_and_justified(|ui| {
-                ui.weak("No time selected");
-            });
-            return Default::default();
-        };
-
         let (query, system_output) = self.executed_systems_per_view.remove(view_id).unwrap_or_else(|| {
             // The view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
@@ -385,7 +378,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             }
 
             let class = view_blueprint.class(self.ctx.view_class_registry);
-            execute_systems_for_view(ctx, view, latest_at, self.view_states.get_mut_or_create(*view_id, class))
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class))
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry);
