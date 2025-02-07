@@ -137,6 +137,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
+          lfs: true
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -213,12 +214,6 @@ jobs:
         # Separated out of compare_snippet_output.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
         run: pixi run -e wheel-test-min cpp-build-snippets
-
-      - name: Download test assets
-        if: ${{ !inputs.FAST }}
-        # Separated out of compare_snippet_output.py run so we control the pixi environment.
-        # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}

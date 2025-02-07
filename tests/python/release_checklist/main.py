@@ -4,10 +4,7 @@ from __future__ import annotations
 import argparse
 import glob
 import importlib
-import subprocess
-import sys
 from os.path import basename, dirname, isfile, join
-from pathlib import Path
 
 import rerun as rr
 
@@ -30,12 +27,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Interactive release checklist")
     rr.script_add_args(parser)
     args = parser.parse_args()
-
-    # Download test assets:
-    download_test_assets_path = (
-        Path(__file__).parent.parent.parent.joinpath("assets/download_test_assets.py").absolute()
-    )
-    subprocess.run([sys.executable, download_test_assets_path])
 
     log_checks(args)
 

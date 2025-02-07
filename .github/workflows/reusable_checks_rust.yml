@@ -89,9 +89,6 @@ jobs:
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
 
-      - name: Download test assets
-        run: pixi run python ./tests/assets/download_test_assets.py
-
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
         # Need to use pixi due to NASM dependency.
@@ -150,9 +147,6 @@ jobs:
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
-
-      - name: Download test assets
-        run: pixi run python ./tests/assets/download_test_assets.py
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'main' }}
