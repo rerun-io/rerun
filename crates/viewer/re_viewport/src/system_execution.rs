@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use rayon::prelude::*;
 
-use re_log_types::TimeInt;
 use re_viewer_context::{
     PerSystemDataResults, SystemExecutionOutput, ViewContextCollection, ViewId, ViewQuery,
     ViewState, ViewStates, ViewerContext, VisualizerCollection,
@@ -56,7 +55,6 @@ fn run_view_systems(
 pub fn execute_systems_for_view<'a>(
     ctx: &'a ViewerContext<'_>,
     view: &'a ViewBlueprint,
-    latest_at: TimeInt, // <- TODO(andreas): why not ctx.current_query().at()?
     view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());
@@ -80,12 +78,13 @@ pub fn execute_systems_for_view<'a>(
         });
     }
 
+    let current_query = ctx.rec_cfg.time_ctrl.read().current_query();
     let query = re_viewer_context::ViewQuery {
         view_id: view.id,
         space_origin: &view.space_origin,
         per_visualizer_data_results,
-        timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
-        latest_at,
+        timeline: current_query.timeline(),
+        latest_at: current_query.at(),
         highlights,
     };
 
@@ -121,10 +120,6 @@ pub fn execute_systems_for_all_views<'a>(
     views: &'a BTreeMap<ViewId, ViewBlueprint>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
-    let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
-        return Default::default();
-    };
-
     re_tracing::profile_wait!("execute_systems");
 
     // During system execution we only have read access to the view states, so we need to ensure they exist ahead of time.
@@ -142,7 +137,7 @@ pub fn execute_systems_for_all_views<'a>(
                         return None;
                     };
 
-                    let result = execute_systems_for_view(ctx, view, time_int, view_state);
+                    let result = execute_systems_for_view(ctx, view, view_state);
                     Some((*view_id, result))
                 }),
                 egui_tiles::Tile::Container(_) => None,
