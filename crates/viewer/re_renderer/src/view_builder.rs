@@ -15,7 +15,7 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, RectInt, Rgba,
+    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -313,27 +313,17 @@ impl ViewBuilder {
     /// [`wgpu::TextureFormat::Depth32Float`] on the other hand is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
     pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
-    ///
-    /// As of writing 4 samples is the only option that works with `WebGPU`, but it guaranteed to be always available.
-    // TODO(andreas): On native we could offer higher counts.
-    // TODO(andreas): We really should make this runtime decided rather than compile time
-    #[cfg(test)]
-    pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 1;
-    #[cfg(not(test))]
-    pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 4;
-
     /// Default multisample state that any [`wgpu::RenderPipeline`] drawing to the main target needs to use.
     ///
     /// In rare cases, pipelines may want to enable alpha to coverage and/or sample masks.
-    pub const fn main_target_default_msaa_state(
+    pub fn main_target_default_msaa_state(
+        config: &RenderConfig,
         need_alpha_to_coverage: bool,
     ) -> wgpu::MultisampleState {
-        let alpha_to_coverage_enabled =
-            need_alpha_to_coverage && Self::MAIN_TARGET_SAMPLE_COUNT > 1;
+        let alpha_to_coverage_enabled = need_alpha_to_coverage && config.msaa_mode != MsaaMode::Off;
 
         wgpu::MultisampleState {
-            count: Self::MAIN_TARGET_SAMPLE_COUNT,
+            count: config.msaa_mode.sample_count(),
             mask: !0,
             alpha_to_coverage_enabled,
         }
@@ -372,7 +362,8 @@ impl ViewBuilder {
         assert_ne!(config.resolution_in_pixel[0], 0);
         assert_ne!(config.resolution_in_pixel[1], 0);
 
-        let msaa_enabled = Self::MAIN_TARGET_SAMPLE_COUNT > 1;
+        let render_cfg = ctx.render_config();
+        let msaa_enabled = render_cfg.msaa_mode != MsaaMode::Off;
         let size = wgpu::Extent3d {
             width: config.resolution_in_pixel[0],
             height: config.resolution_in_pixel[1],
@@ -386,7 +377,7 @@ impl ViewBuilder {
                 label: format!("{:?} - main target", config.name).into(),
                 size,
                 mip_level_count: 1,
-                sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
+                sample_count: render_cfg.msaa_mode.sample_count(),
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::MAIN_TARGET_COLOR_FORMAT,
                 usage: if msaa_enabled {
@@ -424,7 +415,7 @@ impl ViewBuilder {
                 label: format!("{:?} - depth buffer", config.name).into(),
                 size,
                 mip_level_count: 1,
-                sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
+                sample_count: render_cfg.msaa_mode.sample_count(),
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::MAIN_TARGET_DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -641,7 +632,7 @@ impl ViewBuilder {
         {
             re_tracing::profile_scope!("main target pass");
 
-            let needs_msaa_resolve = Self::MAIN_TARGET_SAMPLE_COUNT > 1;
+            let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),

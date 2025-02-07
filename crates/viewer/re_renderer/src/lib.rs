@@ -58,7 +58,9 @@ pub use colormap::{
     colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb,
     colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
 };
-pub use context::{adapter_info_summary, RenderContext, RenderContextError};
+pub use context::{
+    adapter_info_summary, MsaaMode, RenderConfig, RenderContext, RenderContextError,
+};
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};

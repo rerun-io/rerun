@@ -1,6 +1,6 @@
 //! Extensions for the [`RenderContext`] for testing.
 //!
-use crate::{device_caps, RenderContext};
+use crate::{device_caps, RenderConfig, RenderContext};
 
 impl RenderContext {
     /// Creates a new [`RenderContext`] for testing.
@@ -13,8 +13,14 @@ impl RenderContext {
             pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
                 .expect("Failed to request device.");
 
-        Self::new(&adapter, device, queue, wgpu::TextureFormat::Rgba8Unorm)
-            .expect("Failed to create RenderContext")
+        Self::new(
+            &adapter,
+            device,
+            queue,
+            wgpu::TextureFormat::Rgba8Unorm,
+            |_| RenderConfig::testing(),
+        )
+        .expect("Failed to create RenderContext")
     }
 
     /// Executes a test frame.

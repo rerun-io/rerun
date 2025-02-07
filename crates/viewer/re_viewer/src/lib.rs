@@ -206,6 +206,7 @@ pub fn customize_eframe_and_setup_renderer(
             render_state.device.clone(),
             render_state.queue.clone(),
             render_state.target_format,
+            re_renderer::RenderConfig::best_for_device_caps,
         )?;
         paint_callback_resources.insert(render_ctx);
     }

@@ -64,7 +64,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// Example:
 /// ```rust
 /// use re_viewer_context::test_context::TestContext;
-/// use re_viewer_context::ViewerContext;
+/// use re_viewer_context::ViewerContext;1
 ///
 /// let mut test_context = TestContext::default();
 /// test_context.run_in_egui_central_panel(|ctx: &ViewerContext, _| {
@@ -183,6 +183,7 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
             shared_wgpu_setup.device.clone(),
             shared_wgpu_setup.queue.clone(),
             wgpu::TextureFormat::Rgba8Unorm,
+            |_| re_renderer::RenderConfig::testing(),
         )
         .expect("Failed to initialize re_renderer"),
     );

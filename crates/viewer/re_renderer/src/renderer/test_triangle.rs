@@ -64,7 +64,10 @@ impl Renderer for TestTriangle {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: ViewBuilder::main_target_default_msaa_state(false),
+                multisample: ViewBuilder::main_target_default_msaa_state(
+                    ctx.render_config(),
+                    false,
+                ),
             },
         );
 

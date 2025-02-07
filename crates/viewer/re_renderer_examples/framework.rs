@@ -7,7 +7,9 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use web_time::Instant;
 
-use re_renderer::{device_caps::DeviceCaps, view_builder::ViewBuilder, RenderContext};
+use re_renderer::{
+    device_caps::DeviceCaps, view_builder::ViewBuilder, RenderConfig, RenderContext,
+};
 
 use winit::{
     application::ApplicationHandler,
@@ -141,8 +143,10 @@ impl<E: Example + 'static> Application<E> {
         let output_format_color =
             preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);
 
-        let re_ctx = RenderContext::new(&adapter, device, queue, output_format_color)
-            .map_err(|err| anyhow::format_err!("{err}"))?;
+        let re_ctx = RenderContext::new(&adapter, device, queue, output_format_color, |caps| {
+            RenderConfig::best_for_device_caps(caps)
+        })
+        .map_err(|err| anyhow::format_err!("{err}"))?;
 
         let example = E::new(&re_ctx);
 

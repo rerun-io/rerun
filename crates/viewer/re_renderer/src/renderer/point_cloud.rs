@@ -546,7 +546,7 @@ impl Renderer for PointCloudRenderer {
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
             // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
-            multisample: ViewBuilder::main_target_default_msaa_state(true),
+            multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
             render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
