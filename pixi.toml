@@ -354,6 +354,8 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
   "py-build",
 ] }
 
+snapshots = "python scripts/snapshots.py"
+
 [feature.python-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
