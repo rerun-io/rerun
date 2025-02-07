@@ -11,6 +11,7 @@ use arrow::{
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
+use tonic::transport::ClientTlsConfig;
 use url::Url;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -183,6 +184,7 @@ async fn stream_recording_async(
 
         #[cfg(not(target_arch = "wasm32"))]
         let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+            .tls_config(ClientTlsConfig::new().with_native_roots())?
             .connect()
             .await?;
 
@@ -488,11 +490,12 @@ async fn stream_catalog_async(
             .ok_or(StreamError::InvalidUri(format!(
                 "couldn't get host from {redap_endpoint}"
             )))?;
-        let port = redap_endpoint
-            .port()
-            .ok_or(StreamError::InvalidUri(format!(
-                "couldn't get port from {redap_endpoint}"
-            )))?;
+        // let port = redap_endpoint
+        //     .port()
+        //     .ok_or(StreamError::InvalidUri(format!(
+        //         "couldn't get port from {redap_endpoint}"
+        //     )))?;
+        let port = 443;
 
         let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
             .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())

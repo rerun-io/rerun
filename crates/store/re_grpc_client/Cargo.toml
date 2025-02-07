@@ -39,10 +39,17 @@ url.workspace = true
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio.workspace = true
-tonic = { workspace = true, default-features = false, features = ["transport"] }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+  "tls",
+  "tls-native-roots",
+] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 wasm-bindgen-futures.workspace = true
-tonic = { workspace = true, default-features = false }
+tonic = { workspace = true, default-features = false, features = [
+  "tls",
+  "tls-native-roots",
+] }

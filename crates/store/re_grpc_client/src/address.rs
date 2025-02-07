@@ -69,13 +69,13 @@ impl TryFrom<&str> for RedapAddress {
             re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
         }
 
-        let port = url.port().ok_or_else(|| InvalidRedapAddress {
-            url: url.to_string(),
-            msg: "Missing port".to_owned(),
-        })?;
+        // let port = url.port().ok_or_else(|| InvalidRedapAddress {
+        //     url: url.to_string(),
+        //     msg: "Missing port".to_owned(),
+        // })?;
 
         #[allow(clippy::unwrap_used)]
-        let redap_endpoint = Url::parse(&format!("http://{host}:{port}")).unwrap();
+        let redap_endpoint = Url::parse(&format!("https://{host}")).unwrap();
 
         // we got the ReDap endpoint, now figure out from the URL path if it's a recording or catalog
         if url.path().ends_with("/catalog") {
