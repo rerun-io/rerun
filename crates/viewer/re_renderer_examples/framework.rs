@@ -323,13 +323,9 @@ impl<E: Example + 'static> Application<E> {
 pub fn load_rerun_mesh(
     re_ctx: &RenderContext,
 ) -> anyhow::Result<Vec<re_renderer::renderer::GpuMeshInstance>> {
-    let reader = std::io::Cursor::new(include_bytes!("../../../tests/assets/rerun.obj.zip"));
-    let mut zip = zip::ZipArchive::new(reader)?;
-    let mut zipped_obj = zip.by_name("rerun.obj")?;
-    let mut obj_data = Vec::new();
-    std::io::Read::read_to_end(&mut zipped_obj, &mut obj_data)?;
+    let obj_data = include_bytes!("../../../tests/assets/rerun.obj");
     Ok(
-        re_renderer::importer::obj::load_obj_from_buffer(&obj_data, re_ctx)?
+        re_renderer::importer::obj::load_obj_from_buffer(obj_data, re_ctx)?
             .into_gpu_meshes(re_ctx)?,
     )
 }
