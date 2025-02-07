@@ -366,7 +366,7 @@ impl Renderer for MeshRenderer {
             render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive,
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-            multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+            multisample: ViewBuilder::main_target_default_msaa_state(false),
         };
         let render_pipeline_shaded =
             render_pipelines.get_or_create(ctx, &render_pipeline_shaded_desc);

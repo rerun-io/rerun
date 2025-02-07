@@ -592,7 +592,7 @@ impl Renderer for RectangleRenderer {
                 ..Default::default()
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-            multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+            multisample: ViewBuilder::main_target_default_msaa_state(false),
         };
         let render_pipeline_color =
             render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
