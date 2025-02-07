@@ -80,7 +80,7 @@ jobs:
             landing \
             --url "https://edge.meilisearch.com" \
             --master-key "${{ secrets.MEILISEARCH_TOKEN }}" \
-            --release-version "${{ needs.get-version.outputs.version }}"
+            --release-version "${{ needs.get-version.outputs.version }}" \
             --rust-toolchain "${{ matrix.toolchain }}"
 
   redeploy-rerun-io:
