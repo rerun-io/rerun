@@ -4,52 +4,64 @@ package rerun.redap.v0;
 
 import "rerun/v0/common.proto";
 
-// The RerunCatalog service is a common API set exposed by:
-// - The Rerun Catalog Server
-// - Any Rerun Storage Node
+// The Rerun Data Platform (redap) services are a common set of interfaces for accessing and managing Rerun data.
 //
-// Some Important terminology:
-// - Resource: A resource is any data that can be mapped to a single recording or table in the Rerun data model.
-//   - Examples: A single Rerun recording, an MCAP file, parquet table, etc.
-//   - Every resource across the catalog has a unique identifier.
+// There are 3 key concepts that are referenced in these API definitions, each giving rise to their own subset of
+// service definitions:
+// - Resource: A resource is any data that can be mapped to a single Recording or Table in the Rerun data model.
+//   - For example, a single Rerun recording, an MCAP file, parquet table, etc.
+//   - Every resource also has a set of "Properties" associated with it. This is static data that provides information
+//     about the resource. For example, serial numbers, task descriptions, or other use-defined tags.
 // - Collection: A collection contains multiple resources of a similar type.
-//   - Every collection includes a "Property Table" of properties associated with the resources in a collection.
-// - Catalog Entry: An entry within a catalog is a named interface that facilitates access to resources or collections.
-//   - Examples: A collection of recordings, a table of training data, a view created from a query.
+//   - Much of the data that we work with is "episodic" in nature, containing hundreds or thousands of recordings
+//     that are all related to a single task or experiment. There are significant benefits to being able to group
+//     these together as a logical unit when it comes to tasks like search and indexing.
+//   - The easiest way to think of a Collection is as represented by a Table, where each row in the table corresponds
+//     to a resource, and each column corresponds to a shared property of those resources.
+//   - Collections might be provided by "Data Sources" such as a folder of MCAP files, dedicated Rerun storage nodes,
+//     or even views synthesized from other collections in the catalog.
+// - Catalog: The top-level of organization of everything you can access via the Rerun Data Platform.
+//   - The catalog is primarily organized into into a set of named "Entries"
+//   - Entries may be data-sources, collections, views, or other constructs we may add in the future.
+//     - What an entry is, where it gets its data, whether it's indexed, how it exposes its schema, etc. are all
+//     bits of information managed by the catalog that define how the system works
 //
-// A Rerun Storage Node generally acts as a single-entry catalog, serving all
-// the recordings stored in the node as a single collection along with a single
-// property-table.  This makes it convenient to directly connect to a Storage Node
-// with the Rerun Viewer in minimal deployments without the need to set up a
-// separate catalog server.
+// The hosted Rerun Data Platform exposes a full implementation of all of these APIs as part of a comprehensive
+// data Catalog experience.
 //
-// This also extends to the Viewer itself, which contains a minimal implementation of a fully
-// in-memory storage node. Each recording sent directly to the viewer from the Rerun SDK will
-// be stored in the viewer's local collection.
-service RerunCatalog {
-    // ---------------- Shared Catalog APIs ------------------
+// However, other Rerun-compatible services may implement a minimal subset of these services for convenience.
+// This makes it possible to directly connect to these services with the Rerun Viewer in minimal
+// deployments without the need to set up a separate catalog server.
+//
+// In such a minimal deployment, the exposed Catalog might consist of a single Collection while the Add/RemoveEntry
+// APIs are unimplemented.
 
-    // List all the Entries in the catalog
+// The Catalog service is for listing and management of multiple catalog entries.
+service Catalog {
+    // List all the available entries in the Catalog
     //
-    // The storage node will only return a single entry for its collection.
+    // This must be implemented by all Catalog-compatible services.
     rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse) {}
 
-    // ---------------- Catalog-Only Catalog APIs ------------------
-    // These APIs are not implemented in the Storage Node
-
     // Add a new entry to the catalog
+    //
+    // This can be omitted by minimal/static catalogs.
     rpc AddEntry(AddEntryRequest) returns (AddEntryResponse) {}
 
     // Remove an entry from the catalog
-    rpc RemoveEntry(RemoveEntryRequest) returns (RemoveEntryResponse) {}
-    // Remove an entry from the catalog
-
-    // ---------------- Shared Collection APIs ------------------
-    // APIs for interacting with catalog entries which are collections
     //
-    // All of the Request messages include a `catalog_entry` field. This can be omitted
-    // when interacting with a Storage Node.
+    // This can be omitted by minimal/static catalogs.
+    rpc RemoveEntry(RemoveEntryRequest) returns (RemoveEntryResponse) {}
+}
 
+// The Collection service is for managing and querying information about collections of resources.
+//
+// Because this service end-point is designed to be used in conjunction with a catalog, each request
+// include an optional `catalog_entry` field, which is used to route the request to the appropriate collection
+// within the catalog.
+//
+// Some catalog-providers may provide a default-collection, in which case the `catalog_entry` field may be omitted.
+service Collection {
     // Get the Schema of the property table for a particular catalog entry
     rpc GetPropertyTableSchema(GetPropertyTableSchemaRequest)
         returns (GetPropertyTableSchemaResponse) {}
@@ -67,8 +79,6 @@ service RerunCatalog {
     // The schema of the returned Dataframe should match the results of `PropertyTableSchema`.
     rpc GetResourceProperties(GetResourcePropertiesRequest)
         returns (stream rerun.common.v0.DataframePart) {}
-
-    // ---------------- Catalog-Only Collection APIs ------------------
 
     // Register one or more resources with catalog entry
     //
@@ -100,19 +110,34 @@ service RerunCatalog {
     // it might be timepoints where the query string is found in the indexed column
     // - 'data' column with the data that is returned for the matched timepoints
     rpc SearchIndex(SearchIndexRequest) returns (stream rerun.common.v0.DataframePart) {}
+}
 
-    // ---------------- Resource APIs ------------------
-    // These APIs do not need to be mediated by a catalog entry
-    // The resource-id is sufficient to uniquely locate the resource within the catalog.
-
+// The Resource service is for accessing and querying the contents of individual resources.
+//
+// Each request includes a `resource_id` field, which is used to uniquely identify the resource within the catalog.
+service Resource {
+    // Get the schema of a resource
     rpc GetResourceSchema(GetResourceSchemaRequest) returns (GetResourceSchemaResponse) {}
 
-    rpc ListChunks(ListChunksRequest) returns (stream ChunkInfo) {}
+    // Get information about the chunks that make up the resource.
+    //
+    // This includes the ability to filter the chunks by time-range or entity-path.
+    //
+    // ChunkInfo contains metadata about the chunk but not the data itself.
+    rpc GetChunkInfos(GetChunkInfosRequest) returns (stream ChunkInfo) {}
 
+    // Retrieve specific chunks of data from the resource.
     rpc GetChunks(stream GetChunkRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
-    // Run a Query against a single resource in the storage node
-    rpc ResourceQuery(ResourceQueryRequest) returns (stream rerun.common.v0.DataframePart) {}
+    // Query the resource using a DataFrame query API.
+    //
+    // This query does server-side filtering and joining that do not preserve the original
+    // chunk boundaries. The result is a stream of DataframeParts.
+    //
+    // Depending on the query, it may be more efficient to use the GetChunks API and then
+    // perform the dataframe operations client-side.
+    rpc ResourceDataframeQuery(ResourceDataframeQueryRequest)
+        returns (stream rerun.common.v0.DataframePart) {}
 }
 
 message CatalogEntry {
@@ -223,7 +248,7 @@ message GetResourceSchemaResponse {
     rerun.common.v0.Schema schema = 1;
 }
 
-message ListChunksRequest {
+message GetChunkInfosRequest {
     rerun.common.v0.RecordingId recording_id = 1;
 
     // TODO: Chunk-filtering options
@@ -232,7 +257,8 @@ message ListChunksRequest {
 }
 
 message GetChunkRequest {
-    rerun.common.v0.Tuid chunk_id = 1;
+    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.Tuid chunk_id = 2;
 }
 
 message ChunkInfo {
@@ -241,7 +267,7 @@ message ChunkInfo {
     // TODO: Other chunk metadata
 }
 
-message ResourceQueryRequest {
+message ResourceDataframeQueryRequest {
     // unique identifier of the recording
     rerun.common.v0.RecordingId resource_id = 1;
     // query to execute
