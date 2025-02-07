@@ -218,4 +218,6 @@ fn run_view_ui_and_save_snapshot(
 
     use re_viewer_context::test_context::HarnessExt as _;
     harness.snapshot_with_broken_pixels_threshold(name, num_pixels, broken_percent_threshold);
+
+    assert!(false, "this test broke very intentionally");
 }
