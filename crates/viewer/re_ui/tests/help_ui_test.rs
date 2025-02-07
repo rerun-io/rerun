@@ -38,7 +38,7 @@ fn test_help() {
                         Modifiers::NONE,
                     ] {
                         help = help.control(
-                            format!("{:?}", modifier),
+                            format!("{modifier:?}"),
                             icon_text!(ModifiersText(modifier, ui.ctx())),
                         );
                     }
@@ -50,7 +50,7 @@ fn test_help() {
                         egui::PointerButton::Extra1,
                         egui::PointerButton::Extra2,
                     ] {
-                        help = help.control(format!("{:?}", btn), icon_text!(MouseButtonText(btn)));
+                        help = help.control(format!("{btn:?}"), icon_text!(MouseButtonText(btn)));
                     }
 
                     help.ui(ui);
