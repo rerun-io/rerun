@@ -47,6 +47,7 @@ struct ViewTargetSetup {
 
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
+
     /// The main target with MSAA resolved.
     /// If MSAA is disabled, this is the same as `main_target_msaa`.
     main_target_resolved: GpuTexture,

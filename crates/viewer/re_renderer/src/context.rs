@@ -33,7 +33,7 @@ pub enum RenderContextError {
 pub enum MsaaMode {
     /// Disabled MSAA.
     ///
-    /// Preferred option for testing since MSAA implemenations vary accross devices,
+    /// Preferred option for testing since MSAA implementations vary across devices,
     /// especially in alpha-to-coverage cases.
     ///
     /// Note that this doesn't necessarily mean that we never use any multisampled targets,
@@ -80,7 +80,7 @@ impl RenderConfig {
     /// Render config preferred for running most tests.
     ///
     /// This is optimized for low discrepancy between devices in order to
-    /// to keep image comparision threshholds low.
+    /// to keep image comparison thresholds low.
     pub fn testing() -> Self {
         Self {
             msaa_mode: MsaaMode::Off,
