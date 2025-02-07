@@ -1,11 +1,12 @@
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
+use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ComponentColumnDescriptor, MetadataExt as _, MissingFieldMetadata,
-    MissingMetadataKey, RowIdColumnDescriptor, WrongDatatypeError,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnError, ComponentColumnDescriptor, MetadataExt as _,
+    MissingMetadataKey, RowIdColumnDescriptor, TimeColumnDescriptor, WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -19,11 +20,14 @@ pub enum InvalidChunkSchema {
     #[error("Bad column '{field_name}': {error}")]
     BadColumn {
         field_name: String,
-        error: MissingFieldMetadata,
+        error: ColumnError,
     },
 
     #[error("Bad chunk schema: {reason}")]
     Custom { reason: String },
+
+    #[error("The data columns were not the last columns. Index columns must come before any data columns.")]
+    UnorderedIndexAndDataColumns,
 }
 
 impl InvalidChunkSchema {
@@ -41,22 +45,25 @@ impl InvalidChunkSchema {
 #[derive(Debug, Clone)]
 pub struct ChunkSchema {
     /// The globally unique ID of this chunk.
-    chunk_id: ChunkId,
+    pub chunk_id: ChunkId,
 
     /// Which entity is this chunk for?
-    entity_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// The heap size of this chunk in bytes, if known.
-    heap_size_bytes: Option<u64>,
+    pub heap_size_bytes: Option<u64>,
 
     /// Are we sorted by the row id column?
-    is_sorted: bool,
+    pub is_sorted: bool,
 
     /// The primary row id column.
-    row_id_column: RowIdColumnDescriptor,
+    pub row_id_column: RowIdColumnDescriptor,
 
-    /// All other columns (indices and data).
-    columns: Vec<ComponentColumnDescriptor>,
+    /// Index columns (timelines).
+    pub index_columns: Vec<TimeColumnDescriptor>,
+
+    /// The actual component data
+    pub data_columns: Vec<ComponentColumnDescriptor>,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -68,33 +75,70 @@ impl ChunkSchema {
     const CHUNK_METADATA_VERSION: &'static str = "1";
 }
 
+/// ## Builders
+impl ChunkSchema {
+    pub fn new(
+        chunk_id: ChunkId,
+        entity_path: EntityPath,
+        row_id_column: RowIdColumnDescriptor,
+        index_columns: Vec<TimeColumnDescriptor>,
+        data_columns: Vec<ComponentColumnDescriptor>,
+    ) -> Self {
+        Self {
+            chunk_id,
+            entity_path,
+            heap_size_bytes: None,
+            is_sorted: false, // assume the worst
+            row_id_column,
+            index_columns,
+            data_columns,
+        }
+    }
+
+    #[inline]
+    pub fn with_heap_size_bytes(mut self, heap_size_bytes: u64) -> Self {
+        self.heap_size_bytes = Some(heap_size_bytes);
+        self
+    }
+
+    #[inline]
+    pub fn with_sorted(mut self, sorted: bool) -> Self {
+        self.is_sorted = sorted;
+        self
+    }
+}
+
+/// ## Accessors
 impl ChunkSchema {
     /// The globally unique ID of this chunk.
-
     #[inline]
     pub fn chunk_id(&self) -> ChunkId {
         self.chunk_id
     }
 
     /// Which entity is this chunk for?
-
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
     }
 
     /// The heap size of this chunk in bytes, if known.
-
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
         self.heap_size_bytes
     }
 
     /// Are we sorted by the row id column?
-
     #[inline]
     pub fn is_sorted(&self) -> bool {
         self.is_sorted
+    }
+
+    /// Total number of columns in this chunk,
+    /// including the row id column, the index columns,
+    /// and the data columns.
+    pub fn num_columns(&self) -> usize {
+        1 + self.index_columns.len() + self.data_columns.len()
     }
 
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
@@ -104,7 +148,8 @@ impl ChunkSchema {
             heap_size_bytes,
             is_sorted,
             row_id_column: _,
-            columns: _,
+            index_columns: _,
+            data_columns: _,
         } = self;
 
         let mut arrow_metadata = ArrowBatchMetadata::from([
@@ -129,18 +174,22 @@ impl ChunkSchema {
     }
 }
 
-impl From<ChunkSchema> for ArrowSchema {
-    fn from(chunk_schema: ChunkSchema) -> Self {
+impl From<&ChunkSchema> for ArrowSchema {
+    fn from(chunk_schema: &ChunkSchema) -> Self {
         let metadata = chunk_schema.arrow_batch_metadata();
+        let num_columns = chunk_schema.num_columns();
 
         let ChunkSchema {
             row_id_column,
-            columns,
+            index_columns,
+            data_columns,
             ..
         } = chunk_schema;
-        let mut fields: Vec<ArrowField> = Vec::with_capacity(1 + columns.len());
+
+        let mut fields: Vec<ArrowField> = Vec::with_capacity(num_columns);
         fields.push(row_id_column.to_arrow_field());
-        fields.extend(columns.iter().map(|column| column.to_arrow_field()));
+        fields.extend(index_columns.iter().map(|column| column.to_arrow_field()));
+        fields.extend(data_columns.iter().map(|column| column.to_arrow_field()));
 
         Self {
             metadata,
@@ -195,7 +244,7 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
             .iter()
             .skip(1)
             .map(|field| {
-                ComponentColumnDescriptor::try_from(field.as_ref()).map_err(|err| {
+                ColumnDescriptor::try_from(field.as_ref()).map_err(|err| {
                     InvalidChunkSchema::BadColumn {
                         field_name: field.name().to_owned(),
                         error: err,
@@ -205,13 +254,36 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
             .collect();
         let columns = columns?;
 
+        // Index columns should always come first:
+        let num_index_columns = columns.partition_point(|p| matches!(p, ColumnDescriptor::Time(_)));
+
+        let index_columns = columns[0..num_index_columns]
+            .iter()
+            .filter_map(|c| match c {
+                ColumnDescriptor::Time(column) => Some(column.clone()),
+                ColumnDescriptor::Component(_) => None,
+            })
+            .collect_vec();
+        let data_columns = columns[0..num_index_columns]
+            .iter()
+            .filter_map(|c| match c {
+                ColumnDescriptor::Time(_) => None,
+                ColumnDescriptor::Component(column) => Some(column.clone()),
+            })
+            .collect_vec();
+
+        if index_columns.len() + data_columns.len() < columns.len() {
+            return Err(InvalidChunkSchema::UnorderedIndexAndDataColumns);
+        }
+
         Ok(Self {
             chunk_id,
             entity_path,
             heap_size_bytes,
             is_sorted,
             row_id_column,
-            columns,
+            index_columns,
+            data_columns,
         })
     }
 }

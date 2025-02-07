@@ -8,6 +8,22 @@ pub struct WrongDatatypeError {
     pub actual: ArrowDatatype,
 }
 
+impl WrongDatatypeError {
+    pub fn compare_expected_actual(
+        expected: &ArrowDatatype,
+        actual: &ArrowDatatype,
+    ) -> Result<(), Self> {
+        if expected == actual {
+            Ok(())
+        } else {
+            Err(Self {
+                expected: expected.clone(),
+                actual: actual.clone(),
+            })
+        }
+    }
+}
+
 /// Describes the [`RowId`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RowIdColumnDescriptor {}
@@ -50,13 +66,24 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
         // TODO: check `rerun.kind`
-        if field.data_type() == &RowId::arrow_datatype() {
-            Ok(Self {})
-        } else {
-            Err(WrongDatatypeError {
-                expected: RowId::arrow_datatype(),
-                actual: field.data_type().clone(),
-            })
-        }
+        Self::try_from(field.data_type())
+    }
+}
+
+impl TryFrom<&ArrowDatatype> for RowIdColumnDescriptor {
+    type Error = WrongDatatypeError;
+
+    fn try_from(data_type: &ArrowDatatype) -> Result<Self, Self::Error> {
+        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), data_type)?;
+        Ok(Self {})
+    }
+}
+
+impl TryFrom<ArrowDatatype> for RowIdColumnDescriptor {
+    type Error = WrongDatatypeError;
+
+    fn try_from(data_type: ArrowDatatype) -> Result<Self, Self::Error> {
+        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), &data_type)?;
+        Ok(Self {})
     }
 }

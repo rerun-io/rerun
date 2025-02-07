@@ -1,12 +1,29 @@
 use arrow::{
-    array::RecordBatch as ArrowRecordBatch,
+    array::{ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions},
     datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
 };
 
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema};
+use crate::{
+    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, WrongDatatypeError,
+};
+
+#[derive(thiserror::Error, Debug)]
+pub enum MismatchedChunkSchemaError {
+    #[error("{0}")]
+    Custom(String),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] WrongDatatypeError),
+}
+
+impl MismatchedChunkSchemaError {
+    pub fn custom(s: impl Into<String>) -> Self {
+        Self::Custom(s.into())
+    }
+}
 
 /// The arrow [`ArrowRecordBatch`] representation of a Rerun chunk.
 ///
@@ -17,7 +34,74 @@ use crate::{chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema};
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
     schema: ChunkSchema,
+
+    // TODO: should we store a record batch here, or just the parsed columns?
     batch: ArrowRecordBatch,
+}
+
+impl ChunkBatch {
+    pub fn try_new(
+        schema: ChunkSchema,
+        row_ids: ArrowArrayRef,
+        index_arrays: Vec<ArrowArrayRef>,
+        data_arrays: Vec<ArrowArrayRef>,
+    ) -> Result<Self, MismatchedChunkSchemaError> {
+        let row_count = row_ids.len();
+
+        WrongDatatypeError::compare_expected_actual(
+            &schema.row_id_column.datatype(),
+            row_ids.data_type(),
+        )?;
+
+        if index_arrays.len() != schema.index_columns.len() {
+            return Err(MismatchedChunkSchemaError::custom(format!(
+                "Schema had {} index columns, but got {}",
+                schema.index_columns.len(),
+                index_arrays.len()
+            )));
+        }
+        for (schema, array) in itertools::izip!(&schema.index_columns, &index_arrays) {
+            WrongDatatypeError::compare_expected_actual(schema.datatype(), array.data_type())?;
+            if array.len() != row_count {
+                return Err(MismatchedChunkSchemaError::custom(format!(
+                    "Index column {:?} had {} rows, but we got {} row IDs",
+                    schema.name(),
+                    array.len(),
+                    row_count
+                )));
+            }
+        }
+
+        if data_arrays.len() != schema.data_columns.len() {
+            return Err(MismatchedChunkSchemaError::custom(format!(
+                "Schema had {} data columns, but got {}",
+                schema.data_columns.len(),
+                data_arrays.len()
+            )));
+        }
+        for (schema, array) in itertools::izip!(&schema.data_columns, &data_arrays) {
+            WrongDatatypeError::compare_expected_actual(&schema.store_datatype, array.data_type())?;
+            if array.len() != row_count {
+                return Err(MismatchedChunkSchemaError::custom(format!(
+                    "Data column {:?} had {} rows, but we got {} row IDs",
+                    schema.column_name(),
+                    array.len(),
+                    row_count
+                )));
+            }
+        }
+
+        let arrow_columns = itertools::chain!(Some(row_ids), index_arrays, data_arrays).collect();
+
+        let batch = ArrowRecordBatch::try_new_with_options(
+            std::sync::Arc::new(ArrowSchema::from(&schema)),
+            arrow_columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+        .unwrap();
+
+        Ok(Self { schema, batch })
+    }
 }
 
 impl ChunkBatch {

@@ -27,6 +27,7 @@ re_tuid.workspace = true
 re_types_core.workspace = true
 
 arrow.workspace = true
+itertools.workspace = true
 thiserror.workspace = true
 
 # Keep this crate simple, with few dependencies.

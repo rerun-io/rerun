@@ -45,6 +45,15 @@ pub enum ChunkError {
 
     #[error("Deserialization: {0}")]
     Deserialization(#[from] DeserializationError),
+
+    #[error(transparent)]
+    UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+
+    #[error(transparent)]
+    MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;

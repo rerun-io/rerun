@@ -5830,6 +5830,7 @@ dependencies = [
  "re_format_arrow",
  "re_log",
  "re_log_types",
+ "re_sorbet",
  "re_tracing",
  "re_tuid",
  "re_types_core",
@@ -6586,6 +6587,7 @@ name = "re_sorbet"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "itertools 0.13.0",
  "re_format_arrow",
  "re_log",
  "re_log_types",

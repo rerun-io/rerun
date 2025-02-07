@@ -196,8 +196,7 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn column_name(&self) -> String {
         let entity_path = &self.entity_path;
         let descriptor = ComponentDescriptor {
             archetype_name: self.archetype_name,
@@ -205,16 +204,19 @@ impl ComponentColumnDescriptor {
             component_name: self.component_name,
         };
 
-        ArrowField::new(
-            // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
-            // I'm not doing that right now, to avoid breaking changes (and we need to talk about
-            // what the syntax for these fully-qualified paths need to look like first).
-            format!("{}:{}", entity_path, descriptor.component_name.short_name()),
-            // format!("{entity_path}@{}", descriptor.short_name()),
-            self.returned_datatype(),
-            true, /* nullable */
-        )
-        .with_metadata(self.metadata())
+        format!("{}:{}", entity_path, descriptor.component_name.short_name())
+
+        // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
+        // I'm not doing that right now, to avoid breaking changes (and we need to talk about
+        // what the syntax for these fully-qualified paths need to look like first).
+        // format!("{entity_path}@{}", descriptor.short_name())
+    }
+
+    #[inline]
+    pub fn to_arrow_field(&self) -> ArrowField {
+        let nullable = true;
+        ArrowField::new(self.column_name(), self.returned_datatype(), nullable)
+            .with_metadata(self.metadata())
     }
 }
 

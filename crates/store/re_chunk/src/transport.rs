@@ -394,6 +394,116 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
+        self.sanity_check()?;
+
+        re_tracing::profile_function!(format!(
+            "num_columns={} num_rows={}",
+            self.num_columns(),
+            self.num_rows()
+        ));
+
+        let heap_size_bytes = self.heap_size_bytes();
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _, // use the method instead because of lazy initialization
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        let row_id_schema = re_sorbet::RowIdColumnDescriptor::try_from(RowId::arrow_datatype())?;
+
+        let (index_schemas, index_arrays): (Vec<_>, Vec<_>) = {
+            re_tracing::profile_scope!("timelines");
+
+            let mut timelines = timelines
+                .iter()
+                .map(|(timeline, info)| {
+                    let TimeColumn {
+                        timeline: _,
+                        times: _,
+                        is_sorted,
+                        time_range: _,
+                    } = info;
+
+                    let array = info.times_array();
+                    let schema = re_sorbet::TimeColumnDescriptor {
+                        timeline: *timeline,
+                        datatype: array.data_type().clone(),
+                        is_sorted: *is_sorted,
+                    };
+
+                    (schema, into_arrow_ref(array))
+                })
+                .collect_vec();
+
+            timelines.sort_by(|(schema_a, _), (schema_b, _)| schema_a.cmp(schema_b));
+
+            timelines.into_iter().unzip()
+        };
+
+        let (data_schemas, data_arrays): (Vec<_>, Vec<_>) = {
+            re_tracing::profile_scope!("components");
+
+            let mut components = components
+                .values()
+                .flat_map(|per_desc| per_desc.iter())
+                .map(|(component_desc, list_array)| {
+                    let list_array = ArrowListArray::from(list_array.clone());
+                    let ComponentDescriptor {
+                        archetype_name,
+                        archetype_field_name,
+                        component_name,
+                    } = *component_desc;
+
+                    let schema = re_sorbet::ComponentColumnDescriptor {
+                        store_datatype: list_array.data_type().clone(),
+                        entity_path: entity_path.clone(),
+
+                        archetype_name,
+                        archetype_field_name,
+                        component_name,
+
+                        is_static: false,             // TODO
+                        is_indicator: false,          // TODO
+                        is_tombstone: false,          // TODO
+                        is_semantically_empty: false, // TODO
+                    };
+                    (schema, into_arrow_ref(list_array))
+                })
+                .collect_vec();
+
+            components.sort_by(|(schema_a, _), (schema_b, _)| schema_a.cmp(schema_b));
+
+            components.into_iter().unzip()
+        };
+
+        let schema = re_sorbet::ChunkSchema::new(
+            *id,
+            entity_path.clone(),
+            row_id_schema,
+            index_schemas,
+            data_schemas,
+        )
+        .with_heap_size_bytes(heap_size_bytes)
+        .with_sorted(*is_sorted);
+
+        Ok(re_sorbet::ChunkBatch::try_new(
+            schema,
+            into_arrow_ref(row_ids.clone()),
+            index_arrays,
+            data_arrays,
+        )?)
+    }
+}
+
+impl Chunk {
+    /// Prepare the [`Chunk`] for transport.
+    ///
+    /// It is probably a good idea to sort the chunk first.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         self.sanity_check()?;
 
@@ -735,7 +845,7 @@ mod tests {
         let entity_path = EntityPath::parse_forgiving("a/b/c");
 
         let timeline1 = Timeline::new_temporal("log_time");
-        let timelines1 = std::iter::once((
+        let timelines1: IntMap<_, _> = std::iter::once((
             timeline1,
             TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
@@ -788,7 +898,7 @@ mod tests {
 
         let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
 
-        for timelines in [timelines1, timelines2] {
+        for timelines in [timelines1.clone(), timelines2.clone()] {
             let chunk_original = Chunk::from_native_row_ids(
                 ChunkId::new(),
                 entity_path.clone(),
@@ -858,6 +968,35 @@ mod tests {
 
                 chunk_before = chunk_after;
             }
+        }
+
+        for timelines in [timelines1, timelines2] {
+            let chunk_before = Chunk::from_native_row_ids(
+                ChunkId::new(),
+                entity_path.clone(),
+                None,
+                &row_ids,
+                timelines.clone(),
+                components.clone().into_iter().collect(),
+            )
+            .unwrap();
+
+            let chunk_batch = chunk_before.to_chunk_batch().unwrap();
+
+            assert_eq!(chunk_before.num_columns(), chunk_batch.num_columns());
+            assert_eq!(chunk_before.num_rows(), chunk_batch.num_rows());
+
+            let chunk_after = Chunk::from_record_batch(chunk_batch.into()).unwrap();
+
+            assert_eq!(chunk_before.entity_path(), chunk_after.entity_path());
+            assert_eq!(
+                chunk_before.heap_size_bytes(),
+                chunk_after.heap_size_bytes(),
+            );
+            assert_eq!(chunk_before.num_columns(), chunk_after.num_columns());
+            assert_eq!(chunk_before.num_rows(), chunk_after.num_rows());
+            assert!(chunk_before.are_equal(&chunk_after));
+            assert_eq!(chunk_before, chunk_after);
         }
 
         Ok(())
