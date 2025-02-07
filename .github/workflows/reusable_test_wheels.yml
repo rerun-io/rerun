@@ -219,8 +219,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        # --no-asset-download because we already downloaded the assets
-        run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build --no-asset-download
+        run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
 
       - name: Check the python library signatures
         run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py
