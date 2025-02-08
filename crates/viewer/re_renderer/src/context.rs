@@ -29,6 +29,7 @@ pub enum RenderContextError {
     InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
 }
 
+/// Controls MSAA (Multi-Sampling Anti-Aliasing)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MsaaMode {
     /// Disabled MSAA.
@@ -43,7 +44,8 @@ pub enum MsaaMode {
 
     /// 4x MSAA.
     ///
-    /// As of writing 4 samples is the only option that works with `WebGPU`, but it guaranteed to be always available.
+    /// As of writing 4 samples is the only option (other than _Off_) that works with `WebGPU`,
+    /// and it is guaranteed to be always available.
     // TODO(andreas): On native we could offer higher counts.
     #[default]
     Msaa4x,

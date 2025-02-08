@@ -371,7 +371,7 @@ impl ViewBuilder {
             depth_or_array_layers: 1,
         };
 
-        // TODO(andreas): Should tonemapping preferences go here as well? Likely! g
+        // TODO(andreas): Should tonemapping preferences go here as well? Likely!
         let main_target_msaa = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
