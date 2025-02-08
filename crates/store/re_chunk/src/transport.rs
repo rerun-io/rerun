@@ -657,6 +657,102 @@ impl Chunk {
         Ok(TransportChunk::from(record_batch))
     }
 
+    pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
+        re_tracing::profile_function!(format!(
+            "num_columns={} num_rows={}",
+            batch.num_columns(),
+            batch.num_rows()
+        ));
+
+        // Metadata
+        let (id, entity_path, is_sorted) = (
+            batch.chunk_id(),
+            batch.entity_path().clone(),
+            batch.is_sorted(),
+        );
+
+        let row_ids = batch.row_id_column().1.clone();
+
+        let timelines = {
+            re_tracing::profile_scope!("timelines");
+
+            let mut timelines = IntMap::default();
+
+            for (schema, column) in batch.index_columns() {
+                let timeline = schema.timeline();
+
+                let times =
+                    TimeColumn::read_array(&as_array_ref(column.clone())).map_err(|err| {
+                        ChunkError::Malformed {
+                            reason: format!("Bad time column '{}': {err}", schema.name()),
+                        }
+                    })?;
+
+                let time_column =
+                    TimeColumn::new(schema.is_sorted.then_some(true), timeline, times);
+                if timelines.insert(timeline, time_column).is_some() {
+                    return Err(ChunkError::Malformed {
+                        reason: format!(
+                            "time column '{}' was specified more than once",
+                            schema.name(),
+                        ),
+                    });
+                }
+            }
+
+            timelines
+        };
+
+        let components = {
+            let mut components = ChunkComponents::default();
+
+            for (schema, column) in batch.data_columns() {
+                let column = column
+                    .downcast_array_ref::<ArrowListArray>()
+                    .ok_or_else(|| ChunkError::Malformed {
+                        reason: format!(
+                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
+                            column.data_type(),
+                        ),
+                    })?;
+
+                let component_desc = ComponentDescriptor {
+                    archetype_name: schema.archetype_name,
+                    archetype_field_name: schema.archetype_field_name,
+                    component_name: schema.component_name,
+                };
+
+                if components
+                    .insert_descriptor(component_desc, column.clone())
+                    .is_some()
+                {
+                    return Err(ChunkError::Malformed {
+                        reason: format!(
+                            "component column '{schema:?}' was specified more than once"
+                        ),
+                    });
+                }
+            }
+
+            components
+        };
+
+        let mut res = Self::new(
+            id,
+            entity_path,
+            is_sorted.then_some(true),
+            row_ids,
+            timelines,
+            components,
+        )?;
+
+        if let Some(heap_size_bytes) = batch.heap_size_bytes() {
+            res.heap_size_bytes = heap_size_bytes.into();
+        }
+
+        Ok(res)
+    }
+
     pub fn from_record_batch(batch: ArrowRecordBatch) -> ChunkResult<Self> {
         Self::from_transport(&TransportChunk::from(batch))
     }
@@ -831,6 +927,7 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
+    use similar_asserts::assert_eq;
 
     use re_arrow_util::arrow_util;
     use re_log_types::{
@@ -981,12 +1078,22 @@ mod tests {
             )
             .unwrap();
 
-            let chunk_batch = chunk_before.to_chunk_batch().unwrap();
+            let chunk_batch_before = chunk_before.to_chunk_batch().unwrap();
 
-            assert_eq!(chunk_before.num_columns(), chunk_batch.num_columns());
-            assert_eq!(chunk_before.num_rows(), chunk_batch.num_rows());
+            assert_eq!(chunk_before.num_columns(), chunk_batch_before.num_columns());
+            assert_eq!(chunk_before.num_rows(), chunk_batch_before.num_rows());
 
-            let chunk_after = Chunk::from_record_batch(chunk_batch.into()).unwrap();
+            let arrow_record_batch = ArrowRecordBatch::from(&chunk_batch_before);
+
+            let chunk_batch_after = re_sorbet::ChunkBatch::try_from(arrow_record_batch).unwrap();
+
+            assert_eq!(
+                chunk_batch_before.chunk_schema(),
+                chunk_batch_after.chunk_schema()
+            );
+            assert_eq!(chunk_batch_before.num_rows(), chunk_batch_after.num_rows());
+
+            let chunk_after = Chunk::from_chunk_batch(&chunk_batch_after).unwrap();
 
             assert_eq!(chunk_before.entity_path(), chunk_after.entity_path());
             assert_eq!(

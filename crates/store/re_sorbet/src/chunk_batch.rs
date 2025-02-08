@@ -1,5 +1,8 @@
 use arrow::{
-    array::{ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions},
+    array::{
+        Array as _, ArrayRef as ArrowArrayRef, AsArray, RecordBatch as ArrowRecordBatch,
+        RecordBatchOptions, StructArray as ArrowStructArray,
+    },
     datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
 };
 
@@ -7,7 +10,8 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, WrongDatatypeError,
+    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor,
+    RowIdColumnDescriptor, TimeColumnDescriptor, WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -144,6 +148,37 @@ impl ChunkBatch {
     pub fn arrow_bacth_metadata(&self) -> &ArrowBatchMetadata {
         &self.batch.schema_ref().metadata
     }
+
+    pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
+        // The first column is always the row IDs.
+        (
+            &self.schema.row_id_column,
+            self.batch.columns()[0]
+                .as_struct_opt()
+                .expect("Row IDs should be encoded as struct"),
+        )
+    }
+
+    /// The columns of the indices (timelines).
+    pub fn index_columns(&self) -> impl Iterator<Item = (&TimeColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(
+            &self.schema.index_columns,
+            self.batch.columns().iter().skip(1) // skip row IDs
+        )
+    }
+
+    /// The columns of the indices (timelines).
+    pub fn data_columns(
+        &self,
+    ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(
+            &self.schema.data_columns,
+            self.batch
+                .columns()
+                .iter()
+                .skip(1 + self.schema.index_columns.len()) // skip row IDs and indices
+        )
+    }
 }
 
 impl std::fmt::Display for ChunkBatch {
@@ -188,6 +223,8 @@ impl TryFrom<ArrowRecordBatch> for ChunkBatch {
 
     fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
         let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
+
+        // TODO: sanity check that the schema matches the columns
 
         // Extend with any metadata that might have been missing:
         let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());

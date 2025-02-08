@@ -42,7 +42,7 @@ impl InvalidChunkSchema {
 ///
 /// This does NOT preserve custom arrow metadata.
 /// It only contains the metadata used by Rerun.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkSchema {
     /// The globally unique ID of this chunk.
     pub chunk_id: ChunkId,
@@ -240,7 +240,7 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
         let row_id_column = RowIdColumnDescriptor::try_from(first_field.as_ref())
             .map_err(InvalidChunkSchema::BadRowIdColumn)?;
 
-        let columns: Result<Vec<_>, _> = fields
+        let index_and_data_columns: Result<Vec<_>, _> = fields
             .iter()
             .skip(1)
             .map(|field| {
@@ -252,19 +252,20 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
                 })
             })
             .collect();
-        let columns = columns?;
+        let index_and_data_columns = index_and_data_columns?;
 
         // Index columns should always come first:
-        let num_index_columns = columns.partition_point(|p| matches!(p, ColumnDescriptor::Time(_)));
+        let num_index_columns =
+            index_and_data_columns.partition_point(|p| matches!(p, ColumnDescriptor::Time(_)));
 
-        let index_columns = columns[0..num_index_columns]
+        let index_columns = index_and_data_columns[0..num_index_columns]
             .iter()
             .filter_map(|c| match c {
                 ColumnDescriptor::Time(column) => Some(column.clone()),
                 ColumnDescriptor::Component(_) => None,
             })
             .collect_vec();
-        let data_columns = columns[0..num_index_columns]
+        let data_columns = index_and_data_columns[num_index_columns..]
             .iter()
             .filter_map(|c| match c {
                 ColumnDescriptor::Time(_) => None,
@@ -272,7 +273,7 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
             })
             .collect_vec();
 
-        if index_columns.len() + data_columns.len() < columns.len() {
+        if index_columns.len() + data_columns.len() != index_and_data_columns.len() {
             return Err(InvalidChunkSchema::UnorderedIndexAndDataColumns);
         }
 
