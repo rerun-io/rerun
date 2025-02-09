@@ -162,6 +162,7 @@ When persisted, the state will be stored at the following locations:
     ///
     /// Optionally accepts an HTTP(S) URL to a gRPC server.
     #[clap(long)]
+    #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
