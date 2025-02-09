@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Response, Shape, Ui, Vec2,
+    pos2, Color32, CursorIcon, Modifiers, NumExt, Painter, PointerButton, Rect, Response, Shape,
+    Ui, Vec2,
 };
 
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
@@ -15,7 +16,10 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
 use re_ui::filter_widget::format_matching_text;
-use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
+use re_ui::{
+    filter_widget, icon_text, icons, list_item, ContextExt as _, DesignTokens, Help, ModifiersText,
+    UiExt as _,
+};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
     UiLayout, ViewerContext, VisitorControlFlow,
@@ -1320,17 +1324,28 @@ fn paint_range_highlight(
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    // TODO(andreas): Nicer help text like on views.
-    ui.help_hover_button().on_hover_text(
-        "\
-        In the top row you can drag to move the time, or shift-drag to select a loop region.\n\
-        \n\
-        Drag main area to pan.\n\
-        Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
-        Double-click to reset view.\n\
-        \n\
-        Press the space bar to play/pause.",
-    );
+    ui.help_hover_button().on_hover_ui(|ui| {
+        Help::new("Timeline")
+            .control("Play/Pause", icon_text!("Space"))
+            .control(
+                "Move time cursor",
+                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag time scale"),
+            )
+            .control(
+                "Select time segment",
+                icon_text!(icons::SHIFT, "+ drag time scale"),
+            )
+            .control(
+                "Pan",
+                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag event canvas"),
+            )
+            .control(
+                "Zoom",
+                icon_text!(ModifiersText(Modifiers::COMMAND, ui.ctx()), icons::SCROLL),
+            )
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .ui(ui);
+    });
 }
 
 fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut TimeControl) {

@@ -52,12 +52,12 @@ rr.notebook_show(recording=rec)
 The easiest way to get a feel for working with notebooks is to use it.
 
 First, install the requirements (this includes Jupyter, the Rerun SDK, and the notebook support package)
-```
+```sh
 pip install -r requirements.txt
 ```
 
 Then, open the notebook
-```
+```sh
 jupyter notebook cube.ipynb
 ```
 

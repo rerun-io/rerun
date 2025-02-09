@@ -9,7 +9,7 @@ use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component, View,
     ViewClassIdentifier,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -60,8 +60,8 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_3d::help_markdown(egui_ctx)
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        super::ui_3d::help(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {

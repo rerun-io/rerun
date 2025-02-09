@@ -4,7 +4,7 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_types::View;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
-use re_ui::UiExt as _;
+use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, ViewClass, ViewClassRegistryError, ViewId,
     ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
@@ -55,13 +55,14 @@ impl ViewClass for TextView {
         &re_ui::icons::VIEW_LOG
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Text log view
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Text log view")
+            .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
+            .markdown(
+                "TextLog entries over time.
 
-Shows `TextLog` entries over time.
-
-Note: select the View for filtering options."
-            .to_owned()
+Filter message types and toggle column visibility in a selection panel.",
+            )
     }
 
     fn on_register(

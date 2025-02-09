@@ -1,5 +1,5 @@
 use re_types::ViewClassIdentifier;
-use re_ui::UiExt;
+use re_ui::{Help, UiExt};
 
 use crate::{
     SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics,
@@ -23,8 +23,8 @@ impl ViewClass for ViewClassPlaceholder {
         &re_ui::icons::VIEW_UNKNOWN
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "Placeholder view for unknown view class".to_owned()
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Placeholder view").markdown("Placeholder view for unknown view class")
     }
 
     fn on_register(

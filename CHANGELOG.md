@@ -1,12 +1,28 @@
 # Rerun changelog
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD) - Entity filter & improved partial update API
 
-TODO(andreas): add link to release video
+## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
 
-📖 Release blogpost: TODO(andreas): add link
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
+The new entity filtering:
+
+https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
+
+The new notification panel:
+
+![notification-panel](https://github.com/user-attachments/assets/0fb651d7-256a-48d7-a78e-81776ec39ba8)
+
+Copy any view as screenshot with right-click (now works in web-viewer):
+
+![image](https://github.com/user-attachments/assets/bf36ee0b-2f64-473e-af48-dfd22c887b9c)
+
+New help texts for all our views:
+
+![image](https://github.com/user-attachments/assets/8b2546c7-c54f-4c25-8b82-fd9abdc6c31e)
+
+📖 Release blogpost: https://rerun.io/blog/graphs
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
 
 ### ✨ Overview & highlights
 
@@ -14,19 +30,23 @@ TODO(andreas): add link to release video
 * 🔎 Added entity filtering/searching
 * 🔔 Recent notifications show now in a dedicated panel
 * 🖱️ Entity ranges can now be selected with shift + click
+* ❓ Improved panel help
+* 🖼️ Crisper UI rendering
+* 🧊 Faster 3D transforms
 
 #### APIs
-* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates?speculative-link)
-* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns?speculative-link)
-* ⏱️ Python notebooks & JS can now control the timeline with `set_time_ctrl` TODO(#8894): link to the api/an example
-* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md?speculative-link) for demonstrating partial updates & custom data logging in Python/C++/Rust
+* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates)
+* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns)
+* ⏱️ Python notebooks & JS can now control the timeline and panel states (see last section of [this notebook](https://github.com/rerun-io/rerun/blob/0.22.0/examples/python/notebook/cube.ipynb))
+* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) for demonstrating partial updates & custom data logging in Python/C++/Rust
 
 The API & related under-the-hood changes pave the way for better support for multiple archetypes on the same entity and components with generic types in future releases.
 Stay tuned!
 
 ### ⚠️ Breaking changes
-TODO(andreas): fill in
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22?speculative-link
+Passing raw batches of components is no longer supported. Instead, use the partial update APIs (or in rare cases, explicitly serialize the components).
+
+Check the [🧳 Migration guide](https://rerun.io/docs/reference/migration/migration-0-22) for before/after snippets for all languages for this and other smaller breaking changes.
 
 ### 🔎 Details
 
@@ -311,12 +331,14 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Clean up pass over all superfluous hashing happening on the query path [#8207](https://github.com/rerun-io/rerun/pull/8207)
 - Improve performance of time panel [#8224](https://github.com/rerun-io/rerun/pull/8224)
 
+
 ## [0.20.3](https://github.com/rerun-io/rerun/compare/0.20.2...0.20.3) - Web viewer fix
 
 ### 🔎 Details
 
 #### 🪳 Bug fixes
 - Fix web viewer feature flags [#8295](https://github.com/rerun-io/rerun/pull/8295)
+
 
 ## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
 

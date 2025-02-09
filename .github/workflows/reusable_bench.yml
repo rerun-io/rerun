@@ -84,9 +84,6 @@ jobs:
             default
             wheel-test-min
 
-      - name: Download test assets
-        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
-
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 

@@ -1,6 +1,7 @@
 // ---
 re_string_interner::declare_new_type!(
     /// The unique name of a view
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ViewClassIdentifier;
 );
 

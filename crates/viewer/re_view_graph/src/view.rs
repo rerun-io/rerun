@@ -9,7 +9,7 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::{self, icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt as _};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -46,19 +46,18 @@ impl ViewClass for GraphView {
         &re_ui::icons::VIEW_GRAPH
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        format!(
-            r"# Graph View
-
-Display a graph of nodes and edges.
-
-## Navigation controls
-- Pinch gesture or {zoom_scroll_modifier} + scroll to zoom.
-- Click and drag with the {drag_pan2d_button} to pan.
-- Double-click to reset the view.",
-            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-            drag_pan2d_button = MouseButtonMarkdown(DRAG_PAN2D_BUTTON),
-        )
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Graph view")
+            .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
+            .control(
+                "Pan",
+                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+            )
+            .control(
+                "Zoom",
+                icon_text!(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
+            )
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.

@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.14.0"
+LABEL version="0.15.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -21,6 +21,7 @@ RUN set -eux; \
     cmake \
     curl \
     git \
+    git-lfs \
     libatk-bridge2.0 \
     libfontconfig1-dev \
     libfreetype6-dev \
@@ -45,7 +46,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.14.0
+ENV CACHE_KEY=rerun_docker_v0.15.0
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

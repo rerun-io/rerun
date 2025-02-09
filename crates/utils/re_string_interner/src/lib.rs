@@ -201,11 +201,8 @@ macro_rules! declare_new_type {
     ) => {
         $(#[$meta])*
         #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-        #[cfg_attr(
-            feature = "serde",
-            derive(serde::Deserialize, serde::Serialize),
-        )]
         pub struct $StructName($crate::InternedString);
+
 
         impl $StructName {
             #[inline]

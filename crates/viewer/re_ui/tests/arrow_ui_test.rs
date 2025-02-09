@@ -33,8 +33,30 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
         ("Empty string", Utf8::from("").to_arrow()),
         ("One string", Utf8::from("Hello world").to_arrow()),
         (
+            "Multiline string",
+            Utf8::from(
+                "First line.\n\
+                The second line has a \ttab.\n\
+                The final third line",
+            )
+            .to_arrow(),
+        ),
+        (
+            "Special characters",
+            Utf8::from(r#"With \backslash, "quotes", thin space"#).to_arrow(),
+        ),
+        (
             "Two strings",
             [Utf8::from("Hello"), Utf8::from("world")].to_arrow(),
+        ),
+        ("String with URL", Utf8::from("https://rerun.io").to_arrow()),
+        (
+            "Two URLs in strings",
+            [
+                Utf8::from("https://rerun.io"),
+                Utf8::from("https://rerun.rs"),
+            ]
+            .to_arrow(),
         ),
         ("Empty Blob", Blob::from(vec![]).to_arrow()),
         ("Small Blob", Blob::from(vec![1, 2, 3, 4]).to_arrow()),

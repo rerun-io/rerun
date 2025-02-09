@@ -12,7 +12,7 @@ use re_types::{
     datatypes::TensorData,
     View, ViewClassIdentifier,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
@@ -64,13 +64,14 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Tensor view
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Tensor view")
+            .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
+            .markdown(
+                "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
 
-Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
-
-Note: select the view to configure which dimensions are shown."
-            .to_owned()
+Set the displayed dimensions in a selection panel.",
+            )
     }
 
     fn on_register(
