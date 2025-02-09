@@ -1740,6 +1740,7 @@ dependencies = [
  "parking_lot",
  "re_crash_handler",
  "re_error",
+ "re_grpc_server",
  "rerun",
  "serde",
  "tokio",
@@ -1767,8 +1768,9 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
- "re_sdk_comms",
+ "re_grpc_server",
  "re_viewer",
+ "tokio",
 ]
 
 [[package]]
@@ -1804,12 +1806,6 @@ dependencies = [
  "quote",
  "syn 2.0.87",
 ]
-
-[[package]]
-name = "data-encoding"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
 name = "data-url"
@@ -2406,28 +2402,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ewebsock"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "679247b4a005c82218a5f13b713239b0b6d484ec25347a719f5b7066152a748a"
-dependencies = [
- "document-features",
- "js-sys",
- "log",
- "tungstenite",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "extend_viewer_ui"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
- "re_sdk_comms",
+ "re_grpc_server",
  "re_viewer",
+ "tokio",
 ]
 
 [[package]]
@@ -5996,7 +5978,6 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
- "re_ws_comms",
 ]
 
 [[package]]
@@ -6172,6 +6153,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "parking_lot",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -6181,6 +6163,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_protos",
+ "re_smart_channel",
  "re_tracing",
  "re_types",
  "tokio",
@@ -6513,34 +6496,18 @@ dependencies = [
  "re_chunk_store",
  "re_data_loader",
  "re_grpc_client",
+ "re_grpc_server",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_sdk_comms",
  "re_smart_channel",
  "re_types_core",
  "re_web_viewer_server",
- "re_ws_comms",
  "similar-asserts",
  "thiserror 1.0.65",
+ "tokio",
  "webbrowser",
-]
-
-[[package]]
-name = "re_sdk_comms"
-version = "0.23.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "crossbeam",
- "document-features",
- "rand",
- "re_build_info",
- "re_log",
- "re_log_encoding",
- "re_log_types",
- "re_smart_channel",
- "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -7111,7 +7078,6 @@ dependencies = [
  "re_memory",
  "re_query",
  "re_renderer",
- "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
  "re_time_panel",
@@ -7132,7 +7098,6 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
- "re_ws_comms",
  "rfd",
  "ron",
  "serde",
@@ -7266,26 +7231,6 @@ dependencies = [
  "re_log",
  "thiserror 1.0.65",
  "tiny_http",
-]
-
-[[package]]
-name = "re_ws_comms"
-version = "0.23.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "bincode",
- "document-features",
- "ewebsock",
- "parking_lot",
- "polling",
- "re_format",
- "re_log",
- "re_log_types",
- "re_memory",
- "re_smart_channel",
- "re_tracing",
- "thiserror 1.0.65",
- "tungstenite",
 ]
 
 [[package]]
@@ -7492,20 +7437,20 @@ dependencies = [
  "re_error",
  "re_format",
  "re_format_arrow",
+ "re_grpc_server",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_sdk",
- "re_sdk_comms",
  "re_smart_channel",
  "re_tracing",
  "re_types",
  "re_video",
  "re_viewer",
  "re_web_viewer_server",
- "re_ws_comms",
  "similar-asserts",
+ "tokio",
  "unindent",
 ]
 
@@ -7573,6 +7518,7 @@ dependencies = [
  "re_chunk_store",
  "re_dataframe",
  "re_grpc_client",
+ "re_grpc_server",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -7582,7 +7528,6 @@ dependencies = [
  "re_sorbet",
  "re_video",
  "re_web_viewer_server",
- "re_ws_comms",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -9317,27 +9262,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5902c5d130972a0000f60860bfbf46f7ca3db5391eddfedd1b8728bd9dc96c0e"
 
 [[package]]
-name = "tungstenite"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http 1.1.0",
- "httparse",
- "log",
- "rand",
- "rustls 0.23.18",
- "rustls-pki-types",
- "sha1",
- "thiserror 1.0.65",
- "utf-8",
- "webpki-roots 0.26.6",
-]
-
-[[package]]
 name = "twox-hash"
 version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9506,12 +9430,6 @@ dependencies = [
  "svgtypes",
  "tiny-skia-path",
 ]
-
-[[package]]
-name = "utf-8"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "utf16_iter"

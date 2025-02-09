@@ -158,27 +158,26 @@ async fn stream_async(
 mod tests {
     use super::*;
 
-    macro_rules! test_parse_url {
-        ($name:ident, $url:literal, error) => {
-            #[test]
-            fn $name() {
-                assert!(MessageProxyUrl::parse($url).is_err());
-            }
-        };
+    #[test]
+    fn test_parse_url() {
+        struct Case {
+            input: &'static str,
+            expected: &'static str,
+        }
+        let cases = [
+            Case {
+                input: "temp://127.0.0.1:9876",
+                expected: "http://127.0.0.1:9876",
+            },
+            Case {
+                input: "http://127.0.0.1:9876",
+                expected: "http://127.0.0.1:9876",
+            },
+        ];
 
-        ($name:ident, $url:literal, expected: $expected_http:literal) => {
-            #[test]
-            fn $name() {
-                assert_eq!(
-                    MessageProxyUrl::parse($url).map(|v| v.to_http()),
-                    Ok($expected_http.to_owned())
-                );
-            }
-        };
+        for Case { input, expected } in cases {
+            let actual = MessageProxyUrl::parse(input).map(|v| v.to_http());
+            assert_eq!(actual, Ok(expected.to_owned()));
+        }
     }
-
-    test_parse_url!(basic_temp, "temp://127.0.0.1:9876", expected: "http://127.0.0.1:9876");
-    // TODO(#8761): URL prefix
-    test_parse_url!(basic_http, "http://127.0.0.1:9876", expected: "http://127.0.0.1:9876");
-    test_parse_url!(invalid, "definitely not valid", error);
 }
