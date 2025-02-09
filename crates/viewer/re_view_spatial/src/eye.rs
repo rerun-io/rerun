@@ -445,6 +445,12 @@ impl ViewEye {
             return false; // e.g. we're typing in a TextField
         }
 
+        // Navigation should not be activated if any modifiers is pressed
+        let modifiers_pressed = egui_ctx.input(|input| input.modifiers.any());
+        if modifiers_pressed {
+            return false;
+        }
+
         let mut did_interact = false;
         let mut requires_repaint = false;
 
