@@ -59,7 +59,7 @@ impl WebViewerSink {
                 builder.enable_all();
                 let rt = builder.build().expect("failed to build tokio runtime");
 
-                rt.block_on(re_grpc_server::serve_with_send(
+                rt.block_on(re_grpc_server::serve_from_channel(
                     grpc_server_addr,
                     server_memory_limit,
                     shutdown,
