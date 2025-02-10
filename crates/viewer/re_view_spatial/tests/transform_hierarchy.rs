@@ -140,9 +140,7 @@ pub fn test_transform_hierarchy() {
         timeline_step,
         view_id,
         "transform_hierarchy",
-        // TODO(#8924): A lot of pixels won't pass the diff because of anti-aliasing.
-        // By bumping the resolution, we lessen the weight of edges.
-        egui::vec2(300.0, 150.0) * 3.0,
+        egui::vec2(300.0, 150.0),
     );
 }
 
@@ -153,11 +151,6 @@ fn get_test_context() -> TestContext {
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    // Make sure we can draw stuff in the hover tables.
-    test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
-    // Also register the legacy UIs.
-    re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
     test_context
 }
@@ -223,8 +216,6 @@ fn run_view_ui_and_save_snapshot(
     {
         // This test adds more and more transforms in a hierarchy on each step on the `steps` timeline.
         //
-        // Enable the origin axis on the view to get a better impression of what happens in the scene.
-        //
         // What you should see on each step on the `steps` timeline:
         // * 0: There's a Rerun logo is at the origin, the `e` sits roughly above the origin.
         // * 1: The logo is translated a few units diagonally positively on x/y/z.
@@ -256,8 +247,7 @@ fn run_view_ui_and_save_snapshot(
 
             harness.run_steps(8);
 
-            // TODO(#8924): To account for platform-specific AA.
-            let broken_percent_threshold = 0.007;
+            let broken_percent_threshold = 0.0036;
             let num_pixels = (size.x * size.y).ceil() as u64;
 
             use re_viewer_context::test_context::HarnessExt as _;
