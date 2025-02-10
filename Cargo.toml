@@ -176,6 +176,7 @@ clean-path = "0.2"
 colored = "2.1"
 comfy-table = { version = "7.0", default-features = false }
 console_error_panic_hook = "0.1.6"
+const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"

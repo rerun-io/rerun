@@ -62,6 +62,7 @@ re_memory.workspace = true
 re_types_core.workspace = true
 
 ahash.workspace = true
+const_format.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true

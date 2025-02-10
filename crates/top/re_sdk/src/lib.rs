@@ -39,7 +39,8 @@ pub const DEFAULT_SERVER_PORT: u16 = 9876;
 /// The default URL of a Rerun gRPC server.
 ///
 /// This isn't used to _host_ the server, only to _connect_ to it.
-pub const DEFAULT_CONNECT_URL: &str = "http://127.0.0.1:9876";
+pub const DEFAULT_CONNECT_URL: &str =
+    const_format::concatcp!("http://127.0.0.1:{DEFAULT_SERVER_PORT}");
 
 /// The default address of a Rerun TCP server which an SDK connects to.
 #[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
