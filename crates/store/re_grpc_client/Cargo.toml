@@ -49,7 +49,4 @@ tonic = { workspace = true, default-features = false, features = [
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 wasm-bindgen-futures.workspace = true
-tonic = { workspace = true, default-features = false, features = [
-  "tls",
-  "tls-native-roots",
-] }
+tonic = { workspace = true, default-features = false }

@@ -12,7 +12,6 @@ use arrow::{
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
-use tonic::transport::ClientTlsConfig;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk};
@@ -182,7 +181,7 @@ async fn stream_recording_async(
 
         #[cfg(not(target_arch = "wasm32"))]
         let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.convert())?
-            .tls_config(ClientTlsConfig::new().with_enabled_roots())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 

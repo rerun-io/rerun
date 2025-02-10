@@ -168,7 +168,7 @@ mod tests {
             recording_id,
         } = address
         else {
-            panic!("Expected Recording");
+            panic!("Expected recording");
         };
 
         assert_eq!(origin.scheme, Scheme::Rerun);
