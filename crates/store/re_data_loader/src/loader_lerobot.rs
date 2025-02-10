@@ -101,12 +101,10 @@ impl DataLoader for LeRobotDatasetLoader {
                     DType::Image => {
                         chunks.extend(log_episode_images(feature_key, &timeline, &data)?);
                     }
-                    DType::Int64 => {
-                        if feature_key == &"task_index" {
-                            chunks.extend(log_episode_task(&dataset, &timeline, &data)?);
-                        }
+                    DType::Int64 if feature_key == "task_index" => {
+                        chunks.extend(log_episode_task(&dataset, &timeline, &data)?);
                     }
-                    DType::Bool | DType::String => {
+                    DType::Bool | DType::Int64 | DType::String => {
                         re_log::warn_once!(
                             "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
                             feature_key,
@@ -148,9 +146,8 @@ fn log_episode_task(
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let task_indices = data
         .column_by_name("task_index")
-        .expect("task_index column doesn't exist")
-        .downcast_array_ref::<Int64Array>()
-        .expect("failed to turn task_index into int64");
+        .and_then(|c| c.downcast_array_ref::<Int64Array>())
+        .with_context(|| "Failed to get task_index field from dataset!")?;
 
     let mut chunk = Chunk::builder("task".into());
     let mut row_id = RowId::new();
