@@ -2,12 +2,11 @@
 
 pub mod message_proxy;
 
-use std::{collections::HashMap, error::Error, sync::Arc};
+use std::error::Error;
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
-        StringArray as ArrowStringArray,
+        ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StringArray as ArrowStringArray,
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
@@ -264,7 +263,7 @@ async fn stream_recording_async(
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
         let batch = result.map_err(TonicStatusError)?;
-        let chunk = Chunk::from_record_batch(batch)?;
+        let chunk = Chunk::from_record_batch(&batch)?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
@@ -404,27 +403,28 @@ async fn stream_catalog_async(
     while let Some(result) = resp.next().await {
         let entity_path = EntityPath::parse_forgiving("catalog");
 
-        let record_batch = result.map_err(TonicStatusError)?;
+        let mut record_batch = result.map_err(TonicStatusError)?;
 
-        let mut metadata = record_batch.schema_ref().metadata.clone();
+        {
+            let mut metadata = record_batch.schema_ref().metadata.clone();
 
-        for (key, value) in [
-            re_sorbet::ChunkSchema::chunk_id_metadata(&ChunkId::new()),
-            re_sorbet::ChunkSchema::entity_path_metadata(&entity_path),
-        ] {
-            if !metadata.contains_key(&key) {
-                metadata.insert(key, value);
+            for (key, value) in [
+                re_sorbet::ChunkSchema::chunk_id_metadata(&ChunkId::new()),
+                re_sorbet::ChunkSchema::entity_path_metadata(&entity_path),
+            ] {
+                metadata.entry(key).or_insert(value);
             }
+
+            let schema_with_more_metadata =
+                arrow::datatypes::Schema::clone(record_batch.schema_ref())
+                    .with_metadata(metadata)
+                    .into();
+            record_batch = record_batch
+                .with_schema(schema_with_more_metadata)
+                .expect("Can't fail, because we only added metadata");
         }
 
-        let schema_with_more_metadata = arrow::datatypes::Schema::clone(record_batch.schema_ref())
-            .with_metadata(metadata)
-            .into();
-        let record_batch = record_batch
-            .with_schema(schema_with_more_metadata)
-            .expect("Can't fail, because we only added metadata");
-
-        let chunk_batch = re_sorbet::ChunkBatch::try_from(record_batch.clone())?;
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(&record_batch)?;
 
         let mut chunk = Chunk::from_chunk_batch(&chunk_batch)?;
 

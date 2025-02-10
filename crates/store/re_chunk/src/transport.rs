@@ -1,18 +1,14 @@
-use arrow::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch},
-    datatypes::Field as ArrowField,
+use arrow::array::{
+    Array as ArrowArray, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
-use re_log_types::EntityPath;
 use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
-
-pub type ArrowMetadata = std::collections::HashMap<String, String>;
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -230,7 +226,7 @@ impl Chunk {
         Ok(res)
     }
 
-    pub fn from_record_batch(batch: ArrowRecordBatch) -> ChunkResult<Self> {
+    pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
             batch.num_columns(),
@@ -250,7 +246,7 @@ impl Chunk {
             on_release: _,
         } = msg;
 
-        Self::from_record_batch(batch.clone())
+        Self::from_record_batch(batch)
     }
 
     #[inline]
@@ -275,9 +271,9 @@ mod tests {
     use re_arrow_util::arrow_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
-        Timeline,
+        EntityPath, Timeline,
     };
-    use re_types_core::Component as _;
+    use re_types_core::{ChunkId, Component as _};
 
     use super::*;
 
@@ -357,7 +353,7 @@ mod tests {
 
             let arrow_record_batch = ArrowRecordBatch::from(&chunk_batch_before);
 
-            let chunk_batch_after = re_sorbet::ChunkBatch::try_from(arrow_record_batch).unwrap();
+            let chunk_batch_after = re_sorbet::ChunkBatch::try_from(&arrow_record_batch).unwrap();
 
             assert_eq!(
                 chunk_batch_before.chunk_schema(),

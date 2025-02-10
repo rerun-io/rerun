@@ -25,10 +25,11 @@ impl WrongDatatypeError {
 }
 
 /// Describes the [`RowId`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RowIdColumnDescriptor {}
 
 impl RowIdColumnDescriptor {
+    #[inline]
     pub fn new() -> Self {
         Self {}
     }

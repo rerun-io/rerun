@@ -840,7 +840,7 @@ impl PyStorageNodeClient {
                         return Err(PyRuntimeError::new_err(err.to_string()));
                     }
                 };
-                let chunk = Chunk::from_record_batch(batch)
+                let chunk = Chunk::from_record_batch(&batch)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 store

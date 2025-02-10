@@ -62,7 +62,7 @@ mod tests {
             .unwrap();
 
         let decoded = encoded.decode().unwrap();
-        let decoded_chunk = Chunk::from_record_batch(decoded).unwrap();
+        let decoded_chunk = Chunk::from_record_batch(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);
     }

@@ -228,14 +228,14 @@ impl From<&ChunkBatch> for ArrowRecordBatch {
     }
 }
 
-impl TryFrom<ArrowRecordBatch> for ChunkBatch {
+impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     type Error = InvalidChunkSchema;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
-    fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
+    fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        let batch = make_all_data_columns_list_arrays(&batch);
+        let batch = make_all_data_columns_list_arrays(batch);
 
         let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
@@ -323,5 +323,5 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
         columns,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
-    .unwrap()
+    .expect("Can't fail")
 }
