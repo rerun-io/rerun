@@ -7,6 +7,7 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod catalog_hub;
 pub mod env_vars;
 mod saving;
 mod screenshotter;

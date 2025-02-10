@@ -28,6 +28,7 @@ grpc = ["re_grpc_client/redap"]
 
 [dependencies]
 re_data_loader.workspace = true
+re_error.workspace = true
 re_grpc_client.workspace = true
 re_log_encoding = { workspace = true, features = [
   "decoder",
@@ -41,6 +42,8 @@ re_tracing.workspace = true
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+tokio.workspace = true
+url.workspace = true
 
 # Optional dependencies:
 

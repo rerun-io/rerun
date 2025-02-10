@@ -91,7 +91,7 @@ pub fn stream_from_redap(
     Ok(rx)
 }
 
-async fn stream_recording_async(
+pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     origin: Origin,
     recording_id: String,

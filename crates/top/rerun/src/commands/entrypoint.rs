@@ -8,6 +8,7 @@ use re_data_source::DataSource;
 use re_log_types::LogMsg;
 use re_sdk::sink::LogSink;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
+use url::Url;
 
 use crate::{commands::RrdCommands, CallSource};
 
@@ -680,6 +681,7 @@ fn run_impl(
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
     // Where do we get the data from?
+    let mut catalogs: Vec<Url> = Vec::new(); // TODO: wth.
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
@@ -712,7 +714,16 @@ fn run_impl(
         // We may need to spawn tasks from this point on:
         let mut rxs = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(None))
+            .filter_map(|data_source| match data_source.stream(None) {
+                Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                Ok(re_data_source::StreamSource::CatalogData { url }) => {
+                    catalogs.push(url);
+                    None
+                }
+                Err(err) => {
+                    return Some(Err(err));
+                }
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -750,12 +761,24 @@ fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
+        if !catalogs.is_empty() {
+            anyhow::bail!("`--test-receive` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
+        if !catalogs.is_empty() {
+            anyhow::bail!("`--save` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve || args.serve_web {
+        if !catalogs.is_empty() {
+            anyhow::bail!("`--serve` does not support catalogs");
+        }
+
         #[cfg(not(feature = "server"))]
         {
             _ = (call_source, rxs);
@@ -834,6 +857,11 @@ fn run_impl(
             }
         }
 
+        if !catalogs.is_empty() {
+            // TODO: oh god.
+            re_log::warn!("Catalogs can't be passed to already open viewers yet.");
+        }
+
         // TODO(cmc): This is what I would have normally done, but this never terminates for some
         // reason.
         // let rx = ReceiveSet::new(rxs);
@@ -866,6 +894,9 @@ fn run_impl(
                 app.set_profiler(profiler);
                 if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
                     app.set_examples_manifest_url(url);
+                }
+                for catalog in catalogs {
+                    app.fetch_catalog(catalog);
                 }
                 Box::new(app)
             }),

@@ -145,6 +145,7 @@ document-features.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+url.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
