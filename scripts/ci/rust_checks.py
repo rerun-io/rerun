@@ -48,7 +48,7 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
 
     if cargo_cmd == "nextest":
         # Needs to go after `run`, so append it last.
-        cargo_args.append("--cargo-quiet")
+        args.append("--cargo-quiet")
 
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str} ", end="", flush=True)
