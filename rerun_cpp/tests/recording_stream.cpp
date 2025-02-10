@@ -314,7 +314,7 @@ RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
     AND_GIVEN("an invalid address for the socket address") {
         THEN("connect call fails") {
             CHECK(
-                stream.connect("definitely not valid!").code ==
+                stream.connect("definitely not valid!", 0.1f).code ==
                 rerun::ErrorCode::InvalidSocketAddress
             );
         }
@@ -322,7 +322,7 @@ RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
 
     AND_GIVEN("a valid socket address " << address) {
         THEN("connect call returns no error") {
-            CHECK(stream.connect(address).code == rerun::ErrorCode::Ok);
+            CHECK(stream.connect(address, 0.1f).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -368,14 +368,14 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
     AND_GIVEN("an invalid url") {
         THEN("connect call fails") {
             CHECK(
-                stream.connect_grpc("definitely not valid!").code ==
+                stream.connect_grpc("definitely not valid!", 0.1f).code ==
                 rerun::ErrorCode::InvalidServerUrl
             );
         }
     }
     AND_GIVEN("a valid socket url " << url) {
         THEN("connect call returns no error") {
-            CHECK(stream.connect_grpc(url).code == rerun::ErrorCode::Ok);
+            CHECK(stream.connect_grpc(url, 0.1f).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
