@@ -24,7 +24,7 @@ impl WrongDatatypeError {
     }
 }
 
-/// Describes the [`RowId`]
+/// Describes the schema of the primary [`RowId`] column.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RowIdColumnDescriptor {}
 

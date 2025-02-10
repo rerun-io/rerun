@@ -35,9 +35,9 @@ impl MismatchedChunkSchemaError {
     }
 }
 
-/// The arrow [`ArrowRecordBatch`] representation of a Rerun chunk.
+/// The [`ArrowRecordBatch`] representation of a Rerun chunk.
 ///
-/// This is a wrapper around a [`ArrowRecordBatch`].
+/// This is a wrapper around a [`ChunkSchema`] and a [`ArrowRecordBatch`].
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
 /// It always has a [`re_types_core::RowId`] column.

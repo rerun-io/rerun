@@ -1,6 +1,10 @@
 //! Rerun arrow metadata and record batch definitions.
 //!
 //! Handles the structure of arrow record batches and their meta data for different use cases for Rerun.
+//!
+//! An arrow record batch needs to follow a specific schema to be be compatible with Rerun,
+//! and that schema is defined in [`ChunkSchema`].
+//! If a record batch matches the schema, it can be converted to a [`ChunkBatch`].
 
 mod chunk_batch;
 mod chunk_schema;
