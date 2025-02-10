@@ -235,7 +235,13 @@ impl TryFrom<ArrowRecordBatch> for ChunkBatch {
         arrow_schema
             .metadata
             .extend(chunk_schema.arrow_batch_metadata());
-        let batch = batch.with_schema(arrow_schema.into()).expect("Can't fail");
+
+        let batch = ArrowRecordBatch::try_new_with_options(
+            arrow_schema.into(),
+            batch.columns().to_vec(),
+            &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+        )
+        .expect("Can't fail");
 
         Ok(Self {
             schema: chunk_schema,
