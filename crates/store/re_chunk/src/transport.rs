@@ -98,10 +98,10 @@ impl Chunk {
                         archetype_field_name,
                         component_name,
 
-                        is_static: false,             // TODO
-                        is_indicator: false,          // TODO
-                        is_tombstone: false,          // TODO
-                        is_semantically_empty: false, // TODO
+                        is_static: false, // TODO(#8744): figure out what to do here
+                        is_indicator: false, // TODO(#8744): figure out what to do here
+                        is_tombstone: false, // TODO(#8744): figure out what to do here
+                        is_semantically_empty: false, // TODO(#8744): figure out what to do here
                     };
                     (schema, into_arrow_ref(list_array))
                 })

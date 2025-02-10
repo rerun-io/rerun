@@ -44,8 +44,6 @@ impl MismatchedChunkSchemaError {
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
     schema: ChunkSchema,
-
-    // TODO: should we store a record batch here, or just the parsed columns?
     batch: ArrowRecordBatch,
 }
 
@@ -239,7 +237,9 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
 
         let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
-        // TODO: sanity check that the schema matches the columns
+        for (field, column) in itertools::izip!(chunk_schema.arrow_fields(), batch.columns()) {
+            debug_assert_eq!(field.data_type(), column.data_type());
+        }
 
         // Extend with any metadata that might have been missing:
         let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());

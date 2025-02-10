@@ -244,8 +244,6 @@ impl ComponentColumnDescriptor {
             ComponentName::new(field.name()) // Legacy fallback
         };
 
-        // TODO: check that the data type is a list array and at least warn if it is not
-
         Ok(Self {
             store_datatype: field.data_type().clone(),
             entity_path,

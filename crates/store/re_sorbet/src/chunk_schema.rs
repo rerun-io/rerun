@@ -180,28 +180,27 @@ impl ChunkSchema {
 
         arrow_metadata
     }
-}
 
-impl From<&ChunkSchema> for ArrowSchema {
-    fn from(chunk_schema: &ChunkSchema) -> Self {
-        let metadata = chunk_schema.arrow_batch_metadata();
-        let num_columns = chunk_schema.num_columns();
-
-        let ChunkSchema {
+    pub fn arrow_fields(&self) -> Vec<ArrowField> {
+        let Self {
             row_id_column,
             index_columns,
             data_columns,
             ..
-        } = chunk_schema;
-
-        let mut fields: Vec<ArrowField> = Vec::with_capacity(num_columns);
+        } = self;
+        let mut fields: Vec<ArrowField> = Vec::with_capacity(self.num_columns());
         fields.push(row_id_column.to_arrow_field());
         fields.extend(index_columns.iter().map(|column| column.to_arrow_field()));
         fields.extend(data_columns.iter().map(|column| column.to_arrow_field()));
+        fields
+    }
+}
 
+impl From<&ChunkSchema> for ArrowSchema {
+    fn from(chunk_schema: &ChunkSchema) -> Self {
         Self {
-            metadata,
-            fields: fields.into(),
+            metadata: chunk_schema.arrow_batch_metadata(),
+            fields: chunk_schema.arrow_fields().into(),
         }
     }
 }
@@ -225,7 +224,14 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
         let entity_path = EntityPath::parse_forgiving(metadata.get_or_err("rerun.entity_path")?);
         let is_sorted = metadata.get_bool("rerun.is_sorted");
         let heap_size_bytes = if let Some(heap_size_bytes) = metadata.get("rerun.heap_size_bytes") {
-            heap_size_bytes.parse().ok() // TODO: log error
+            heap_size_bytes
+                .parse()
+                .map_err(|err| {
+                    re_log::warn_once!(
+                        "Failed to parse heap_size_bytes {heap_size_bytes:?} in chunk: {err}"
+                    );
+                })
+                .ok()
         } else {
             None
         };
