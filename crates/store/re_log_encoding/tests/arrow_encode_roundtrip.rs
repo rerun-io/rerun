@@ -30,8 +30,8 @@ fn encode_roundtrip() {
         .build()
         .unwrap();
 
-    let transport = chunk.to_transport().unwrap();
-    assert_eq!(Chunk::from_transport(&transport).unwrap(), chunk);
+    let record_batch = chunk.to_record_batch().unwrap();
+    assert_eq!(Chunk::from_record_batch(record_batch).unwrap(), chunk);
 
     let arrow_msg = chunk.to_arrow_msg().unwrap();
     assert_eq!(Chunk::from_arrow_msg(&arrow_msg).unwrap(), chunk);

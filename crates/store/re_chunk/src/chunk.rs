@@ -54,6 +54,9 @@ pub enum ChunkError {
 
     #[error(transparent)]
     MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
+
+    #[error(transparent)]
+    InvalidChunkSchema(#[from] re_sorbet::InvalidChunkSchema),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;

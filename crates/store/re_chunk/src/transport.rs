@@ -1,12 +1,9 @@
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        RecordBatch as ArrowRecordBatch, StructArray as ArrowStructArray,
+        RecordBatch as ArrowRecordBatch,
     },
-    datatypes::{
-        DataType as ArrowDatatype, Field as ArrowField, Fields as ArrowFields,
-        Schema as ArrowSchema, TimeUnit as ArrowTimeUnit,
-    },
+    datatypes::{Field as ArrowField, Fields as ArrowFields, Schema as ArrowSchema},
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -14,7 +11,7 @@ use tap::Tap as _;
 
 use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::EntityPath;
 use re_types_core::{
     arrow_helpers::as_array_ref, Component as _, ComponentDescriptor, Loggable as _,
 };
@@ -754,145 +751,12 @@ impl Chunk {
     }
 
     pub fn from_record_batch(batch: ArrowRecordBatch) -> ChunkResult<Self> {
-        Self::from_transport(&TransportChunk::from(batch))
-    }
-
-    pub fn from_transport(transport: &TransportChunk) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
-            transport.num_columns(),
-            transport.num_rows()
+            batch.num_columns(),
+            batch.num_rows()
         ));
-
-        // Metadata
-        let (id, entity_path, is_sorted) = {
-            re_tracing::profile_scope!("metadata");
-            (
-                transport.id()?,
-                transport.entity_path()?,
-                transport.is_sorted(),
-            )
-        };
-
-        // Row IDs
-        let row_ids = {
-            re_tracing::profile_scope!("row ids");
-
-            let Some(row_ids) = transport.controls().find_map(|(field, column)| {
-                // TODO(cmc): disgusting, but good enough for now.
-                (field.name() == RowId::descriptor().component_name.as_str()).then_some(column)
-            }) else {
-                return Err(ChunkError::Malformed {
-                    reason: format!("missing row_id column ({:?})", transport.schema_ref()),
-                });
-            };
-
-            ArrowArrayRef::from(row_ids.clone())
-                .downcast_array_ref::<ArrowStructArray>()
-                .ok_or_else(|| ChunkError::Malformed {
-                    reason: format!(
-                        "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow_datatype(),
-                        *row_ids.data_type(),
-                    ),
-                })?
-                .clone()
-        };
-
-        // Timelines
-        let timelines = {
-            re_tracing::profile_scope!("timelines");
-
-            let mut timelines = IntMap::default();
-
-            for (field, column) in transport.timelines() {
-                // See also [`Timeline::datatype`]
-                let timeline = match column.data_type() {
-                    ArrowDatatype::Int64 => Timeline::new_sequence(field.name().as_str()),
-                    ArrowDatatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
-                        Timeline::new_temporal(field.name().as_str())
-                    }
-                    _ => {
-                        return Err(ChunkError::Malformed {
-                            reason: format!(
-                                "time column '{}' is not deserializable ({:?})",
-                                field.name(),
-                                column.data_type()
-                            ),
-                        });
-                    }
-                };
-
-                let times = TimeColumn::read_array(&ArrowArrayRef::from(column.clone())).map_err(
-                    |err| ChunkError::Malformed {
-                        reason: format!("Bad time column '{}': {err}", field.name()),
-                    },
-                )?;
-
-                let is_sorted = field
-                    .metadata()
-                    .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
-
-                let time_column = TimeColumn::new(is_sorted.then_some(true), timeline, times);
-                if timelines.insert(timeline, time_column).is_some() {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' was specified more than once",
-                            field.name(),
-                        ),
-                    });
-                }
-            }
-
-            timelines
-        };
-
-        // Components
-        let components = {
-            let mut components = ChunkComponents::default();
-
-            for (field, column) in transport.components() {
-                let column = column
-                    .downcast_array_ref::<ArrowListArray>()
-                    .ok_or_else(|| ChunkError::Malformed {
-                        reason: format!(
-                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
-                            column.data_type(),
-                        ),
-                    })?;
-
-                let component_desc = TransportChunk::component_descriptor_from_field(field);
-
-                if components
-                    .insert_descriptor(component_desc, column.clone())
-                    .is_some()
-                {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "component column '{}' was specified more than once",
-                            field.name(),
-                        ),
-                    });
-                }
-            }
-
-            components
-        };
-
-        let mut res = Self::new(
-            id,
-            entity_path,
-            is_sorted.then_some(true),
-            row_ids,
-            timelines,
-            components,
-        )?;
-
-        if let Some(heap_size_bytes) = transport.heap_size_bytes() {
-            res.heap_size_bytes = heap_size_bytes.into();
-        }
-
-        Ok(res)
+        Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 }
 

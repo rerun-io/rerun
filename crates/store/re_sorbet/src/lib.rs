@@ -13,7 +13,7 @@ mod row_id_column_schema;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
-    chunk_schema::ChunkSchema,
+    chunk_schema::{ChunkSchema, InvalidChunkSchema},
     column_schema::{ColumnDescriptor, ColumnError},
     data_column_schema::ComponentColumnDescriptor,
     index_column_schema::{TimeColumnDescriptor, UnsupportedTimeType},
