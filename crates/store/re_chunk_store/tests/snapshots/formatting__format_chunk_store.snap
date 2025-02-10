@@ -21,7 +21,7 @@ ChunkStore {
         │ * version: "1"                                                                                                                                              │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
         │ ┌──────────────────────────────────┬────────────────────────┬───────────────────────────────┬──────────────────────────────┬──────────────────────────────┐ │
-        │ │ RowId                            ┆ frame_nr               ┆ log_time                      ┆ /this/that:example.MyColor   ┆ /this/that:example.MyIndex   │ │
+        │ │ RowId                            ┆ frame_nr               ┆ log_time                      ┆ example.MyColor              ┆ example.MyIndex              │ │
         │ │ ---                              ┆ ---                    ┆ ---                           ┆ ---                          ┆ ---                          │ │
         │ │ type: "Struct[2]"                ┆ type: "i64"            ┆ type: "Timestamp(ns)"         ┆ type: "List[u32]"            ┆ type: "List[u64]"            │ │
         │ │ ARROW:extension:name: "TUID"     ┆ index_name: "frame_nr" ┆ index_name: "log_time"        ┆ component: "example.MyColor" ┆ component: "example.MyIndex" │ │

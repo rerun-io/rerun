@@ -6048,6 +6048,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_query",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_types_core",

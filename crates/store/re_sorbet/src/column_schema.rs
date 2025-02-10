@@ -68,16 +68,19 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self, batch_type: crate::BatchType) -> ArrowField {
         match self {
             Self::Time(descr) => descr.to_arrow_field(),
-            Self::Component(descr) => descr.to_arrow_field(),
+            Self::Component(descr) => descr.to_arrow_field(batch_type),
         }
     }
 
     #[inline]
-    pub fn to_arrow_fields(columns: &[Self]) -> ArrowFields {
-        columns.iter().map(|c| c.to_arrow_field()).collect()
+    pub fn to_arrow_fields(columns: &[Self], batch_type: crate::BatchType) -> ArrowFields {
+        columns
+            .iter()
+            .map(|c| c.to_arrow_field(batch_type))
+            .collect()
     }
 
     /// `chunk_entity_path`: if this column is part of a chunk batch,
@@ -141,8 +144,10 @@ fn test_schema_over_ipc() {
         }),
     ];
 
-    let original_schema =
-        arrow::datatypes::Schema::new(ColumnDescriptor::to_arrow_fields(&original_columns));
+    let original_schema = arrow::datatypes::Schema::new(ColumnDescriptor::to_arrow_fields(
+        &original_columns,
+        crate::BatchType::Dataframe,
+    ));
     let ipc_bytes = crate::ipc_from_schema(&original_schema).unwrap();
 
     let recovered_schema = crate::schema_from_ipc(&ipc_bytes).unwrap();

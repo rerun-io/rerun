@@ -193,7 +193,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let arrow_schema = ArrowSchemaRef::from(ArrowSchema::new_with_metadata(
             selected_contents
                 .iter()
-                .map(|(_, descr)| descr.to_arrow_field())
+                .map(|(_, descr)| descr.to_arrow_field(re_sorbet::BatchType::Dataframe))
                 .collect::<ArrowFields>(),
             Default::default(),
         ));

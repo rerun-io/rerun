@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-use crate::{ArrowFieldMetadata, MetadataExt as _, MissingFieldMetadata};
+use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _, MissingFieldMetadata};
 
 /// Describes a data/component column, such as `Position3D`, in a dataframe.
 ///
@@ -201,27 +201,36 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
-    pub fn column_name(&self) -> String {
-        let entity_path = &self.entity_path;
-        let descriptor = ComponentDescriptor {
-            archetype_name: self.archetype_name,
-            archetype_field_name: self.archetype_field_name,
-            component_name: self.component_name,
-        };
+    pub fn column_name(&self, batch_type: BatchType) -> String {
+        match batch_type {
+            BatchType::Chunk => self.component_name.short_name().to_owned(),
+            BatchType::Dataframe => {
+                let entity_path = &self.entity_path;
+                let descriptor = ComponentDescriptor {
+                    archetype_name: self.archetype_name,
+                    archetype_field_name: self.archetype_field_name,
+                    component_name: self.component_name,
+                };
 
-        format!("{}:{}", entity_path, descriptor.component_name.short_name())
+                format!("{}:{}", entity_path, descriptor.component_name.short_name())
 
-        // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
-        // I'm not doing that right now, to avoid breaking changes (and we need to talk about
-        // what the syntax for these fully-qualified paths need to look like first).
-        // format!("{entity_path}@{}", descriptor.short_name())
+                // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
+                // I'm not doing that right now, to avoid breaking changes (and we need to talk about
+                // what the syntax for these fully-qualified paths need to look like first).
+                // format!("{entity_path}@{}", descriptor.short_name())
+            }
+        }
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self, batch_type: BatchType) -> ArrowField {
         let nullable = true;
-        ArrowField::new(self.column_name(), self.returned_datatype(), nullable)
-            .with_metadata(self.metadata())
+        ArrowField::new(
+            self.column_name(batch_type),
+            self.returned_datatype(),
+            nullable,
+        )
+        .with_metadata(self.metadata())
     }
 }
 

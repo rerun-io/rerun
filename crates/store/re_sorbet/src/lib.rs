@@ -24,3 +24,12 @@ pub use self::{
     },
     row_id_column_schema::{RowIdColumnDescriptor, WrongDatatypeError},
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BatchType {
+    /// Data for one entity
+    Chunk,
+
+    /// Potentially multiple entities
+    Dataframe,
+}

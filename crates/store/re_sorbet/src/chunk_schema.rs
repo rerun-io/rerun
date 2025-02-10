@@ -191,7 +191,11 @@ impl ChunkSchema {
         let mut fields: Vec<ArrowField> = Vec::with_capacity(self.num_columns());
         fields.push(row_id_column.to_arrow_field());
         fields.extend(index_columns.iter().map(|column| column.to_arrow_field()));
-        fields.extend(data_columns.iter().map(|column| column.to_arrow_field()));
+        fields.extend(
+            data_columns
+                .iter()
+                .map(|column| column.to_arrow_field(crate::BatchType::Chunk)),
+        );
         fields
     }
 }

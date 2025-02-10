@@ -92,7 +92,7 @@ impl ChunkBatch {
             if array.len() != row_count {
                 return Err(MismatchedChunkSchemaError::custom(format!(
                     "Data column {:?} had {} rows, but we got {} row IDs",
-                    schema.column_name(),
+                    schema.column_name(crate::BatchType::Chunk),
                     array.len(),
                     row_count
                 )));
