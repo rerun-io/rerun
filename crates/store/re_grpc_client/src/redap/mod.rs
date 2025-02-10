@@ -253,6 +253,7 @@ pub fn store_info_from_catalog_chunk(
     })
 }
 
+// TODO: remove this, should be unrechable now.
 async fn stream_catalog_async(
     tx: re_smart_channel::Sender<LogMsg>,
     origin: Origin,
