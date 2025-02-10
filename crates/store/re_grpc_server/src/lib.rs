@@ -27,9 +27,22 @@ use tower_http::cors::CorsLayer;
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
-/// Listen for incoming clients on `addr`.
+/// Start a Rerun server, listening on `addr`.
 ///
-/// The server runs on the current task.
+/// A Rerun server is an in-memory implementation of a Storage Node.
+///
+/// The returned future must be polled for the server to make progress.
+///
+/// Currently, the only RPCs supported by the server are `WriteMessages` and `ReadMessages`.
+///
+/// Clients send data to the server via `WriteMessages`. Any sent messages will be stored
+/// in the server's message queue. Messages are only removed if the server hits its configured
+/// memory limit.
+///
+/// Clients receive data from the server via `ReadMessages`. Upon establishing the stream,
+/// the server sends all messages stored in its message queue, and subscribes the client
+/// to the queue. Any messages sent to the server through `WriteMessages` will be proxied
+/// to the open `ReadMessages` stream.
 pub async fn serve(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
@@ -72,7 +85,17 @@ async fn serve_impl(
         .await
 }
 
-pub async fn serve_with_send(
+/// Start a Rerun server, listening on `addr`.
+///
+/// The returned future must be polled for the server to make progress.
+///
+/// This function additionally accepts a smart channel, through which messages
+/// can be sent to the server directly. It is similar to creating a client
+/// and sending messages through `WriteMessages`, but without the overhead
+/// of a localhost connection.
+///
+/// See [`serve`] for more information about what a Rerun server is.
+pub async fn serve_from_channel(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
     shutdown: shutdown::Shutdown,
@@ -135,7 +158,17 @@ pub async fn serve_with_send(
     }
 }
 
-/// Spawn the server and subscribe to its message queue.
+/// Start a Rerun server, listening on `addr`.
+///
+/// This function additionally creates a smart channel, and returns its receiving end.
+/// Any messages received by the server are sent through the channel. This is similar
+/// to creating a client and calling `ReadMessages`, but without the overhead of a
+/// localhost connection.
+///
+/// The server is spawned as a task on a `tokio` runtime. This function panics if the
+/// runtime is not available.
+///
+/// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_with_recv(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
