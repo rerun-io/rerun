@@ -111,11 +111,11 @@ def compare(
                 previous_bytes = previous * previous_divisor
                 current_bytes = current * current_divisor
 
-                previous = previous_bytes / div
-                current = current_bytes / div
-
                 unit = get_unit(min(previous_bytes, current_bytes))
                 div = get_divisor(unit)
+
+                previous = previous_bytes / div
+                current = current_bytes / div
 
             if previous == current:
                 change_pct = 0  # e.g. both are zero

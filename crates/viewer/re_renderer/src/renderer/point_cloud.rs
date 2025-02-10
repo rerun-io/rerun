@@ -545,11 +545,8 @@ impl Renderer for PointCloudRenderer {
                 ..Default::default()
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-            multisample: wgpu::MultisampleState {
-                // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
-                alpha_to_coverage_enabled: true,
-                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-            },
+            // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
+            multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
             render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);

@@ -75,7 +75,7 @@ impl TestContextExt for TestContext {
                             let visualizable_entities = ctx
                                 .view_class_registry
                                 .class(class_identifier)
-                                .expect("The class must be registered beforehand")
+                                .unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"))
                                 .determine_visualizable_entities(
                                     &maybe_visualizable_entities_per_visualizer,
                                     ctx.recording(),

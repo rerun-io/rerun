@@ -1294,7 +1294,9 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::compute::concat_batches;
-    use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TransportChunk};
+    use insta::assert_snapshot;
+
+    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
@@ -1312,10 +1314,15 @@ mod tests {
 
     use super::*;
 
-    macro_rules! assert_snapshot_fixed_width {
-        ($($arg:tt)*) => {
-            insta::_assert_snapshot_base!(transform=|v| std::format!("{v:200}"), $($arg)*)
-        };
+    /// Implement `Display` for `ArrowRecordBatch`
+    struct DisplayRB(ArrowRecordBatch);
+
+    impl std::fmt::Display for DisplayRB {
+        #[inline]
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let width = 200;
+            re_format_arrow::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
+        }
     }
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
@@ -1373,7 +1380,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // temporal
@@ -1395,7 +1402,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1429,7 +1436,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1462,7 +1469,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1501,7 +1508,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1543,7 +1550,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // sparse-filled
@@ -1573,7 +1580,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1614,7 +1621,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // non-existing component
@@ -1640,7 +1647,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // MyPoint
@@ -1666,7 +1673,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // MyColor
@@ -1692,7 +1699,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1734,7 +1741,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         {
@@ -1771,7 +1778,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1809,7 +1816,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // only indices (+ duplication)
@@ -1842,7 +1849,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // only components (+ duplication)
@@ -1882,7 +1889,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // static
@@ -1943,7 +1950,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -2012,7 +2019,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -2052,7 +2059,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // sparse-filled
@@ -2080,7 +2087,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -2318,10 +2325,7 @@ mod tests {
                 )?;
                 eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                assert_snapshot_fixed_width!(
-                    "async_barebones_static",
-                    TransportChunk::from(dataframe)
-                );
+                assert_snapshot!("async_barebones_static", DisplayRB(dataframe));
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2352,10 +2356,7 @@ mod tests {
                 )?;
                 eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                assert_snapshot_fixed_width!(
-                    "async_barebones_temporal",
-                    TransportChunk::from(dataframe)
-                );
+                assert_snapshot!("async_barebones_temporal", DisplayRB(dataframe));
 
                 Ok::<_, anyhow::Error>(())
             }
