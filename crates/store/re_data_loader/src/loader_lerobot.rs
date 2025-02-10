@@ -12,21 +12,18 @@ use re_chunk::{
 };
 
 use re_log_types::StoreId;
-use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
+use re_types::archetypes::{AssetVideo, EncodedImage, TextDocument, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::lerobot::{
+    is_le_robot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex,
+};
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
-const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] = &[
-    "episode_index",
-    "task_index",
-    "index",
-    "frame_index",
-    "timestamp",
-];
+const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
+    &["episode_index", "index", "frame_index", "timestamp"];
 
 /// A [`DataLoader`] for `LeRobot` datasets.
 ///
@@ -104,7 +101,12 @@ impl DataLoader for LeRobotDatasetLoader {
                     DType::Image => {
                         chunks.extend(log_episode_images(feature_key, &timeline, &data)?);
                     }
-                    DType::Int64 | DType::Bool => {
+                    DType::Int64 => {
+                        if feature_key == &"task_index" {
+                            chunks.extend(log_episode_task(&dataset, &timeline, &data)?);
+                        }
+                    }
+                    DType::Bool | DType::String => {
                         re_log::warn_once!(
                             "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
                             feature_key,
@@ -137,6 +139,42 @@ impl DataLoader for LeRobotDatasetLoader {
     ) -> Result<(), DataLoaderError> {
         Err(DataLoaderError::Incompatible(filepath))
     }
+}
+
+fn log_episode_task(
+    dataset: &LeRobotDataset,
+    timeline: &Timeline,
+    data: &RecordBatch,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    let task_indices = data
+        .column_by_name("task_index")
+        .expect("task_index column doesn't exist")
+        .downcast_array_ref::<Int64Array>()
+        .expect("failed to turn task_index into int64");
+
+    let mut chunk = Chunk::builder("task".into());
+    let mut row_id = RowId::new();
+    let mut time_int = TimeInt::ZERO;
+
+    for task_index in task_indices {
+        let Some(task) = task_index
+            .and_then(|i| usize::try_from(i).ok())
+            .and_then(|i| dataset.task_by_index(TaskIndex(i)))
+        else {
+            time_int = time_int.inc();
+            continue;
+        };
+
+        let mut timepoint = TimePoint::default();
+        timepoint.insert(*timeline, time_int);
+        let text = TextDocument::new(task.task.clone());
+        chunk = chunk.with_archetype(row_id, timepoint, &text);
+
+        row_id = row_id.next();
+        time_int = time_int.inc();
+    }
+
+    Ok(std::iter::once(chunk.build()?))
 }
 
 fn log_episode_images(
