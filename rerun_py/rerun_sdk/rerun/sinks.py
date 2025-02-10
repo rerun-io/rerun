@@ -42,7 +42,9 @@ def connect(
     addr:
         The ip:port to connect to
     flush_timeout_sec:
-        Deprecated.
+        The minimum time the SDK will wait during a flush before potentially
+        dropping data if progress is not being made. Passing `None` indicates no timeout,
+        and can cause a call to `flush` to block indefinitely.
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -58,6 +60,7 @@ def connect(
         addr = f"http://{addr}"
     return connect_grpc(
         url=addr,
+        flush_timeout_sec=flush_timeout_sec,
         default_blueprint=default_blueprint,
         recording=recording,  # NOLINT: conversion not needed
     )
@@ -84,7 +87,9 @@ def connect_tcp(
     addr:
         The ip:port to connect to
     flush_timeout_sec:
-        Deprecated.
+        The minimum time the SDK will wait during a flush before potentially
+        dropping data if progress is not being made. Passing `None` indicates no timeout,
+        and can cause a call to `flush` to block indefinitely.
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -100,6 +105,7 @@ def connect_tcp(
         addr = f"http://{addr}"
     return connect_grpc(
         url=addr,
+        flush_timeout_sec=flush_timeout_sec,
         default_blueprint=default_blueprint,
         recording=recording,  # NOLINT: conversion not needed
     )
@@ -108,6 +114,7 @@ def connect_tcp(
 def connect_grpc(
     url: str | None = None,
     *,
+    flush_timeout_sec: float | None = 2.0,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -120,6 +127,10 @@ def connect_grpc(
     ----------
     url:
         The HTTP(S) URL to connect to
+    flush_timeout_sec:
+        The minimum time the SDK will wait during a flush before potentially
+        dropping data if progress is not being made. Passing `None` indicates no timeout,
+        and can cause a call to `flush` to block indefinitely.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -150,6 +161,7 @@ def connect_grpc(
 
     bindings.connect_grpc(
         url=url,
+        flush_timeout_sec=flush_timeout_sec,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
