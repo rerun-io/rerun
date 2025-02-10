@@ -1,9 +1,6 @@
 use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        RecordBatch as ArrowRecordBatch,
-    },
-    datatypes::{Field as ArrowField, Fields as ArrowFields},
+    array::{Array as ArrowArray, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch},
+    datatypes::Field as ArrowField,
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -19,7 +16,7 @@ pub type ArrowMetadata = std::collections::HashMap<String, String>;
 
 // ---
 
-/// A [`Chunk`] that is ready for transport. Obtained by calling [`Chunk::to_transport`].
+/// A [`Chunk`] that is ready for transport.
 ///
 /// It contains a schema with a matching number of columns, all of the same length.
 ///
@@ -35,46 +32,7 @@ pub type ArrowMetadata = std::collections::HashMap<String, String>;
 /// claiming to be sorted while it is in fact not).
 // TODO(emilk): remove this, and replace it with a trait extension type for `ArrowRecordBatch`.
 #[derive(Debug, Clone)]
-pub struct TransportChunk {
-    batch: ArrowRecordBatch,
-}
-
-impl std::fmt::Display for TransportChunk {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
-    }
-}
-
-impl AsRef<ArrowRecordBatch> for TransportChunk {
-    #[inline]
-    fn as_ref(&self) -> &ArrowRecordBatch {
-        &self.batch
-    }
-}
-
-impl std::ops::Deref for TransportChunk {
-    type Target = ArrowRecordBatch;
-
-    #[inline]
-    fn deref(&self) -> &ArrowRecordBatch {
-        &self.batch
-    }
-}
-
-impl From<ArrowRecordBatch> for TransportChunk {
-    #[inline]
-    fn from(batch: ArrowRecordBatch) -> Self {
-        Self { batch }
-    }
-}
-
-impl From<TransportChunk> for ArrowRecordBatch {
-    #[inline]
-    fn from(chunk: TransportChunk) -> Self {
-        chunk.batch
-    }
-}
+pub struct TransportChunk {}
 
 // TODO(#6572): Relying on Arrow's native schema metadata feature is bound to fail, we need to
 // switch to something more powerful asap.
@@ -262,125 +220,6 @@ impl TransportChunk {
                 .cloned()
                 .map(Into::into),
         }
-    }
-}
-
-impl TransportChunk {
-    #[inline]
-    pub fn id(&self) -> ChunkResult<ChunkId> {
-        if let Some(id) = self.metadata().get(Self::CHUNK_METADATA_KEY_ID) {
-            let id = u128::from_str_radix(id, 16).map_err(|err| ChunkError::Malformed {
-                reason: format!("cannot deserialize chunk id: {err}"),
-            })?;
-            Ok(ChunkId::from_u128(id))
-        } else {
-            Err(crate::ChunkError::Malformed {
-                reason: format!("chunk id missing from metadata ({:?})", self.metadata()),
-            })
-        }
-    }
-
-    #[inline]
-    pub fn entity_path(&self) -> ChunkResult<EntityPath> {
-        match self
-            .schema_ref()
-            .metadata
-            .get(Self::CHUNK_METADATA_KEY_ENTITY_PATH)
-        {
-            Some(entity_path) => Ok(EntityPath::parse_forgiving(entity_path)),
-            None => Err(crate::ChunkError::Malformed {
-                reason: format!(
-                    "entity path missing from metadata ({:?})",
-                    self.schema_ref().metadata
-                ),
-            }),
-        }
-    }
-
-    /// The size in bytes of the data, once loaded in memory, in chunk-level.
-    ///
-    /// This is stored in the metadata. Returns `None` if that key is not set.
-    #[inline]
-    pub fn heap_size_bytes(&self) -> Option<u64> {
-        self.metadata()
-            .get(Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES)
-            .and_then(|s| s.parse::<u64>().ok())
-    }
-
-    #[inline]
-    pub fn fields(&self) -> &ArrowFields {
-        &self.schema_ref().fields
-    }
-
-    pub fn metadata(&self) -> &std::collections::HashMap<String, String> {
-        &self.batch.schema_ref().metadata
-    }
-
-    /// Looks in the chunk metadata for the `IS_SORTED` marker.
-    ///
-    /// It is possible that a chunk is sorted but didn't set that marker.
-    /// This is fine, although wasteful.
-    #[inline]
-    pub fn is_sorted(&self) -> bool {
-        self.metadata()
-            .contains_key(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
-    }
-
-    /// Iterates all columns of the specified `kind`.
-    ///
-    /// See:
-    /// * [`Self::FIELD_METADATA_VALUE_KIND_TIME`]
-    /// * [`Self::FIELD_METADATA_VALUE_KIND_CONTROL`]
-    /// * [`Self::FIELD_METADATA_VALUE_KIND_DATA`]
-    #[inline]
-    fn columns_of_kind<'a>(
-        &'a self,
-        kind: &'a str,
-    ) -> impl Iterator<Item = (&'a ArrowField, &'a ArrowArrayRef)> + 'a {
-        self.fields().iter().enumerate().filter_map(|(i, field)| {
-            let actual_kind = field.metadata().get(Self::FIELD_METADATA_KEY_KIND);
-            (actual_kind.map(|s| s.as_str()) == Some(kind))
-                .then(|| {
-                    self.batch
-                        .columns()
-                        .get(i)
-                        .map(|column| (field.as_ref(), column))
-                })
-                .flatten()
-        })
-    }
-
-    /// Iterates all control columns present in this chunk.
-    #[inline]
-    pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
-        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
-    }
-
-    /// Iterates all data columns present in this chunk.
-    #[inline]
-    pub fn components(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
-        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_DATA)
-    }
-
-    /// Iterates all timeline columns present in this chunk.
-    #[inline]
-    pub fn timelines(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
-        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_TIME)
-    }
-
-    #[inline]
-    pub fn num_controls(&self) -> usize {
-        self.controls().count()
-    }
-
-    #[inline]
-    pub fn num_timelines(&self) -> usize {
-        self.timelines().count()
-    }
-
-    #[inline]
-    pub fn num_components(&self) -> usize {
-        self.components().count()
     }
 }
 
