@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                tokio::runtime::Handle::current(),
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))
