@@ -6,7 +6,7 @@ mod wgpu_error_scope;
 pub use error_tracker::ErrorTracker;
 pub use wgpu_error_scope::WgpuErrorScope;
 
-use crate::config::WgpuBackendType;
+use crate::device_caps::WgpuBackendType;
 
 // -------
 
