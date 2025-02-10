@@ -13,15 +13,24 @@ use crate::AsyncRuntimeHandle;
 
 /// An individual catalog.
 pub struct Catalog {
-    data: Vec<re_chunk::TransportChunk>, // TODO: transport chunk is going away.
+    collections: Vec<RecordingCollection>,
+}
+
+/// An individual collection of recordings within a catalog.
+pub struct RecordingCollection {
+    // TODO: other information.
+    // TODO: transport chunk is going away.
+    collection: Vec<re_chunk::TransportChunk>,
 }
 
 /// All catalogs known to the viewer.
+// TODO(andreas,antoine): Eventually, collections are part of a catalog, meaning there is going to be multiple ones.
 #[derive(Default)]
 pub struct CatalogHub {
+    // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
     catalogs: Arc<Mutex<HashMap<Url, Catalog>>>,
     // TODO(andreas,antoine): Keep track of in-flight requests.
-    //in_flight_requests: HashMap<Uri, Future<Result<Catalog, Error>>>,
+    //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
 }
 
 impl CatalogHub {
@@ -62,7 +71,7 @@ async fn stream_catalog_async(
         StorageNodeClient::new(tonic_client)
     };
 
-    re_log::debug!("Fetching catalog…");
+    re_log::debug!("Fetching collection…");
 
     let catalog_query_response = client
         .query_catalog(QueryCatalogRequest {
@@ -87,7 +96,10 @@ async fn stream_catalog_async(
         .collect::<Result<Vec<_>, _>>()
         .await?;
 
-    let catalog = Catalog { data: chunks };
+    let catalog = Catalog {
+        collections: vec![RecordingCollection { collection: chunks }],
+    };
+
     let previous_catalog = catalogs.lock().insert(redap_endpoint.clone(), catalog);
     if previous_catalog.is_some() {
         re_log::debug!("Updated catalog for {}.", redap_endpoint.to_string());
