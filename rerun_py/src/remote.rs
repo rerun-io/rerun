@@ -289,9 +289,20 @@ impl PyStorageNodeClient {
             let arrow_schema = ArrowSchema::try_from(&schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let column_descriptors =
-                re_sorbet::ColumnDescriptor::from_arrow_fields(&arrow_schema.fields)
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let chunk_schema = re_sorbet::ChunkSchema::try_from(&arrow_schema)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let column_descriptors = itertools::chain!(
+                chunk_schema
+                    .index_columns
+                    .into_iter()
+                    .map(re_sorbet::ColumnDescriptor::Time),
+                chunk_schema
+                    .data_columns
+                    .into_iter()
+                    .map(re_sorbet::ColumnDescriptor::Component),
+            )
+            .collect();
 
             Ok(PySchema {
                 schema: column_descriptors,

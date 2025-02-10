@@ -21,6 +21,10 @@ pub struct ComponentColumnDescriptor {
     pub store_datatype: ArrowDatatype,
 
     /// The path of the entity.
+    ///
+    /// If this column is part of a chunk batch,
+    /// this is the same for all columns in the batch,
+    /// and will also be set in the schema for the whole chunk.
     pub entity_path: EntityPath,
 
     /// Optional name of the `Archetype` associated with this data.
@@ -220,16 +224,31 @@ impl ComponentColumnDescriptor {
     }
 }
 
-impl TryFrom<&ArrowField> for ComponentColumnDescriptor {
-    type Error = MissingFieldMetadata;
+impl ComponentColumnDescriptor {
+    /// `chunk_entity_path`: if this column is part of a chunk batch,
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
+    pub fn try_from_arrow_field(
+        chunk_entity_path: Option<&EntityPath>,
+        field: &ArrowField,
+    ) -> Result<Self, MissingFieldMetadata> {
+        let entity_path = if let Some(chunk_entity_path) = chunk_entity_path {
+            chunk_entity_path.clone()
+        } else {
+            EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?)
+        };
 
-    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        let component_name = if let Some(component_name) = field.get_opt("rerun.component") {
+            ComponentName::from(component_name)
+        } else {
+            ComponentName::new(field.name()) // Legacy fallback
+        };
+
         Ok(Self {
             store_datatype: field.data_type().clone(),
-            entity_path: EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?),
+            entity_path,
             archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
             archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
-            component_name: field.get_or_err("rerun.component")?.into(),
+            component_name,
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),
             is_tombstone: field.get_bool("rerun.is_tombstone"),

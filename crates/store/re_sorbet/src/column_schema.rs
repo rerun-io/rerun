@@ -80,22 +80,34 @@ impl ColumnDescriptor {
         columns.iter().map(|c| c.to_arrow_field()).collect()
     }
 
-    pub fn from_arrow_fields(fields: &[ArrowFieldRef]) -> Result<Vec<Self>, ColumnError> {
+    /// `chunk_entity_path`: if this column is part of a chunk batch,
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
+    pub fn from_arrow_fields(
+        chunk_entity_path: Option<&EntityPath>,
+        fields: &[ArrowFieldRef],
+    ) -> Result<Vec<Self>, ColumnError> {
         fields
             .iter()
-            .map(|field| Self::try_from(field.as_ref()))
+            .map(|field| Self::try_from_arrow_field(chunk_entity_path, field.as_ref()))
             .collect()
     }
 }
 
-impl TryFrom<&ArrowField> for ColumnDescriptor {
-    type Error = ColumnError;
-
-    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+impl ColumnDescriptor {
+    /// `chunk_entity_path`: if this column is part of a chunk batch,
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
+    pub fn try_from_arrow_field(
+        chunk_entity_path: Option<&EntityPath>,
+        field: &ArrowField,
+    ) -> Result<Self, ColumnError> {
         let kind = field.get_or_err("rerun.kind")?;
         match kind {
             "index" | "time" => Ok(Self::Time(TimeColumnDescriptor::try_from(field)?)),
-            "data" => Ok(Self::Component(ComponentColumnDescriptor::try_from(field)?)),
+
+            "data" => Ok(Self::Component(
+                ComponentColumnDescriptor::try_from_arrow_field(chunk_entity_path, field)?,
+            )),
+
             _ => Err(ColumnError::UnsupportedColumnKind {
                 kind: kind.to_owned(),
             }),
@@ -136,6 +148,7 @@ fn test_schema_over_ipc() {
     let recovered_schema = crate::schema_from_ipc(&ipc_bytes).unwrap();
     assert_eq!(recovered_schema.as_ref(), &original_schema);
 
-    let recovered_columns = ColumnDescriptor::from_arrow_fields(&recovered_schema.fields).unwrap();
+    let recovered_columns =
+        ColumnDescriptor::from_arrow_fields(None, &recovered_schema.fields).unwrap();
     assert_eq!(recovered_columns, original_columns);
 }

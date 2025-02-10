@@ -244,12 +244,12 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
             .iter()
             .skip(1)
             .map(|field| {
-                ColumnDescriptor::try_from(field.as_ref()).map_err(|err| {
-                    InvalidChunkSchema::BadColumn {
+                ColumnDescriptor::try_from_arrow_field(Some(&entity_path), field.as_ref()).map_err(
+                    |err| InvalidChunkSchema::BadColumn {
                         field_name: field.name().to_owned(),
                         error: err,
-                    }
-                })
+                    },
+                )
             })
             .collect();
         let index_and_data_columns = index_and_data_columns?;
