@@ -159,7 +159,7 @@ impl ComponentColumnDescriptor {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
-    fn metadata(&self) -> ArrowFieldMetadata {
+    fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {
         let Self {
             entity_path,
             archetype_name,
@@ -173,27 +173,53 @@ impl ComponentColumnDescriptor {
         } = self;
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        // We use the long namesa for the archetype and component names so that they roundtrip properly!
-        [
-            Some(("rerun.kind".to_owned(), "data".to_owned())),
-            Some(("rerun.entity_path".to_owned(), entity_path.to_string())),
-            archetype_name.map(|name| ("rerun.archetype".to_owned(), name.full_name().to_owned())),
-            archetype_field_name
-                .as_ref()
-                .map(|name| ("rerun.archetype_field".to_owned(), name.to_string())),
-            Some((
+        // We use the long names for the archetype and component names so that they roundtrip properly!
+        let mut metadata = std::collections::HashMap::from([
+            ("rerun.kind".to_owned(), "data".to_owned()),
+            (
                 "rerun.component".to_owned(),
                 component_name.full_name().to_owned(),
-            )),
-            (*is_static).then_some(("rerun.is_static".to_owned(), "true".to_owned())),
-            (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "true".to_owned())),
-            (*is_tombstone).then_some(("rerun.is_tombstone".to_owned(), "true".to_owned())),
-            (*is_semantically_empty)
-                .then_some(("rerun.is_semantically_empty".to_owned(), "true".to_owned())),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+            ),
+        ]);
+
+        match batch_type {
+            BatchType::Dataframe => {
+                metadata.insert("rerun.entity_path".to_owned(), entity_path.to_string());
+            }
+            BatchType::Chunk => {
+                // The whole chhunk is for the same entity, which is set in the record batch metadata.
+                // No need to repeat it here.
+            }
+        }
+
+        if let Some(archetype_name) = archetype_name {
+            metadata.insert(
+                "rerun.archetype".to_owned(),
+                archetype_name.full_name().to_owned(),
+            );
+        }
+
+        if let Some(archetype_field_name) = archetype_field_name {
+            metadata.insert(
+                "rerun.archetype_field".to_owned(),
+                archetype_field_name.to_string(),
+            );
+        }
+
+        if *is_static {
+            metadata.insert("rerun.is_static".to_owned(), "true".to_owned());
+        }
+        if *is_indicator {
+            metadata.insert("rerun.is_indicator".to_owned(), "true".to_owned());
+        }
+        if *is_tombstone {
+            metadata.insert("rerun.is_tombstone".to_owned(), "true".to_owned());
+        }
+        if *is_semantically_empty {
+            metadata.insert("rerun.is_semantically_empty".to_owned(), "true".to_owned());
+        }
+
+        metadata
     }
 
     #[inline]
@@ -230,7 +256,7 @@ impl ComponentColumnDescriptor {
             self.returned_datatype(),
             nullable,
         )
-        .with_metadata(self.metadata())
+        .with_metadata(self.metadata(batch_type))
     }
 }
 

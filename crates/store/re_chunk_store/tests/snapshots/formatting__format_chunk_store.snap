@@ -25,8 +25,8 @@ ChunkStore {
         │ │ ---                              ┆ ---                    ┆ ---                           ┆ ---                          ┆ ---                          │ │
         │ │ type: "Struct[2]"                ┆ type: "i64"            ┆ type: "Timestamp(ns)"         ┆ type: "List[u32]"            ┆ type: "List[u64]"            │ │
         │ │ ARROW:extension:name: "TUID"     ┆ index_name: "frame_nr" ┆ index_name: "log_time"        ┆ component: "example.MyColor" ┆ component: "example.MyIndex" │ │
-        │ │ kind: "control"                  ┆ is_sorted: "true"      ┆ is_sorted: "true"             ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    │ │
-        │ │                                  ┆ kind: "index"          ┆ kind: "index"                 ┆ kind: "data"                 ┆ kind: "data"                 │ │
+        │ │ kind: "control"                  ┆ is_sorted: "true"      ┆ is_sorted: "true"             ┆ kind: "data"                 ┆ kind: "data"                 │ │
+        │ │                                  ┆ kind: "index"          ┆ kind: "index"                 ┆                              ┆                              │ │
         │ ╞══════════════════════════════════╪════════════════════════╪═══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡ │
         │ │ 0000000067816A6BB4B8C1254D40007B ┆ 1                      ┆ 2025-01-10T18:43:42.123456789 ┆ [0, 1, 2]                    ┆ [0, 1, 2]                    │ │
         │ └──────────────────────────────────┴────────────────────────┴───────────────────────────────┴──────────────────────────────┴──────────────────────────────┘ │
