@@ -3,7 +3,7 @@ use std::fmt::Display;
 use re_log_encoding::protobuf_conversions::log_msg_from_proto;
 use re_log_types::LogMsg;
 use re_protos::sdk_comms::v0::message_proxy_client::MessageProxyClient;
-use re_protos::sdk_comms::v0::Empty;
+use re_protos::sdk_comms::v0::ReadMessagesRequest;
 use tokio_stream::StreamExt;
 use url::Url;
 
@@ -120,7 +120,7 @@ async fn stream_async(
     re_log::debug!("Streaming messages from gRPC endpoint {url}");
 
     let mut stream = client
-        .read_messages(Empty {})
+        .read_messages(ReadMessagesRequest {})
         .await
         .map_err(TonicStatusError)?
         .into_inner();

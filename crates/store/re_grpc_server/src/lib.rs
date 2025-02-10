@@ -11,7 +11,7 @@ use re_memory::MemoryLimit;
 use re_protos::{
     common::v0::StoreKind as StoreKindProto,
     log_msg::v0::LogMsg as LogMsgProto,
-    sdk_comms::v0::{message_proxy_server, Empty},
+    sdk_comms::v0::{message_proxy_server, ReadMessagesRequest, WriteMessagesResponse},
 };
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
@@ -423,7 +423,7 @@ impl message_proxy_server::MessageProxy for MessageProxy {
     async fn write_messages(
         &self,
         request: tonic::Request<tonic::Streaming<LogMsgProto>>,
-    ) -> tonic::Result<tonic::Response<Empty>> {
+    ) -> tonic::Result<tonic::Response<WriteMessagesResponse>> {
         let mut stream = request.into_inner();
         loop {
             match stream.message().await {
@@ -441,14 +441,14 @@ impl message_proxy_server::MessageProxy for MessageProxy {
             }
         }
 
-        Ok(tonic::Response::new(Empty {}))
+        Ok(tonic::Response::new(WriteMessagesResponse {}))
     }
 
     type ReadMessagesStream = LogMsgStream;
 
     async fn read_messages(
         &self,
-        _: tonic::Request<Empty>,
+        _: tonic::Request<ReadMessagesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadMessagesStream>> {
         Ok(tonic::Response::new(self.new_client_stream().await))
     }
@@ -655,7 +655,7 @@ mod tests {
         let messages = fake_log_stream_blueprint(3);
 
         // start reading
-        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
         // write a few messages
         client
@@ -702,7 +702,7 @@ mod tests {
             .unwrap();
 
         // Start reading now - we should receive full history at this point:
-        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
         let actual = read_log_stream(&mut log_stream, messages.len()).await;
         assert_eq!(messages, actual);
@@ -720,7 +720,12 @@ mod tests {
         // Initialize multiple read streams:
         let mut log_streams = vec![];
         for consumer in &mut consumers {
-            log_streams.push(consumer.read_messages(Empty {}).await.unwrap());
+            log_streams.push(
+                consumer
+                    .read_messages(ReadMessagesRequest {})
+                    .await
+                    .unwrap(),
+            );
         }
 
         // Write a few messages using our single producer:
@@ -753,7 +758,12 @@ mod tests {
         // Initialize multiple read streams:
         let mut log_streams = vec![];
         for consumer in &mut consumers {
-            log_streams.push(consumer.read_messages(Empty {}).await.unwrap());
+            log_streams.push(
+                consumer
+                    .read_messages(ReadMessagesRequest {})
+                    .await
+                    .unwrap(),
+            );
         }
 
         // Write a few messages using each producer:
@@ -802,7 +812,7 @@ mod tests {
             .unwrap();
 
         // Start reading
-        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
         let mut actual = vec![];
         loop {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
@@ -845,7 +855,7 @@ mod tests {
             .unwrap();
 
         // Start reading
-        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
         let mut actual = vec![];
         loop {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
@@ -876,7 +886,7 @@ mod tests {
         let messages = fake_log_stream_blueprint(3);
 
         // Start reading
-        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
         // Write a few messages
         client
