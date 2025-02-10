@@ -28,7 +28,7 @@ struct WebViewerSink {
     _server_handle: std::thread::JoinHandle<()>,
 
     /// Rerun websocket server.
-    server_signal: re_grpc_server::shutdown::Signal,
+    server_shutdown_signal: re_grpc_server::shutdown::Signal,
 
     /// The http server serving wasm & html.
     _webviewer_server: WebViewerServer,
@@ -43,7 +43,7 @@ impl WebViewerSink {
         grpc_port: u16,
         server_memory_limit: re_memory::MemoryLimit,
     ) -> Result<Self, WebViewerSinkError> {
-        let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
+        let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
 
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
@@ -87,7 +87,7 @@ impl WebViewerSink {
             open_browser,
             sender: channel_tx,
             _server_handle: server_handle,
-            server_signal: signal,
+            server_shutdown_signal,
             _webviewer_server: webviewer_server,
         })
     }
@@ -118,7 +118,7 @@ impl Drop for WebViewerSink {
             std::thread::sleep(std::time::Duration::from_millis(1000));
         }
 
-        self.server_signal.stop();
+        self.server_shutdown_signal.stop();
     }
 }
 
