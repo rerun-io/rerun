@@ -184,11 +184,11 @@ impl ComponentColumnDescriptor {
                 "rerun.component".to_owned(),
                 component_name.short_name().to_owned(),
             )),
-            (*is_static).then_some(("rerun.is_static".to_owned(), "yes".to_owned())),
-            (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "yes".to_owned())),
-            (*is_tombstone).then_some(("rerun.is_tombstone".to_owned(), "yes".to_owned())),
+            (*is_static).then_some(("rerun.is_static".to_owned(), "true".to_owned())),
+            (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "true".to_owned())),
+            (*is_tombstone).then_some(("rerun.is_tombstone".to_owned(), "true".to_owned())),
             (*is_semantically_empty)
-                .then_some(("rerun.is_semantically_empty".to_owned(), "yes".to_owned())),
+                .then_some(("rerun.is_semantically_empty".to_owned(), "true".to_owned())),
         ]
         .into_iter()
         .flatten()
