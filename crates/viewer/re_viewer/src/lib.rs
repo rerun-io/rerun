@@ -174,14 +174,14 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             }),
 
             wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                instance_descriptor: re_renderer::config::instance_descriptor(force_wgpu_backend),
+                instance_descriptor: re_renderer::device_caps::instance_descriptor(force_wgpu_backend),
 
                 // TODO(#8475): Install custom native adapter selector with more extensive logging and the ability to pick adapter by name
                 // (user may e.g. request "nvidia" or "intel" and it should just work!)
                 // ideally producing structured reasoning of why which one was picked in the process.
                 // This should live in re_renderer::config so that we can reuse it in tests & re_renderer examples.
                 native_adapter_selector: None,
-                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
+                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
 
                 ..Default::default()
              }),
@@ -206,6 +206,7 @@ pub fn customize_eframe_and_setup_renderer(
             render_state.device.clone(),
             render_state.queue.clone(),
             render_state.target_format,
+            re_renderer::RenderConfig::best_for_device_caps,
         )?;
         paint_callback_resources.insert(render_ctx);
     }

@@ -6488,7 +6488,6 @@ dependencies = [
  "web-time",
  "wgpu",
  "winit",
- "zip",
 ]
 
 [[package]]

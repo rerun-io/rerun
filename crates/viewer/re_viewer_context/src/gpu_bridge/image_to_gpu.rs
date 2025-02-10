@@ -7,7 +7,7 @@ use egui::{util::hash, Rangef};
 use wgpu::TextureFormat;
 
 use re_renderer::{
-    config::DeviceCaps,
+    device_caps::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::{

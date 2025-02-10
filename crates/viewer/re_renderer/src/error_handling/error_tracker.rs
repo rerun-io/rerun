@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use crate::config::WgpuBackendType;
+use crate::device_caps::WgpuBackendType;
 
 use super::{handle_async_error, wgpu_core_error::WgpuCoreWrappedContextError};
 

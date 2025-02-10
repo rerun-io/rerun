@@ -118,12 +118,8 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
                 let mut view_states = test_context.view_states.lock();
                 let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-                let (view_query, system_execution_output) = re_viewport::execute_systems_for_view(
-                    ctx,
-                    &view_blueprint,
-                    ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
-                    view_state,
-                );
+                let (view_query, system_execution_output) =
+                    re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
 
                 view_class
                     .ui(ctx, ui, view_state, &view_query, system_execution_output)
