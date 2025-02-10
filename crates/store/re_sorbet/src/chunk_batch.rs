@@ -40,7 +40,7 @@ impl MismatchedChunkSchemaError {
 /// This is a wrapper around a [`ArrowRecordBatch`].
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
-/// It always has a [`RowId`] column.
+/// It always has a [`re_types_core::RowId`] column.
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
     schema: ChunkSchema,
