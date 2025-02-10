@@ -86,6 +86,51 @@ pub fn self_and_multi_edges() {
     run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
 }
 
+#[test]
+pub fn multi_graphs() {
+    let mut test_context = TestContext::default();
+    let name = "multi_graphs";
+
+    // It's important to first register the view class before adding any entities,
+    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
+    // and thus will not find anything applicable to the visualizer.
+    test_context
+        .view_class_registry
+        .add_class::<GraphView>()
+        .unwrap();
+
+    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    test_context.log_entity("graph1".into(), |builder| {
+        builder
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &archetypes::GraphNodes::new(["A", "B"]).with_positions([[0.0, 0.0], [0.0, 0.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &archetypes::GraphEdges::new([("A", "B")]),
+            )
+    });
+    test_context.log_entity("graph2".into(), |builder| {
+        builder
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &archetypes::GraphNodes::new(["A", "B"])
+                    .with_positions([[80.0, 80.0], [80.0, 80.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &archetypes::GraphEdges::new([("A", "B")]).with_directed_edges(),
+            )
+    });
+
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
+}
+
 fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
     let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
         let view_blueprint = ViewBlueprint::new(
