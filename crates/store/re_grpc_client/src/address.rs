@@ -1,45 +1,78 @@
-use url::Url;
+use std::net::Ipv4Addr;
 
 /// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rerun://addr:port/recording/12345 for recording or rerun://addr:port/catalog for catalog")]
+#[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
 pub struct InvalidRedapAddress {
     url: String,
     msg: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Scheme {
+    Rerun,
+    RerunHttp,
+    RerunHttps,
+}
+
+impl std::fmt::Display for Scheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rerun => write!(f, "rerun"),
+            Self::RerunHttp => write!(f, "rerun+http"),
+            Self::RerunHttps => write!(f, "rerun+https"),
+        }
+    }
+}
+
+impl Scheme {
+    fn convert(&self) -> &str {
+        match self {
+            Self::Rerun | Self::RerunHttps => "https",
+            Self::RerunHttp => "http",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Origin {
+    scheme: Scheme,
+    host: url::Host<String>,
+    port: u16,
+}
+
+impl Origin {
+    pub fn convert(&self) -> String {
+        format!("{}://{}:{}", self.scheme.convert(), self.host, self.port)
+    }
+}
+
+impl std::fmt::Display for Origin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
+    }
+}
+
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RedapAddress {
     Recording {
-        redap_endpoint: Url,
+        origin: Origin,
         recording_id: String,
     },
     Catalog {
-        redap_endpoint: Url,
+        origin: Origin,
     },
 }
 
 impl std::fmt::Display for RedapAddress {
-    #[allow(clippy::unwrap_used)] // host and port have already been verified during conversion
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Recording {
-                redap_endpoint,
+                origin,
                 recording_id,
-            } => write!(
-                f,
-                "rerun://{}:{}/recording/{}",
-                redap_endpoint.host().unwrap(),
-                redap_endpoint.port().unwrap(),
-                recording_id
-            ),
-            Self::Catalog { redap_endpoint } => write!(
-                f,
-                "rerun://{}:{}/catalog",
-                redap_endpoint.host().unwrap(),
-                redap_endpoint.port().unwrap(),
-            ),
+            } => write!(f, "{origin}/recording/{recording_id}",),
+            Self::Catalog { origin } => write!(f, "{origin}/catalog",),
         }
     }
 }
@@ -48,61 +81,66 @@ impl TryFrom<&str> for RedapAddress {
     type Error = InvalidRedapAddress;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let url = Url::parse(value).map_err(|err| InvalidRedapAddress {
+        let (scheme, rewritten) = if value.starts_with("rerun://") {
+            Ok((Scheme::Rerun, value.replace("rerun://", "https://")))
+        } else if value.starts_with("rerun+http://") {
+            Ok((Scheme::RerunHttp, value.replace("rerun+http://", "http://")))
+        } else if value.starts_with("rerun+https://") {
+            Ok((
+                Scheme::RerunHttps,
+                value.replace("rerun+https://", "https://"),
+            ))
+        } else {
+            Err(InvalidRedapAddress {
+                url: value.to_owned(),
+                msg: "Invalid scheme, expected `rerun://`,`rerun+http://`, or `rerun+https://`"
+                    .to_owned(),
+            })
+        }?;
+
+        // We have to first rewrite the endpoint, because `Url` does not allow
+        // `.set_scheme()` for non-opaque origins, nor does it return a proper
+        // `Origin` in that case.
+        let redap_endpoint = url::Url::parse(&rewritten).map_err(|err| InvalidRedapAddress {
             url: value.to_owned(),
             msg: err.to_string(),
         })?;
 
-        if url.scheme() != "rerun" {
+        let url::Origin::Tuple(_, host, port) = redap_endpoint.origin() else {
             return Err(InvalidRedapAddress {
-                url: url.to_string(),
-                msg: "Invalid scheme, expected 'rerun'".to_owned(),
+                url: value.to_owned(),
+                msg: "Opaque origin".to_owned(),
             });
-        }
+        };
 
-        let host = url.host_str().ok_or_else(|| InvalidRedapAddress {
-            url: url.to_string(),
-            msg: "Missing host".to_owned(),
-        })?;
-
-        if host == "0.0.0.0" {
+        if host == url::Host::<String>::Ipv4(Ipv4Addr::UNSPECIFIED) {
             re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
         }
 
-        // let port = url.port().ok_or_else(|| InvalidRedapAddress {
-        //     url: url.to_string(),
-        //     msg: "Missing port".to_owned(),
-        // })?;
+        let origin = Origin { scheme, host, port };
 
-        #[allow(clippy::unwrap_used)]
-        let redap_endpoint = Url::parse(&format!("https://{host}")).unwrap();
+        // :warning: We limit the amount of segments, which might need to be
+        // adjusted when adding additional resources.
+        let segments = redap_endpoint
+            .path_segments()
+            .ok_or_else(|| InvalidRedapAddress {
+                url: value.to_owned(),
+                msg: "Cannot be a base URL".to_owned(),
+            })?
+            .take(2)
+            .collect::<Vec<_>>();
 
-        // we got the ReDap endpoint, now figure out from the URL path if it's a recording or catalog
-        if url.path().ends_with("/catalog") {
-            let path_segments: Vec<&str> =
-                url.path_segments().map(|s| s.collect()).unwrap_or_default();
-            if path_segments.len() != 1 || path_segments[0] != "catalog" {
-                return Err(InvalidRedapAddress {
-                    url: url.to_string(),
-                    msg: "Invalid path, expected '/catalog'".to_owned(),
-                });
-            }
+        match segments.as_slice() {
+            ["recording", recording_id] => Ok(Self::Recording {
+                origin,
+                recording_id: (*recording_id).to_owned(),
+            }),
+            ["catalog"] => Ok(Self::Catalog { origin }),
 
-            Ok(Self::Catalog { redap_endpoint })
-        } else {
-            let path_segments: Vec<&str> =
-                url.path_segments().map(|s| s.collect()).unwrap_or_default();
-            if path_segments.len() != 2 || path_segments[0] != "recording" {
-                return Err(InvalidRedapAddress {
-                    url: url.to_string(),
-                    msg: "Invalid path, expected '/recording/{id}'".to_owned(),
-                });
-            }
-
-            Ok(Self::Recording {
-                redap_endpoint,
-                recording_id: path_segments[1].to_owned(),
-            })
+            _ => Err(InvalidRedapAddress {
+                url: value.to_owned(),
+                msg: "Missing path'".to_owned(),
+            }),
         }
     }
 }
@@ -110,32 +148,66 @@ impl TryFrom<&str> for RedapAddress {
 #[cfg(test)]
 mod tests {
 
-    use super::RedapAddress;
-    use url::Url;
+    use super::*;
+    use core::net::Ipv4Addr;
 
     #[test]
-    fn test_recording_url_to_address() {
-        let url = "rerun://0.0.0.0:1234/recording/12345";
-        let address: RedapAddress = url.try_into().unwrap();
-        assert_eq!(
-            address,
-            RedapAddress::Recording {
-                redap_endpoint: Url::parse("http://0.0.0.0:1234").unwrap(),
-                recording_id: "12345".to_owned()
-            }
-        );
+    fn scheme_conversion() {
+        assert_eq!(Scheme::Rerun.to_string(), "https");
+        assert_eq!(Scheme::RerunHttp.to_string(), "http");
+        assert_eq!(Scheme::RerunHttps.to_string(), "https");
     }
 
     #[test]
-    fn test_catalog_url_to_address() {
-        let url = "rerun://127.0.0.1:50051/catalog";
+    fn test_recording_url_to_address() {
+        let url = "rerun://127.0.0.1:1234/recording/12345";
         let address: RedapAddress = url.try_into().unwrap();
-        assert_eq!(
+
+        let RedapAddress::Recording {
+            origin,
+            recording_id,
+        } = address
+        else {
+            panic!("Expected Recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(recording_id, "12345");
+    }
+
+    #[test]
+    fn test_http_catalog_url_to_address() {
+        let url = "rerun+http://127.0.0.1:50051/catalog";
+        let address: RedapAddress = url.try_into().unwrap();
+        assert!(matches!(
             address,
             RedapAddress::Catalog {
-                redap_endpoint: Url::parse("http://127.0.0.1:50051").unwrap(),
+                origin: Origin {
+                    scheme: Scheme::RerunHttp,
+                    host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                    port: 50051
+                },
             }
-        );
+        ));
+    }
+
+    #[test]
+    fn test_https_catalog_url_to_address() {
+        let url = "rerun+https://127.0.0.1:50051/catalog";
+        let address: RedapAddress = url.try_into().unwrap();
+
+        assert!(matches!(
+            address,
+            RedapAddress::Catalog {
+                origin: Origin {
+                    scheme: Scheme::RerunHttps,
+                    host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                    port: 50051
+                },
+            }
+        ));
     }
 
     #[test]
