@@ -441,7 +441,7 @@ extern void rr_recording_stream_connect(
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect_grpc(
-    rr_recording_stream stream, rr_string url, rr_error* error
+    rr_recording_stream stream, rr_string url, float flush_timeout_sec, rr_error* error
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
@@ -462,7 +462,7 @@ extern void rr_recording_stream_connect_grpc(
 /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
 /// and can cause a call to `flush` to block indefinitely.
 extern void rr_recording_stream_spawn(
-    rr_recording_stream stream, const rr_spawn_options* spawn_opts, rr_error* error
+    rr_recording_stream stream, const rr_spawn_options* spawn_opts, float flush_timeout_sec, rr_error* error
 );
 
 /// Stream all log-data to a given `.rrd` file.

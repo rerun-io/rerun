@@ -602,14 +602,19 @@ pub extern "C" fn rr_recording_stream_connect(
 fn rr_recording_stream_connect_grpc_impl(
     stream: CRecordingStream,
     url: CStringView,
+    flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let url = url.as_str("url")?.parse();
+    let url = url.as_str("url")?;
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
 
-    match url {
-        Ok(url) => stream.connect_grpc_opts(url),
-        Err(err) => return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string())),
+    if let Err(err) = stream.connect_grpc_opts(url, flush_timeout) {
+        return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string()));
     }
 
     Ok(())
@@ -620,9 +625,10 @@ fn rr_recording_stream_connect_grpc_impl(
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
+    flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
         err.write_error(error);
     }
 }
@@ -631,6 +637,7 @@ pub extern "C" fn rr_recording_stream_connect_grpc(
 fn rr_recording_stream_spawn_impl(
     stream: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -640,9 +647,14 @@ fn rr_recording_stream_spawn_impl(
         let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
         spawn_opts.as_rust()?
     };
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
 
     stream
-        .spawn_opts(&spawn_opts)
+        .spawn_opts(&spawn_opts, flush_timeout)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
@@ -653,9 +665,10 @@ fn rr_recording_stream_spawn_impl(
 pub extern "C" fn rr_recording_stream_spawn(
     id: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts) {
+    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts, flush_timeout_sec) {
         err.write_error(error);
     }
 }

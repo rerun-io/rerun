@@ -165,11 +165,21 @@ namespace rerun {
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
         /// This function returns immediately.
-        Error connect_grpc(std::string_view url = "http://127.0.0.1:9876") const;
+        Error connect_grpc(std::string_view url = "http://127.0.0.1:9876", float flush_timeout_sec = 2.0) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
+        ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
@@ -177,7 +187,7 @@ namespace rerun {
         /// ## Parameters
         /// options:
         /// See `rerun::SpawnOptions` for more information.
-        Error spawn(const SpawnOptions& options = {}) const;
+        Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
         /// @see RecordingStream::spawn
         template <typename TRep, typename TPeriod>

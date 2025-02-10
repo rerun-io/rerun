@@ -585,9 +585,10 @@ fn spawn(
 }
 
 #[pyfunction]
-#[pyo3(signature = (url, default_blueprint = None, recording = None))]
+#[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect_grpc(
     url: Option<String>,
+    flush_timeout_sec: Option<f32>,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
@@ -608,7 +609,10 @@ fn connect_grpc(
     }
 
     py.allow_threads(|| {
-        let sink = re_sdk::sink::GrpcSink::new(url);
+        let sink = re_sdk::sink::GrpcSink::new(
+            url,
+            flush_timeout_sec.map(std::time::Duration::from_secs_f32),
+        );
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -632,11 +636,7 @@ fn connect_grpc_blueprint(
     blueprint_stream: &PyRecordingStream,
     py: Python<'_>,
 ) -> PyResult<()> {
-    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url
-        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
-        .parse::<re_grpc_client::MessageProxyUrl>()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
 
     if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
@@ -653,10 +653,12 @@ fn connect_grpc_blueprint(
 
             blueprint_stream.record_msg(activation_cmd.into());
 
-            blueprint_stream.connect_grpc_opts(url);
+            blueprint_stream
+                .connect_grpc_opts(url, None)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             flush_garbage_queue();
-        });
-        Ok(())
+            Ok(())
+        })
     } else {
         Err(PyRuntimeError::new_err(
             "Blueprint stream has no store info".to_owned(),

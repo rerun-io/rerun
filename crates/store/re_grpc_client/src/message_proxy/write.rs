@@ -23,13 +23,15 @@ enum Cmd {
 
 #[derive(Clone)]
 pub struct Options {
-    compression: Compression,
+    pub compression: Compression,
+    pub flush_timeout: Option<Duration>,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             compression: Compression::LZ4,
+            flush_timeout: Default::default(),
         }
     }
 }
@@ -38,6 +40,7 @@ pub struct Client {
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
     shutdown_tx: Sender<()>,
+    flush_timeout: Option<Duration>,
 }
 
 impl Client {
@@ -67,6 +70,7 @@ impl Client {
             thread: Some(thread),
             cmd_tx,
             shutdown_tx,
+            flush_timeout: options.flush_timeout,
         }
     }
 
@@ -75,18 +79,34 @@ impl Client {
     }
 
     pub fn flush(&self) {
-        let (tx, rx) = oneshot::channel();
+        use tokio::sync::oneshot::error::TryRecvError;
+
+        let (tx, mut rx) = oneshot::channel();
         if self.cmd_tx.send(Cmd::Flush(tx)).is_err() {
             re_log::debug!("Flush failed: already shut down.");
             return;
         };
 
-        match rx.blocking_recv() {
-            Ok(_) => {
-                re_log::debug!("Flush complete");
-            }
-            Err(_) => {
-                re_log::debug!("Flush failed, not all messages were sent");
+        let now = std::time::Instant::now();
+        loop {
+            match rx.try_recv() {
+                Ok(_) => {
+                    re_log::debug!("Flush complete");
+                }
+                Err(TryRecvError::Empty) => {
+                    let Some(timeout) = self.flush_timeout else {
+                        std::thread::yield_now();
+                        continue;
+                    };
+
+                    if now.elapsed() > timeout {
+                        re_log::debug!("Flush timed out, not all messages were sent");
+                        return;
+                    }
+                }
+                Err(TryRecvError::Closed) => {
+                    re_log::debug!("Flush failed, not all messages were sent");
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
+use std::time::Duration;
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
@@ -336,6 +337,10 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
     /// ## Example
     ///
     /// ```no_run
@@ -347,14 +352,18 @@ impl RecordingStreamBuilder {
     pub fn connect_opts(
         self,
         addr: std::net::SocketAddr,
-        flush_timeout: Option<std::time::Duration>,
+        flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
         let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"))
+        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
+    ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
     ///
@@ -367,10 +376,9 @@ impl RecordingStreamBuilder {
     pub fn connect_tcp_opts(
         self,
         addr: std::net::SocketAddr,
-        flush_timeout: Option<std::time::Duration>,
+        flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"))
+        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -385,14 +393,18 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(format!(
-            "http://127.0.0.1:{}",
-            re_grpc_server::DEFAULT_SERVER_PORT
-        ))
+        self.connect_grpc_opts(
+            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            crate::default_flush_timeout(),
+        )
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
+    ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
     ///
@@ -404,13 +416,17 @@ impl RecordingStreamBuilder {
     pub fn connect_grpc_opts(
         self,
         url: impl Into<String>,
+        flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::GrpcSink::new(url.into().parse()?)),
+                Box::new(crate::log_sink::GrpcSink::new(
+                    url.into().parse()?,
+                    flush_timeout,
+                )),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -498,7 +514,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
-        self.spawn_opts(&Default::default())
+        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
@@ -510,14 +526,22 @@ impl RecordingStreamBuilder {
     /// The behavior of the spawned Viewer can be configured via `opts`.
     /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
     ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
     /// ## Example
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .spawn_opts(&re_sdk::SpawnOptions::default())?;
+    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
+    pub fn spawn_opts(
+        self,
+        opts: &crate::SpawnOptions,
+        flush_timeout: Option<Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(RecordingStream::disabled());
@@ -528,12 +552,12 @@ impl RecordingStreamBuilder {
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
-            return self.connect_grpc_opts(url);
+            return self.connect_grpc_opts(url, flush_timeout);
         }
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(url)
+        self.connect_grpc_opts(url, flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -1715,7 +1739,7 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
     pub fn connect(&self) {
-        self.connect_grpc();
+        self.connect_grpc().expect("failed to connect via gRPC");
     }
 
     /// Swaps the underlying sink for a sink pre-configured to use the specified address.
@@ -1723,18 +1747,15 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
+    ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
     #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect_opts(
-        &self,
-        addr: std::net::SocketAddr,
-        flush_timeout: Option<std::time::Duration>,
-    ) {
+    pub fn connect_opts(&self, addr: std::net::SocketAddr, flush_timeout: Option<Duration>) {
         let _ = flush_timeout;
-        self.connect_grpc_opts(
-            format!("http://{addr}")
-                .parse()
-                .expect("should always be valid"),
-        );
+        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
+            .expect("failed to connect via gRPC");
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
@@ -1745,12 +1766,11 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect_grpc(&self) {
+    pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
         self.connect_grpc_opts(
-            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT)
-                .parse()
-                .expect("should always be valid"),
-        );
+            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            crate::default_flush_timeout(),
+        )
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
@@ -1759,15 +1779,24 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect_grpc_opts(&self, url: re_grpc_client::MessageProxyUrl) {
+    ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    pub fn connect_grpc_opts(
+        &self,
+        url: impl Into<String>,
+        flush_timeout: Option<Duration>,
+    ) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
-            return;
+            return Ok(());
         }
 
-        let sink = crate::log_sink::GrpcSink::new(url);
+        let sink = crate::log_sink::GrpcSink::new(url.into().parse()?, flush_timeout);
 
         self.set_sink(Box::new(sink));
+        Ok(())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -1784,7 +1813,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn(&self) -> RecordingStreamResult<()> {
-        self.spawn_opts(&Default::default())
+        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -1800,7 +1829,15 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn spawn_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
+    ///
+    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    pub fn spawn_opts(
+        &self,
+        opts: &crate::SpawnOptions,
+        flush_timeout: Option<Duration>,
+    ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(());
@@ -1812,11 +1849,7 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(
-            format!("http://{}", opts.connect_addr())
-                .parse()
-                .expect("should always be valid"),
-        );
+        self.connect_grpc_opts(format!("http://{}", opts.connect_addr()), flush_timeout)?;
 
         Ok(())
     }

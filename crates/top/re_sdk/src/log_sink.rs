@@ -1,8 +1,9 @@
 use std::fmt;
 use std::sync::Arc;
+use std::time::Duration;
 
 use parking_lot::Mutex;
-use re_grpc_client::message_proxy::write::Client as MessageProxyClient;
+use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
 use re_grpc_client::message_proxy::MessageProxyUrl;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
@@ -341,15 +342,23 @@ pub struct GrpcSink {
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.
     ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
+    /// before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
     /// ### Example
     ///
     /// ```ignore
     /// GrpcSink::new("http://127.0.0.1:9434");
     /// ```
     #[inline]
-    pub fn new(url: MessageProxyUrl) -> Self {
+    pub fn new(url: MessageProxyUrl, flush_timeout: Option<Duration>) -> Self {
+        let options = Options {
+            flush_timeout,
+            ..Default::default()
+        };
         Self {
-            client: MessageProxyClient::new(url, Default::default()),
+            client: MessageProxyClient::new(url, options),
         }
     }
 }

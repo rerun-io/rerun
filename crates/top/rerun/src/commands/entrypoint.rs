@@ -807,7 +807,7 @@ fn run_impl(
 
         // This spawns its own single-threaded runtime on a separate thread,
         // no need to `rt.enter()`:
-        let sink = re_sdk::sink::GrpcSink::new(url);
+        let sink = re_sdk::sink::GrpcSink::new(url, crate::default_flush_timeout());
 
         for rx in rxs {
             while rx.is_connected() {
