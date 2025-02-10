@@ -9,6 +9,7 @@ use std::pin::Pin;
 use re_byte_size::SizeBytes;
 use re_memory::MemoryLimit;
 use re_protos::{
+    common::v0::StoreKind as StoreKindProto,
     log_msg::v0::LogMsg as LogMsgProto,
     sdk_comms::v0::{message_proxy_server, Empty},
 };
@@ -278,19 +279,30 @@ impl EventLoop {
             return;
         };
 
+        // We put store info, blueprint data, and blueprint activation commands
+        // in a separate queue that does *not* get garbage collected.
         use re_protos::log_msg::v0::log_msg::Msg;
         match inner {
-            // We consider `BlueprintActivationCommand` a temporal message,
-            // because it is sensitive to order, and it is safe to garbage collect
-            // if all the messages that came before it were also garbage collected,
-            // as it's the last message sent by the SDK when submitting a blueprint.
-            Msg::ArrowMsg(..) | Msg::BlueprintActivationCommand(..) => {
+            // Store info, blueprint activation commands
+            Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
+                self.persistent_message_queue.push_back(msg);
+            }
+
+            // Blueprint data
+            Msg::ArrowMsg(ref inner)
+                if inner
+                    .store_id
+                    .as_ref()
+                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint) =>
+            {
+                self.persistent_message_queue.push_back(msg);
+            }
+
+            // Recording data
+            Msg::ArrowMsg(..) => {
                 let approx_size_bytes = message_size(&msg);
                 self.ordered_message_bytes += approx_size_bytes;
                 self.ordered_message_queue.push_back(msg);
-            }
-            Msg::SetStoreInfo(..) => {
-                self.persistent_message_queue.push_back(msg);
             }
         }
     }
@@ -490,7 +502,7 @@ mod tests {
 
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
-    fn fake_log_stream(n: usize) -> Vec<LogMsg> {
+    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
 
         let mut messages = Vec::new();
@@ -537,6 +549,47 @@ mod tests {
                 make_default: true,
             },
         ));
+
+        messages
+    }
+
+    fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Recording);
+
+        let mut messages = Vec::new();
+        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *RowId::new(),
+            info: StoreInfo {
+                application_id: ApplicationId("test".to_owned()),
+                store_id: store_id.clone(),
+                cloned_from: None,
+                is_official_example: true,
+                started: Time::now(),
+                store_source: StoreSource::RustSdk {
+                    rustc_version: String::new(),
+                    llvm_version: String::new(),
+                },
+                store_version: Some(CrateVersion::LOCAL),
+            },
+        }));
+        for _ in 0..n {
+            messages.push(LogMsg::ArrowMsg(
+                store_id.clone(),
+                re_chunk::Chunk::builder("test_entity".into())
+                    .with_archetype(
+                        re_chunk::RowId::new(),
+                        re_log_types::TimePoint::default().with(
+                            re_log_types::Timeline::new_sequence("log_time"),
+                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                        ),
+                        &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
+                    )
+                    .build()
+                    .unwrap()
+                    .to_arrow_msg()
+                    .unwrap(),
+            ));
+        }
 
         messages
     }
@@ -599,7 +652,7 @@ mod tests {
     async fn pubsub_basic() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_blueprint(3);
 
         // start reading
         let mut log_stream = client.read_messages(Empty {}).await.unwrap();
@@ -633,7 +686,7 @@ mod tests {
     async fn pubsub_history() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_blueprint(3);
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
@@ -662,7 +715,7 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producer = make_client(addr).await; // We use separate clients for producing and consuming
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_blueprint(3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -695,7 +748,7 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producers = vec![make_client(addr).await, make_client(addr).await];
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_blueprint(3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -735,7 +788,7 @@ mod tests {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await;
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_recording(3);
 
         // Write some messages
         client
@@ -774,11 +827,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn memory_limit_does_not_drop_blueprint() {
+        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
+        let mut client = make_client(addr).await;
+        let messages = fake_log_stream_blueprint(3);
+
+        // Write some messages
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+            ))
+            .await
+            .unwrap();
+
+        // Start reading
+        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut actual = vec![];
+        loop {
+            let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
+            tokio::pin!(timeout_stream);
+            let timeout_result = timeout_stream.try_next().await;
+            match timeout_result {
+                Ok(Some(value)) => {
+                    actual.push(log_msg_from_proto(value.unwrap()).unwrap());
+                }
+
+                // Stream closed | Timed out
+                Ok(None) | Err(_) => break,
+            }
+        }
+
+        // The stream in this case only contains SetStoreInfo, ArrowMsg with StoreKind::Blueprint,
+        // and BlueprintActivationCommand. None of these things should be GC'd:
+        assert_eq!(messages, actual);
+
+        completion.finish();
+    }
+
+    #[tokio::test]
     async fn memory_limit_does_not_interrupt_stream() {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream(3);
+        let messages = fake_log_stream_blueprint(3);
 
         // Start reading
         let mut log_stream = client.read_messages(Empty {}).await.unwrap();
