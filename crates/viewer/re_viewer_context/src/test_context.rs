@@ -76,7 +76,8 @@ pub struct TestContext {
     pub blueprint_store: EntityDb,
     pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
-    pub recording_config: RecordingConfig,
+    // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
+    pub recording_config: Arc<RecordingConfig>,
     pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
@@ -118,7 +119,7 @@ impl Default for TestContext {
             blueprint_store,
             view_class_registry: Default::default(),
             selection_state: Default::default(),
-            recording_config,
+            recording_config: Arc::new(recording_config),
             view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
