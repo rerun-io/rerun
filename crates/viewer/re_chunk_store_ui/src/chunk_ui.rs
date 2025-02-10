@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::Array as _;
+use arrow::array::{Array as _, RecordBatch as ArrowRecordBatch};
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
 use re_byte_size::SizeBytes;
-use re_chunk_store::external::re_chunk::TransportChunk;
 use re_chunk_store::Chunk;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;
@@ -204,7 +203,7 @@ impl ChunkUi {
                 }
             };
 
-        let fields_ui = |ui: &mut egui::Ui, transport: &TransportChunk| {
+        let fields_ui = |ui: &mut egui::Ui, transport: &ArrowRecordBatch| {
             for field in &transport.schema_ref().fields {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
