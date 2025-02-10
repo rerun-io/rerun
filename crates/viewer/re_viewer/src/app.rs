@@ -17,10 +17,13 @@ use re_viewer_context::{
     StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
     ViewClassRegistryError,
 };
+use url::Url;
 
-use crate::app_blueprint::PanelStateOverrides;
 use crate::{
-    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+    app_blueprint::{AppBlueprint, PanelStateOverrides},
+    app_state::WelcomeScreenState,
+    background_tasks::BackgroundTasks,
+    catalog_hub::CatalogHub,
     AppState,
 };
 
@@ -202,6 +205,9 @@ pub struct App {
 
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
+
+    /// Interface for all catalogs
+    catalog_hub: CatalogHub,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -408,6 +414,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
+            catalog_hub: CatalogHub::default(),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -572,8 +579,9 @@ impl App {
                 });
 
                 match data_source.stream(Some(waker)) {
-                    Ok(rx) => {
-                        self.add_receiver(rx);
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
+                    Ok(re_data_source::StreamSource::CatalogData { url }) => {
+                        self.catalog_hub.fetch_catalog(url);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1706,6 +1714,10 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
+    }
+
+    pub fn fetch_catalog(&mut self, url: Url) {
+        self.catalog_hub.fetch_catalog(url);
     }
 }
 

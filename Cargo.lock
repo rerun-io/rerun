@@ -5993,12 +5993,15 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_data_loader",
+ "re_error",
  "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -7138,6 +7141,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror 1.0.65",
+ "url",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -7485,6 +7489,7 @@ dependencies = [
  "similar-asserts",
  "tokio",
  "unindent",
+ "url",
 ]
 
 [[package]]
