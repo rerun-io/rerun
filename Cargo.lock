@@ -7502,6 +7502,7 @@ dependencies = [
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_video",

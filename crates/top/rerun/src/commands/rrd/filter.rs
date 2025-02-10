@@ -58,7 +58,7 @@ impl FilterCommand {
         let now = std::time::Instant::now();
         re_log::info!(srcs = ?path_to_input_rrds, ?dropped_timelines, "filter started");
 
-        let dropped_timelines: HashSet<_> = dropped_timelines.iter().collect();
+        let dropped_timelines: HashSet<_> = dropped_timelines.iter().cloned().collect();
         let dropped_entity_paths: HashSet<EntityPath> = dropped_entity_paths
             .iter()
             .map(|s| EntityPath::parse_forgiving(s))
@@ -120,7 +120,7 @@ impl FilterCommand {
                                     msg.batch.columns()
                                 )
                                 .filter(|(field, _col)| {
-                                    should_keep_timeline(&dropped_timelines, field)
+                                    !is_field_timeline_of(field, &dropped_timelines)
                                 })
                                 .map(|(field, col)| (field.clone(), col.clone()))
                                 .unzip();
@@ -201,16 +201,11 @@ impl FilterCommand {
 
 // ---
 
-fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
-    let is_timeline = field
-        .metadata()
-        .get(TransportChunk::FIELD_METADATA_KEY_KIND)
-        .map(|s| s.as_str())
-        == Some(TransportChunk::FIELD_METADATA_VALUE_KIND_TIME);
-
-    let is_dropped = dropped_timelines.contains(field.name());
-
-    !is_timeline || !is_dropped
+// Does the given field represent a timeline that is in the given set?
+fn is_field_timeline_of(field: &ArrowField, dropped_timelines: &HashSet<String>) -> bool {
+    re_sorbet::TimeColumnDescriptor::try_from(field)
+        .ok()
+        .is_some_and(|schema| dropped_timelines.contains(schema.name().as_str()))
 }
 
 fn should_keep_entity_path(
