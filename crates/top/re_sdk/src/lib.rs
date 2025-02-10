@@ -33,7 +33,7 @@ pub use self::recording_stream::{
     RecordingStreamResult,
 };
 
-/// The default potr of a Rerun gRPC server.
+/// The default port of a Rerun gRPC server.
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 
 /// The default URL of a Rerun gRPC server.
