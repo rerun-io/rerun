@@ -203,8 +203,8 @@ impl ChunkUi {
                 }
             };
 
-        let fields_ui = |ui: &mut egui::Ui, transport: &ArrowRecordBatch| {
-            for field in &transport.schema_ref().fields {
+        let fields_ui = |ui: &mut egui::Ui, batch: &ArrowRecordBatch| {
+            for field in &batch.schema_ref().fields {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
@@ -276,14 +276,14 @@ impl ChunkUi {
 
         list_item::list_item_scope(ui, "chunk_stats", |ui| {
             ui.list_item_collapsible_noninteractive_label("Stats", false, chunk_stats_ui);
-            match self.chunk.to_transport() {
-                Ok(transport) => {
+            match self.chunk.to_record_batch() {
+                Ok(batch) => {
                     ui.list_item_collapsible_noninteractive_label("Transport", false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
-                            metadata_ui(ui, &transport.schema_ref().metadata);
+                            metadata_ui(ui, &batch.schema_ref().metadata);
                         });
                         ui.list_item_collapsible_noninteractive_label("Fields", false, |ui| {
-                            fields_ui(ui, &transport);
+                            fields_ui(ui, &batch);
                         });
                     });
                 }

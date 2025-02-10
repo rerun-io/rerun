@@ -1274,11 +1274,11 @@ impl Chunk {
 impl std::fmt::Display for Chunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let transport_chunk = self.to_transport().map_err(|err| {
+        let batch = self.to_record_batch().map_err(|err| {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        transport_chunk.fmt(f)
+        re_format_arrow::format_record_batch_with_width(&batch, f.width()).fmt(f)
     }
 }
 

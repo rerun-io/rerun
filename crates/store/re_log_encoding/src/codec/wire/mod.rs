@@ -56,7 +56,7 @@ mod tests {
 
         let encoded: DataframePart = expected_chunk
             .clone()
-            .to_transport()
+            .to_record_batch()
             .unwrap()
             .encode()
             .unwrap();

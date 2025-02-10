@@ -778,11 +778,10 @@ impl Chunk {
         re_tracing::profile_function!();
         self.sanity_check()?;
 
-        let transport = self.to_transport()?;
         Ok(re_log_types::ArrowMsg {
             chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
             timepoint_max: self.timepoint_max(),
-            batch: transport.into(),
+            batch: self.to_record_batch()?,
             on_release: None,
         })
     }
