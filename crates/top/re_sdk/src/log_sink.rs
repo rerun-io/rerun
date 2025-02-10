@@ -333,7 +333,7 @@ impl LogSink for CallbackSink {
 
 // ----------------------------------------------------------------------------
 
-/// Stream log messages to an in-memory storage node.
+/// Stream log messages to an a remote Rerun server.
 pub struct GrpcSink {
     client: MessageProxyClient,
 }
