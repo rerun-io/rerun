@@ -175,9 +175,14 @@ mod tests {
             },
         ];
 
+        let mut failed = false;
         for Case { input, expected } in cases {
             let actual = MessageProxyUrl::parse(input).map(|v| v.to_http());
-            assert_eq!(actual, Ok(expected.to_owned()));
+            if actual != Ok(expected.to_owned()) {
+                eprintln!("expected {input:?} to parse as {expected:?}, got {actual:?} instead");
+                failed = true;
+            }
         }
+        assert!(!failed, "one or more test cases failed");
     }
 }
