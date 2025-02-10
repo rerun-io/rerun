@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use re_build_info::CrateVersion;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_encoding::{

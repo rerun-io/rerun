@@ -182,7 +182,7 @@ impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
 /// Its time columns might or might not be ascendingly sorted, depending on how the data was logged.
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
-/// data within. For transport, see [`crate::TransportChunk`] instead.
+/// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
 #[derive(Debug)]
 pub struct Chunk {
     pub(crate) id: ChunkId,

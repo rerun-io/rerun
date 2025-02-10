@@ -141,6 +141,14 @@ impl ChunkSchema {
         1 + self.index_columns.len() + self.data_columns.len()
     }
 
+    pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
+        ("rerun.id".to_owned(), format!("{:X}", chunk_id.as_u128()))
+    }
+
+    pub fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
+        ("rerun.entity_path".to_owned(), entity_path.to_string())
+    }
+
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
         let Self {
             chunk_id,
@@ -157,8 +165,8 @@ impl ChunkSchema {
                 Self::CHUNK_METADATA_KEY_VERSION.to_owned(),
                 Self::CHUNK_METADATA_VERSION.to_owned(),
             ),
-            ("rerun.id".to_owned(), format!("{:X}", chunk_id.as_u128())),
-            ("rerun.entity_path".to_owned(), entity_path.to_string()),
+            Self::chunk_id_metadata(chunk_id),
+            Self::entity_path_metadata(entity_path),
         ]);
         if let Some(heap_size_bytes) = heap_size_bytes {
             arrow_metadata.insert(

@@ -14,7 +14,7 @@ use arrow::{
 use url::Url;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk};
+use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline};
 use re_log_encoding::codec::{wire::decoder::Decode, CodecError};
 use re_log_types::{
     external::re_types_core::ComponentDescriptor, ApplicationId, BlueprintActivationCommand,
@@ -96,6 +96,9 @@ pub enum StreamError {
 
     #[error("Invalid URI: {0}")]
     InvalidUri(String),
+
+    #[error(transparent)]
+    InvalidChunkSchema(#[from] re_sorbet::InvalidChunkSchema),
 }
 
 // ----------------------------------------------------------------------------
@@ -399,99 +402,31 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
+        let entity_path = EntityPath::parse_forgiving("catalog");
+
         let record_batch = result.map_err(TonicStatusError)?;
 
-        // Catalog received from the ReDap server isn't suitable for direct conversion to a Rerun Chunk:
-        // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
-        // - conversion expects the input TransportChunk to have a ChunkId so we need to add that piece of metadata
+        let mut metadata = record_batch.schema_ref().metadata.clone();
 
-        let mut fields: Vec<ArrowField> = Vec::new();
-        let mut columns: Vec<ArrowArrayRef> = Vec::new();
-
-        for (field, data) in
-            itertools::izip!(record_batch.schema().fields(), record_batch.columns())
-        {
-            // TODO: move this switch to re_sorbet
-            match field.metadata().get("rerun.kind").map(|s| s.as_str()) {
-                Some("control") => {
-                    fields.push(
-                        ArrowField::new(
-                            RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
-                            field.data_type().clone(),
-                            false, /* not nullable */
-                        )
-                        .with_metadata(TransportChunk::field_metadata_control_column()),
-                    );
-
-                    columns.push(data.clone());
-                }
-                Some("index" | "time") => {
-                    fields.push(ArrowField::clone(field.as_ref()));
-                    columns.push(data.clone());
-                }
-                Some("data" | "component") => {
-                    // We slice each column array into individual arrays and then convert the whole lot into a ListArray
-
-                    let data_field_inner = ArrowField::new(
-                        "item",
-                        field.data_type().clone(),
-                        true, /* nullable */
-                    );
-
-                    let data_field = ArrowField::new(
-                        field.name().clone(),
-                        ArrowDataType::List(Arc::new(data_field_inner.clone())),
-                        false, /* not nullable */
-                    )
-                    .with_metadata(TransportChunk::field_metadata_data_column());
-
-                    let mut sliced: Vec<ArrowArrayRef> = Vec::new();
-                    for idx in 0..data.len() {
-                        sliced.push(data.clone().slice(idx, 1));
-                    }
-
-                    let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
-                    #[allow(clippy::unwrap_used)] // we know we've given the right field type
-                    let data_field_array: arrow::array::ListArray =
-                        re_arrow_util::arrow_util::arrays_to_list_array(
-                            data_field_inner.data_type().clone(),
-                            &data_arrays,
-                        )
-                        .unwrap();
-
-                    fields.push(data_field);
-                    columns.push(as_array_ref(data_field_array));
-                }
-                Some(kind) => {
-                    return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                        reason: format!("Unknown rerun.kind {kind:?}"),
-                    }));
-                }
-                None => {
-                    return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                        reason: "Missing or unknown rerun.kind".to_owned(),
-                    }));
-                }
+        for (key, value) in [
+            re_sorbet::ChunkSchema::chunk_id_metadata(&ChunkId::new()),
+            re_sorbet::ChunkSchema::entity_path_metadata(&entity_path),
+        ] {
+            if !metadata.contains_key(&key) {
+                metadata.insert(key, value);
             }
         }
 
-        let schema = {
-            let metadata = HashMap::from_iter([
-                (
-                    TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
-                    "catalog".to_owned(),
-                ),
-                (
-                    TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
-                    ChunkId::new().to_string(),
-                ),
-            ]);
-            arrow::datatypes::Schema::new_with_metadata(fields, metadata)
-        };
+        let schema_with_more_metadata = arrow::datatypes::Schema::clone(record_batch.schema_ref())
+            .with_metadata(metadata)
+            .into();
+        let record_batch = record_batch
+            .with_schema(schema_with_more_metadata)
+            .expect("Can't fail, because we only added metadata");
 
-        let record_batch = ArrowRecordBatch::try_new(schema.into(), columns)
-            .map_err(re_chunk::ChunkError::from)?;
-        let mut chunk = Chunk::from_record_batch(record_batch)?;
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(record_batch.clone())?;
+
+        let mut chunk = Chunk::from_chunk_batch(&chunk_batch)?;
 
         // finally, enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
         // and the recording id (that we have in the catalog data)

@@ -29,11 +29,13 @@ impl WrongDatatypeError {
 pub struct RowIdColumnDescriptor {}
 
 impl RowIdColumnDescriptor {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         let Self {} = self;
-
-        let nullable = false; // All rows has an id
 
         let metadata = [
             Some(("rerun.kind".to_owned(), "control".to_owned())),
@@ -47,6 +49,7 @@ impl RowIdColumnDescriptor {
         .flatten()
         .collect();
 
+        let nullable = false; // All rows has an id
         ArrowField::new(
             RowId::descriptor().to_string(),
             RowId::arrow_datatype(),

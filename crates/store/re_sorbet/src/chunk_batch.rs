@@ -1,11 +1,17 @@
+use std::sync::Arc;
+
 use arrow::{
     array::{
         Array as _, ArrayRef as ArrowArrayRef, AsArray, RecordBatch as ArrowRecordBatch,
         RecordBatchOptions, StructArray as ArrowStructArray,
     },
-    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
+    datatypes::{
+        DataType as ArrowDataType, Field as ArrowField, FieldRef as ArrowFieldRef,
+        Fields as ArrowFields, Schema as ArrowSchema,
+    },
 };
 
+use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef};
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
@@ -225,7 +231,12 @@ impl From<&ChunkBatch> for ArrowRecordBatch {
 impl TryFrom<ArrowRecordBatch> for ChunkBatch {
     type Error = InvalidChunkSchema;
 
+    /// Will automatically wrap data columns in `ListArrays` if they are not already.
     fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
+        re_tracing::profile_function!();
+
+        let batch = make_all_data_columns_list_arrays(&batch);
+
         let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
         // TODO: sanity check that the schema matches the columns
@@ -248,4 +259,69 @@ impl TryFrom<ArrowRecordBatch> for ChunkBatch {
             batch,
         })
     }
+}
+
+/// Make sure all data columns are `ListArrays`.
+fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+    re_tracing::profile_function!();
+
+    let num_columns = batch.num_columns();
+    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
+    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
+
+    for (field, data) in itertools::izip!(batch.schema().fields(), batch.columns()) {
+        if data
+            .downcast_array_ref::<arrow::array::ListArray>()
+            .is_some()
+        {
+            // Already fine
+            fields.push(field.clone());
+            columns.push(data.clone());
+        } else if field
+            .metadata()
+            .get("rerun.kind")
+            .is_some_and(|kind| kind == "data")
+        {
+            // We slice each column array into individual arrays and then convert the whole lot into a ListArray
+
+            let data_field_inner =
+                ArrowField::new("item", field.data_type().clone(), true /* nullable */);
+
+            let data_field = ArrowField::new(
+                field.name().clone(),
+                ArrowDataType::List(Arc::new(data_field_inner.clone())),
+                false, /* not nullable */
+            )
+            .with_metadata(field.metadata().clone());
+
+            let mut sliced: Vec<ArrowArrayRef> = Vec::new();
+            for idx in 0..data.len() {
+                sliced.push(data.clone().slice(idx, 1));
+            }
+
+            let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
+            #[allow(clippy::unwrap_used)] // we know we've given the right field type
+            let list_array: arrow::array::ListArray =
+                re_arrow_util::arrow_util::arrays_to_list_array(
+                    data_field_inner.data_type().clone(),
+                    &data_arrays,
+                )
+                .unwrap();
+
+            fields.push(data_field.into());
+            columns.push(into_arrow_ref(list_array));
+        } else {
+            fields.push(field.clone());
+            columns.push(data.clone());
+        }
+    }
+
+    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+
+    ArrowRecordBatch::try_new_with_options(
+        schema.into(),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .unwrap()
 }
