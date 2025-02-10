@@ -102,7 +102,11 @@ impl ChunkBatch {
             arrow_columns,
             &RecordBatchOptions::default().with_row_count(Some(row_count)),
         )
-        .unwrap();
+        .map_err(|err| {
+            MismatchedChunkSchemaError::custom(format!(
+                "Failed to create arrow record batch: {err}"
+            ))
+        })?;
 
         Ok(Self { schema, batch })
     }

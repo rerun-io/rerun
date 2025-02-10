@@ -114,6 +114,7 @@ fn test_schema_over_ipc() {
                 arrow::datatypes::TimeUnit::Nanosecond,
                 None,
             ),
+            is_sorted: true,
         }),
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
