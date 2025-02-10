@@ -210,6 +210,4 @@ fn run_view_ui_and_save_snapshot(
 
     harness.run();
     harness.snapshot(name);
-
-    assert!(false, "this test broke very intentionally");
 }
