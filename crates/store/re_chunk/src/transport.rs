@@ -16,7 +16,16 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
+        re_tracing::profile_function!();
+        Ok(self.to_chunk_batch()?.into())
+    }
+
+    /// Prepare the [`Chunk`] for transport.
+    ///
+    /// It is probably a good idea to sort the chunk first.
     pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
+        re_tracing::profile_function!();
         self.sanity_check()?;
 
         re_tracing::profile_function!(format!(
@@ -120,14 +129,14 @@ impl Chunk {
             data_arrays,
         )?)
     }
-}
 
-impl Chunk {
-    /// Prepare the [`Chunk`] for transport.
-    ///
-    /// It is probably a good idea to sort the chunk first.
-    pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
-        Ok(self.to_chunk_batch()?.into())
+    pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
+        re_tracing::profile_function!(format!(
+            "num_columns={} num_rows={}",
+            batch.num_columns(),
+            batch.num_rows()
+        ));
+        Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
@@ -224,15 +233,6 @@ impl Chunk {
         }
 
         Ok(res)
-    }
-
-    pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
-        re_tracing::profile_function!(format!(
-            "num_columns={} num_rows={}",
-            batch.num_columns(),
-            batch.num_rows()
-        ));
-        Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 }
 

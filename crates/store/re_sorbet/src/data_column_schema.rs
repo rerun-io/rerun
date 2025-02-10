@@ -173,16 +173,17 @@ impl ComponentColumnDescriptor {
         } = self;
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
+        // We use the long namesa for the archetype and component names so that they roundtrip properly!
         [
             Some(("rerun.kind".to_owned(), "data".to_owned())),
             Some(("rerun.entity_path".to_owned(), entity_path.to_string())),
-            archetype_name.map(|name| ("rerun.archetype".to_owned(), name.short_name().to_owned())),
+            archetype_name.map(|name| ("rerun.archetype".to_owned(), name.full_name().to_owned())),
             archetype_field_name
                 .as_ref()
                 .map(|name| ("rerun.archetype_field".to_owned(), name.to_string())),
             Some((
                 "rerun.component".to_owned(),
-                component_name.short_name().to_owned(),
+                component_name.full_name().to_owned(),
             )),
             (*is_static).then_some(("rerun.is_static".to_owned(), "true".to_owned())),
             (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "true".to_owned())),
