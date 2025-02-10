@@ -25,8 +25,7 @@ def run(args: Namespace) -> None:
 
     # NOTE: This dataloader works by creating a new recording for each episode.
     # Those recordings all share the same application_id though, which means they also share
-    # the same blueprint: we cannot log a readme, or all the the recordings would show an empty
-    # readme.
+    # the same blueprint: we cannot log a readme, or all the recordings would show an empty readme.
     # log_readme()
     print(README)
 
