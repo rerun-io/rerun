@@ -71,9 +71,6 @@ fn test_range_selection_in_blueprint_tree() {
             });
 
             test_context.handle_system_commands();
-
-            //TODO: this should be part of the test harness!
-            test_context.edit_selection(|_| {});
         });
 
     //TODO: fix ui rendering
