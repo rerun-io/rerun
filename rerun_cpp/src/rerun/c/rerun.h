@@ -462,7 +462,8 @@ extern void rr_recording_stream_connect_grpc(
 /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
 /// and can cause a call to `flush` to block indefinitely.
 extern void rr_recording_stream_spawn(
-    rr_recording_stream stream, const rr_spawn_options* spawn_opts, float flush_timeout_sec, rr_error* error
+    rr_recording_stream stream, const rr_spawn_options* spawn_opts, float flush_timeout_sec,
+    rr_error* error
 );
 
 /// Stream all log-data to a given `.rrd` file.
