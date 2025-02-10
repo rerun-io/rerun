@@ -87,11 +87,12 @@ impl Client {
             return;
         };
 
-        let now = std::time::Instant::now();
+        let start = std::time::Instant::now();
         loop {
             match rx.try_recv() {
                 Ok(_) => {
                     re_log::debug!("Flush complete");
+                    break;
                 }
                 Err(TryRecvError::Empty) => {
                     let Some(timeout) = self.flush_timeout else {
@@ -99,13 +100,15 @@ impl Client {
                         continue;
                     };
 
-                    if now.elapsed() > timeout {
+                    let elapsed = start.elapsed();
+                    if elapsed >= timeout {
                         re_log::debug!("Flush timed out, not all messages were sent");
-                        return;
+                        break;
                     }
                 }
                 Err(TryRecvError::Closed) => {
                     re_log::debug!("Flush failed, not all messages were sent");
+                    break;
                 }
             }
         }
@@ -147,39 +150,17 @@ async fn message_proxy_client(
         }
     };
 
-    // Temporarily buffer messages while we're connecting:
-    let mut buffered_messages = vec![];
     let channel = loop {
         match endpoint.connect().await {
             Ok(channel) => break channel,
             Err(err) => {
                 re_log::debug!("failed to connect to message proxy server: {err}");
                 tokio::select! {
-                    cmd = cmd_rx.recv() => {
-                        match cmd {
-                            Some(Cmd::LogMsg(msg)) => {
-                                buffered_messages.push(msg);
-                            }
-                            Some(Cmd::Flush(tx)) => {
-                                re_log::warn_once!(
-                                    "Attempted to flush while gRPC client was connecting."
-                                );
-                                if tx.send(()).is_err() {
-                                    re_log::debug!("Failed to respond to flush: channel is closed");
-                                    return;
-                                };
-                            }
-                            None => {
-                                re_log::debug!("Channel closed");
-                                return;
-                            }
-                        }
-                    }
                     _ = shutdown_rx.recv() => {
                         re_log::debug!("shutting down client without flush");
                         return;
                     }
-                    _ = tokio::time::sleep(Duration::from_millis(200)) => {
+                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
                         continue;
                     }
                 }
@@ -189,18 +170,6 @@ async fn message_proxy_client(
     let mut client = MessageProxyClient::new(channel);
 
     let stream = async_stream::stream! {
-        for msg in buffered_messages {
-            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(msg, compression) {
-                Ok(msg) => msg,
-                Err(err) => {
-                    re_log::error!("Failed to encode message: {err}");
-                    break;
-                }
-            };
-
-            yield msg;
-        }
-
         loop {
             tokio::select! {
                 cmd = cmd_rx.recv() => {
