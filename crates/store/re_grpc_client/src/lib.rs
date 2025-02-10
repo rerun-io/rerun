@@ -223,8 +223,7 @@ async fn stream_recording_async(
         }));
     }
 
-    let store_info =
-        store_info_from_catalog_chunk(&TransportChunk::from(resp[0].clone()), &recording_id)?;
+    let store_info = store_info_from_catalog_chunk(&resp[0], &recording_id)?;
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Fetching {recording_id}…");
@@ -281,39 +280,37 @@ async fn stream_recording_async(
 }
 
 pub fn store_info_from_catalog_chunk(
-    tc: &TransportChunk,
+    record_batch: &ArrowRecordBatch,
     recording_id: &str,
 ) -> Result<StoreInfo, StreamError> {
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
 
-    let (_field, data) = tc
-        .components()
-        .find(|(f, _)| f.name() == CATALOG_APP_ID_FIELD_NAME)
+    let data = record_batch
+        .column_by_name(CATALOG_APP_ID_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {CATALOG_APP_ID_FIELD_NAME} field found".to_owned(),
+            reason: format!("no {CATALOG_APP_ID_FIELD_NAME} field found"),
         }))?;
     let app_id = data
         .downcast_array_ref::<arrow::array::StringArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "{CATALOG_APP_ID_FIELD_NAME} must be a utf8 array: {:?}",
-                tc.schema_ref()
+                record_batch.schema_ref()
             ),
         }))?
         .value(0);
 
-    let (_field, data) = tc
-        .components()
-        .find(|(f, _)| f.name() == CATALOG_START_TIME_FIELD_NAME)
+    let data = record_batch
+        .column_by_name(CATALOG_START_TIME_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {CATALOG_START_TIME_FIELD_NAME}} field found".to_owned(),
+            reason: format!("no {CATALOG_START_TIME_FIELD_NAME} field found"),
         }))?;
     let start_time = data
         .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "{CATALOG_START_TIME_FIELD_NAME} must be a Timestamp array: {:?}",
-                tc.schema_ref()
+                record_batch.schema_ref()
             ),
         }))?
         .value(0);

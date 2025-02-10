@@ -138,10 +138,7 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::store_info_from_catalog_chunk(
-                    &re_chunk::TransportChunk::from(resp[0].clone()),
-                    id,
-                )
+                re_grpc_client::store_info_from_catalog_chunk(&resp[0], id)
             })
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
