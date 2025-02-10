@@ -6184,6 +6184,7 @@ dependencies = [
  "re_protos",
  "re_tracing",
  "re_types",
+ "similar-asserts",
  "tokio",
  "tokio-stream",
  "tokio-util",

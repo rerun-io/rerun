@@ -39,3 +39,6 @@ tokio-util.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
+
+[dev-dependencies]
+similar-asserts.workspace = true
