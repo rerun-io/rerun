@@ -19,7 +19,7 @@ use parking_lot::Mutex;
 use polling::{Event, Poller};
 use tungstenite::WebSocket;
 
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, StoreKind};
 use re_memory::MemoryLimit;
 use re_smart_channel::ReceiveSet;
 
@@ -378,13 +378,12 @@ impl ReceiveSetBroadcaster {
                         }
                     });
 
-                    let msg_is_data = matches!(data, LogMsg::ArrowMsg(_, _));
-                    if msg_is_data {
-                        inner.history.push(msg);
-                    } else {
-                        // Keep non-data commands around for clients late to the party.
-                        inner.history.push_static(msg);
-                    }
+                    match data {
+                        LogMsg::ArrowMsg(store_id, _) if store_id.kind != StoreKind::Blueprint => {
+                            inner.history.push(msg);
+                        }
+                        _ => inner.history.push_static(msg),
+                    };
                 }
 
                 re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
