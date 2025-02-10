@@ -342,7 +342,7 @@ pub struct GrpcSink {
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.
     ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
+    /// `flush_timeout` is the minimum time the [`GrpcSink`] will wait during a flush
     /// before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
