@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceCaps, WgpuBackendType},
+    device_caps::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -26,7 +26,68 @@ pub enum RenderContextError {
         "The GPU/graphics driver is lacking some abilities: {0}. \
         Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
-    InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
+    InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
+}
+
+/// Controls MSAA (Multi-Sampling Anti-Aliasing)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MsaaMode {
+    /// Disabled MSAA.
+    ///
+    /// Preferred option for testing since MSAA implementations vary across devices,
+    /// especially in alpha-to-coverage cases.
+    ///
+    /// Note that this doesn't necessarily mean that we never use any multisampled targets,
+    /// merely that the main render target is not multisampled.
+    /// Some renderers/postprocessing effects may still incorporate textures with a sample count higher than 1.
+    Off,
+
+    /// 4x MSAA.
+    ///
+    /// As of writing 4 samples is the only option (other than _Off_) that works with `WebGPU`,
+    /// and it is guaranteed to be always available.
+    // TODO(andreas): On native we could offer higher counts.
+    #[default]
+    Msaa4x,
+}
+
+impl MsaaMode {
+    /// Returns the number of samples for this MSAA mode.
+    pub const fn sample_count(&self) -> u32 {
+        match self {
+            Self::Off => 1,
+            Self::Msaa4x => 4,
+        }
+    }
+}
+
+/// Configures global properties of the renderer.
+///
+/// For simplicity, we don't allow changing any of these properties without tearing down the [`RenderContext`],
+/// even though it may be possible.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RenderConfig {
+    pub msaa_mode: MsaaMode,
+    // TODO(andreas): Add a way to force the render tier?
+}
+
+impl RenderConfig {
+    /// Returns the best config for the given [`DeviceCaps`].
+    pub fn best_for_device_caps(_device_caps: &DeviceCaps) -> Self {
+        Self {
+            msaa_mode: MsaaMode::Msaa4x,
+        }
+    }
+
+    /// Render config preferred for running most tests.
+    ///
+    /// This is optimized for low discrepancy between devices in order to
+    /// to keep image comparison thresholds low.
+    pub fn testing() -> Self {
+        Self {
+            msaa_mode: MsaaMode::Off,
+        }
+    }
 }
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
@@ -36,6 +97,7 @@ pub struct RenderContext {
     pub queue: wgpu::Queue,
 
     device_caps: DeviceCaps,
+    config: RenderConfig,
     output_format_color: wgpu::TextureFormat,
 
     /// Global bindings, always bound to 0 bind group slot zero.
@@ -129,11 +191,12 @@ impl RenderContext {
         device: wgpu::Device,
         queue: wgpu::Queue,
         output_format_color: wgpu::TextureFormat,
+        config_provider: impl FnOnce(&DeviceCaps) -> RenderConfig,
     ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();
 
-        // Validate capabilities of the device.
         let device_caps = DeviceCaps::from_adapter(adapter)?;
+        let config = config_provider(&device_caps);
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
@@ -202,6 +265,7 @@ impl RenderContext {
             device,
             queue,
             device_caps,
+            config,
             output_format_color,
             global_bindings,
             renderers: RwLock::new(Renderers {
@@ -425,6 +489,11 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// Returns the device's capabilities.
     pub fn device_caps(&self) -> &DeviceCaps {
         &self.device_caps
+    }
+
+    /// Returns the active render config.
+    pub fn render_config(&self) -> &RenderConfig {
+        &self.config
     }
 
     /// Returns the final output format for color (i.e. the surface's format).

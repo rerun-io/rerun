@@ -35,7 +35,7 @@ pub fn identify(
 pub fn viewer_started(
     app_env: &AppEnvironment,
     adapter_backend: wgpu::Backend,
-    device_tier: re_renderer::config::DeviceTier,
+    device_tier: re_renderer::device_caps::DeviceCapabilityTier,
 ) -> ViewerStarted {
     ViewerStarted {
         url: app_env.url().cloned(),

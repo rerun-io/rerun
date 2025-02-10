@@ -41,6 +41,8 @@ There are many ways to install the viewer. Please pick whatever works best for y
 -   Via Cargo
     -   `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
     -   `cargo install rerun-cli --locked` - build it from source (this requires Rust 1.81+)
+-   Via Snap (_community maintained_)
+    -   `snap install rerun` - download the viewer from the [Store](https://snapcraft.io/rerun).
 -   Together with the Rerun [Python SDK](./quick-start/python.md):
     -   `pip3 install rerun-sdk` - download it via pip
     -   `conda install -c conda-forge rerun-sdk` - download via Conda

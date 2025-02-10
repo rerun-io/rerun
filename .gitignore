@@ -39,9 +39,6 @@ __pycache__
 # Pixi environment
 .pixi
 
-# Unpacked test assets:
-/tests/assets/rerun.obj
-
 .gdb_history
 perf.data*
 

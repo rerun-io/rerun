@@ -314,7 +314,7 @@ impl App {
         let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Empty,
-                re_renderer::config::DeviceTier::Limited,
+                re_renderer::device_caps::DeviceCapabilityTier::Limited,
             ),
             |render_state| {
                 let egui_renderer = render_state.renderer.read();
@@ -324,9 +324,10 @@ impl App {
 
                 (
                     render_state.adapter.get_info().backend,
-                    render_ctx.map_or(re_renderer::config::DeviceTier::Limited, |ctx| {
-                        ctx.device_caps().tier
-                    }),
+                    render_ctx.map_or(
+                        re_renderer::device_caps::DeviceCapabilityTier::Limited,
+                        |ctx| ctx.device_caps().tier,
+                    ),
                 )
             },
         );

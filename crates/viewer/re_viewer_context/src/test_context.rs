@@ -76,7 +76,8 @@ pub struct TestContext {
     pub blueprint_store: EntityDb,
     pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
-    pub recording_config: RecordingConfig,
+    // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
+    pub recording_config: Arc<RecordingConfig>,
     pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
@@ -118,7 +119,7 @@ impl Default for TestContext {
             blueprint_store,
             view_class_registry: Default::default(),
             selection_state: Default::default(),
-            recording_config,
+            recording_config: Arc::new(recording_config),
             view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
@@ -183,6 +184,7 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
             shared_wgpu_setup.device.clone(),
             shared_wgpu_setup.queue.clone(),
             wgpu::TextureFormat::Rgba8Unorm,
+            |_| re_renderer::RenderConfig::testing(),
         )
         .expect("Failed to initialize re_renderer"),
     );
@@ -205,9 +207,9 @@ static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(&re_renderer::config::testing_instance_descriptor());
-    let adapter = re_renderer::config::select_testing_adapter(&instance);
-    let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
+    let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
+    let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+    let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
         pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
