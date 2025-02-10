@@ -24,7 +24,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     catalog_hub::CatalogHub,
-    AppState,
+    AppState, AsyncRuntimeHandle,
 };
 
 // ----------------------------------------------------------------------------
@@ -242,6 +242,14 @@ pub struct App {
     /// This field isn't used directly, but is propagated to all recording configs
     /// when they are created.
     pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
+
+    /// The async runtime that should be used for all asynchronous operations.
+    ///
+    /// Using the global tokio runtime should be avoided since:
+    /// * we don't have a tokio runtime on web
+    /// * we want the user to have full control over the runtime,
+    ///   and not expect that a global runtime exists.
+    async_runtime: AsyncRuntimeHandle,
 }
 
 impl App {
@@ -252,6 +260,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -440,6 +449,7 @@ impl App {
             reflection,
 
             timeline_callbacks,
+            async_runtime: tokio_runtime,
         }
     }
 
@@ -581,7 +591,7 @@ impl App {
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { url }) => {
-                        self.catalog_hub.fetch_catalog(url);
+                        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1717,7 +1727,7 @@ impl App {
     }
 
     pub fn fetch_catalog(&mut self, url: Url) {
-        self.catalog_hub.fetch_catalog(url);
+        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
     }
 }
 

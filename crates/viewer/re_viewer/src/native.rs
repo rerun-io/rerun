@@ -1,6 +1,8 @@
 use re_capabilities::MainThreadToken;
 use re_log_types::LogMsg;
 
+use crate::AsyncRuntimeHandle;
+
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
 
@@ -87,6 +89,7 @@ pub fn run_native_viewer_with_messages(
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
+    async_runtime: AsyncRuntimeHandle,
 ) -> eframe::Result {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::Sdk,
@@ -100,8 +103,14 @@ pub fn run_native_viewer_with_messages(
     run_native_app(
         main_thread_token,
         Box::new(move |cc| {
-            let mut app =
-                crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
+            let mut app = crate::App::new(
+                main_thread_token,
+                build_info,
+                &app_env,
+                startup_options,
+                cc,
+                async_runtime,
+            );
             app.add_receiver(rx);
             Box::new(app)
         }),

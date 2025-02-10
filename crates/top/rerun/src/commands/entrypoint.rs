@@ -574,8 +574,8 @@ where
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
-    let rt = Runtime::new()?;
-    let _guard = rt.enter();
+    let tokio_runtime = Runtime::new()?;
+    let _tokio_guard = tokio_runtime.enter();
 
     let res = if let Some(command) = &args.command {
         match command {
@@ -602,7 +602,13 @@ where
             }
         }
     } else {
-        run_impl(main_thread_token, build_info, call_source, args)
+        run_impl(
+            main_thread_token,
+            build_info,
+            call_source,
+            args,
+            tokio_runtime.handle(),
+        )
     };
 
     match res {
@@ -629,6 +635,7 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
+    tokio_runtime: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
@@ -887,6 +894,7 @@ fn run_impl(
                     &call_source.app_env(),
                     startup_options,
                     cc,
+                    re_viewer::AsyncRuntimeHandle::new_native(&runtime_handle),
                 );
                 for rx in rxs {
                     app.add_receiver(rx);
