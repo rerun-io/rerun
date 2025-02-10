@@ -695,8 +695,14 @@ impl StoreHub {
             // - don't point at the given `uri`
             match data_source {
                 re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-                re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
-                    ws_server_url != uri
+                re_smart_channel::SmartChannelSource::MessageProxy { url } => {
+                    fn strip_prefix(s: &str) -> &str {
+                        s.strip_prefix("http")
+                            .or_else(|| s.strip_prefix("temp"))
+                            .unwrap_or(s)
+                    }
+
+                    strip_prefix(url) != strip_prefix(uri)
                 }
                 _ => true,
             }

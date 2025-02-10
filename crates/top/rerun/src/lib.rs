@@ -55,7 +55,7 @@
 //! # fn positions() -> Vec<rerun::Position3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::Color> { Default::default() }
 //! // Stream log data to an awaiting `rerun` process.
-//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").connect()?;
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").connect_grpc()?;
 //!
 //! let points: Vec<rerun::Position3D> = positions();
 //! let colors: Vec<rerun::Color> = colors();

@@ -138,7 +138,7 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::store_info_from_catalog_chunk(
+                re_grpc_client::redap::store_info_from_catalog_chunk(
                     &re_chunk::TransportChunk::from(resp[0].clone()),
                     id,
                 )

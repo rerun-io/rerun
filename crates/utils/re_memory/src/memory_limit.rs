@@ -93,3 +93,11 @@ impl MemoryLimit {
         None
     }
 }
+
+impl std::str::FromStr for MemoryLimit {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
