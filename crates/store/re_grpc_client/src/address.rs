@@ -153,9 +153,33 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.to_string(), "https");
-        assert_eq!(Scheme::RerunHttp.to_string(), "http");
-        assert_eq!(Scheme::RerunHttps.to_string(), "https");
+        assert_eq!(Scheme::Rerun.convert(), "https");
+        assert_eq!(Scheme::RerunHttp.convert(), "http");
+        assert_eq!(Scheme::RerunHttps.convert(), "https");
+    }
+
+    #[test]
+    fn origin_conversion() {
+        let origin = Origin {
+            scheme: Scheme::Rerun,
+            host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+            port: 1234,
+        };
+        assert_eq!(origin.convert(), "https://127.0.0.1:1234");
+
+        let origin = Origin {
+            scheme: Scheme::RerunHttp,
+            host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+            port: 1234,
+        };
+        assert_eq!(origin.convert(), "http://127.0.0.1:1234");
+
+        let origin = Origin {
+            scheme: Scheme::RerunHttps,
+            host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+            port: 1234,
+        };
+        assert_eq!(origin.convert(), "https://127.0.0.1:1234");
     }
 
     #[test]
