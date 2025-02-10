@@ -28,10 +28,12 @@ re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_types.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true
+itertools.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
 url.workspace = true

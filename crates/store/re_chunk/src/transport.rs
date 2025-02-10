@@ -3,18 +3,15 @@ use arrow::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
         RecordBatch as ArrowRecordBatch,
     },
-    datatypes::{Field as ArrowField, Fields as ArrowFields, Schema as ArrowSchema},
+    datatypes::{Field as ArrowField, Fields as ArrowFields},
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use tap::Tap as _;
 
 use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
 use re_log_types::EntityPath;
-use re_types_core::{
-    arrow_helpers::as_array_ref, Component as _, ComponentDescriptor, Loggable as _,
-};
+use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 
@@ -502,156 +499,7 @@ impl Chunk {
     ///
     /// It is probably a good idea to sort the chunk first.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
-        self.sanity_check()?;
-
-        re_tracing::profile_function!(format!(
-            "num_columns={} num_rows={}",
-            self.num_columns(),
-            self.num_rows()
-        ));
-
-        let Self {
-            id,
-            entity_path,
-            heap_size_bytes: _, // use the method instead because of lazy initialization
-            is_sorted,
-            row_ids,
-            timelines,
-            components,
-        } = self;
-
-        let mut fields: Vec<ArrowField> = vec![];
-        let mut metadata = std::collections::HashMap::default();
-        let mut columns: Vec<ArrowArrayRef> =
-            Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
-
-        // Chunk-level metadata
-        {
-            re_tracing::profile_scope!("metadata");
-
-            metadata.extend(TransportChunk::chunk_metadata_id(*id));
-
-            metadata.extend(TransportChunk::chunk_metadata_entity_path(entity_path));
-
-            metadata.extend(TransportChunk::chunk_metadata_heap_size_bytes(
-                self.heap_size_bytes(),
-            ));
-
-            if *is_sorted {
-                metadata.extend(TransportChunk::chunk_metadata_is_sorted());
-            }
-        }
-
-        // Row IDs
-        {
-            re_tracing::profile_scope!("row ids");
-
-            fields.push(
-                ArrowField::new(
-                    RowId::descriptor().to_string(),
-                    RowId::arrow_datatype().clone(),
-                    false,
-                )
-                .with_metadata(
-                    TransportChunk::field_metadata_control_column().tap_mut(|metadata| {
-                        // This ensures the RowId/Tuid is formatted correctly
-                        metadata.insert(
-                            "ARROW:extension:name".to_owned(),
-                            re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
-                        );
-                    }),
-                ),
-            );
-            columns.push(into_arrow_ref(row_ids.clone()));
-        }
-
-        // Timelines
-        {
-            re_tracing::profile_scope!("timelines");
-
-            let mut timelines = timelines
-                .iter()
-                .map(|(timeline, info)| {
-                    let TimeColumn {
-                        timeline: _,
-                        times: _,
-                        is_sorted,
-                        time_range: _,
-                    } = info;
-
-                    let nullable = false; // timelines within a single chunk are always dense
-                    let field =
-                        ArrowField::new(timeline.name().to_string(), timeline.datatype(), nullable)
-                            .with_metadata({
-                                let mut metadata = TransportChunk::field_metadata_time_column();
-                                if *is_sorted {
-                                    metadata.extend(TransportChunk::field_metadata_is_sorted());
-                                }
-                                metadata
-                            });
-
-                    let times = info.times_array();
-
-                    (field, times)
-                })
-                .collect_vec();
-
-            timelines
-                .sort_by(|(field1, _times1), (field2, _times2)| field1.name().cmp(field2.name()));
-
-            for (field, times) in timelines {
-                fields.push(field);
-                columns.push(times);
-            }
-        }
-
-        // Components
-        {
-            re_tracing::profile_scope!("components");
-
-            let mut components = components
-                .values()
-                .flat_map(|per_desc| per_desc.iter())
-                .map(|(component_desc, list_array)| {
-                    let list_array = ArrowListArray::from(list_array.clone());
-
-                    let field = ArrowField::new(
-                        component_desc.component_name.to_string(),
-                        list_array.data_type().clone(),
-                        true,
-                    )
-                    .with_metadata({
-                        let mut metadata = TransportChunk::field_metadata_data_column();
-                        metadata.extend(TransportChunk::field_metadata_component_descriptor(
-                            component_desc,
-                        ));
-                        metadata
-                    });
-
-                    (field, as_array_ref(list_array))
-                })
-                .collect_vec();
-
-            components
-                .sort_by(|(field1, _data1), (field2, _data2)| field1.name().cmp(field2.name()));
-
-            for (field, data) in components {
-                fields.push(field);
-                columns.push(data);
-            }
-        }
-
-        let schema = ArrowSchema::new_with_metadata(fields, metadata);
-
-        Ok(ArrowRecordBatch::try_new(schema.into(), columns)?)
-    }
-
-    /// Prepare the [`Chunk`] for transport.
-    ///
-    /// It is probably a good idea to sort the chunk first.
-    pub fn to_transport(&self) -> ChunkResult<TransportChunk> {
-        let record_batch = self.to_record_batch()?;
-        Ok(TransportChunk::from(record_batch))
+        Ok(self.to_chunk_batch()?.into())
     }
 
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
@@ -797,6 +645,7 @@ mod tests {
         example_components::{MyColor, MyPoint},
         Timeline,
     };
+    use re_types_core::Component as _;
 
     use super::*;
 
@@ -857,78 +706,6 @@ mod tests {
         ];
 
         let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
-
-        for timelines in [timelines1.clone(), timelines2.clone()] {
-            let chunk_original = Chunk::from_native_row_ids(
-                ChunkId::new(),
-                entity_path.clone(),
-                None,
-                &row_ids,
-                timelines.clone(),
-                components.clone().into_iter().collect(),
-            )?;
-            let mut chunk_before = chunk_original.clone();
-
-            for _ in 0..3 {
-                let chunk_in_transport = chunk_before.to_transport()?;
-                let chunk_after = Chunk::from_record_batch(chunk_in_transport.clone().into())?;
-
-                assert_eq!(
-                    chunk_in_transport.entity_path()?,
-                    *chunk_original.entity_path()
-                );
-                assert_eq!(
-                    chunk_in_transport.entity_path()?,
-                    *chunk_after.entity_path()
-                );
-                assert_eq!(
-                    chunk_in_transport.heap_size_bytes(),
-                    Some(chunk_after.heap_size_bytes()),
-                );
-                assert_eq!(
-                    chunk_in_transport.num_columns(),
-                    chunk_original.num_columns()
-                );
-                assert_eq!(chunk_in_transport.num_columns(), chunk_after.num_columns());
-                assert_eq!(chunk_in_transport.num_rows(), chunk_original.num_rows());
-                assert_eq!(chunk_in_transport.num_rows(), chunk_after.num_rows());
-
-                assert_eq!(
-                    chunk_in_transport.num_controls(),
-                    chunk_original.num_controls()
-                );
-                assert_eq!(
-                    chunk_in_transport.num_controls(),
-                    chunk_after.num_controls()
-                );
-                assert_eq!(
-                    chunk_in_transport.num_timelines(),
-                    chunk_original.num_timelines()
-                );
-                assert_eq!(
-                    chunk_in_transport.num_timelines(),
-                    chunk_after.num_timelines()
-                );
-                assert_eq!(
-                    chunk_in_transport.num_components(),
-                    chunk_original.num_components()
-                );
-                assert_eq!(
-                    chunk_in_transport.num_components(),
-                    chunk_after.num_components()
-                );
-
-                eprintln!("{chunk_before}");
-                eprintln!("{chunk_in_transport}");
-                eprintln!("{chunk_after}");
-
-                assert_eq!(chunk_before, chunk_after);
-
-                assert!(chunk_before.are_equal(&chunk_after));
-
-                chunk_before = chunk_after;
-            }
-        }
 
         for timelines in [timelines1, timelines2] {
             let chunk_before = Chunk::from_native_row_ids(

@@ -399,7 +399,7 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let input = TransportChunk::from(result.map_err(TonicStatusError)?);
+        let record_batch = result.map_err(TonicStatusError)?;
 
         // Catalog received from the ReDap server isn't suitable for direct conversion to a Rerun Chunk:
         // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
@@ -407,57 +407,72 @@ async fn stream_catalog_async(
 
         let mut fields: Vec<ArrowField> = Vec::new();
         let mut columns: Vec<ArrowArrayRef> = Vec::new();
-        // add the (row id) control field
-        let (row_id_field, row_id_data) = input.controls().next().ok_or(
-            StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                reason: "no control field found".to_owned(),
-            }),
-        )?;
 
-        fields.push(
-            ArrowField::new(
-                RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
-                row_id_field.data_type().clone(),
-                false, /* not nullable */
-            )
-            .with_metadata(TransportChunk::field_metadata_control_column()),
-        );
-        columns.push(row_id_data.clone());
+        for (field, data) in
+            itertools::izip!(record_batch.schema().fields(), record_batch.columns())
+        {
+            // TODO: move this switch to re_sorbet
+            match field.metadata().get("rerun.kind").map(|s| s.as_str()) {
+                Some("control") => {
+                    fields.push(
+                        ArrowField::new(
+                            RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
+                            field.data_type().clone(),
+                            false, /* not nullable */
+                        )
+                        .with_metadata(TransportChunk::field_metadata_control_column()),
+                    );
 
-        // next add any timeline field
-        for (field, data) in input.timelines() {
-            fields.push(field.clone());
-            columns.push(data.clone());
-        }
+                    columns.push(data.clone());
+                }
+                Some("index" | "time") => {
+                    fields.push(ArrowField::clone(field.as_ref()));
+                    columns.push(data.clone());
+                }
+                Some("data" | "component") => {
+                    // We slice each column array into individual arrays and then convert the whole lot into a ListArray
 
-        // now add all the 'data' fields - we slice each column array into individual arrays and then convert the whole lot into a ListArray
-        for (field, data) in input.components() {
-            let data_field_inner =
-                ArrowField::new("item", field.data_type().clone(), true /* nullable */);
+                    let data_field_inner = ArrowField::new(
+                        "item",
+                        field.data_type().clone(),
+                        true, /* nullable */
+                    );
 
-            let data_field = ArrowField::new(
-                field.name().clone(),
-                ArrowDataType::List(Arc::new(data_field_inner.clone())),
-                false, /* not nullable */
-            )
-            .with_metadata(TransportChunk::field_metadata_data_column());
+                    let data_field = ArrowField::new(
+                        field.name().clone(),
+                        ArrowDataType::List(Arc::new(data_field_inner.clone())),
+                        false, /* not nullable */
+                    )
+                    .with_metadata(TransportChunk::field_metadata_data_column());
 
-            let mut sliced: Vec<ArrowArrayRef> = Vec::new();
-            for idx in 0..data.len() {
-                sliced.push(data.clone().slice(idx, 1));
+                    let mut sliced: Vec<ArrowArrayRef> = Vec::new();
+                    for idx in 0..data.len() {
+                        sliced.push(data.clone().slice(idx, 1));
+                    }
+
+                    let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
+                    #[allow(clippy::unwrap_used)] // we know we've given the right field type
+                    let data_field_array: arrow::array::ListArray =
+                        re_arrow_util::arrow_util::arrays_to_list_array(
+                            data_field_inner.data_type().clone(),
+                            &data_arrays,
+                        )
+                        .unwrap();
+
+                    fields.push(data_field);
+                    columns.push(as_array_ref(data_field_array));
+                }
+                Some(kind) => {
+                    return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+                        reason: format!("Unknown rerun.kind {kind:?}"),
+                    }));
+                }
+                None => {
+                    return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+                        reason: "Missing or unknown rerun.kind".to_owned(),
+                    }));
+                }
             }
-
-            let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
-            #[allow(clippy::unwrap_used)] // we know we've given the right field type
-            let data_field_array: arrow::array::ListArray =
-                re_arrow_util::arrow_util::arrays_to_list_array(
-                    data_field_inner.data_type().clone(),
-                    &data_arrays,
-                )
-                .unwrap();
-
-            fields.push(data_field);
-            columns.push(as_array_ref(data_field_array));
         }
 
         let schema = {
