@@ -84,7 +84,7 @@ if(NOT TARGET rerun_c)
 endif()
 
 if(APPLE)
-    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit" "-framework CoreFoundation" "-framework Security")
+    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit" "-framework Security")
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
