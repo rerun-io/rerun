@@ -185,7 +185,7 @@ impl SeriesLineSystem {
             },
         };
 
-        let mut points;
+        let mut points_per_series;
 
         let time_offset = ctx
             .view_state
@@ -237,7 +237,17 @@ impl SeriesLineSystem {
             {
                 re_tracing::profile_scope!("alloc");
 
-                points = all_scalar_chunks
+                // TODO: did we regrees perf here?
+
+                // Determine how many lines we have.
+                let num_series = all_scalar_chunks
+                    .iter()
+                    .next()
+                    .and_then(|chunk| chunk.iter_slices::<f64>(Scalar::name()).next())
+                    .map(|slice| slice.len())
+                    .unwrap_or(1);
+
+                let points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
                         chunk.iter_component_indices(&query.timeline(), &Scalar::name())
@@ -251,11 +261,19 @@ impl SeriesLineSystem {
                         }
                     })
                     .collect_vec();
+
+                if num_series == 1 {
+                    points_per_series = vec![points];
+                } else {
+                    points_per_series = vec![points; num_series];
+                }
             }
 
             // Fill in values.
             {
                 re_tracing::profile_scope!("fill values");
+
+                // TODO: did we regress perf here? likely.
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
                 all_scalar_chunks
@@ -270,9 +288,13 @@ impl SeriesLineSystem {
                                 );
                             }
 
-                            points[i].value = values[0];
+                            for (points, value) in points_per_series.iter_mut().zip(values) {
+                                points[i].value = *value;
+                            }
                         } else {
-                            points[i].attrs.kind = PlotSeriesKind::Clear;
+                            for points in &mut points_per_series {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            }
                         }
                     });
             }
@@ -306,7 +328,10 @@ impl SeriesLineSystem {
                             .and_then(map_raw_color);
 
                         if let Some(color) = color {
-                            points.iter_mut().for_each(|p| p.attrs.color = color);
+                            // TODO: multicolor plz
+                            for points in &mut points_per_series {
+                                points.iter_mut().for_each(|p| p.attrs.color = color);
+                            }
                         }
                     } else {
                         re_tracing::profile_scope!("standard path");
@@ -323,7 +348,10 @@ impl SeriesLineSystem {
 
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
                             if let Some(color) = colors.and_then(map_raw_color) {
-                                points[i].attrs.color = color;
+                                // TODO: multicolor plz
+                                for points in &mut points_per_series {
+                                    points[i].attrs.color = color;
+                                }
                             }
                         });
                     }
@@ -349,9 +377,12 @@ impl SeriesLineSystem {
                             .and_then(|stroke_widths| stroke_widths.first().copied());
 
                         if let Some(stroke_width) = stroke_width {
-                            points
-                                .iter_mut()
-                                .for_each(|p| p.attrs.radius_ui = stroke_width * 0.5);
+                            // TODO: multistrokewidth plz
+                            for points in &mut points_per_series {
+                                points
+                                    .iter_mut()
+                                    .for_each(|p| p.attrs.radius_ui = stroke_width * 0.5);
+                            }
                         }
                     } else {
                         re_tracing::profile_scope!("standard path");
@@ -374,7 +405,10 @@ impl SeriesLineSystem {
                             if let Some(stroke_width) = stroke_widths
                                 .and_then(|stroke_widths| stroke_widths.first().copied())
                             {
-                                points[i].attrs.radius_ui = stroke_width * 0.5;
+                                // TODO: multistrokewidth plz
+                                for points in &mut points_per_series {
+                                    points[i].attrs.radius_ui = stroke_width * 0.5;
+                                }
                             }
                         });
                     }
@@ -421,12 +455,15 @@ impl SeriesLineSystem {
 
                 let cleared_indices = collect_recursive_clears(ctx, &query, entity_path);
                 let has_discontinuities = !cleared_indices.is_empty();
-                points.extend(cleared_indices.into_iter().map(|(data_time, _)| {
-                    let mut point = default_point.clone();
-                    point.time = data_time.as_i64();
-                    point.attrs.kind = PlotSeriesKind::Clear;
-                    point
-                }));
+
+                for points in &mut points_per_series {
+                    points.extend(cleared_indices.iter().map(|(data_time, _)| {
+                        let mut point = default_point.clone();
+                        point.time = data_time.as_i64();
+                        point.attrs.kind = PlotSeriesKind::Clear;
+                        point
+                    }));
+                }
 
                 has_discontinuities
             };
@@ -435,19 +472,31 @@ impl SeriesLineSystem {
             // have to deal with overlapped chunks, or discontinuities introduced by query-time clears.
             if !all_chunks_sorted_and_not_overlapped || has_discontinuities {
                 re_tracing::profile_scope!("sort");
-                points.sort_by_key(|p| p.time);
+                for points in &mut points_per_series {
+                    points.sort_by_key(|p| p.time);
+                }
             }
 
-            points_to_series(
-                &data_result.entity_path,
-                time_per_pixel,
-                points,
-                ctx.recording_engine().store(),
-                view_query,
-                series_name.into(),
-                aggregator,
-                all_series,
-            );
+            let single_series = points_per_series.len() == 1;
+            for (i, points) in points_per_series.into_iter().enumerate() {
+                // TODO: handle this better
+                let label = if single_series {
+                    series_name.clone().into()
+                } else {
+                    format!("{series_name}/{i}")
+                };
+
+                points_to_series(
+                    &data_result.entity_path,
+                    time_per_pixel,
+                    points,
+                    ctx.recording_engine().store(),
+                    view_query,
+                    label,
+                    aggregator,
+                    all_series,
+                );
+            }
         }
     }
 }
