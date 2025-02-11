@@ -245,20 +245,22 @@ impl ComponentColumnDescriptor {
         self.sanity_check();
 
         match batch_type {
-            BatchType::Chunk => self.component_name.short_name().to_owned(),
+            BatchType::Chunk => {
+                // All columns are of the same entity
+                self.component_name.short_name().to_owned()
+            }
             BatchType::Dataframe => {
-                let entity_path = &self.entity_path;
-                let descriptor = ComponentDescriptor {
-                    archetype_name: self.archetype_name,
-                    archetype_field_name: self.archetype_field_name,
-                    component_name: self.component_name,
-                };
-
-                format!("{}:{}", entity_path, descriptor.component_name.short_name())
+                // Each column can be of a different entity
+                format!("{}:{}", self.entity_path, self.component_name.short_name())
 
                 // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
                 // I'm not doing that right now, to avoid breaking changes (and we need to talk about
                 // what the syntax for these fully-qualified paths need to look like first).
+                // let descriptor = ComponentDescriptor {
+                //     archetype_name: self.archetype_name,
+                //     archetype_field_name: self.archetype_field_name,
+                //     component_name: self.component_name,
+                // };
                 // format!("{entity_path}@{}", descriptor.short_name())
             }
         }
