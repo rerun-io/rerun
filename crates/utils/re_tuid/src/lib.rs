@@ -43,9 +43,20 @@ impl Tuid {
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
+/// Formats the [`Tuid`] as a hex string.
+///
+/// The format uses upper case for the first 16 hex digits, and lower case for the last 16 hex digits.
+/// This is to make it easily distinguished from other hex strings.
+///
+/// Example: `182342300C5F8C327a7b4a6e5a379ac4`
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(
+            f,
+            "{:016X}{:016x}",
+            self.nanoseconds_since_epoch(),
+            self.inc()
+        )
     }
 }
 
@@ -284,6 +295,14 @@ fn test_tuid() {
 
 #[test]
 fn test_tuid_size_and_alignment() {
-    assert_eq!(std::mem::size_of::<Tuid>(), 16,);
-    assert_eq!(std::mem::align_of::<Tuid>(), 1,);
+    assert_eq!(std::mem::size_of::<Tuid>(), 16);
+    assert_eq!(std::mem::align_of::<Tuid>(), 1);
+}
+
+#[test]
+fn test_tuid_formatting() {
+    assert_eq!(
+        Tuid::from_u128(0x182342300C5F8C327a7b4a6e5a379ac4).to_string(),
+        "182342300C5F8C327a7b4a6e5a379ac4"
+    );
 }
