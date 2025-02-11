@@ -93,6 +93,7 @@ Check the [🧳 Migration guide](https://rerun.io/docs/reference/migration/migra
 - Make rust `Tensor` archetype eager serialized [#8801](https://github.com/rerun-io/rerun/pull/8801)
 - Rust: remove legacy `send_columns` and update everything left [#8804](https://github.com/rerun-io/rerun/pull/8804)
 - `ComponentBatch` doesn't implement `AsComponents` anymore [#8820](https://github.com/rerun-io/rerun/pull/8820)
+- Set default log level in `re_log` to `warn` [#8918](https://github.com/rerun-io/rerun/pull/8918)
 
 #### 🪳 Bug fixes
 - Fix WSL support, update troubleshooting guide [#8610](https://github.com/rerun-io/rerun/pull/8610)
