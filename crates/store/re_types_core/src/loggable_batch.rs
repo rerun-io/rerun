@@ -240,7 +240,7 @@ impl SerializedComponentColumn {
             descriptor,
         } = self;
 
-        let list_array = re_arrow_util::arrow_util::repartition_list_array(list_array, lengths)?;
+        let list_array = re_arrow_util::repartition_list_array(list_array, lengths)?;
 
         Ok(Self {
             list_array,

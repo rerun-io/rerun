@@ -4,7 +4,7 @@ use arrow::array::{
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
 use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
 
@@ -273,7 +273,6 @@ mod tests {
     use nohash_hasher::IntMap;
     use similar_asserts::assert_eq;
 
-    use re_arrow_util::arrow_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
@@ -315,7 +314,7 @@ mod tests {
 
         let components = [
             (MyPoint::descriptor(), {
-                let list_array = arrow_util::arrays_to_list_array_opt(&[
+                let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
                     Some(&*points3),
@@ -326,7 +325,7 @@ mod tests {
                 list_array
             }),
             (MyPoint::descriptor(), {
-                let list_array = arrow_util::arrays_to_list_array_opt(&[
+                let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),
                     colors3,

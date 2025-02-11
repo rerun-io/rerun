@@ -372,7 +372,7 @@ async fn stream_catalog_async(
 
         let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let uris = re_arrow_util::arrow_util::arrays_to_list_array(
+        let uris = re_arrow_util::arrays_to_list_array(
             rec_id_field.data_type().clone(),
             &recording_id_arrays,
         )
