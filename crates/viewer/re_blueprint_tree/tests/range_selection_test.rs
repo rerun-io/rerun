@@ -90,7 +90,7 @@ fn test_range_selection_in_blueprint_tree() {
     node2.click();
     node2.key_up(Key::Shift);
 
-    //TODO(ab): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
+    //TODO(emilk/egui#5693): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
     harness.input_mut().modifiers = egui::Modifiers::SHIFT;
     harness.run();
 
@@ -99,7 +99,7 @@ fn test_range_selection_in_blueprint_tree() {
     node5.click();
     node5.key_up(Key::Command);
 
-    //TODO(ab): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
+    //TODO(emilk/egui#5693): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
     harness.input_mut().modifiers = egui::Modifiers::COMMAND;
     harness.run();
 
@@ -110,7 +110,7 @@ fn test_range_selection_in_blueprint_tree() {
     node10.key_up(Key::Command);
     node10.key_up(Key::Shift);
 
-    //TODO(ab): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
+    //TODO(emilk/egui#5693): remove this when https://github.com/emilk/egui/pull/5693 is landed/released
     harness.input_mut().modifiers = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
     harness.run();
 
