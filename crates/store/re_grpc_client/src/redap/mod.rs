@@ -1,10 +1,10 @@
+use address::Origin;
 use arrow::{
     array::{
         ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StringArray as ArrowStringArray,
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
-use url::Url;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline};
@@ -67,20 +67,18 @@ pub fn stream_from_redap(
     spawn_future(async move {
         match address {
             RedapAddress::Recording {
-                redap_endpoint,
+                origin,
                 recording_id,
             } => {
-                if let Err(err) =
-                    stream_recording_async(tx, redap_endpoint, recording_id, on_msg).await
-                {
+                if let Err(err) = stream_recording_async(tx, origin, recording_id, on_msg).await {
                     re_log::warn!(
                         "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
                     );
                 }
             }
-            RedapAddress::Catalog { redap_endpoint } => {
-                if let Err(err) = stream_catalog_async(tx, redap_endpoint, on_msg).await {
+            RedapAddress::Catalog { origin } => {
+                if let Err(err) = stream_catalog_async(tx, origin, on_msg).await {
                     re_log::warn!(
                         "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
@@ -95,22 +93,23 @@ pub fn stream_from_redap(
 
 async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    redap_endpoint: Url,
+    origin: Origin,
     recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    re_log::debug!("Connecting to {redap_endpoint}…");
+    re_log::debug!("Connecting to {origin}…");
     let mut client = {
         #[cfg(target_arch = "wasm32")]
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            redap_endpoint.to_string(),
+            origin.to_http_scheme(),
             tonic_web_wasm_client::options::FetchOptions::new(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 
@@ -256,21 +255,22 @@ pub fn store_info_from_catalog_chunk(
 
 async fn stream_catalog_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    redap_endpoint: Url,
+    origin: Origin,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    re_log::debug!("Connecting to {redap_endpoint}…");
+    re_log::debug!("Connecting to {origin}…");
     let mut client = {
         #[cfg(target_arch = "wasm32")]
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            redap_endpoint.to_string(),
+            origin.to_http_scheme(),
             tonic_web_wasm_client::options::FetchOptions::new(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 
@@ -354,25 +354,12 @@ async fn stream_catalog_async(
 
         let mut chunk = Chunk::from_chunk_batch(&chunk_batch)?;
 
-        // finally, enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
-        // and the recording id (that we have in the catalog data)
-        let host = redap_endpoint
-            .host()
-            .ok_or(StreamError::InvalidUri(format!(
-                "couldn't get host from {redap_endpoint}"
-            )))?;
-        let port = redap_endpoint
-            .port()
-            .ok_or(StreamError::InvalidUri(format!(
-                "couldn't get port from {redap_endpoint}"
-            )))?;
-
         let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
             .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())
             .map(|id| {
                 let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 
-                let recording_uri = format!("rerun://{host}:{port}/recording/{rec_id}");
+                let recording_uri = format!("{origin}/recording/{rec_id}");
 
                 as_array_ref(ArrowStringArray::from(vec![recording_uri]))
             })
