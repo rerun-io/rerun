@@ -299,6 +299,7 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
                 sliced.push(data.clone().slice(idx, 1));
             }
 
+            // TODO(teh-cmc): we can do something faster/simpler here; see https://github.com/rerun-io/rerun/pull/8945#discussion_r1950689060
             let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
             let list_array: arrow::array::ListArray =
