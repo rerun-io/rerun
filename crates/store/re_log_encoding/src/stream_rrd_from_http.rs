@@ -71,7 +71,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let version_policy = crate::VersionPolicy::Warn;
+        let version_policy = VersionPolicy::Warn;
         let decoder = RefCell::new(StreamDecoder::new(version_policy));
         move |part| match part {
             Ok(part) => match part {
@@ -236,4 +236,5 @@ pub mod web_decode {
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
 
-use crate::decoder::stream::StreamDecoder;
+use crate::codec::rrd::decoder::stream::StreamDecoder;
+use crate::codec::rrd::VersionPolicy;
