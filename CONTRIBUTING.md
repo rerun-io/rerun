@@ -163,7 +163,7 @@ Use `pixi run snapshots` to compare the results of all failed tests in Rerun.
   * …be checked in as LFS file
   * …depict exactly what's tested and nothing else
   * …have a low resolution to avoid growth in repo size
-  * …have a low comparison threshold to avoid false positives
+  * …have a low comparison threshold to avoid the test passing despite unwanted differences
 
 ##### Why does CI / another computer produce a different image?
 
