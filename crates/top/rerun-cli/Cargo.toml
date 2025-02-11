@@ -103,7 +103,7 @@ mimalloc = "0.1.43"
 tokio = { workspace = true, optional = true, features = [
    "macros",
    "rt-multi-thread",
- ] }
+] }
 
 [build-dependencies]
 re_build_tools.workspace = true
