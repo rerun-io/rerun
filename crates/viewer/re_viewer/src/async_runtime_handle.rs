@@ -9,10 +9,8 @@ pub struct AsyncRuntimeHandle {
 
 impl AsyncRuntimeHandle {
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_native(tokio: &tokio::runtime::Handle) -> Self {
-        Self {
-            tokio: tokio.clone(),
-        }
+    pub fn new_native(tokio: tokio::runtime::Handle) -> Self {
+        Self { tokio }
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -29,7 +27,9 @@ impl AsyncRuntimeHandle {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            Ok(Self::new_native(&tokio::runtime::Handle::try_current()?))
+            Ok(Self::new_native(
+                tokio::runtime::Handle::try_current()?.clone(),
+            ))
         }
     }
 

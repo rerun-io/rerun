@@ -8,7 +8,6 @@ use re_data_source::DataSource;
 use re_log_types::LogMsg;
 use re_sdk::sink::LogSink;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
-use url::Url;
 
 use crate::{commands::RrdCommands, CallSource};
 
@@ -635,7 +634,7 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
-    tokio_runtime: &tokio::runtime::Handle,
+    tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
@@ -688,7 +687,7 @@ fn run_impl(
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
     // Where do we get the data from?
-    let mut catalogs: Vec<Url> = Vec::new(); // TODO: wth.
+    let mut catalog_origins: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
@@ -724,7 +723,7 @@ fn run_impl(
             .filter_map(|data_source| match data_source.stream(None) {
                 Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
                 Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                    catalogs.push(url);
+                    catalog_origins.push(url);
                     None
                 }
                 Err(err) => {
@@ -768,21 +767,21 @@ fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
-        if !catalogs.is_empty() {
+        if !catalog_origins.is_empty() {
             anyhow::bail!("`--test-receive` does not support catalogs");
         }
 
         let rx = ReceiveSet::new(rxs);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        if !catalogs.is_empty() {
+        if !catalog_origins.is_empty() {
             anyhow::bail!("`--save` does not support catalogs");
         }
 
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve || args.serve_web {
-        if !catalogs.is_empty() {
+        if !catalog_origins.is_empty() {
             anyhow::bail!("`--serve` does not support catalogs");
         }
 
@@ -864,7 +863,7 @@ fn run_impl(
             }
         }
 
-        if !catalogs.is_empty() {
+        if !catalog_origins.is_empty() {
             // TODO: oh god.
             re_log::warn!("Catalogs can't be passed to already open viewers yet.");
         }
@@ -885,35 +884,36 @@ fn run_impl(
         Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
-        return re_viewer::run_native_app(
-            _main_thread_token,
-            Box::new(move |cc| {
-                let mut app = re_viewer::App::new(
-                    _main_thread_token,
-                    _build_info,
-                    &call_source.app_env(),
-                    startup_options,
-                    cc,
-                    re_viewer::AsyncRuntimeHandle::new_native(&tokio_runtime),
-                );
-                for rx in rxs {
-                    app.add_receiver(rx);
-                }
-                app.set_profiler(profiler);
-                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                    app.set_examples_manifest_url(url);
-                }
-                for catalog in catalogs {
-                    // TODO:
-                    re_grpc_server::redap::Origin::from_url ????
-                    app.fetch_catalog(catalog);
-                }
-                Box::new(app)
-            }),
-            args.renderer.as_deref(),
-        )
-        .map_err(|err| err.into());
+        {
+            let tokio_runtime_handle = tokio_runtime_handle.clone();
 
+            return re_viewer::run_native_app(
+                _main_thread_token,
+                Box::new(move |cc| {
+                    let mut app = re_viewer::App::new(
+                        _main_thread_token,
+                        _build_info,
+                        &call_source.app_env(),
+                        startup_options,
+                        cc,
+                        re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                    );
+                    for rx in rxs {
+                        app.add_receiver(rx);
+                    }
+                    app.set_profiler(profiler);
+                    if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                        app.set_examples_manifest_url(url);
+                    }
+                    for catalog in catalog_origins {
+                        app.fetch_catalog(catalog);
+                    }
+                    Box::new(app)
+                }),
+                args.renderer.as_deref(),
+            )
+            .map_err(|err| err.into());
+        }
         #[cfg(not(feature = "native_viewer"))]
         {
             _ = (call_source, rxs);
