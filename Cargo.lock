@@ -7122,6 +7122,7 @@ dependencies = [
  "re_renderer",
  "re_selection_panel",
  "re_smart_channel",
+ "re_sorbet",
  "re_time_panel",
  "re_tracing",
  "re_types",

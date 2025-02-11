@@ -36,7 +36,7 @@ impl std::fmt::Display for Scheme {
 
 impl Scheme {
     /// Converts a [`Scheme`] to either `http` or `https`.
-    fn to_http_scheme(&self) -> &str {
+    fn as_http_scheme(&self) -> &str {
         match self {
             Self::Rerun | Self::RerunHttps => "https",
             Self::RerunHttp => "http",
@@ -56,7 +56,7 @@ impl Origin {
     pub fn to_http_scheme(&self) -> String {
         format!(
             "{}://{}:{}",
-            self.scheme.to_http_scheme(),
+            self.scheme.as_http_scheme(),
             self.host,
             self.port
         )
@@ -169,9 +169,9 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.to_http_scheme(), "https");
-        assert_eq!(Scheme::RerunHttp.to_http_scheme(), "http");
-        assert_eq!(Scheme::RerunHttps.to_http_scheme(), "https");
+        assert_eq!(Scheme::Rerun.as_http_scheme(), "https");
+        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
+        assert_eq!(Scheme::RerunHttps.as_http_scheme(), "https");
     }
 
     #[test]

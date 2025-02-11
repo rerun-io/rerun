@@ -1,11 +1,11 @@
 use re_viewer_context::ViewerContext;
 
-use super::catalog_hub::{Command, RecordingCollection};
+use super::hub::{Command, RecordingCollection};
 
 pub fn collection_ui(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    collection: &RecordingCollection,
+    _collection: &RecordingCollection,
 ) -> Vec<Command> {
     let mut commands = vec![];
     if ui.button("Close").clicked() {

@@ -726,9 +726,7 @@ fn run_impl(
                     catalog_origins.push(url);
                     None
                 }
-                Err(err) => {
-                    return Some(Err(err));
-                }
+                Err(err) => Some(Err(err)),
             })
             .collect::<Result<Vec<_>, _>>()?;
 

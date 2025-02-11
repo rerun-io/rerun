@@ -469,7 +469,7 @@ impl AppState {
                     ui.spacing_mut().item_spacing.y = 0.0;
 
                     if !catalog_hub.is_empty() {
-                        catalog_hub.server_panel_ui(&ctx, ui);
+                        catalog_hub.server_panel_ui(ui);
 
                         ui.add_space(4.0);
                     }
