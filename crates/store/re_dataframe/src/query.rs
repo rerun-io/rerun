@@ -193,7 +193,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let arrow_schema = ArrowSchemaRef::from(ArrowSchema::new_with_metadata(
             selected_contents
                 .iter()
-                .map(|(_, descr)| descr.to_arrow_field())
+                .map(|(_, descr)| descr.to_arrow_field(re_sorbet::BatchType::Dataframe))
                 .collect::<ArrowFields>(),
             Default::default(),
         ));
@@ -233,6 +233,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 let Some(ColumnDescriptor::Component(descr)) = view_contents.get(view_idx) else {
                     continue;
                 };
+
+                descr.sanity_check();
 
                 // NOTE: It would be tempting to concatenate all these individual clear chunks into one
                 // single big chunk, but that'd be a mistake: 1) it's costly to do so but more
@@ -333,6 +335,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .map(|(_view_idx, descr)| match descr {
                     ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
+                        descr.sanity_check();
+
                         let query = re_chunk::LatestAtQuery::new(
                             Timeline::new_sequence(""),
                             TimeInt::STATIC,
@@ -349,6 +353,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 })
                 .collect_vec()
         };
+
+        for descr in &view_contents {
+            descr.sanity_check();
+        }
+
+        for (_, descr) in &selected_contents {
+            descr.sanity_check();
+        }
 
         QueryHandleState {
             view_contents,
@@ -402,6 +414,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         entity_path: selected_entity_path,
                         component_name: selected_component_name,
                     } = selected_column;
+
+                    debug_assert!(
+                        !selected_component_name.starts_with("rerun.components.rerun.components."),
+                        "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
+                    );
 
                     view_contents
                         .iter()
@@ -1166,11 +1183,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         StreamingJoinState::Retrofilled(unit) => {
                             let component_desc = state.view_contents.get(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => Some(re_types_core::ComponentDescriptor {
-                                    component_name: descr.component_name,
-                                    archetype_name: descr.archetype_name,
-                                    archetype_field_name: descr.archetype_field_name,
-                                }),
+                                ColumnDescriptor::Component(descr) => {
+                                    descr.component_name.sanity_check();
+                                    Some(re_types_core::ComponentDescriptor {
+                                        component_name: descr.component_name,
+                                        archetype_name: descr.archetype_name,
+                                        archetype_field_name: descr.archetype_field_name,
+                                    })
+                                },
                                 ColumnDescriptor::Time(_) => None,
                             })?;
                             unit.components().get_by_descriptor(&component_desc).cloned()

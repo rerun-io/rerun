@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-expression: "TransportChunk::from(dataframe)"
+expression: DisplayRB(dataframe)
 ---
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ CHUNK METADATA:                                                                                                                                  │
@@ -12,7 +12,7 @@ expression: "TransportChunk::from(dataframe)"
 │ │ type: "i64"            ┆ type: "Timestamp(ns)"  ┆ type: "List[u32]"            ┆ type: "List[Utf8]"           ┆ type: "List[Struct[2]]"      │ │
 │ │ index_name: "frame_nr" ┆ index_name: "log_time" ┆ component: "example.MyColor" ┆ component: "example.MyLabel" ┆ component: "example.MyPoint" │ │
 │ │ kind: "index"          ┆ kind: "index"          ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    │ │
-│ │                        ┆                        ┆ kind: "data"                 ┆ is_static: "yes"             ┆ kind: "data"                 │ │
+│ │                        ┆                        ┆ kind: "data"                 ┆ is_static: "true"            ┆ kind: "data"                 │ │
 │ │                        ┆                        ┆                              ┆ kind: "data"                 ┆                              │ │
 │ ╞════════════════════════╪════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡ │
 │ │ null                   ┆ null                   ┆ null                         ┆ [c]                          ┆ null                         │ │

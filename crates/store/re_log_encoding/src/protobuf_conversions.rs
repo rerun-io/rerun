@@ -47,7 +47,7 @@ pub fn log_msg_from_proto(
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_record_batch(batch)?;
+            let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
 
             Ok(re_log_types::LogMsg::ArrowMsg(
                 store_id,

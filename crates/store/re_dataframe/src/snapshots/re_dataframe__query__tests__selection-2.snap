@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-expression: "TransportChunk::from(dataframe)"
+expression: DisplayRB(dataframe)
 ---
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ CHUNK METADATA:                                                                                │
@@ -11,7 +11,8 @@ expression: "TransportChunk::from(dataframe)"
 │ │ ---                    ┆ ---                    ┆ ---                                      │ │
 │ │ type: "i64"            ┆ type: "i64"            ┆ type: "null"                             │ │
 │ │ index_name: "frame_nr" ┆ index_name: "frame_nr" ┆ index_name: "ATimeColumnThatDoesntExist" │ │
-│ │ kind: "index"          ┆ kind: "index"          ┆ kind: "index"                            │ │
+│ │ kind: "index"          ┆ kind: "index"          ┆ is_sorted: "true"                        │ │
+│ │                        ┆                        ┆ kind: "index"                            │ │
 │ ╞════════════════════════╪════════════════════════╪══════════════════════════════════════════╡ │
 │ │ 10                     ┆ 10                     ┆ null                                     │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │

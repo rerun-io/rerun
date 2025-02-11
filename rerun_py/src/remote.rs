@@ -138,10 +138,7 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::redap::store_info_from_catalog_chunk(
-                    &re_chunk::TransportChunk::from(resp[0].clone()),
-                    id,
-                )
+                re_grpc_client::redap::store_info_from_catalog_chunk(&resp[0], id)
             })
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -292,9 +289,20 @@ impl PyStorageNodeClient {
             let arrow_schema = ArrowSchema::try_from(&schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let column_descriptors =
-                re_sorbet::ColumnDescriptor::from_arrow_fields(&arrow_schema.fields)
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let chunk_schema = re_sorbet::ChunkSchema::try_from(&arrow_schema)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let column_descriptors = itertools::chain!(
+                chunk_schema
+                    .index_columns
+                    .into_iter()
+                    .map(re_sorbet::ColumnDescriptor::Time),
+                chunk_schema
+                    .data_columns
+                    .into_iter()
+                    .map(re_sorbet::ColumnDescriptor::Component),
+            )
+            .collect();
 
             Ok(PySchema {
                 schema: column_descriptors,
@@ -832,7 +840,7 @@ impl PyStorageNodeClient {
                         return Err(PyRuntimeError::new_err(err.to_string()));
                     }
                 };
-                let chunk = Chunk::from_record_batch(batch)
+                let chunk = Chunk::from_record_batch(&batch)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 store

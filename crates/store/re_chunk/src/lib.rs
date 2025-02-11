@@ -29,7 +29,6 @@ pub use self::iter::{
 };
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};
-pub use self::transport::TransportChunk;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::batcher::{

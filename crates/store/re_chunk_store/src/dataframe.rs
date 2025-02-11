@@ -95,7 +95,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name.to_string(),
+            component_name: desc.component_name.short_name().to_owned(),
         }
     }
 }
@@ -106,7 +106,7 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: C::name().to_string(),
+            component_name: C::name().short_name().to_owned(),
         }
     }
 
@@ -115,7 +115,7 @@ impl ComponentColumnSelector {
     pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component_name: component_name.to_string(),
+            component_name: component_name.short_name().to_owned(),
         }
     }
 }
@@ -405,6 +405,8 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
+                component_descr.component_name.sanity_check();
+
                 ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
@@ -476,6 +478,8 @@ impl ChunkStore {
 
         let component_name =
             component_descr.map_or(selected_component_name, |descr| descr.component_name);
+
+        component_name.sanity_check();
 
         let ColumnMetadata {
             is_static,

@@ -5832,11 +5832,11 @@ dependencies = [
  "re_format_arrow",
  "re_log",
  "re_log_types",
+ "re_sorbet",
  "re_tracing",
  "re_tuid",
  "re_types_core",
  "similar-asserts",
- "tap",
  "thiserror 1.0.65",
 ]
 
@@ -6049,6 +6049,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_query",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -6159,6 +6160,7 @@ dependencies = [
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_types",
  "thiserror 1.0.65",
  "tokio",
@@ -6186,6 +6188,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "similar-asserts",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -6574,8 +6577,13 @@ name = "re_sorbet"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "itertools 0.13.0",
+ "re_arrow_util",
+ "re_format_arrow",
  "re_log",
  "re_log_types",
+ "re_tracing",
+ "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
 ]
@@ -7464,6 +7472,7 @@ dependencies = [
  "re_memory",
  "re_sdk",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_video",
@@ -8650,12 +8659,6 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
-
-[[package]]
-name = "tap"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-lexicon"

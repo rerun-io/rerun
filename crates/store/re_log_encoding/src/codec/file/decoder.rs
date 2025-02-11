@@ -44,7 +44,7 @@ pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogM
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_record_batch(batch)?;
+            let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
 
             Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
         }
