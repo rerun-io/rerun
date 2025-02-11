@@ -6,15 +6,34 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// TUID: Time-based Unique Identifier.
+///
+/// Time-ordered globally unique 128-bit identifiers.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    time_ns: u64,
+    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    time_ns: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
-    inc: u64,
+    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    inc: [u8; 8],
+}
+
+impl Ord for Tuid {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_u128().cmp(&other.as_u128())
+    }
+}
+
+impl PartialOrd for Tuid {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Tuid {
@@ -52,12 +71,15 @@ impl<'a> From<&'a Tuid> for std::borrow::Cow<'a, Tuid> {
 
 impl Tuid {
     /// All zeroes.
-    pub const ZERO: Self = Self { time_ns: 0, inc: 0 };
+    pub const ZERO: Self = Self {
+        time_ns: [0; 8],
+        inc: [0; 8],
+    };
 
     /// All ones.
     pub const MAX: Self = Self {
-        time_ns: u64::MAX,
-        inc: u64::MAX,
+        time_ns: u64::MAX.to_le_bytes(),
+        inc: u64::MAX.to_le_bytes(),
     };
 
     /// Create a new unique [`Tuid`] based on the current time.
@@ -67,24 +89,21 @@ impl Tuid {
         use std::cell::RefCell;
 
         thread_local! {
-            pub static LATEST_TUID: RefCell<Tuid> = RefCell::new(Tuid{
-                time_ns: monotonic_nanos_since_epoch(),
+            pub static LATEST_TUID: RefCell<Tuid> = RefCell::new(Tuid::from_nanos_and_inc(
+                 monotonic_nanos_since_epoch(),
 
                 // Leave top bit at zero so we have plenty of room to grow.
-                inc: random_u64() & !(1_u64 << 63),
-            });
+                 random_u64() & !(1_u64 << 63),
+            ));
         }
 
         LATEST_TUID.with(|latest_tuid| {
             let mut latest = latest_tuid.borrow_mut();
 
-            let new = Self {
-                time_ns: monotonic_nanos_since_epoch(),
-                inc: latest.inc + 1,
-            };
+            let new = Self::from_nanos_and_inc(monotonic_nanos_since_epoch(), latest.inc() + 1);
 
             debug_assert!(
-                latest.time_ns <= new.time_ns,
+                latest.nanoseconds_since_epoch() <= new.nanoseconds_since_epoch(),
                 "Time should be monotonically increasing"
             );
 
@@ -98,20 +117,20 @@ impl Tuid {
     /// The first should be nano-seconds since epoch.
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
-        Self { time_ns, inc }
-    }
-
-    #[inline]
-    pub fn from_u128(id: u128) -> Self {
         Self {
-            time_ns: (id >> 64) as u64,
-            inc: (id & (!0 >> 64)) as u64,
+            time_ns: time_ns.to_le_bytes(),
+            inc: inc.to_le_bytes(),
         }
     }
 
     #[inline]
+    pub fn from_u128(id: u128) -> Self {
+        Self::from_nanos_and_inc((id >> 64) as u64, (id & (!0 >> 64)) as u64)
+    }
+
+    #[inline]
     pub fn as_u128(&self) -> u128 {
-        ((self.time_ns as u128) << 64) | (self.inc as u128)
+        ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
     }
 
     /// Approximate nanoseconds since unix epoch.
@@ -119,7 +138,7 @@ impl Tuid {
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.time_ns
+        u64::from_le_bytes(self.time_ns)
     }
 
     /// The increment part of the [`Tuid`].
@@ -127,7 +146,7 @@ impl Tuid {
     /// The lower 64 bits of the [`Tuid`].
     #[inline]
     pub fn inc(&self) -> u64 {
-        self.inc
+        u64::from_le_bytes(self.inc)
     }
 
     /// Returns the next logical [`Tuid`].
@@ -143,7 +162,7 @@ impl Tuid {
 
         Self {
             time_ns,
-            inc: inc.wrapping_add(1),
+            inc: u64::from_le_bytes(inc).wrapping_add(1).to_le_bytes(),
         }
     }
 
@@ -160,7 +179,7 @@ impl Tuid {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
-            inc: inc.wrapping_add(n),
+            inc: u64::from_le_bytes(inc).wrapping_add(n).to_le_bytes(),
         }
     }
 
@@ -239,4 +258,10 @@ fn test_tuid() {
     for id in ids {
         assert_eq!(id, Tuid::from_u128(id.as_u128()));
     }
+}
+
+#[test]
+fn test_tuid_size_and_alignment() {
+    assert_eq!(std::mem::size_of::<Tuid>(), 16,);
+    assert_eq!(std::mem::align_of::<Tuid>(), 1,);
 }
