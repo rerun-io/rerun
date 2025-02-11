@@ -295,7 +295,7 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
     .expect("Can't fail")
 }
 
-// TODO(teh-cmc): we can do something faster/simpler here; see https://github.com/rerun-io/rerun/pull/8945#discussion_r1950689060
+// TODO(cmc): we can do something faster/simpler here; see https://github.com/rerun-io/rerun/pull/8945#discussion_r1950689060
 fn wrap_in_list_array(field: &ArrowField, data: &dyn ArrowArray) -> (ArrowField, ArrowListArray) {
     re_tracing::profile_function!();
 
