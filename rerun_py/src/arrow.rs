@@ -44,11 +44,13 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
     let component_name: Cow<'_, str> = component_name.extract()?;
 
-    Ok(ComponentDescriptor {
+    let descr = ComponentDescriptor {
         archetype_name: archetype_name.map(|s| s.as_ref().into()),
         archetype_field_name: archetype_field_name.map(|s| s.as_ref().into()),
         component_name: component_name.as_ref().into(),
-    })
+    };
+    descr.sanity_check();
+    Ok(descr)
 }
 
 /// Perform conversion between a pyarrow array to arrow types.

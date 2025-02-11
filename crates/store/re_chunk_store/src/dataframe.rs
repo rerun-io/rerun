@@ -405,6 +405,8 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
+                component_descr.component_name.sanity_check();
+
                 ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
@@ -476,6 +478,8 @@ impl ChunkStore {
 
         let component_name =
             component_descr.map_or(selected_component_name, |descr| descr.component_name);
+
+        component_name.sanity_check();
 
         let ColumnMetadata {
             is_static,

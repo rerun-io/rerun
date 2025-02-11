@@ -127,6 +127,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
     fn from(descr: ComponentColumnDescriptor) -> Self {
+        descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
@@ -138,6 +139,7 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
 impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
     fn from(descr: &ComponentColumnDescriptor) -> Self {
+        descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
@@ -147,6 +149,16 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
 }
 
 impl ComponentColumnDescriptor {
+    /// Debug-only sanity check.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.component_name.sanity_check();
+        if let Some(archetype_name) = &self.archetype_name {
+            archetype_name.sanity_check();
+        }
+    }
+
     pub fn component_path(&self) -> ComponentPath {
         ComponentPath {
             entity_path: self.entity_path.clone(),
@@ -160,6 +172,8 @@ impl ComponentColumnDescriptor {
     }
 
     fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {
+        self.sanity_check();
+
         let Self {
             entity_path,
             archetype_name,
@@ -228,6 +242,8 @@ impl ComponentColumnDescriptor {
     }
 
     pub fn column_name(&self, batch_type: BatchType) -> String {
+        self.sanity_check();
+
         match batch_type {
             BatchType::Chunk => self.component_name.short_name().to_owned(),
             BatchType::Dataframe => {
@@ -279,7 +295,7 @@ impl ComponentColumnDescriptor {
             ComponentName::new(field.name()) // Legacy fallback
         };
 
-        Ok(Self {
+        let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
             archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
@@ -289,6 +305,10 @@ impl ComponentColumnDescriptor {
             is_indicator: field.get_bool("rerun.is_indicator"),
             is_tombstone: field.get_bool("rerun.is_tombstone"),
             is_semantically_empty: field.get_bool("rerun.is_semantically_empty"),
-        })
+        };
+
+        schema.sanity_check();
+
+        Ok(schema)
     }
 }

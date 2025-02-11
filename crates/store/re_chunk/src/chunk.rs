@@ -1447,6 +1447,7 @@ impl Chunk {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         re_tracing::profile_function!();
 
@@ -1516,8 +1517,10 @@ impl Chunk {
         }
 
         // Components
-        for (_component_name, per_desc) in components.iter() {
+        for (component_name, per_desc) in components.iter() {
+            component_name.sanity_check();
             for (component_desc, list_array) in per_desc {
+                component_desc.component_name.sanity_check();
                 if !matches!(list_array.data_type(), arrow::datatypes::DataType::List(_)) {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -1568,6 +1571,7 @@ impl TimeColumn {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         let Self {
             timeline: _,

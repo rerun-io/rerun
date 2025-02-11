@@ -90,6 +90,8 @@ impl Chunk {
                         component_name,
                     } = *component_desc;
 
+                    component_name.sanity_check();
+
                     let schema = re_sorbet::ComponentColumnDescriptor {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),

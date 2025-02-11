@@ -35,6 +35,16 @@ pub enum ColumnDescriptor {
 }
 
 impl ColumnDescriptor {
+    /// Debug-only sanity check.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        match self {
+            Self::Time(_) => {}
+            Self::Component(descr) => descr.sanity_check(),
+        }
+    }
+
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
