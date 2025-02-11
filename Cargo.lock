@@ -7486,6 +7486,7 @@ dependencies = [
  "re_log",
  "re_memory",
  "rerun",
+ "tokio",
 ]
 
 [[package]]
