@@ -41,39 +41,43 @@ fn test_range_selection_in_blueprint_tree() {
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 800.0))
-        .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let blueprint = ViewportBlueprint::try_from_db(
-                    viewer_ctx.store_context.blueprint,
-                    viewer_ctx.blueprint_query,
-                );
+        .with_size(Vec2::new(400.0, 500.0))
+        .build(|ctx| {
+            // We must create a side panel here (instead of the default central panel, as
+            // `list_item::LabelContent`'s sizing behave differently there.
+            egui::SidePanel::left("blueprint_tree")
+                .default_width(400.0)
+                .show(ctx, |ui| {
+                    test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                        let blueprint = ViewportBlueprint::try_from_db(
+                            viewer_ctx.store_context.blueprint,
+                            viewer_ctx.blueprint_query,
+                        );
 
-                // expand the view
-                //TODO(ab): with Rust 1.83, use `break_value().expect()` instead.
-                let ControlFlow::Break(view_id) =
-                    blueprint.visit_contents(&mut |contents, _| match contents {
-                        Contents::View(id) => VisitorControlFlow::Break(*id),
-                        Contents::Container(_) => VisitorControlFlow::Continue,
-                    })
-                else {
-                    panic!("A view we know exists was not found");
-                };
+                        // expand the view
+                        //TODO(ab): with Rust 1.83, use `break_value().expect()` instead.
+                        let ControlFlow::Break(view_id) =
+                            blueprint.visit_contents(&mut |contents, _| match contents {
+                                Contents::View(id) => VisitorControlFlow::Break(*id),
+                                Contents::Container(_) => VisitorControlFlow::Continue,
+                            })
+                        else {
+                            panic!("A view we know exists was not found");
+                        };
 
-                re_context_menu::collapse_expand::collapse_expand_view(
-                    viewer_ctx,
-                    &view_id,
-                    blueprint_tree.collapse_scope(),
-                    true,
-                );
+                        re_context_menu::collapse_expand::collapse_expand_view(
+                            viewer_ctx,
+                            &view_id,
+                            blueprint_tree.collapse_scope(),
+                            true,
+                        );
 
-                blueprint_tree.show(viewer_ctx, &blueprint, ui);
-            });
+                        blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                    });
 
-            test_context.handle_system_commands();
+                    test_context.handle_system_commands();
+                });
         });
-
-    //TODO: fix ui rendering
 
     harness.run();
 
