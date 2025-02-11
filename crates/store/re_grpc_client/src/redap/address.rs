@@ -17,7 +17,7 @@ pub struct InvalidRedapAddress {
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Scheme {
     Rerun,
     RerunHttp,
@@ -44,7 +44,7 @@ impl Scheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Origin {
     scheme: Scheme,
     host: url::Host<String>,

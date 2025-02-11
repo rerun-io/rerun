@@ -36,7 +36,7 @@ pub fn singleline_view_recording_uri(
                 Ok(re_data_source::StreamSource::LogMessages(rx)) => _ctx
                     .command_sender
                     .send_system(SystemCommand::AddReceiver(rx)),
-                Ok(re_data_source::StreamSource::CatalogData { url }) => {
+                Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                     // TODO(antoine, andreas): This branch might become relevant in the future.
                     re_log::warn!("Recording URI was formatted like a catalog URI: {url}");
                 }

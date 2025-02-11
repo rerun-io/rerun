@@ -17,7 +17,6 @@ use re_viewer_context::{
     StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
     ViewClassRegistryError,
 };
-use url::Url;
 
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
@@ -590,7 +589,7 @@ impl App {
 
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { url }) => {
+                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                         self.catalog_hub.fetch_catalog(&self.async_runtime, url);
                     }
                     Err(err) => {
@@ -1726,8 +1725,8 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&mut self, url: Url) {
-        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
+    pub fn fetch_catalog(&mut self, origin: re_grpc_client::redap::Origin) {
+        self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
     }
 }
 

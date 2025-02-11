@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use address::Origin;
 use arrow::{
     array::{
@@ -36,7 +38,7 @@ use re_types::{
 
 mod address;
 
-pub use address::{InvalidRedapAddress, RedapAddress};
+pub use address::{InvalidRedapAddress, Origin, RedapAddress};
 
 use crate::spawn_future;
 use crate::StreamError;

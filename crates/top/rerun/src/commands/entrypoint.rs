@@ -723,7 +723,7 @@ fn run_impl(
             .into_iter()
             .filter_map(|data_source| match data_source.stream(None) {
                 Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
-                Ok(re_data_source::StreamSource::CatalogData { url }) => {
+                Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                     catalogs.push(url);
                     None
                 }
@@ -894,7 +894,7 @@ fn run_impl(
                     &call_source.app_env(),
                     startup_options,
                     cc,
-                    re_viewer::AsyncRuntimeHandle::new_native(&runtime_handle),
+                    re_viewer::AsyncRuntimeHandle::new_native(&tokio_runtime),
                 );
                 for rx in rxs {
                     app.add_receiver(rx);
@@ -904,6 +904,8 @@ fn run_impl(
                     app.set_examples_manifest_url(url);
                 }
                 for catalog in catalogs {
+                    // TODO:
+                    re_grpc_server::redap::Origin::from_url ????
                     app.fetch_catalog(catalog);
                 }
                 Box::new(app)
