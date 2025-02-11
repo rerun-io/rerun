@@ -27,8 +27,6 @@ use re_sdk::{
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "web_viewer")]
-use re_ws_comms::RerunServerPort;
 
 // --- FFI ---
 
@@ -137,10 +135,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
-    #[cfg(feature = "remote")]
     m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
@@ -589,9 +585,9 @@ fn spawn(
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
-fn connect_tcp(
-    addr: Option<String>,
+#[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
+fn connect_grpc(
+    url: Option<String>,
     flush_timeout_sec: Option<f32>,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
@@ -601,25 +597,22 @@ fn connect_tcp(
         return Ok(());
     };
 
+    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
+    let url = url
+        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
+        .parse::<re_grpc_client::MessageProxyUrl>()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
     if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
 
-    let addr = if let Some(addr) = addr {
-        addr.parse()?
-    } else {
-        re_sdk::default_server_addr()
-    };
-
-    let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
-
-    // The call to connect may internally flush.
-    // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        // We create the sink manually so we can send the default blueprint
-        // first before the rest of the current recording stream.
-        let sink = re_sdk::sink::TcpSink::new(addr, flush_timeout);
+        let sink = re_sdk::sink::GrpcSink::new(
+            url,
+            flush_timeout_sec.map(std::time::Duration::from_secs_f32),
+        );
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -634,20 +627,16 @@ fn connect_tcp(
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr, make_active, make_default, blueprint_stream))]
+#[pyo3(signature = (url, make_active, make_default, blueprint_stream))]
 /// Special binding for directly sending a blueprint stream to a connection.
-fn connect_tcp_blueprint(
-    addr: Option<String>,
+fn connect_grpc_blueprint(
+    url: Option<String>,
     make_active: bool,
     make_default: bool,
     blueprint_stream: &PyRecordingStream,
     py: Python<'_>,
 ) -> PyResult<()> {
-    let addr = if let Some(addr) = addr {
-        addr.parse()?
-    } else {
-        re_sdk::default_server_addr()
-    };
+    let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
 
     if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
@@ -664,32 +653,17 @@ fn connect_tcp_blueprint(
 
             blueprint_stream.record_msg(activation_cmd.into());
 
-            blueprint_stream.connect_opts(addr, None);
+            blueprint_stream
+                .connect_grpc_opts(url, None)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             flush_garbage_queue();
-        });
-        Ok(())
+            Ok(())
+        })
     } else {
         Err(PyRuntimeError::new_err(
             "Blueprint stream has no store info".to_owned(),
         ))
     }
-}
-
-#[cfg(feature = "remote")]
-#[pyfunction]
-#[pyo3(signature = (addr, recording = None))]
-fn connect_grpc(addr: String, recording: Option<&PyRecordingStream>, py: Python<'_>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
-
-    py.allow_threads(|| {
-        let sink = re_sdk::sink::GrpcSink::new(addr);
-
-        recording.set_sink(Box::new(sink));
-
-        flush_garbage_queue();
-    });
 }
 
 #[pyfunction]
@@ -978,11 +952,11 @@ impl PyBinarySinkStorage {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
+#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
-    ws_port: Option<u16>,
+    grpc_port: Option<u16>,
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
@@ -1005,7 +979,7 @@ fn serve_web(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
-            ws_port.map(RerunServerPort).unwrap_or_default(),
+            grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_memory_limit,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1024,7 +998,7 @@ fn serve_web(
         _ = default_blueprint;
         _ = recording;
         _ = web_port;
-        _ = ws_port;
+        _ = grpc_port;
         _ = open_browser;
         _ = server_memory_limit;
         Err(PyRuntimeError::new_err(

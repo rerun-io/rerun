@@ -23,11 +23,12 @@ all-features = true
 default = ["grpc"]
 
 ## Enable the gRPC Rerun Data Platform data source.
-grpc = ["dep:re_grpc_client"]
+grpc = ["re_grpc_client/redap"]
 
 
 [dependencies]
 re_data_loader.workspace = true
+re_grpc_client.workspace = true
 re_log_encoding = { workspace = true, features = [
   "decoder",
   "stream_from_http",
@@ -36,14 +37,12 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 
 # Optional dependencies:
-re_grpc_client = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

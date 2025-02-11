@@ -7,7 +7,7 @@ import rerun as rr
 rr.init("rerun_example_quick_start_connect")
 
 # Connect to a local viewer using the default port
-rr.connect_tcp()
+rr.connect_grpc()
 
 
 # Create some data

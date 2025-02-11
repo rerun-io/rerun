@@ -29,10 +29,12 @@ re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
+re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 
 # External
+parking_lot.workspace = true
 tokio.workspace = true
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util.workspace = true
