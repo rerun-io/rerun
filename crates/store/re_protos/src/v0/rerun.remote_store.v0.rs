@@ -372,6 +372,206 @@ impl ::prost::Name for CatalogEntry {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateManifestsRequest {
+    /// Which catalog entry do we want to create index for.
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+}
+impl ::prost::Name for CreateManifestsRequest {
+    const NAME: &'static str = "CreateManifestsRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.CreateManifestsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.CreateManifestsRequest".into()
+    }
+}
+/// TODO: return index schema / statistics?
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CreateManifestsResponse {}
+impl ::prost::Name for CreateManifestsResponse {
+    const NAME: &'static str = "CreateManifestsResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.CreateManifestsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.CreateManifestsResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListManifestsRequest {
+    /// Which catalog entry do we want to create index for.
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// TODO: if specified, dumps info about the index itself.
+    #[prost(message, optional, tag = "2")]
+    pub resource_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    #[prost(bool, tag = "3")]
+    pub verbose: bool,
+    /// TODO
+    #[prost(message, optional, tag = "500")]
+    pub scan_parameters: ::core::option::Option<ScanParameters>,
+}
+impl ::prost::Name for ListManifestsRequest {
+    const NAME: &'static str = "ListManifestsRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ListManifestsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ListManifestsRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListManifestsResponse {
+    #[prost(enumeration = "super::super::common::v0::EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for ListManifestsResponse {
+    const NAME: &'static str = "ListManifestsResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ListManifestsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ListManifestsResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryManifestRequest {
+    /// What resource are we querying the manifest for?
+    #[prost(message, optional, tag = "100")]
+    pub resource_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    /// What columns of the manifest are we interested in?
+    #[prost(message, optional, tag = "200")]
+    pub columns: ::core::option::Option<ColumnProjection>,
+    /// If true, `columns` will contain the entire schema.
+    #[prost(bool, tag = "201")]
+    pub columns_always_include_everything: bool,
+    /// If true, `columns` always includes `chunk_id`,
+    #[prost(bool, tag = "202")]
+    pub columns_always_include_chunk_ids: bool,
+    /// If true, `columns` always includes `byte_offset` and `byte_size`.
+    #[prost(bool, tag = "203")]
+    pub columns_always_include_byte_offsets: bool,
+    /// If true, `columns` always includes all chunk-level indexes.
+    #[prost(bool, tag = "204")]
+    pub columns_always_include_global_indexes: bool,
+    /// If true, `columns` always includes all component-level indexes.
+    #[prost(bool, tag = "205")]
+    pub columns_always_include_component_indexes: bool,
+    /// TODO
+    #[prost(message, optional, tag = "300")]
+    pub latest_at: ::core::option::Option<QueryManifestLatestAtRelevantChunks>,
+    /// TODO
+    #[prost(message, optional, tag = "400")]
+    pub range: ::core::option::Option<QueryManifestRangeRelevantChunks>,
+    /// TODO
+    #[prost(message, optional, tag = "500")]
+    pub scan_parameters: ::core::option::Option<ScanParameters>,
+}
+impl ::prost::Name for QueryManifestRequest {
+    const NAME: &'static str = "QueryManifestRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryManifestRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryManifestRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryManifestLatestAtRelevantChunks {
+    #[prost(message, optional, tag = "1")]
+    pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    /// TODO: explain wtf it's a string (iso timestamps etc)
+    #[prost(string, tag = "2")]
+    pub at: ::prost::alloc::string::String,
+    /// TODO: this will need to be descriptors or something or this will be a nightmare.
+    #[prost(string, repeated, tag = "3")]
+    pub component_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
+    const NAME: &'static str = "QueryManifestLatestAtRelevantChunks";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryManifestLatestAtRelevantChunks".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryManifestLatestAtRelevantChunks".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryManifestRangeRelevantChunks {
+    #[prost(message, optional, tag = "1")]
+    pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    #[prost(message, optional, tag = "2")]
+    pub time_range: ::core::option::Option<TimeRangeXxx>,
+    /// TODO: this will need to be descriptors or something or this will be a nightmare.
+    #[prost(string, repeated, tag = "3")]
+    pub component_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for QueryManifestRangeRelevantChunks {
+    const NAME: &'static str = "QueryManifestRangeRelevantChunks";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryManifestRangeRelevantChunks".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryManifestRangeRelevantChunks".into()
+    }
+}
+/// TODO
+/// TODO: explain wtf it's a string (iso timestamps etc)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TimeRangeXxx {
+    #[prost(string, tag = "1")]
+    pub start: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub end: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TimeRangeXxx {
+    const NAME: &'static str = "TimeRangeXXX";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.TimeRangeXXX".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.TimeRangeXXX".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParameters {
+    /// TODO
+    #[prost(string, tag = "100")]
+    pub filter: ::prost::alloc::string::String,
+    /// TODO
+    #[prost(int64, tag = "200")]
+    pub limit_offset: i64,
+    /// TODO
+    #[prost(int64, tag = "201")]
+    pub limit_len: i64,
+    /// TODO
+    /// TODO: server-side (for now, at least)
+    #[prost(bool, tag = "300")]
+    pub explain: bool,
+}
+impl ::prost::Name for ScanParameters {
+    const NAME: &'static str = "ScanParameters";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ScanParameters".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ScanParameters".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaRequest {
     #[prost(message, optional, tag = "1")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
@@ -827,7 +1027,6 @@ pub mod storage_node_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// data API calls
         pub async fn query(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryRequest>,
@@ -947,7 +1146,6 @@ pub mod storage_node_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-
         /// The response to `SearchIndex` a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
         /// - timepoint column with the values representing the points in time
@@ -977,7 +1175,69 @@ pub mod storage_node_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// metadata API calls
+        /// TODO: redap unstable rrd-index create <collection|resource> -> print status
+        pub async fn create_manifests(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateManifestsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateManifestsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/CreateManifests",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "CreateManifests",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// TODO: redap unstable rrd-index list <collection|resource> -> print existing indexes (name, num_chunks, ...)
+        pub async fn list_manifests(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListManifestsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/ListManifests",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "ListManifests",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        pub async fn query_manifest(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryManifestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/QueryManifest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "QueryManifest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         pub async fn query_catalog(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryCatalogRequest>,
@@ -1116,7 +1376,6 @@ pub mod storage_node_server {
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// data API calls
         async fn query(
             &self,
             request: tonic::Request<super::QueryRequest>,
@@ -1179,12 +1438,35 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::SearchIndexRequest>,
         ) -> std::result::Result<tonic::Response<Self::SearchIndexStream>, tonic::Status>;
+        /// TODO: redap unstable rrd-index create <collection|resource> -> print status
+        async fn create_manifests(
+            &self,
+            request: tonic::Request<super::CreateManifestsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateManifestsResponse>, tonic::Status>;
+        /// Server streaming response type for the ListManifests method.
+        type ListManifestsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::DataframePart, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// TODO: redap unstable rrd-index list <collection|resource> -> print existing indexes (name, num_chunks, ...)
+        async fn list_manifests(
+            &self,
+            request: tonic::Request<super::ListManifestsRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ListManifestsStream>, tonic::Status>;
+        /// Server streaming response type for the QueryManifest method.
+        type QueryManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::DataframePart, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn query_manifest(
+            &self,
+            request: tonic::Request<super::QueryManifestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::QueryManifestStream>, tonic::Status>;
         /// Server streaming response type for the QueryCatalog method.
         type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// metadata API calls
         async fn query_catalog(
             &self,
             request: tonic::Request<super::QueryCatalogRequest>,
@@ -1565,6 +1847,135 @@ pub mod storage_node_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = SearchIndexSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/CreateManifests" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateManifestsSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode> tonic::server::UnaryService<super::CreateManifestsRequest>
+                        for CreateManifestsSvc<T>
+                    {
+                        type Response = super::CreateManifestsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateManifestsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::create_manifests(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateManifestsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/ListManifests" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListManifestsSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::ServerStreamingService<super::ListManifestsRequest>
+                        for ListManifestsSvc<T>
+                    {
+                        type Response = super::DataframePart;
+                        type ResponseStream = T::ListManifestsStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListManifestsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::list_manifests(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListManifestsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/QueryManifest" => {
+                    #[allow(non_camel_case_types)]
+                    struct QueryManifestSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::ServerStreamingService<super::QueryManifestRequest>
+                        for QueryManifestSvc<T>
+                    {
+                        type Response = super::DataframePart;
+                        type ResponseStream = T::QueryManifestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::QueryManifestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::query_manifest(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = QueryManifestSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

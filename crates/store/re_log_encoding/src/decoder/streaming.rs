@@ -14,6 +14,38 @@ use crate::{
 
 use super::{read_options, DecodeError, FileHeader};
 
+// TODO: alright, somehow this fking thing needs to expose the raw byte offsets.
+
+// TODO: naming ffs
+#[derive(Debug, Clone)]
+pub struct StreamingLogMsg {
+    /// The decoded [`LogMsg`].
+    pub inner: LogMsg,
+
+    /// How many bytes does one have to go through in the underlying storage resource in order to
+    /// find the start of this message?
+    pub byte_offset: u64,
+
+    /// How many bytes does this message take in the underlying storage resource?
+    pub byte_len: u64,
+}
+
+impl std::ops::Deref for StreamingLogMsg {
+    type Target = LogMsg;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl std::ops::DerefMut for StreamingLogMsg {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
     options: EncodingOptions,
@@ -28,6 +60,9 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
 
     /// flag to indicate if we're expecting more data to be read.
     expect_more_data: bool,
+
+    // TODO
+    num_bytes_read: u64,
 }
 
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
@@ -48,6 +83,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             uncompressed: Vec::new(),
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
+            num_bytes_read: 0,
         })
     }
 
@@ -62,7 +98,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 /// The fact that we can have concatanated file or corrupted file ( / input stream) pushes us to keep
 /// the state of the decoder in the struct itself (through `unprocessed_bytes` and `expect_more_data`).
 impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
-    type Item = Result<LogMsg, DecodeError>;
+    type Item = Result<StreamingLogMsg, DecodeError>;
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -268,6 +304,16 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             self.unprocessed_bytes.advance(processed_length);
             self.expect_more_data = false;
 
+            // TODO: no idea whether any of this is current right now.
+
+            let msg = StreamingLogMsg {
+                inner: msg,
+                byte_offset: self.num_bytes_read,
+                byte_len: processed_length as _,
+            };
+
+            self.num_bytes_read += processed_length as u64;
+
             return std::task::Poll::Ready(Some(Ok(msg)));
         }
     }
@@ -327,7 +373,11 @@ mod tests {
                 .unwrap();
 
             let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder.collect::<Result<Vec<_>, _>>().await.unwrap(),
+                decoder
+                    .map(|res| res.map(|msg| msg.inner))
+                    .collect::<Result<Vec<_>, _>>()
+                    .await
+                    .unwrap(),
             );
 
             similar_asserts::assert_eq!(decoded_messages, messages);
@@ -371,7 +421,11 @@ mod tests {
                 .unwrap();
 
             let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder.collect::<Result<Vec<_>, _>>().await.unwrap(),
+                decoder
+                    .map(|res| res.map(|msg| msg.inner))
+                    .collect::<Result<Vec<_>, _>>()
+                    .await
+                    .unwrap(),
             );
 
             similar_asserts::assert_eq!(decoded_messages, messages);
