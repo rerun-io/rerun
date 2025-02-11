@@ -304,7 +304,7 @@ fn test_tuid_size_and_alignment() {
 #[test]
 fn test_tuid_formatting() {
     assert_eq!(
-        Tuid::from_u128(0x182342300C5F8C327a7b4a6e5a379ac4).to_string(),
+        Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4).to_string(),
         "182342300C5F8C327a7b4a6e5a379ac4"
     );
 }
