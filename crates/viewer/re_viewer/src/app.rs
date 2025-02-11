@@ -1193,6 +1193,8 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
+                        self.catalog_hub.on_frame_start();
+
                         render_ctx.begin_frame();
                         self.state.show(
                             app_blueprint,
@@ -1200,6 +1202,7 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_context,
+                            &self.catalog_hub,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,

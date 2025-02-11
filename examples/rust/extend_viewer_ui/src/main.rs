@@ -3,6 +3,7 @@
 use re_viewer::external::{
     arrow, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
+use re_viewer::AsyncRuntimeHandle;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -53,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                tokio::runtime::Handle::current(),
+                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))
