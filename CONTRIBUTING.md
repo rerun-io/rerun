@@ -138,7 +138,7 @@ They run as part of the regular Rust test suite, no extra action is required to 
 #### Image comparison tests
 
 Some of the tests in the `rerun` family of crates are image comparison tests.
-These tests work by rendering an image an image and then comparing it with a checked-in reference image.
+These tests work by rendering an image and then comparing it with a checked-in reference image.
 
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
@@ -274,7 +274,7 @@ We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our de
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
 
 Depending on the changes you made run `cargo test --all-targets --all-features`, `pixi run py-test` and `pixi run -e cpp cpp-test` locally.
-For details see [the test section above](CONTRIBUTING.md#tests).
+For details see [the test section above](#tests).
 
 It is not strictly required, but we recommend [`cargo nextest`](https://nexte.st/) for running Rust tests as it is significantly faster than `cargo test` and yields much more readable output.
 Note however, that as of writing `cargo nextest` does not yet support doc tests, those need to be run with `cargo test`.
