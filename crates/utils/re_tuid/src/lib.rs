@@ -49,6 +49,14 @@ impl std::fmt::Display for Tuid {
     }
 }
 
+impl std::str::FromStr for Tuid {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u128::from_str_radix(s, 16).map(Self::from_u128)
+    }
+}
+
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())
@@ -250,14 +258,28 @@ fn test_tuid() {
     }
 
     let num = 100_000;
-    let ids: Vec<Tuid> = (0..num).map(|_| Tuid::new()).collect();
+    let mut ids = Vec::with_capacity(num);
+    ids.push(Tuid::ZERO);
+    ids.push(Tuid::from_nanos_and_inc(123_456, 789_123));
+    ids.push(Tuid::from_nanos_and_inc(123_456, u64::MAX));
+    ids.extend((0..num - 5).map(|_| Tuid::new()));
+    ids.push(Tuid::from_nanos_and_inc(u64::MAX, 1));
+    ids.push(Tuid::MAX);
+
     assert!(is_sorted(&ids));
     assert_eq!(ids.iter().copied().collect::<HashSet::<Tuid>>().len(), num);
     assert_eq!(ids.iter().copied().collect::<BTreeSet::<Tuid>>().len(), num);
 
-    for id in ids {
-        assert_eq!(id, Tuid::from_u128(id.as_u128()));
+    for &tuid in &ids {
+        assert_eq!(tuid, Tuid::from_u128(tuid.as_u128()));
+        assert_eq!(tuid, tuid.to_string().parse().unwrap());
     }
+
+    let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+    assert!(
+        is_sorted(&id_strings),
+        "Ids should sort the same when converted to strings"
+    );
 }
 
 #[test]

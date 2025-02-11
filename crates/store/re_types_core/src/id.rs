@@ -35,6 +35,14 @@ impl std::fmt::Display for ChunkId {
     }
 }
 
+impl std::str::FromStr for ChunkId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        re_tuid::Tuid::from_str(s).map(Self)
+    }
+}
+
 impl ChunkId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
     pub const MAX: Self = Self(re_tuid::Tuid::MAX);
@@ -164,6 +172,14 @@ pub struct RowId(pub(crate) re_tuid::Tuid);
 impl std::fmt::Display for RowId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl std::str::FromStr for RowId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        re_tuid::Tuid::from_str(s).map(Self)
     }
 }
 
