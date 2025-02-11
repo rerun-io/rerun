@@ -56,13 +56,13 @@ mod tests {
 
         let encoded: DataframePart = expected_chunk
             .clone()
-            .to_transport()
+            .to_record_batch()
             .unwrap()
             .encode()
             .unwrap();
 
         let decoded = encoded.decode().unwrap();
-        let decoded_chunk = Chunk::from_record_batch(decoded).unwrap();
+        let decoded_chunk = Chunk::from_record_batch(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);
     }

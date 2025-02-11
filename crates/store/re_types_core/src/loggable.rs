@@ -131,6 +131,7 @@ re_string_interner::declare_new_type!(
 impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: ComponentName) -> Self {
+        name.sanity_check();
         Cow::Owned(ComponentDescriptor::new(name))
     }
 }
@@ -141,16 +142,29 @@ impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
 impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: &ComponentName) -> Self {
+        name.sanity_check();
         Cow::Owned(ComponentDescriptor::new(*name))
     }
 }
 
 impl ComponentName {
+    /// Runs some asserts in debug mode to make sure the name is not weird.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        let full_name = self.0.as_str();
+        debug_assert!(
+            !full_name.starts_with("rerun.components.rerun.components.") && !full_name.contains(':'),
+            "DEBUG ASSERT: Found component with full name {full_name:?}. Maybe some bad round-tripping?"
+        );
+    }
+
     /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.
     ///
     /// This is the default `Display` implementation for [`ComponentName`].
     #[inline]
     pub fn full_name(&self) -> &'static str {
+        self.sanity_check();
         self.0.as_str()
     }
 
@@ -164,6 +178,7 @@ impl ComponentName {
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
+        self.sanity_check();
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.components.") {
             short_name

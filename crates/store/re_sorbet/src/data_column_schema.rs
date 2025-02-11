@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-use crate::{ArrowFieldMetadata, MetadataExt as _, MissingFieldMetadata};
+use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _, MissingFieldMetadata};
 
 /// Describes a data/component column, such as `Position3D`, in a dataframe.
 ///
@@ -21,6 +21,10 @@ pub struct ComponentColumnDescriptor {
     pub store_datatype: ArrowDatatype,
 
     /// The path of the entity.
+    ///
+    /// If this column is part of a chunk batch,
+    /// this is the same for all columns in the batch,
+    /// and will also be set in the schema for the whole chunk.
     pub entity_path: EntityPath,
 
     /// Optional name of the `Archetype` associated with this data.
@@ -123,6 +127,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
     fn from(descr: ComponentColumnDescriptor) -> Self {
+        descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
@@ -134,6 +139,7 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
 impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
     fn from(descr: &ComponentColumnDescriptor) -> Self {
+        descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
@@ -143,6 +149,16 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
 }
 
 impl ComponentColumnDescriptor {
+    /// Debug-only sanity check.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.component_name.sanity_check();
+        if let Some(archetype_name) = &self.archetype_name {
+            archetype_name.sanity_check();
+        }
+    }
+
     pub fn component_path(&self) -> ComponentPath {
         ComponentPath {
             entity_path: self.entity_path.clone(),
@@ -155,7 +171,9 @@ impl ComponentColumnDescriptor {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
-    fn metadata(&self) -> ArrowFieldMetadata {
+    fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {
+        self.sanity_check();
+
         let Self {
             entity_path,
             archetype_name,
@@ -169,26 +187,53 @@ impl ComponentColumnDescriptor {
         } = self;
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        [
-            Some(("rerun.kind".to_owned(), "data".to_owned())),
-            Some(("rerun.entity_path".to_owned(), entity_path.to_string())),
-            archetype_name.map(|name| ("rerun.archetype".to_owned(), name.short_name().to_owned())),
-            archetype_field_name
-                .as_ref()
-                .map(|name| ("rerun.archetype_field".to_owned(), name.to_string())),
-            Some((
+        // We use the long names for the archetype and component names so that they roundtrip properly!
+        let mut metadata = std::collections::HashMap::from([
+            ("rerun.kind".to_owned(), "data".to_owned()),
+            (
                 "rerun.component".to_owned(),
-                component_name.short_name().to_owned(),
-            )),
-            (*is_static).then_some(("rerun.is_static".to_owned(), "yes".to_owned())),
-            (*is_indicator).then_some(("rerun.is_indicator".to_owned(), "yes".to_owned())),
-            (*is_tombstone).then_some(("rerun.is_tombstone".to_owned(), "yes".to_owned())),
-            (*is_semantically_empty)
-                .then_some(("rerun.is_semantically_empty".to_owned(), "yes".to_owned())),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+                component_name.full_name().to_owned(),
+            ),
+        ]);
+
+        match batch_type {
+            BatchType::Dataframe => {
+                metadata.insert("rerun.entity_path".to_owned(), entity_path.to_string());
+            }
+            BatchType::Chunk => {
+                // The whole chhunk is for the same entity, which is set in the record batch metadata.
+                // No need to repeat it here.
+            }
+        }
+
+        if let Some(archetype_name) = archetype_name {
+            metadata.insert(
+                "rerun.archetype".to_owned(),
+                archetype_name.full_name().to_owned(),
+            );
+        }
+
+        if let Some(archetype_field_name) = archetype_field_name {
+            metadata.insert(
+                "rerun.archetype_field".to_owned(),
+                archetype_field_name.to_string(),
+            );
+        }
+
+        if *is_static {
+            metadata.insert("rerun.is_static".to_owned(), "true".to_owned());
+        }
+        if *is_indicator {
+            metadata.insert("rerun.is_indicator".to_owned(), "true".to_owned());
+        }
+        if *is_tombstone {
+            metadata.insert("rerun.is_tombstone".to_owned(), "true".to_owned());
+        }
+        if *is_semantically_empty {
+            metadata.insert("rerun.is_semantically_empty".to_owned(), "true".to_owned());
+        }
+
+        metadata
     }
 
     #[inline]
@@ -196,42 +241,76 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        let entity_path = &self.entity_path;
-        let descriptor = ComponentDescriptor {
-            archetype_name: self.archetype_name,
-            archetype_field_name: self.archetype_field_name,
-            component_name: self.component_name,
-        };
+    pub fn column_name(&self, batch_type: BatchType) -> String {
+        self.sanity_check();
 
+        match batch_type {
+            BatchType::Chunk => {
+                // All columns are of the same entity
+                self.component_name.short_name().to_owned()
+            }
+            BatchType::Dataframe => {
+                // Each column can be of a different entity
+                format!("{}:{}", self.entity_path, self.component_name.short_name())
+
+                // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
+                // I'm not doing that right now, to avoid breaking changes (and we need to talk about
+                // what the syntax for these fully-qualified paths need to look like first).
+                // let descriptor = ComponentDescriptor {
+                //     archetype_name: self.archetype_name,
+                //     archetype_field_name: self.archetype_field_name,
+                //     component_name: self.component_name,
+                // };
+                // format!("{entity_path}@{}", descriptor.short_name())
+            }
+        }
+    }
+
+    #[inline]
+    pub fn to_arrow_field(&self, batch_type: BatchType) -> ArrowField {
+        let nullable = true;
         ArrowField::new(
-            // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
-            // I'm not doing that right now, to avoid breaking changes (and we need to talk about
-            // what the syntax for these fully-qualified paths need to look like first).
-            format!("{}:{}", entity_path, descriptor.component_name.short_name()),
-            // format!("{entity_path}@{}", descriptor.short_name()),
+            self.column_name(batch_type),
             self.returned_datatype(),
-            true, /* nullable */
+            nullable,
         )
-        .with_metadata(self.metadata())
+        .with_metadata(self.metadata(batch_type))
     }
 }
 
-impl TryFrom<&ArrowField> for ComponentColumnDescriptor {
-    type Error = MissingFieldMetadata;
+impl ComponentColumnDescriptor {
+    /// `chunk_entity_path`: if this column is part of a chunk batch,
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
+    pub fn try_from_arrow_field(
+        chunk_entity_path: Option<&EntityPath>,
+        field: &ArrowField,
+    ) -> Result<Self, MissingFieldMetadata> {
+        let entity_path = if let Some(chunk_entity_path) = chunk_entity_path {
+            chunk_entity_path.clone()
+        } else {
+            EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?)
+        };
 
-    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        Ok(Self {
+        let component_name = if let Some(component_name) = field.get_opt("rerun.component") {
+            ComponentName::from(component_name)
+        } else {
+            ComponentName::new(field.name()) // Legacy fallback
+        };
+
+        let schema = Self {
             store_datatype: field.data_type().clone(),
-            entity_path: EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?),
+            entity_path,
             archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
             archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
-            component_name: field.get_or_err("rerun.component")?.into(),
+            component_name,
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),
             is_tombstone: field.get_bool("rerun.is_tombstone"),
             is_semantically_empty: field.get_bool("rerun.is_semantically_empty"),
-        })
+        };
+
+        schema.sanity_check();
+
+        Ok(schema)
     }
 }

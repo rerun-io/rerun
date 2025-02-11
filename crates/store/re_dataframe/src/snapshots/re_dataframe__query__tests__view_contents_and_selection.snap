@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-expression: "TransportChunk::from(dataframe)"
+expression: DisplayRB(dataframe)
 ---
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ CHUNK METADATA:                                                                                                                                                           │
@@ -11,8 +11,8 @@ expression: "TransportChunk::from(dataframe)"
 │ │ ---                    ┆ ---                    ┆ ---                    ┆ ---                          ┆ ---                          ┆ ---                          │ │
 │ │ type: "i64"            ┆ type: "Timestamp(ns)"  ┆ type: "null"           ┆ type: "null"                 ┆ type: "List[u32]"            ┆ type: "List[Utf8]"           │ │
 │ │ index_name: "frame_nr" ┆ index_name: "log_time" ┆ index_name: "log_tick" ┆ component: "example.MyPoint" ┆ component: "example.MyColor" ┆ component: "example.MyLabel" │ │
-│ │ kind: "index"          ┆ kind: "index"          ┆ kind: "index"          ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    │ │
-│ │                        ┆                        ┆                        ┆ kind: "data"                 ┆ kind: "data"                 ┆ is_static: "yes"             │ │
+│ │ kind: "index"          ┆ kind: "index"          ┆ is_sorted: "true"      ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    ┆ entity_path: "/this/that"    │ │
+│ │                        ┆                        ┆ kind: "index"          ┆ kind: "data"                 ┆ kind: "data"                 ┆ is_static: "true"            │ │
 │ │                        ┆                        ┆                        ┆                              ┆                              ┆ kind: "data"                 │ │
 │ ╞════════════════════════╪════════════════════════╪════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡ │
 │ │ 30                     ┆ null                   ┆ null                   ┆ null                         ┆ [2]                          ┆ [c]                          │ │

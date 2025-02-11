@@ -501,6 +501,7 @@ mod tests {
     use re_protos::sdk_comms::v0::{
         message_proxy_client::MessageProxyClient, message_proxy_server::MessageProxyServer,
     };
+    use similar_asserts::assert_eq;
     use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
@@ -820,7 +821,7 @@ mod tests {
 
         for log_stream in &mut log_streams {
             let actual = read_log_stream(log_stream, expected.len()).await;
-            assert_eq!(expected, actual);
+            assert_eq!(actual, expected);
         }
 
         completion.finish();

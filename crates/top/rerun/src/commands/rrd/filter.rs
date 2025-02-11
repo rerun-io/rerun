@@ -8,7 +8,7 @@ use arrow::{
 use itertools::Either;
 
 use re_build_info::CrateVersion;
-use re_chunk::{external::crossbeam, TransportChunk};
+use re_chunk::external::crossbeam;
 use re_sdk::{external::arrow, EntityPath};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
@@ -58,7 +58,7 @@ impl FilterCommand {
         let now = std::time::Instant::now();
         re_log::info!(srcs = ?path_to_input_rrds, ?dropped_timelines, "filter started");
 
-        let dropped_timelines: HashSet<_> = dropped_timelines.iter().collect();
+        let dropped_timelines: HashSet<_> = dropped_timelines.iter().cloned().collect();
         let dropped_entity_paths: HashSet<EntityPath> = dropped_entity_paths
             .iter()
             .map(|s| EntityPath::parse_forgiving(s))
@@ -111,32 +111,40 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            if !should_keep_entity_path(&dropped_entity_paths, &msg.batch.schema())
+                            match re_sorbet::ChunkSchema::try_from(msg.batch.schema_ref().as_ref())
                             {
-                                None
-                            } else {
-                                let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
-                                    &msg.batch.schema().fields,
-                                    msg.batch.columns()
-                                )
-                                .filter(|(field, _col)| {
-                                    should_keep_timeline(&dropped_timelines, field)
-                                })
-                                .map(|(field, col)| (field.clone(), col.clone()))
-                                .unzip();
+                                Ok(schema) => {
+                                    if !dropped_entity_paths.contains(&schema.entity_path) {
+                                        None
+                                    } else {
+                                        let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
+                                            &msg.batch.schema().fields,
+                                            msg.batch.columns()
+                                        )
+                                        .filter(|(field, _col)| {
+                                            !is_field_timeline_of(field, &dropped_timelines)
+                                        })
+                                        .map(|(field, col)| (field.clone(), col.clone()))
+                                        .unzip();
 
-                                if let Ok(new_batch) = ArrowRecordBatch::try_new(
-                                    ArrowSchema::new_with_metadata(
-                                        fields,
-                                        msg.batch.schema().metadata().clone(),
-                                    )
-                                    .into(),
-                                    columns,
-                                ) {
-                                    msg.batch = new_batch;
-                                    Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
-                                } else {
-                                    None // Probably failed because we filtered out everything
+                                        if let Ok(new_batch) = ArrowRecordBatch::try_new(
+                                            ArrowSchema::new_with_metadata(
+                                                fields,
+                                                msg.batch.schema().metadata().clone(),
+                                            )
+                                            .into(),
+                                            columns,
+                                        ) {
+                                            msg.batch = new_batch;
+                                            Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                        } else {
+                                            None // Probably failed because we filtered out everything
+                                        }
+                                    }
+                                }
+                                Err(err) => {
+                                    re_log::warn_once!("Failed to parse chunk schema: {err}");
+                                    None
                                 }
                             }
                         }
@@ -201,31 +209,9 @@ impl FilterCommand {
 
 // ---
 
-fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
-    let is_timeline = field
-        .metadata()
-        .get(TransportChunk::FIELD_METADATA_KEY_KIND)
-        .map(|s| s.as_str())
-        == Some(TransportChunk::FIELD_METADATA_VALUE_KIND_TIME);
-
-    let is_dropped = dropped_timelines.contains(field.name());
-
-    !is_timeline || !is_dropped
-}
-
-fn should_keep_entity_path(
-    dropped_entity_paths: &HashSet<EntityPath>,
-    schema: &ArrowSchema,
-) -> bool {
-    let Some(entity_path) = schema
-        .metadata
-        .get(TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH)
-        .map(|s| EntityPath::parse_forgiving(s))
-    else {
-        return true;
-    };
-
-    let is_dropped = dropped_entity_paths.contains(&entity_path);
-
-    !is_dropped
+// Does the given field represent a timeline that is in the given set?
+fn is_field_timeline_of(field: &ArrowField, dropped_timelines: &HashSet<String>) -> bool {
+    re_sorbet::TimeColumnDescriptor::try_from(field)
+        .ok()
+        .is_some_and(|schema| dropped_timelines.contains(schema.name().as_str()))
 }

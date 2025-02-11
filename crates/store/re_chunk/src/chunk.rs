@@ -45,6 +45,18 @@ pub enum ChunkError {
 
     #[error("Deserialization: {0}")]
     Deserialization(#[from] DeserializationError),
+
+    #[error(transparent)]
+    UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+
+    #[error(transparent)]
+    MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
+
+    #[error(transparent)]
+    InvalidChunkSchema(#[from] re_sorbet::InvalidChunkSchema),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;
@@ -170,7 +182,7 @@ impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
 /// Its time columns might or might not be ascendingly sorted, depending on how the data was logged.
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
-/// data within. For transport, see [`crate::TransportChunk`] instead.
+/// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
 #[derive(Debug)]
 pub struct Chunk {
     pub(crate) id: ChunkId,
@@ -1262,11 +1274,11 @@ impl Chunk {
 impl std::fmt::Display for Chunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let transport_chunk = self.to_transport().map_err(|err| {
+        let batch = self.to_record_batch().map_err(|err| {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        transport_chunk.fmt(f)
+        re_format_arrow::format_record_batch_with_width(&batch, f.width()).fmt(f)
     }
 }
 
@@ -1435,6 +1447,7 @@ impl Chunk {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         re_tracing::profile_function!();
 
@@ -1504,8 +1517,10 @@ impl Chunk {
         }
 
         // Components
-        for (_component_name, per_desc) in components.iter() {
+        for (component_name, per_desc) in components.iter() {
+            component_name.sanity_check();
             for (component_desc, list_array) in per_desc {
+                component_desc.component_name.sanity_check();
                 if !matches!(list_array.data_type(), arrow::datatypes::DataType::List(_)) {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -1556,6 +1571,7 @@ impl TimeColumn {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         let Self {
             timeline: _,

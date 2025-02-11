@@ -188,7 +188,7 @@ impl PyComponentColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn component_name(&self) -> &str {
-        &self.0.component_name
+        self.0.component_name.full_name()
     }
 
     /// Whether the column is static.

@@ -1,16 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
-
 use address::Origin;
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
-        StringArray as ArrowStringArray,
+        ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StringArray as ArrowStringArray,
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk};
+use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline};
 use re_log_encoding::codec::wire::decoder::Decode;
 use re_log_types::{
     external::re_types_core::ComponentDescriptor, ApplicationId, BlueprintActivationCommand,
@@ -153,8 +150,7 @@ async fn stream_recording_async(
         }));
     }
 
-    let store_info =
-        store_info_from_catalog_chunk(&TransportChunk::from(resp[0].clone()), &recording_id)?;
+    let store_info = store_info_from_catalog_chunk(&resp[0].clone(), &recording_id)?;
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Fetching {recording_id}…");
@@ -192,7 +188,7 @@ async fn stream_recording_async(
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
         let batch = result.map_err(TonicStatusError)?;
-        let chunk = Chunk::from_record_batch(batch)?;
+        let chunk = Chunk::from_record_batch(&batch)?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
@@ -211,39 +207,37 @@ async fn stream_recording_async(
 }
 
 pub fn store_info_from_catalog_chunk(
-    tc: &TransportChunk,
+    record_batch: &ArrowRecordBatch,
     recording_id: &str,
 ) -> Result<StoreInfo, StreamError> {
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
 
-    let (_field, data) = tc
-        .components()
-        .find(|(f, _)| f.name() == CATALOG_APP_ID_FIELD_NAME)
+    let data = record_batch
+        .column_by_name(CATALOG_APP_ID_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {CATALOG_APP_ID_FIELD_NAME} field found".to_owned(),
+            reason: format!("no {CATALOG_APP_ID_FIELD_NAME} field found"),
         }))?;
     let app_id = data
         .downcast_array_ref::<arrow::array::StringArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "{CATALOG_APP_ID_FIELD_NAME} must be a utf8 array: {:?}",
-                tc.schema_ref()
+                record_batch.schema_ref()
             ),
         }))?
         .value(0);
 
-    let (_field, data) = tc
-        .components()
-        .find(|(f, _)| f.name() == CATALOG_START_TIME_FIELD_NAME)
+    let data = record_batch
+        .column_by_name(CATALOG_START_TIME_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {CATALOG_START_TIME_FIELD_NAME}} field found".to_owned(),
+            reason: format!("no {CATALOG_START_TIME_FIELD_NAME} field found"),
         }))?;
     let start_time = data
         .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "{CATALOG_START_TIME_FIELD_NAME} must be a Timestamp array: {:?}",
-                tc.schema_ref()
+                record_batch.schema_ref()
             ),
         }))?
         .value(0);
@@ -333,84 +327,32 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let input = TransportChunk::from(result.map_err(TonicStatusError)?);
+        let entity_path = EntityPath::parse_forgiving("catalog");
 
-        // Catalog received from the ReDap server isn't suitable for direct conversion to a Rerun Chunk:
-        // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
-        // - conversion expects the input TransportChunk to have a ChunkId so we need to add that piece of metadata
+        let mut record_batch = result.map_err(TonicStatusError)?;
 
-        let mut fields: Vec<ArrowField> = Vec::new();
-        let mut columns: Vec<ArrowArrayRef> = Vec::new();
-        // add the (row id) control field
-        let (row_id_field, row_id_data) = input.controls().next().ok_or(
-            StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                reason: "no control field found".to_owned(),
-            }),
-        )?;
+        {
+            let mut metadata = record_batch.schema_ref().metadata.clone();
 
-        fields.push(
-            ArrowField::new(
-                RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
-                row_id_field.data_type().clone(),
-                false, /* not nullable */
-            )
-            .with_metadata(TransportChunk::field_metadata_control_column()),
-        );
-        columns.push(row_id_data.clone());
-
-        // next add any timeline field
-        for (field, data) in input.timelines() {
-            fields.push(field.clone());
-            columns.push(data.clone());
-        }
-
-        // now add all the 'data' fields - we slice each column array into individual arrays and then convert the whole lot into a ListArray
-        for (field, data) in input.components() {
-            let data_field_inner =
-                ArrowField::new("item", field.data_type().clone(), true /* nullable */);
-
-            let data_field = ArrowField::new(
-                field.name().clone(),
-                ArrowDataType::List(Arc::new(data_field_inner.clone())),
-                false, /* not nullable */
-            )
-            .with_metadata(TransportChunk::field_metadata_data_column());
-
-            let mut sliced: Vec<ArrowArrayRef> = Vec::new();
-            for idx in 0..data.len() {
-                sliced.push(data.clone().slice(idx, 1));
+            for (key, value) in [
+                re_sorbet::ChunkSchema::chunk_id_metadata(&ChunkId::new()),
+                re_sorbet::ChunkSchema::entity_path_metadata(&entity_path),
+            ] {
+                metadata.entry(key).or_insert(value);
             }
 
-            let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
-            #[allow(clippy::unwrap_used)] // we know we've given the right field type
-            let data_field_array: arrow::array::ListArray =
-                re_arrow_util::arrow_util::arrays_to_list_array(
-                    data_field_inner.data_type().clone(),
-                    &data_arrays,
-                )
-                .unwrap();
-
-            fields.push(data_field);
-            columns.push(as_array_ref(data_field_array));
+            let schema_with_more_metadata =
+                arrow::datatypes::Schema::clone(record_batch.schema_ref())
+                    .with_metadata(metadata)
+                    .into();
+            record_batch = record_batch
+                .with_schema(schema_with_more_metadata)
+                .expect("Can't fail, because we only added metadata");
         }
 
-        let schema = {
-            let metadata = HashMap::from_iter([
-                (
-                    TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
-                    "catalog".to_owned(),
-                ),
-                (
-                    TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
-                    ChunkId::new().to_string(),
-                ),
-            ]);
-            arrow::datatypes::Schema::new_with_metadata(fields, metadata)
-        };
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(&record_batch)?;
 
-        let record_batch = ArrowRecordBatch::try_new(schema.into(), columns)
-            .map_err(re_chunk::ChunkError::from)?;
-        let mut chunk = Chunk::from_record_batch(record_batch)?;
+        let mut chunk = Chunk::from_chunk_batch(&chunk_batch)?;
 
         let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
             .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())

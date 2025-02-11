@@ -139,11 +139,23 @@ re_string_interner::declare_new_type!(
 );
 
 impl ArchetypeName {
+    /// Runs some asserts in debug mode to make sure the name is not weird.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        let full_name = self.0.as_str();
+        debug_assert!(
+            !full_name.starts_with("rerun.archetypes.rerun.archetypes.") && !full_name.contains(':'),
+            "DEBUG ASSERT: Found archetype with full name {full_name:?}. Maybe some bad round-tripping?"
+        );
+    }
+
     /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D`.
     ///
     /// This is the default `Display` implementation for [`ArchetypeName`].
     #[inline]
     pub fn full_name(&self) -> &'static str {
+        self.sanity_check();
         self.0.as_str()
     }
 
@@ -157,6 +169,7 @@ impl ArchetypeName {
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
+        self.sanity_check();
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.archetypes.") {
             short_name

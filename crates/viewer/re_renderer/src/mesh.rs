@@ -71,6 +71,7 @@ pub struct CpuMesh {
 }
 
 impl CpuMesh {
+    #[track_caller]
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
 
