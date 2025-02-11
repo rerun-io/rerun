@@ -284,7 +284,7 @@ pub fn encode_as_bytes(
 pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
     DroppableEncoder::new(
         CrateVersion::LOCAL,
-        EncodingOptions::MSGPACK_COMPRESSED,
+        EncodingOptions::PROTOBUF_COMPRESSED,
         Vec::new(),
     )
 }
@@ -293,7 +293,7 @@ pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
 pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
     Encoder::new(
         CrateVersion::LOCAL,
-        EncodingOptions::MSGPACK_COMPRESSED,
+        EncodingOptions::PROTOBUF_COMPRESSED,
         Vec::new(),
     )
 }

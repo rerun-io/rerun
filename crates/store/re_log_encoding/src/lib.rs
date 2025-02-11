@@ -84,6 +84,10 @@ impl EncodingOptions {
         compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
     };
+    pub const PROTOBUF_UNCOMPRESSED: Self = Self {
+        compression: Compression::Off,
+        serializer: Serializer::Protobuf,
+    };
 
     pub fn from_bytes(bytes: [u8; 4]) -> Result<Self, OptionsError> {
         match bytes {
