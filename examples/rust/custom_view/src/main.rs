@@ -1,6 +1,7 @@
 //! This example shows how to add custom Views to the Rerun Viewer.
 
 use re_viewer::external::{re_log, re_memory};
+use re_viewer::AsyncRuntimeHandle;
 
 mod color_coordinates_view;
 mod color_coordinates_visualizer_system;
@@ -50,6 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect(
+                    "Could not get a runtime handle from the current Tokio runtime or Wasm bindgen.",
+                ),
             );
             app.add_receiver(rx);
 

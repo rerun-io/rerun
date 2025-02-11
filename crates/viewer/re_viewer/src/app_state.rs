@@ -16,6 +16,7 @@ use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::catalog_hub::CatalogHub;
 use crate::{
     app_blueprint::AppBlueprint,
     ui::{recordings_panel_ui, settings_screen_ui},
@@ -144,6 +145,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
+        catalog_hub: &CatalogHub,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -466,6 +468,12 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
+                    if !catalog_hub.is_empty() {
+                        catalog_hub.server_panel_ui(&ctx, ui);
+
+                        ui.add_space(4.0);
+                    }
+
                     let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
                     if resizable {
@@ -513,6 +521,8 @@ impl AppState {
                             welcome_screen_state,
                             is_history_enabled,
                         );
+                    } else if catalog_hub.is_collection_selected() {
+                        catalog_hub.selected_collection_ui(&ctx, ui);
                     } else {
                         viewport_ui.viewport_ui(ui, &ctx, view_states);
                     }
