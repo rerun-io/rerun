@@ -2,7 +2,6 @@ use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::arrow_util;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
@@ -280,7 +279,7 @@ impl ChunkBuilder {
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
                         let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        arrow_util::arrays_to_list_array_opt(&arrays)
+                        re_arrow_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
             {
@@ -339,10 +338,10 @@ impl ChunkBuilder {
                             // If we know the datatype in advance, we're able to keep even fully sparse
                             // columns around.
                             if let Some(datatype) = datatypes.get(&component_desc) {
-                                arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
+                                re_arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
                                     .map(|list_array| (component_desc, list_array))
                             } else {
-                                arrow_util::arrays_to_list_array_opt(&arrays)
+                                re_arrow_util::arrays_to_list_array_opt(&arrays)
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })

@@ -20,7 +20,7 @@ use arrow::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
     Timeline, UnitChunkShared,
@@ -260,7 +260,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_arrow_util::arrow_util::new_list_array_of_empties(
+                                re_arrow_util::new_list_array_of_empties(
                                     &child_datatype,
                                     chunk.num_rows(),
                                 ),

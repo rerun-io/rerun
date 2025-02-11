@@ -12,7 +12,7 @@ use arrow::{
 };
 use itertools::{izip, Either, Itertools};
 
-use re_arrow_util::{arrow_util::offsets_lengths, ArrowArrayDowncastRef as _};
+use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
 use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_types_core::{ArrowString, Component, ComponentName};
 

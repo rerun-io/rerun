@@ -374,11 +374,8 @@ fn make_scalar_entity_chunk(
     let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
     #[allow(clippy::unwrap_used)] // we know we've given the right field type
     let data_field_array: arrow::array::ListArray =
-        re_arrow_util::arrow_util::arrays_to_list_array(
-            data_field_inner.data_type().clone(),
-            &data_arrays,
-        )
-        .unwrap();
+        re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
+            .unwrap();
 
     Ok(Chunk::from_auto_row_ids(
         ChunkId::new(),

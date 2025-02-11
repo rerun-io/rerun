@@ -11,7 +11,7 @@ use arrow::{
     },
 };
 
-use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
@@ -318,10 +318,8 @@ fn wrap_in_list_array(field: &ArrowField, data: &dyn ArrowArray) -> (ArrowField,
 
     let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
     #[allow(clippy::unwrap_used)] // we know we've given the right field type
-    let list_array: ArrowListArray = re_arrow_util::arrow_util::arrays_to_list_array(
-        data_field_inner.data_type().clone(),
-        &data_arrays,
-    )
-    .unwrap();
+    let list_array: ArrowListArray =
+        re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
+            .unwrap();
     (data_field, list_array)
 }
