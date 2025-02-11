@@ -135,20 +135,20 @@ These tests work by comparing a textual output of a test against a checked-in re
 
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
-#### Image comparision tests
+#### Image comparison tests
 
-Some of the tests in the `rerun` family of crates are image comparision tests.
+Some of the tests in the `rerun` family of crates are image comparison tests.
 These tests work by rendering an image an image and then comparing it with a checked-in reference image.
 
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
-Comparision tests are driven by [egui_kittest](https://github.com/rerun-io/egui_kittest)'s `Harness::snapshot` method.
-Typically, we use [TestContext](rerun/crates/viewer/re_viewer_context/src/test_context.rs) in order to mock
+Comparison tests are driven by [egui_kittest](https://github.com/emilk/egui/tree/master/crates/egui_kittest)'s `Harness::snapshot` method.
+Typically, we use [TestContext](./crates/viewer/re_viewer_context/src/test_context.rs) in order to mock
 relevant parts of the Rerun viewer.
 
 ##### Comparing results & updating images
 
-Each run of the comparision tests will produce new images that are saved to the comparision images.
+Each run of the comparison tests will produce new images that are saved to the comparison images.
 (typically at `<your-test.rs>/snapshots`)
 
 Upon failure, additionally `diff.png` file is added that highlights all differences between the reference and the new image.
@@ -156,14 +156,14 @@ In order to update reference with the new image, run with `UPDATE_SNAPSHOTS=1` e
 
 Use `pixi run snapshots` to compare the results of all failed tests in Rerun.
 
-##### Guidelines for writing image comparision tests
+##### Guidelines for writing image comparison tests
 
-* avoid! Whenever **possible** prefer regular Rust tests or `insta` snapshot tests over image comparision tests.
+* avoid! Whenever **possible** prefer regular Rust tests or `insta` snapshot tests over image comparison tests.
 * images should…
   * …be checked in as LFS file
   * …depict exactly what's tested and nothing else
   * …have a low resolution to avoid growth in repo size
-  * …have a low comparision threshold to avoid false positives
+  * …have a low comparison threshold to avoid false positives
 
 ##### Why does CI / another computer produce a different image?
 
@@ -180,7 +180,7 @@ However, for smaller discrepancies that may make the output differ depending on 
   * implementations are free to return indeterminate values instead of clamping
 * floating point evaluation, for details see [WGSL spec § 15.7. Floating Point Evaluation](https://www.w3.org/TR/WGSL/#floating-point-evaluation). Notably:
   * rounding mode may be inconsistent
-  * floating point math "optimizations" may occur 
+  * floating point math "optimizations" may occur
     * depending on output shading language, different arithmetic optimizations may be performed upon floating point operations even if they change the result
   * floating point denormal flush
     * even on modern implementations, denormal float values may be flushed to zero
@@ -192,15 +192,15 @@ However, for smaller discrepancies that may make the output differ depending on 
 * [...]
 
 
-Whenever you can't avoid these problems there's two types of threshholds you can tweak:
-* threshold for when a pixel is considered different (see [`egui_kittest::SnapshotOptions::treshhold`])
+Whenever you can't avoid these problems there's two types of thresholds you can tweak:
+* threshold for when a pixel is considered different (see [`egui_kittest::SnapshotOptions::threshold`])
 * how many pixels are allowed to differ (see [`HarnessExt::snapshot_with_broken_pixels_threshold`])
   TODO(emilk/egui#5683): this should be natively supported by kittest
 
 ##### Rendering backend
 
-Just like for drawing the viewer itself, drawing for comparision tests requires a `wgpu` compatible driver.
-As of writing comparision tests are only run via Vulkan & Metal.
+Just like for drawing the viewer itself, drawing for comparison tests requires a `wgpu` compatible driver.
+As of writing comparison tests are only run via Vulkan & Metal.
 For CI / headless environments we a recent version `llvmpipe` for software rendering on Linux & Windows.
 On MacOS we currently always use hardware rendering.
 For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
@@ -226,7 +226,7 @@ The C++ SDK is tested using [`catch2`](https://github.com/catchorg/Catch2).
 Tests are located in the [./rerun_cpp/tests/](./rerun_cpp/tests/) folder.
 
 
-### Snippet comparision tests
+### Snippet comparison tests
 
 ```sh
 pixi run -e py docs/snippets/compare_snippet_output.py
@@ -245,7 +245,7 @@ pixi run ./tests/roundtrips.py
 A set of cross SDK language tests that makes sure that the same logging commands for a select group of archetypes
 yields the same output in all of the supported languages.
 
-Nowadays largely redundant with the snippet comparision tests.
+Nowadays largely redundant with the snippet comparison tests.
 
 ### Release checklists
 
