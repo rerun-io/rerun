@@ -54,9 +54,13 @@ class ComponentDescriptor:
         archetype_name: str | None = None,
         archetype_field_name: str | None = None,
     ) -> None:
-        assert not component_name.startswith("rerun.components.rerun.components."), f"Bad component name: {component_name}'"
+        assert not component_name.startswith(
+            "rerun.components.rerun.components."
+        ), f"Bad component name: {component_name}'"
         if archetype_name is not None:
-            assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), f"Bad archetype name '{archetype_name}'"
+            assert not archetype_name.startswith(
+                "rerun.archetypes.rerun.archetypes."
+            ), f"Bad archetype name '{archetype_name}'"
 
         self.archetype_name = archetype_name
         self.archetype_field_name = archetype_field_name

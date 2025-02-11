@@ -36,7 +36,9 @@ class IndicatorComponentBatch:
 
         """
         self.data = pa.nulls(1, type=pa.null())
-        assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
+        assert not archetype_name.startswith(
+            "rerun.archetypes.rerun.archetypes."
+        ), f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
         self._archetype_name = archetype_name
 
     def component_name(self) -> str:
