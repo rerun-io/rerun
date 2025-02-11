@@ -3,9 +3,8 @@ use std::sync::Arc;
 use ahash::HashMap;
 use parking_lot::Mutex;
 use tokio_stream::StreamExt as _;
-use url::Url;
 
-use re_grpc_client::{StreamError, TonicStatusError};
+use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, QueryCatalogRequest};
 
@@ -28,7 +27,7 @@ pub struct RecordingCollection {
 #[derive(Default)]
 pub struct CatalogHub {
     // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
-    catalogs: Arc<Mutex<HashMap<Url, Catalog>>>,
+    catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
     // TODO(andreas,antoine): Keep track of in-flight requests.
     //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
 }
@@ -37,7 +36,7 @@ impl CatalogHub {
     /// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
-    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, redap_endpoint: Url) {
+    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, redap_endpoint: redap::Origin) {
         // TODO: app should handle this and be careful about existing runtimes.
         let _ = tokio::runtime::Runtime::new();
 
@@ -53,8 +52,8 @@ impl CatalogHub {
 }
 
 async fn stream_catalog_async(
-    redap_endpoint: Url,
-    catalogs: Arc<Mutex<HashMap<Url, Catalog>>>,
+    redap_endpoint: redap::Origin,
+    catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
 ) -> Result<(), StreamError> {
     let mut client = {
         #[cfg(target_arch = "wasm32")]

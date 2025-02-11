@@ -43,7 +43,6 @@ anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 tokio.workspace = true
-url.workspace = true
 
 # Optional dependencies:
 

@@ -6001,7 +6001,6 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -7145,7 +7144,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
- "url",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",

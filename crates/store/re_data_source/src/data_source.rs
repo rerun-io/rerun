@@ -40,7 +40,9 @@ pub enum DataSource {
 // TODO(antoine, andreas): Temporary hack.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData { url: url::Url },
+    CatalogData {
+        origin: re_grpc_client::redap::Origin,
+    },
 }
 
 impl DataSource {
@@ -260,7 +262,7 @@ impl DataSource {
 
                 match address {
                     RedapAddress::Recording {
-                        redap_endpoint,
+                        origin,
                         recording_id,
                     } => {
                         let (tx, rx) = re_smart_channel::smart_channel(
@@ -274,7 +276,7 @@ impl DataSource {
                         spawn_future(async move {
                             if let Err(err) = re_grpc_client::redap::stream_recording_async(
                                 tx,
-                                redap_endpoint,
+                                origin,
                                 recording_id,
                                 on_msg,
                             )
@@ -288,9 +290,7 @@ impl DataSource {
                         });
                         Ok(StreamSource::LogMessages(rx))
                     }
-                    RedapAddress::Catalog { redap_endpoint } => Ok(StreamSource::CatalogData {
-                        url: redap_endpoint,
-                    }),
+                    RedapAddress::Catalog { origin } => Ok(StreamSource::CatalogData { origin }),
                 }
             }
 
