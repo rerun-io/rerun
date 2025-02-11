@@ -1,3 +1,9 @@
+//! Rerun uses its own URL scheme to access information across the network.
+//!
+//! The following schemes are supported: `rerun+http://`, `rerun+https://` and
+//! `rerun://`, which is an alias for `rerun+https://`. These schemes are then
+//! converted on the fly to either `http://` or `https://`.
+
 use std::net::Ipv4Addr;
 
 /// The given url is not a valid Rerun storage node URL.
@@ -8,6 +14,9 @@ pub struct InvalidRedapAddress {
     msg: String,
 }
 
+/// The different schemes supported by Rerun.
+///
+/// We support `rerun`, `rerun+http`, and `rerun+https`.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Scheme {
     Rerun,
@@ -26,7 +35,8 @@ impl std::fmt::Display for Scheme {
 }
 
 impl Scheme {
-    fn convert(&self) -> &str {
+    /// Converts a [`Scheme`] to either `http` or `https`.
+    fn to_http_scheme(&self) -> &str {
         match self {
             Self::Rerun | Self::RerunHttps => "https",
             Self::RerunHttp => "http",
@@ -42,8 +52,14 @@ pub struct Origin {
 }
 
 impl Origin {
-    pub fn convert(&self) -> String {
-        format!("{}://{}:{}", self.scheme.convert(), self.host, self.port)
+    // Converts an entire [`Origin`] to a `http` or `https` URL.
+    pub fn to_http_scheme(&self) -> String {
+        format!(
+            "{}://{}:{}",
+            self.scheme.to_http_scheme(),
+            self.host,
+            self.port
+        )
     }
 }
 
@@ -153,9 +169,9 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.convert(), "https");
-        assert_eq!(Scheme::RerunHttp.convert(), "http");
-        assert_eq!(Scheme::RerunHttps.convert(), "https");
+        assert_eq!(Scheme::Rerun.to_http_scheme(), "https");
+        assert_eq!(Scheme::RerunHttp.to_http_scheme(), "http");
+        assert_eq!(Scheme::RerunHttps.to_http_scheme(), "https");
     }
 
     #[test]
@@ -165,21 +181,21 @@ mod tests {
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.convert(), "https://127.0.0.1:1234");
+        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttp,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.convert(), "http://127.0.0.1:1234");
+        assert_eq!(origin.to_http_scheme(), "http://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.convert(), "https://127.0.0.1:1234");
+        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
     }
 
     #[test]
