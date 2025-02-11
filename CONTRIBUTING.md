@@ -169,7 +169,8 @@ Use `pixi run snapshots` to compare the results of all failed tests in Rerun.
 
 First check whether the difference is due to a change in enabled rendering features, potentially due to difference in hardware (/software renderer) capabilitites - our setup generally avoids this by enforcing the same set of features, but this may happen nonetheless.
 
-However, for smaller discrepancies that may make the output differ depending on GPU/driver implementation details:
+However, smaller discrepancies may be caused by a variety of implementation details depending on the concrete GPU/driver (even between different versions of the same driver).
+For instance:
 * multi-sample anti-aliasing
   * sample placement and sample resolve steps are implementation defined
   * alpha-to-coverage algorithm/pattern can wary wildly between implementations
