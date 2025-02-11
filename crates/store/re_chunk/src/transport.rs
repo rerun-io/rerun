@@ -100,10 +100,13 @@ impl Chunk {
                         archetype_field_name,
                         component_name,
 
-                        is_static: false, // TODO(#8744): figure out what to do here
-                        is_indicator: false, // TODO(#8744): figure out what to do here
-                        is_tombstone: false, // TODO(#8744): figure out what to do here
-                        is_semantically_empty: false, // TODO(#8744): figure out what to do here
+                        // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
+                        // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
+                        // TODO(#8744): figure out what to do here
+                        is_static: false,
+                        is_indicator: false,
+                        is_tombstone: false,
+                        is_semantically_empty: false,
                     };
                     (schema, into_arrow_ref(list_array))
                 })
