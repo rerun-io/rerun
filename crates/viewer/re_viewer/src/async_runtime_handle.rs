@@ -34,7 +34,7 @@ impl AsyncRuntimeHandle {
     }
 
     #[cfg(target_arch = "wasm32")]
-    #[expect(unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn spawn_future<F>(&self, future: F)
     where
         F: std::future::Future<Output = ()> + 'static,

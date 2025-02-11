@@ -32,7 +32,7 @@ impl Catalog {
 pub struct RecordingCollection {
     // TODO: other information.
     // TODO: transport chunk is going away.
-    collection: Vec<re_chunk::TransportChunk>,
+    collection: Vec<re_sorbet::ChunkBatch>,
 }
 
 /// All catalogs known to the viewer.
@@ -73,7 +73,7 @@ impl CatalogHub {
         for command in self.command_queue.lock().drain(..) {
             match command {
                 Command::SelectCollection(collection_handle) => {
-                    self.selected_collection = Some(collection_handle)
+                    self.selected_collection = Some(collection_handle);
                 }
 
                 Command::DeselectCollection => self.selected_collection = None,
@@ -81,7 +81,7 @@ impl CatalogHub {
         }
     }
 
-    pub fn server_panel_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn server_panel_ui(&self, ui: &mut egui::Ui) {
         ui.panel_content(|ui| {
             ui.panel_title_bar(
                 "Servers",
@@ -108,16 +108,14 @@ impl CatalogHub {
     pub fn is_collection_selected(&self) -> bool {
         self.selected_collection
             .as_ref()
-            .map(|handle| self.validate_handle(&handle))
+            .map(|handle| self.validate_handle(handle))
             .unwrap_or(false)
     }
 
     fn validate_handle(&self, handle: &CollectionHandle) -> bool {
         let catalogs = self.catalogs.lock();
         if let Some(catalog) = catalogs.get(&handle.server_origin) {
-            if let Some(collection) = catalog.collections.get(handle.collection_index) {
-                return true;
-            }
+            return catalog.collections.get(handle.collection_index).is_some();
         }
 
         false
@@ -225,7 +223,10 @@ async fn stream_catalog_async(
                         .map_err(|err| tonic::Status::internal(err.to_string()))
                 })
                 .map_err(TonicStatusError)
-                .map(re_chunk::TransportChunk::from)
+                .map_err(StreamError::from)
+                .and_then(|record_batch| {
+                    re_sorbet::ChunkBatch::try_from(&record_batch).map_err(StreamError::from)
+                })
         })
         .collect::<Result<Vec<_>, _>>()
         .await?;

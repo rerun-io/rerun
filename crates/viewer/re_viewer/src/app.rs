@@ -1728,7 +1728,7 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&mut self, origin: re_grpc_client::redap::Origin) {
+    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
         self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
     }
 }

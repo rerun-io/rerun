@@ -1,6 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
-use address::Origin;
 use arrow::{
     array::{
         ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StringArray as ArrowStringArray,

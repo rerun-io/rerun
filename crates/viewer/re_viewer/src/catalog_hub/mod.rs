@@ -1,4 +1,4 @@
-mod catalog_hub;
 mod collection_ui;
+mod hub;
 
-pub use catalog_hub::CatalogHub;
+pub use hub::CatalogHub;
