@@ -570,6 +570,12 @@ where
         return Ok(0);
     }
 
+    // We don't want the runtime to run on the main thread, as we need that one for our UI.
+    // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
+    // and synchronize the result using some other means instead.
+    let rt = Runtime::new()?;
+    let _guard = rt.enter();
+
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
@@ -626,10 +632,6 @@ fn run_impl(
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
     let mut is_another_server_running = false;
-
-    // NOTE: Be careful about spawning tasks here! We don't want the runtime to run on the main thread,
-    //       as we need that one for our UI. Use `rt.enter()` or `rt.spawn()` if you need to spawn a task.
-    let rt = Runtime::new()?;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -708,7 +710,6 @@ fn run_impl(
         }
 
         // We may need to spawn tasks from this point on:
-        let _guard = rt.enter();
         let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
