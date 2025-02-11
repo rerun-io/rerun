@@ -88,8 +88,7 @@ if(APPLE)
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_options(rerun_c INTERFACE "/NODEFAULTLIB:MSVCRT")
-    target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll Crypt32)
+    target_link_libraries(rerun_c INTERFACE ws2_32 Bcrypt Userenv ntdll Crypt32)
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_c)
