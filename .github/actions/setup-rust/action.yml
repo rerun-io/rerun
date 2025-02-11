@@ -3,6 +3,7 @@
 # - All components + targets specified in `rust-toolchain`
 # - Caching of individual compilation requests via `sccache` and GCS
 #   - Uses our own `rerun-io/sccache-action` which supports GCS
+# - `cargo nextest`
 #
 # Note that due to the use of GCS as an sccache storage backend,
 # this action also sets up GCP credentials as a side effect.
@@ -81,3 +82,9 @@ runs:
       shell: bash
       run: |
         sccache --show-stats
+
+    # Recommended way to install nextest on CI.
+    - name: Install latest nextest release
+      uses: taiki-e/install-action@v2.48.7
+      with:
+        tool: nextest@0.9.89
