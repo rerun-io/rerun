@@ -1,5 +1,8 @@
+use std::net::IpAddr;
+
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
+use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
@@ -12,8 +15,6 @@ use crate::{commands::RrdCommands, CallSource};
 use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "server")]
-use re_ws_comms::RerunServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
@@ -23,7 +24,7 @@ use crate::commands::AnalyticsCommands;
 const LONG_ABOUT: &str = r#"
 The Rerun command-line interface:
 * Spawn viewers to visualize Rerun recordings and other supported formats.
-* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Start a gRPC server to share recordings over the network, on native or web.
 * Inspect, edit and filter Rerun recordings.
 "#;
 
@@ -56,7 +57,7 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun TCP server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and serves the results over WebSockets:
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serves the results:
         rerun --serve-web
 
     Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
@@ -85,7 +86,7 @@ struct Args {
 
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
-    bind: String,
+    bind: IpAddr,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -127,9 +128,9 @@ When persisted, the state will be stored at the following locations:
     )]
     persist_state: bool,
 
-    /// What TCP port do we listen to for SDKs to connect to.
+    /// What port do we listen to for SDKs to connect to over gRPC.
     #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    #[clap(long, default_value_t = re_grpc_server::DEFAULT_SERVER_PORT)]
     port: u16,
 
     /// Start with the puffin profiler running.
@@ -150,15 +151,19 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve: bool,
 
-    /// Serve the recordings over WebSocket to one or more Rerun Viewers.
+    /// This will host a web-viewer over HTTP, and a gRPC server.
     ///
-    /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
-    /// but you can also connect with the native binary.
-    ///
-    /// `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from
+    /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
     serve_web: bool,
+
+    /// Do not attempt to start a new server, instead try to connect to an existing one.
+    ///
+    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    #[clap(long)]
+    #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
+    connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
     ///
@@ -219,12 +224,6 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
     window_size: Option<String>,
-
-    /// What port do we listen to for incoming websocket connections from the viewer.
-    /// A port of 0 will pick a random port.
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = Default::default())]
-    ws_server_port: RerunServerPort,
 
     /// Override the default graphics backend and for a specific one instead.
     ///
@@ -626,7 +625,11 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
-    let mut is_another_viewer_running = false;
+    let mut is_another_server_running = false;
+
+    // NOTE: Be careful about spawning tasks here! We don't want the runtime to run on the main thread,
+    //       as we need that one for our UI. Use `rt.enter()` or `rt.spawn()` if you need to spawn a task.
+    let rt = Runtime::new()?;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -668,6 +671,12 @@ fn run_impl(
         }
     };
 
+    #[cfg(feature = "server")]
+    let server_addr = std::net::SocketAddr::new(args.bind, args.port);
+    #[cfg(feature = "server")]
+    let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
     // Where do we get the data from?
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
@@ -679,14 +688,14 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
-                // Special case! We are connecting a web-viewer to a web-socket address.
-                // Instead of piping, just host a web-viewer that connects to the web-socket directly:
+            if let DataSource::MessageProxy { url } = data_sources[0].clone() {
+                // Special case! We are connecting a web-viewer to a gRPC address.
+                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
                 WebViewerConfig {
-                    bind_ip: args.bind,
+                    bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(rerun_server_ws_url),
+                    source_url: Some(url),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -698,30 +707,34 @@ fn run_impl(
             }
         }
 
+        // We may need to spawn tasks from this point on:
+        let _guard = rt.enter();
         let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
-        {
+        if let Some(url) = args.connect {
+            let url = url.unwrap_or_else(|| format!("http://{server_addr}"));
+            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(&url, None)?;
+            rxs.push(rx);
+        } else {
             // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
-            let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-            if TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(1)).is_ok() {
+            if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
                 re_log::info!(
-                    %addr,
+                    %server_addr,
                     "A process is already listening at this address. Assuming it's a Rerun Viewer."
                 );
-                is_another_viewer_running = true;
+                is_another_server_running = true;
             } else {
-                let server_options = re_sdk_comms::ServerOptions {
-                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                    quiet: false,
-                };
-                let tcp_listener: Receiver<LogMsg> =
-                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-                rxs.push(tcp_listener);
+                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_memory_limit,
+                    re_grpc_server::shutdown::never(),
+                );
+                rxs.push(server);
             }
         }
 
@@ -750,11 +763,8 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
-        #[cfg(feature = "web_viewer")]
-        if args.url_or_paths.is_empty()
-            && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
-        {
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
+        if args.url_or_paths.is_empty() && (args.port == args.web_viewer_port.0) {
             anyhow::bail!(
                 "Trying to spawn a websocket server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",
@@ -762,52 +772,42 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
-            let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+            // We always host the web-viewer in case the users wants it,
+            // but we only open a browser automatically with the `--web-viewer` flag.
+            let open_browser = args.web_viewer;
 
-            // This is the server which the web viewer will talk to:
-            let _ws_server = re_ws_comms::RerunServer::new(
-                ReceiveSet::new(rxs),
-                &args.bind,
-                args.ws_server_port,
-                server_memory_limit,
-            )?;
+            let url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
+                format!("temp://localhost:{}", server_addr.port())
+            } else {
+                format!("temp://{server_addr}")
+            };
 
-            #[cfg(feature = "web_viewer")]
-            {
-                // We always host the web-viewer in case the users wants it,
-                // but we only open a browser automatically with the `--web-viewer` flag.
-
-                let open_browser = args.web_viewer;
-
-                // This is the server that serves the Wasm+HTML:
-                WebViewerConfig {
-                    bind_ip: args.bind,
-                    web_port: args.web_viewer_port,
-                    source_url: Some(_ws_server.server_url()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser,
-                }
-                .host_web_viewer()?
-                .block(); // dropping should stop the server
+            // This is the server that serves the Wasm+HTML:
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                source_url: Some(url),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser,
             }
-
-            #[cfg(not(feature = "web_viewer"))]
-            {
-                // Returning from this function so soon would drop and therefore stop the server.
-                _ws_server.block();
-            }
-
-            return Ok(());
+            .host_web_viewer()?
+            .block();
         }
-    } else if is_another_viewer_running {
-        let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-        re_log::info!(%addr, "Another viewer is already running, streaming data to it.");
 
-        let sink = re_sdk::sink::TcpSink::new(addr, re_sdk::default_flush_timeout());
+        Ok(())
+    } else if is_another_server_running {
+        // Another viewer is already running on the specified address
+        let url = format!("http://{server_addr}")
+            .parse()
+            .expect("should always be valid");
+        re_log::info!(%url, "Another viewer is already running, streaming data to it.");
+
+        // This spawns its own single-threaded runtime on a separate thread,
+        // no need to `rt.enter()`:
+        let sink = re_sdk::sink::GrpcSink::new(url, crate::default_flush_timeout());
 
         for rx in rxs {
             while rx.is_connected() {
@@ -982,14 +982,6 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 
     parse_size_inner(size)
         .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
-}
-
-#[cfg(feature = "server")]
-fn parse_max_latency(max_latency: Option<&String>) -> f32 {
-    max_latency.as_ref().map_or(f32::INFINITY, |time| {
-        re_format::parse_duration(time)
-            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
-    })
 }
 
 // --- io ---

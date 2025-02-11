@@ -27,7 +27,7 @@ df["jawOpenState"] = df["jawOpen"] > 0.15
 
 # Connect to the viewer
 rr.init(recording.application_id(), recording_id=recording.recording_id())
-rr.connect_tcp()
+rr.connect_grpc()
 
 # log the jaw open state signal as a scalar
 rr.send_columns(

@@ -51,7 +51,7 @@ def script_add_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--url", type=str, default=None, help="Connect to this HTTP(S) URL")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "-o",
@@ -111,9 +111,8 @@ def script_setup(
         rec.serve(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
-        # You can omit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rec.connect(args.addr, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        # You can omit the argument to connect to the default URL.
+        rec.connect(args.url, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
         rec.save(args.save, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif not args.headless:

@@ -86,7 +86,7 @@ def run_py_example(path: str, viewer_port: int | None = None, *, wait: bool = Tr
     if save is not None:
         args += [f"--save={save}"]
     if viewer_port is not None:
-        args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
+        args += ["--connect", f"--url=http://127.0.0.1:{viewer_port}"]
 
     return start_process(
         args,
@@ -180,7 +180,7 @@ class Viewer:
             args += [
                 "--web-viewer",
                 f"--web-viewer-port={self.web_viewer_port}",
-                f"--ws-server-port={self.ws_server_port}",
+                f"--port={self.ws_server_port}",
             ]
 
         self.process = subprocess.Popen(args)

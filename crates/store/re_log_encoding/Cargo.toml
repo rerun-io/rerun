@@ -77,7 +77,10 @@ web-time = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
-web-sys = { workspace = true, optional = true, features = ["Window"] }
+web-sys = { workspace = true, optional = true, features = [
+  "Window",
+  "MessageEvent",
+] }
 
 [dev-dependencies]
 re_types.workspace = true

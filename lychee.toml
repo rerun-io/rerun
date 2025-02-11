@@ -63,11 +63,11 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
-  "crates/utils/re_analytics/src/event.rs",        # Contains test with malformed urls
-  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
+  "crates/utils/re_analytics/src/event.rs",           # Contains test with malformed urls
+  "scripts/lint.py",                                  # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
-  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
-  "crates/store/re_grpc_client/src/address.rs",    # Contains some malformed URLs, but they are not actual links.
+  "crates/viewer/re_viewer/src/reflection/mod.rs",    # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
+  "crates/store/re_grpc_client/src/redap/address.rs", # Contains some malformed URLs, but they are not actual links.
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -116,6 +116,9 @@ exclude = [
   'https://your-hosted-asset-url.com/widget.js',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
+  'http://foo.zip',
+  'https://foo.zip',
+  'https://redap.rerun.io',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.

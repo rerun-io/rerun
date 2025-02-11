@@ -13,10 +13,10 @@ int main(void) {
     rr_recording_stream rec = rr_recording_stream_new(&store_info, true, &error);
 
     // Connect to running viewer:
-    //rr_recording_stream_connect(rec, rr_make_string("127.0.0.1:9876"), 2.0f, &error);
+    //rr_recording_stream_connect(rec, rr_make_string("127.0.0.1:9876"), &error);
 
     // Spawn and connect:
-    rr_recording_stream_spawn(rec, NULL, 2.0f, &error);
+    rr_recording_stream_spawn(rec, NULL, &error);
 
     if (error.code != 0) {
         printf("Error occurred: %s\n", error.description);

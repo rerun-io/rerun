@@ -35,7 +35,7 @@ rec = rr.new_recording(application_id="test", spawn=True)
 rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")
-rr.connect_tcp(recording=rec)
+rr.connect_grpc(recording=rec)
 rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")
