@@ -85,4 +85,6 @@ runs:
 
     # Recommended way to install nextest on CI.
     - name: Install latest nextest release
-      uses: taiki-e/install-action@nextest
+      uses: taiki-e/install-action@v2.48.7
+      with:
+        tool: nextest@0.9.89
