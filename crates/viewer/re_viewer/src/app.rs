@@ -540,14 +540,12 @@ impl App {
                 self.rx.retain(|r| match r.source() {
                     SmartChannelSource::File(_)
                     | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. }
-                    | SmartChannelSource::MessageProxy { .. } => false,
+                    | SmartChannelSource::RerunGrpcStream { .. } => false,
 
-                    SmartChannelSource::WsClient { .. }
-                    | SmartChannelSource::JsChannel { .. }
+                    SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
-                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
                 });
             }
@@ -1232,24 +1230,7 @@ impl App {
 
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        let log_msg =
-                            format!("Data source {} has left unexpectedly: {err}", msg.source);
-
-                        #[cfg(not(target_arch = "wasm32"))]
-                        if err
-                            .downcast_ref::<re_sdk_comms::ConnectionError>()
-                            .is_some_and(|e| {
-                                matches!(e, re_sdk_comms::ConnectionError::UnknownClient)
-                            })
-                        {
-                            // This can happen if a client tried to connect but didn't send the `re_sdk_comms::PROTOCOL_HEADER`.
-                            // Likely an unknown client stumbled onto the wrong port - don't log as an error.
-                            // (for more information see https://github.com/rerun-io/rerun/issues/5883).
-                            re_log::debug!("{log_msg}");
-                            continue;
-                        }
-
-                        re_log::warn!("{log_msg}");
+                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
@@ -1585,19 +1566,17 @@ impl App {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
                 | SmartChannelSource::RerunGrpcStream { .. }
-                | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. }
                 | SmartChannelSource::JsChannel { .. } => {
                     return true; // We expect data soon, so fade-in
                 }
 
-                SmartChannelSource::TcpServer { .. } => {
-                    // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
+                SmartChannelSource::MessageProxy { .. } => {
+                    // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
-                    // However, we also use the TCP server for sending data from the logging SDKs
+                    // However, we also use the gRPC server for sending data from the logging SDKs
                     // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
                     // Therefore `spawn()` uses the special `--expect-data-soon` flag
                     // (handled earlier in this function), so here we know we are in the other case:

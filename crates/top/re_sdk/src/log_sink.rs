@@ -1,7 +1,10 @@
 use std::fmt;
 use std::sync::Arc;
+use std::time::Duration;
 
 use parking_lot::Mutex;
+use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
+use re_grpc_client::message_proxy::MessageProxyUrl;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
@@ -36,7 +39,7 @@ pub trait LogSink: Send + Sync + 'static {
     fn flush_blocking(&self);
 
     /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
-    /// flush it for any reason (e.g. a broken TCP connection for a [`TcpSink`]).
+    /// flush it for any reason.
     #[inline]
     fn drop_if_disconnected(&self) {}
 
@@ -331,78 +334,41 @@ impl LogSink for CallbackSink {
 
 // ----------------------------------------------------------------------------
 
-/// Stream log messages to a Rerun TCP server.
-#[derive(Debug)]
-pub struct TcpSink {
-    client: re_sdk_comms::Client,
+/// Stream log messages to an a remote Rerun server.
+pub struct GrpcSink {
+    client: MessageProxyClient,
 }
 
-impl TcpSink {
-    /// Connect to the given address in a background thread.
-    /// Retries until successful.
+impl GrpcSink {
+    /// Connect to the in-memory storage node over HTTP.
     ///
-    /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
+    /// `flush_timeout` is the minimum time the [`GrpcSink`] will wait during a flush
     /// before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// GrpcSink::new("http://127.0.0.1:9434");
+    /// ```
     #[inline]
-    pub fn new(addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {
+    pub fn new(url: MessageProxyUrl, flush_timeout: Option<Duration>) -> Self {
+        let options = Options {
+            flush_timeout,
+            ..Default::default()
+        };
         Self {
-            client: re_sdk_comms::Client::new(addr, flush_timeout),
+            client: MessageProxyClient::new(url, options),
         }
     }
 }
 
-impl LogSink for TcpSink {
-    #[inline]
+impl LogSink for GrpcSink {
     fn send(&self, msg: LogMsg) {
         self.client.send(msg);
     }
 
-    #[inline]
     fn flush_blocking(&self) {
         self.client.flush();
-    }
-
-    #[inline]
-    fn drop_if_disconnected(&self) {
-        self.client.drop_if_disconnected();
-    }
-}
-
-#[cfg(feature = "grpc")]
-pub mod grpc {
-    use super::LogSink;
-    use re_grpc_client::message_proxy::write::Client;
-    use re_log_types::LogMsg;
-
-    /// Stream log messages to an in-memory storage node.
-    pub struct GrpcSink {
-        client: Client,
-    }
-
-    impl GrpcSink {
-        /// Connect to the in-memory storage node over HTTP.
-        ///
-        /// ### Example
-        ///
-        /// ```ignore
-        /// GrpcSink::new("http://127.0.0.1:9434");
-        /// ```
-        #[inline]
-        pub fn new(addr: impl Into<String>) -> Self {
-            Self {
-                client: Client::new(addr, Default::default()),
-            }
-        }
-    }
-
-    impl LogSink for GrpcSink {
-        fn send(&self, msg: LogMsg) {
-            self.client.send(msg);
-        }
-
-        fn flush_blocking(&self) {
-            self.client.flush();
-        }
     }
 }

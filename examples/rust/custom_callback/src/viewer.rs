@@ -1,8 +1,6 @@
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
-use rerun::external::{eframe, re_log, re_memory, re_sdk_comms, re_viewer};
-
-use std::net::Ipv4Addr;
+use rerun::external::{eframe, re_log, re_memory, re_viewer};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -24,13 +22,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for TCP connections from Rerun's logging SDKs.
+    // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_sdk_comms::serve(
-        &Ipv4Addr::UNSPECIFIED.to_string(),
-        re_sdk_comms::DEFAULT_SERVER_PORT + 1,
-        Default::default(),
-    )?;
+    let rx = re_grpc_server::spawn_with_recv(
+        "0.0.0.0:9877".parse()?,
+        "75%".parse()?,
+        re_grpc_server::shutdown::never(),
+    );
 
     // First we attempt to connect to the external application
     let viewer = ControlViewer::connect(format!("127.0.0.1:{CONTROL_PORT}")).await?;

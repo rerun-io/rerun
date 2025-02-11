@@ -10,7 +10,7 @@ The top-level index file should look like
 Function | Description
 -------- | -----------
 [rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK …
-[rerun.connect_tcp()](initialization/#rerun.connect_tcp) | Connect to a remote Rerun Viewer on the …
+[rerun.connect_grpc()](initialization/#rerun.connect_grpc) | Connect to a remote Rerun Viewer on the …
 [rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer …
 …
 
@@ -85,7 +85,7 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=[
             "init",
             "connect",
-            "connect_tcp",
+            "connect_grpc",
             "disconnect",
             "save",
             "send_blueprint",

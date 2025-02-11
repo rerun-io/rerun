@@ -297,8 +297,12 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
-    // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING // TODO(jan): Remove once `connect` is removed
+    void
+    test_logging_to_connection(
+        const char* address, const rerun::RecordingStream& stream
+    ) { // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
     // at least on some C++ implementations.
     // If we'd want to support this in earnest we'd have to create out own string_view type.
     //
@@ -308,16 +312,17 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
     //     }
     // }
     AND_GIVEN("an invalid address for the socket address") {
-        THEN("then the save call fails") {
+        THEN("connect call fails") {
             CHECK(
-                stream.connect_tcp("definitely not valid!", 0.0f).code ==
+                stream.connect("definitely not valid!", 0.1f).code ==
                 rerun::ErrorCode::InvalidSocketAddress
             );
         }
     }
+
     AND_GIVEN("a valid socket address " << address) {
-        THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect_tcp(address, 0.0f).is_ok());
+        THEN("connect call returns no error") {
+            CHECK(stream.connect(address, 0.1f).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -340,6 +345,8 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
     }
 }
 
+RR_POP_WARNINGS
+
 SCENARIO("RecordingStream can connect", TEST_TAG) {
     const char* address = "127.0.0.1:9876";
     GIVEN("a new RecordingStream") {
@@ -353,6 +360,57 @@ SCENARIO("RecordingStream can connect", TEST_TAG) {
         }
         GIVEN("the current recording stream") {
             test_logging_to_connection(address, rerun::RecordingStream::current());
+        }
+    }
+}
+
+void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStream& stream) {
+    AND_GIVEN("an invalid url") {
+        THEN("connect call fails") {
+            CHECK(
+                stream.connect_grpc("definitely not valid!", 0.1f).code ==
+                rerun::ErrorCode::InvalidServerUrl
+            );
+        }
+    }
+    AND_GIVEN("a valid socket url " << url) {
+        THEN("connect call returns no error") {
+            CHECK(stream.connect_grpc(url, 0.1f).code == rerun::ErrorCode::Ok);
+
+            WHEN("logging an archetype and then flushing") {
+                check_logged_error([&] {
+                    stream.log(
+                        "archetype",
+                        rerun::Points2D({
+                            rerun::Vec2D{1.0, 2.0},
+                            rerun::Vec2D{4.0, 5.0},
+                        })
+                    );
+                });
+
+                stream.flush_blocking();
+
+                THEN("does not crash") {
+                    // No easy way to see if it got sent.
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
+    const char* url = "http://127.0.0.1:9876";
+    GIVEN("a new RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+        test_logging_to_grpc_connection(url, stream);
+    }
+    WHEN("setting a global RecordingStream and then discarding it") {
+        {
+            rerun::RecordingStream stream("test-global");
+            stream.set_global();
+        }
+        GIVEN("the current recording stream") {
+            test_logging_to_grpc_connection(url, rerun::RecordingStream::current());
         }
     }
 }

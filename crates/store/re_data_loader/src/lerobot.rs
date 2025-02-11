@@ -352,6 +352,7 @@ impl LeRobotDatasetInfo {
 pub struct Feature {
     pub dtype: DType,
     pub shape: Vec<usize>,
+    pub names: Option<Names>,
 }
 
 /// Data types supported for features in a `LeRobot` dataset.
@@ -364,6 +365,28 @@ pub enum DType {
     Float32,
     Float64,
     Int64,
+}
+
+/// Name metadata for a feature in the `LeRobot` dataset.
+///
+/// The name metadata can consist of
+/// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
+/// - A list specific to motors (e.g., `{ "motors": ["motor_0", "motor_1", ...] }`).
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Names {
+    Motors { motors: Vec<String> },
+    List(Vec<String>),
+}
+
+impl Names {
+    /// Retrieves the name corresponding to a specific index within the `names` field of a feature.
+    pub fn name_for_index(&self, index: usize) -> Option<&String> {
+        match self {
+            Self::Motors { motors } => motors.get(index),
+            Self::List(items) => items.get(index),
+        }
+    }
 }
 
 // TODO(gijsd): Do we want to stream in episodes or tasks?

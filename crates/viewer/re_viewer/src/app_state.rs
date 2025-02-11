@@ -643,14 +643,12 @@ pub(crate) fn recording_config_entry<'cfgs>(
                 re_smart_channel::SmartChannelSource::File(_)
                 | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
                 | re_smart_channel::SmartChannelSource::RerunGrpcStream { .. }
-                | re_smart_channel::SmartChannelSource::MessageProxy { .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
                 // Live data - follow it!
                 re_smart_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
                 | re_smart_channel::SmartChannelSource::Sdk
-                | re_smart_channel::SmartChannelSource::WsClient { .. }
-                | re_smart_channel::SmartChannelSource::TcpServer { .. }
+                | re_smart_channel::SmartChannelSource::MessageProxy { .. }
                 | re_smart_channel::SmartChannelSource::Stdin
                 | re_smart_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
             }

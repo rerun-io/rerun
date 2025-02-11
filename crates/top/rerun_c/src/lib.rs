@@ -283,6 +283,7 @@ pub enum CErrorCode {
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
+    InvalidServerUrl = 0x0000_0001a,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamRuntimeFailure,
@@ -578,6 +579,7 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
+    #[expect(deprecated)] // Will be removed once `connect` is removed.
     stream.connect_opts(tcp_addr, flush_timeout);
 
     Ok(())
@@ -592,6 +594,41 @@ pub extern "C" fn rr_recording_stream_connect(
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_connect_grpc_impl(
+    stream: CRecordingStream,
+    url: CStringView,
+    flush_timeout_sec: f32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let url = url.as_str("url")?;
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+
+    if let Err(err) = stream.connect_grpc_opts(url, flush_timeout) {
+        return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string()));
+    }
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_connect_grpc(
+    id: CRecordingStream,
+    url: CStringView,
+    flush_timeout_sec: f32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
         err.write_error(error);
     }
 }

@@ -17,8 +17,9 @@ import "rerun/v0/common.proto";
 service MessageProxy {
     // TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
     //            It may allow us to amortize the overhead of the gRPC protocol.
-    rpc WriteMessages(stream rerun.log_msg.v0.LogMsg) returns (Empty) {}
-    rpc ReadMessages(Empty) returns (stream rerun.log_msg.v0.LogMsg) {}
+    rpc WriteMessages(stream rerun.log_msg.v0.LogMsg) returns (WriteMessagesResponse) {}
+    rpc ReadMessages(ReadMessagesRequest) returns (stream rerun.log_msg.v0.LogMsg) {}
 }
 
-message Empty {}
+message WriteMessagesResponse {}
+message ReadMessagesRequest {}
