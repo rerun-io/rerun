@@ -37,6 +37,7 @@ impl ViewCoordinates {
     }
 
     /// Returns an error if this does not span all three dimensions.
+    #[track_caller]
     pub fn sanity_check(&self) -> Result<(), String> {
         let mut dims = [false; 3];
         for dir in *self.0 {
