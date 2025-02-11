@@ -60,7 +60,7 @@ enum State {
     /// will only ever switch between `MessageHeader` and `Message`
     StreamHeader,
 
-    /// The beginning of a MsgPack message.
+    /// The beginning of a `MsgPack` message.
     ///
     /// The message header contains the number of bytes in the
     /// compressed message, and the number of bytes in the
@@ -68,19 +68,19 @@ enum State {
     MsgPackMessageHeader,
 
     // TODO(jan): remove this once we decide to completely break it off.
-    /// The message content, serialized using MsgPack.
+    /// The message content, serialized using `MsgPack`.
     ///
     /// We need to know the full length of the message before attempting
     /// to read it, otherwise the call to `decompress_into` or the
-    /// MsgPack deserialization may block or even fail.
+    /// `MsgPack` deserialization may block or even fail.
     MsgPackMessage(crate::MessageHeader),
 
     /// The beginning of a Protobuf message.
     ProtobufMessageHeader,
 
-    /// The message content, serialized using Protobuf.
+    /// The message content, serialized using `Protobuf`.
     ///
-    /// Compression is only applied to individual ArrowMsgs, instead of
+    /// Compression is only applied to individual `ArrowMsg`s, instead of
     /// the entire stream.
     ProtobufMessage(crate::codec::file::MessageHeader),
 }
@@ -183,18 +183,15 @@ impl StreamDecoder {
             State::ProtobufMessage(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
                     let message = crate::codec::file::decoder::decode_bytes(header.kind, bytes)?;
-                    match message {
-                        Some(mut message) => {
-                            propagate_version(&mut message, self.version);
-                            self.state = State::ProtobufMessageHeader;
-                            return Ok(Some(message));
-                        }
-                        None => {
-                            // `None` means end of stream, but there might be concatenated streams,
-                            // so try to read another one.
-                            self.state = State::StreamHeader;
-                            return self.try_read();
-                        }
+                    if let Some(mut message) = message {
+                        propagate_version(&mut message, self.version);
+                        self.state = State::ProtobufMessageHeader;
+                        return Ok(Some(message));
+                    } else {
+                        // `None` means end of stream, but there might be concatenated streams,
+                        // so try to read another one.
+                        self.state = State::StreamHeader;
+                        return self.try_read();
                     }
                 }
             }
