@@ -7491,7 +7491,6 @@ dependencies = [
  "similar-asserts",
  "tokio",
  "unindent",
- "url",
 ]
 
 [[package]]

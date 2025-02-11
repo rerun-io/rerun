@@ -37,9 +37,6 @@ impl CatalogHub {
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
     pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, redap_endpoint: redap::Origin) {
-        // TODO: app should handle this and be careful about existing runtimes.
-        let _ = tokio::runtime::Runtime::new();
-
         let catalogs = self.catalogs.clone();
         runtime.spawn_future(async move {
             let result = stream_catalog_async(redap_endpoint, catalogs).await;
