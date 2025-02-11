@@ -8,7 +8,6 @@ use arrow::{
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
-use url::Url;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk};
