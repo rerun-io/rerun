@@ -1,14 +1,9 @@
-use std::sync::Arc;
-
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, AsArray, ListArray as ArrowListArray,
         RecordBatch as ArrowRecordBatch, RecordBatchOptions, StructArray as ArrowStructArray,
     },
-    datatypes::{
-        DataType as ArrowDataType, Field as ArrowField, FieldRef as ArrowFieldRef,
-        Fields as ArrowFields, Schema as ArrowSchema,
-    },
+    datatypes::{FieldRef as ArrowFieldRef, Fields as ArrowFields, Schema as ArrowSchema},
 };
 
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
@@ -276,7 +271,7 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
             .get("rerun.kind")
             .is_some_and(|kind| kind == "data");
         if is_data_column && !is_list_array {
-            let (field, array) = wrap_in_list_array(field, array);
+            let (field, array) = re_arrow_util::wrap_in_list_array(field, array.clone());
             fields.push(field.into());
             columns.push(into_arrow_ref(array));
         } else {
@@ -293,33 +288,4 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
     .expect("Can't fail")
-}
-
-// TODO(cmc): we can do something faster/simpler here; see https://github.com/rerun-io/rerun/pull/8945#discussion_r1950689060
-fn wrap_in_list_array(field: &ArrowField, data: &dyn ArrowArray) -> (ArrowField, ArrowListArray) {
-    re_tracing::profile_function!();
-
-    // We slice each column array into individual arrays and then convert the whole lot into a ListArray
-
-    let data_field_inner =
-        ArrowField::new("item", field.data_type().clone(), true /* nullable */);
-
-    let data_field = ArrowField::new(
-        field.name().clone(),
-        ArrowDataType::List(Arc::new(data_field_inner.clone())),
-        false, /* not nullable */
-    )
-    .with_metadata(field.metadata().clone());
-
-    let mut sliced: Vec<ArrowArrayRef> = Vec::new();
-    for idx in 0..data.len() {
-        sliced.push(data.slice(idx, 1));
-    }
-
-    let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
-    #[allow(clippy::unwrap_used)] // we know we've given the right field type
-    let list_array: ArrowListArray =
-        re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
-            .unwrap();
-    (data_field, list_array)
 }

@@ -1,5 +1,7 @@
 //! Helpers for working with arrow
 
+use std::sync::Arc;
+
 use arrow::{
     array::{Array, ArrayRef, ArrowPrimitiveType, BooleanArray, ListArray, PrimitiveArray},
     buffer::{NullBuffer, OffsetBuffer},
@@ -35,9 +37,7 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
 }
 
 /// Returns an iterator with the lengths of the offsets.
-pub fn offsets_lengths(
-    offsets: &arrow::buffer::OffsetBuffer<i32>,
-) -> impl Iterator<Item = usize> + '_ {
+pub fn offsets_lengths(offsets: &OffsetBuffer<i32>) -> impl Iterator<Item = usize> + '_ {
     // TODO(emilk): remove when we update to Arrow 54 (which has an API for this)
     offsets.windows(2).map(|w| {
         let start = w[0];
@@ -383,4 +383,88 @@ where
         .clone();
     array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
     array
+}
+
+// ----------------------------------------------------------------------------
+
+/// Convert `[A, B, null, D, …]` into `[[A], [B], null, [D], …]`
+pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) {
+    re_tracing::profile_function!();
+
+    debug_assert_eq!(field.data_type(), array.data_type());
+
+    let item_field = Arc::new(Field::new(
+        "item",
+        field.data_type().clone(),
+        field.is_nullable(), // TODO(emilk): it would be nice to remove the "inner nullability", and just have outer nullability.
+    ));
+
+    let offsets = OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
+    let nulls = array.nulls().cloned();
+    let list_array = ListArray::new(item_field, offsets, array, nulls);
+
+    let list_field = Field::new(
+        field.name().clone(),
+        list_array.data_type().clone(),
+        true, // All components in Rerun has "outer nullability"
+    )
+    .with_metadata(field.metadata().clone());
+
+    (list_field, list_array)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use arrow::{
+        array::{Array as _, AsArray as _, Int32Array},
+        buffer::{NullBuffer, ScalarBuffer},
+        datatypes::{DataType, Int32Type},
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_wrap_in_list_array() {
+        // Convert [42, 1337, null, 69] into [[42], [1337], null, [69]]
+        let original_field = Field::new("item", DataType::Int32, true);
+        let original_array = Int32Array::new(
+            ScalarBuffer::from(vec![42, 69, -1, 1337]),
+            Some(NullBuffer::from(vec![true, true, false, true])),
+        );
+        assert_eq!(original_array.len(), 4);
+        assert_eq!(original_array.null_count(), 1);
+
+        let (new_field, new_array) =
+            wrap_in_list_array(&original_field, into_arrow_ref(original_array.clone()));
+
+        assert_eq!(new_field.data_type(), new_array.data_type());
+        assert_eq!(new_array.len(), original_array.len());
+        assert_eq!(new_array.null_count(), original_array.null_count());
+
+        assert_eq!(
+            new_array
+                .value(0)
+                .as_primitive::<Int32Type>()
+                .values()
+                .as_ref(),
+            &[42]
+        );
+        assert_eq!(
+            new_array
+                .value(1)
+                .as_primitive::<Int32Type>()
+                .values()
+                .as_ref(),
+            &[69]
+        );
+        assert_eq!(
+            new_array
+                .value(3)
+                .as_primitive::<Int32Type>()
+                .values()
+                .as_ref(),
+            &[1337]
+        );
+    }
 }
