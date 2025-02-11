@@ -6646,6 +6646,7 @@ dependencies = [
 name = "re_tuid"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "bytemuck",
  "criterion",
  "document-features",
  "getrandom",

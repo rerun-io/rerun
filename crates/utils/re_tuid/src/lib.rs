@@ -9,7 +9,12 @@
 /// TUID: Time-based Unique Identifier.
 ///
 /// Time-ordered globally unique 128-bit identifiers.
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "bytemuck",
+    derive(bytemuck::AnyBitPattern, bytemuck::Pod, bytemuck::Zeroable)
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
