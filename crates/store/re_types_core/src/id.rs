@@ -77,20 +77,9 @@ impl ChunkId {
         Self(self.0.incremented_by(n))
     }
 
-    /// When the `ChunkId` was created, in nanoseconds since unix epoch.
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.0.nanoseconds_since_epoch()
-    }
-
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
     }
 }
 
@@ -222,20 +211,9 @@ impl RowId {
         Self(self.0.incremented_by(n))
     }
 
-    /// When the `RowId` was created, in nanoseconds since unix epoch.
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.0.nanoseconds_since_epoch()
-    }
-
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
     }
 }
 
