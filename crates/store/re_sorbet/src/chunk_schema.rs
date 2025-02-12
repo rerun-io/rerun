@@ -216,13 +216,12 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
         let ArrowSchema { metadata, fields } = arrow_schema;
 
         let chunk_id = {
-            let chunk_id = metadata.get_or_err("rerun.id")?;
-            let chunk_id = u128::from_str_radix(chunk_id, 16).map_err(|err| {
+            let chunk_id_str = metadata.get_or_err("rerun.id")?;
+            chunk_id_str.parse().map_err(|err| {
                 InvalidChunkSchema::custom(format!(
-                    "Failed to deserialize chunk id {chunk_id:?}: {err}"
+                    "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
                 ))
-            })?;
-            ChunkId::from_u128(chunk_id)
+            })?
         };
 
         let entity_path = EntityPath::parse_forgiving(metadata.get_or_err("rerun.entity_path")?);
