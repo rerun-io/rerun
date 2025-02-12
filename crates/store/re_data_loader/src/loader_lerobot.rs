@@ -5,7 +5,7 @@ use arrow::array::{
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-use re_arrow_util::ArrowArrayDowncastRef;
+use re_arrow_util::{arrow_util::extract_fixed_size_array_element, ArrowArrayDowncastRef};
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
@@ -330,7 +330,6 @@ fn make_scalar_batch_entity_chunks(
     data: &FixedSizeListArray,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let num_elements = data.value_length() as usize;
-    let num_values = data.len();
 
     let mut chunks = Vec::with_capacity(num_elements);
 
@@ -341,11 +340,23 @@ fn make_scalar_batch_entity_chunks(
             .and_then(|names| names.name_for_index(idx).cloned())
             .unwrap_or(format!("{idx}"));
 
+        // The data that comes out of lerobot is structured as a fixed size array, but Rerun
+        // needs us to submit these as individual chunks of scalar values, so for each element
+        // in the source array we create a new chunk.
+        // TODO(#9005): Once we have Rerun support for native fixed size list arrays we can stop
+        // doing this.
+        let scalar_values = extract_fixed_size_array_element(data, idx as u32).map_err(|err| {
+            anyhow!(
+                "Failed to extract values for scalar feature {:?}: {err}",
+                field.name()
+            )
+        })?;
+
         let entity_path = format!("{}/{name}", field.name());
         chunks.push(make_scalar_entity_chunk(
             entity_path.into(),
             timelines,
-            &data.values().slice(idx, num_values),
+            &scalar_values,
         )?);
     }
 
