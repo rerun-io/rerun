@@ -18,7 +18,7 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
     };
 
     let runtime =
-        tokio::runtime::Runtime::new().map_err(|e| eframe::Error::AppCreation(Box::new(e)))?;
+        tokio::runtime::Runtime::new().map_err(|err| eframe::Error::AppCreation(Box::new(err)))?;
 
     let startup_options = re_viewer::StartupOptions::default();
     re_viewer::run_native_viewer_with_messages(

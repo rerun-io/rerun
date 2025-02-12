@@ -862,7 +862,6 @@ fn run_impl(
         }
 
         if !catalog_origins.is_empty() {
-            // TODO: oh god.
             re_log::warn!("Catalogs can't be passed to already open viewers yet.");
         }
 

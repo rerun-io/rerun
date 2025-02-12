@@ -1,3 +1,12 @@
+#[derive(Debug, thiserror::Error)]
+pub enum AsyncRuntimeError {
+    /// Tokio returned an error.
+    ///
+    /// We cannot leak a tokio type, so we have to convert it to a string.
+    #[error("Tokio error: {0}")]
+    TokioError(String),
+}
+
 /// Thin abstraction over the async runtime.
 ///
 /// This allows us to use tokio on native and the browser futures.
@@ -19,8 +28,7 @@ impl AsyncRuntimeHandle {
     }
 
     /// Create an `AsyncRuntime` from the current tokio runtime on native.
-    // TODO: no anyhow plz. Can't leak tokio type though.
-    pub fn from_current_tokio_runtime_or_wasmbindgen() -> anyhow::Result<Self> {
+    pub fn from_current_tokio_runtime_or_wasmbindgen() -> Result<Self, AsyncRuntimeError> {
         #[cfg(target_arch = "wasm32")]
         {
             Ok(Self::new_web())
@@ -28,7 +36,9 @@ impl AsyncRuntimeHandle {
         #[cfg(not(target_arch = "wasm32"))]
         {
             Ok(Self::new_native(
-                tokio::runtime::Handle::try_current()?.clone(),
+                tokio::runtime::Handle::try_current()
+                    .map_err(|err| AsyncRuntimeError::TokioError(err.to_string()))?
+                    .clone(),
             ))
         }
     }
