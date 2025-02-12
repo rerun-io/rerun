@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
+use arrow::array::RecordBatch;
 use parking_lot::Mutex;
 use tokio_stream::StreamExt as _;
 
@@ -30,7 +31,7 @@ impl Catalog {
 pub struct RecordingCollection {
     // TODO: other information.
     // TODO: transport chunk is going away.
-    collection: Vec<re_sorbet::ChunkBatch>,
+    pub collection: Vec<RecordBatch>,
 }
 
 /// All catalogs known to the viewer.
@@ -222,9 +223,6 @@ async fn stream_catalog_async(
                 })
                 .map_err(TonicStatusError)
                 .map_err(StreamError::from)
-                .and_then(|record_batch| {
-                    re_sorbet::ChunkBatch::try_from(&record_batch).map_err(StreamError::from)
-                })
         })
         .collect::<Result<Vec<_>, _>>()
         .await?;
