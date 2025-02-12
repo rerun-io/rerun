@@ -35,17 +35,20 @@ SorbetBatch superset:
 mod chunk_batch;
 mod chunk_schema;
 mod column_descriptor;
+mod column_kind;
 mod component_column_descriptor;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
 mod row_id_column_descriptor;
+mod sorbet_columns;
 mod sorbet_schema;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
     chunk_schema::ChunkSchema,
     column_descriptor::{ColumnDescriptor, ColumnError},
+    column_kind::ColumnKind,
     component_column_descriptor::ComponentColumnDescriptor,
     index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
     ipc::{ipc_from_schema, schema_from_ipc},
@@ -54,6 +57,7 @@ pub use self::{
         MissingMetadataKey,
     },
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
+    sorbet_columns::SorbetColumnDescriptors,
     sorbet_schema::{ColumnKind, InvalidSorbetSchema, SorbetColumnDescriptors, SorbetSchema},
 };
 
