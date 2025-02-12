@@ -66,10 +66,11 @@ impl SorbetBatch {
     }
 
     #[inline]
-    pub fn arrow_bacth_metadata(&self) -> &ArrowBatchMetadata {
+    pub fn arrow_batch_metadata(&self) -> &ArrowBatchMetadata {
         &self.batch.schema_ref().metadata
     }
 
+    /// The [`RowId`] column, if any.
     pub fn row_id_column(&self) -> Option<(&RowIdColumnDescriptor, &ArrowStructArray)> {
         self.schema.columns.row_id.as_ref().map(|row_id_desc| {
             (
@@ -90,17 +91,18 @@ impl SorbetBatch {
         )
     }
 
-    /// The columns of the indices (timelines).
+    /// The columns of the components.
     pub fn component_columns(
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
         let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
+        let num_index_columns = self.schema.columns.indices.len();
         itertools::izip!(
             &self.schema.columns.components,
             self.batch
                 .columns()
                 .iter()
-                .skip(num_row_id_columns + self.schema.columns.indices.len())
+                .skip(num_row_id_columns + num_index_columns)
         )
     }
 }

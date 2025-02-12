@@ -9,10 +9,7 @@ use arrow::{
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{
-    ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetBatch, SorbetError, WrongDatatypeError,
-};
+use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError, WrongDatatypeError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum MismatchedChunkSchemaError {
@@ -76,28 +73,12 @@ impl ChunkBatch {
         self.schema.entity_path()
     }
 
-    /// The heap size of this chunk in bytes, if known.
-    #[inline]
-    pub fn heap_size_bytes(&self) -> Option<u64> {
-        self.schema.heap_size_bytes()
-    }
-
-    /// Are we sorted by the row id column?
-    #[inline]
-    pub fn is_sorted(&self) -> bool {
-        self.schema.is_sorted()
-    }
-
     #[inline]
     pub fn fields(&self) -> &ArrowFields {
         &self.schema_ref().fields
     }
 
-    #[inline]
-    pub fn arrow_bacth_metadata(&self) -> &ArrowBatchMetadata {
-        &self.schema_ref().metadata
-    }
-
+    /// The [`RowId`] column.
     pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
         // The first column is always the row IDs.
         (
@@ -106,18 +87,6 @@ impl ChunkBatch {
                 .as_struct_opt()
                 .expect("Row IDs should be encoded as struct"),
         )
-    }
-
-    /// The columns of the indices (timelines).
-    pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
-        self.sorbet_batch.index_columns()
-    }
-
-    /// The columns of the indices (timelines).
-    pub fn component_columns(
-        &self,
-    ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
-        self.sorbet_batch.component_columns()
     }
 }
 
@@ -168,6 +137,7 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
         Self::try_from(SorbetBatch::try_from(batch)?)
     }
 }
+
 impl TryFrom<SorbetBatch> for ChunkBatch {
     type Error = SorbetError;
 
