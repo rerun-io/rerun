@@ -177,6 +177,11 @@ impl LeRobotDataset {
 
         Ok(Cow::Owned(contents))
     }
+
+    /// Retrieve the task using the provided task index.
+    pub fn task_by_index(&self, task: TaskIndex) -> Option<&LeRobotDatasetTask> {
+        self.metadata.tasks.get(task.0)
+    }
 }
 
 /// Metadata for a `LeRobot` dataset.
@@ -365,6 +370,7 @@ pub enum DType {
     Float32,
     Float64,
     Int64,
+    String,
 }
 
 /// Name metadata for a feature in the `LeRobot` dataset.
