@@ -1521,24 +1521,19 @@ impl Chunk {
             component_name.sanity_check();
             for (component_desc, list_array) in per_desc {
                 component_desc.component_name.sanity_check();
-                if !matches!(list_array.data_type(), arrow::datatypes::DataType::List(_)) {
+                // Ensure that each cell is a list (we don't support mono-components yet).
+                if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
+                    // We don't check `field.is_nullable()` here because we support both.
+                    // TODO(#6819): Remove support for inner nullability.
+                } else {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
+                            "The inner array in a chunked component batch must be a list, got {:?}",
                             list_array.data_type(),
                         ),
                     });
                 }
-                if let arrow::datatypes::DataType::List(field) = list_array.data_type() {
-                    if !field.is_nullable() {
-                        return Err(ChunkError::Malformed {
-                            reason: format!(
-                                "The outer array in chunked component batch must be a sparse list, got {:?}",
-                                list_array.data_type(),
-                            ),
-                        });
-                    }
-                }
+
                 if list_array.len() != row_ids.len() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
