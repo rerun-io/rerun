@@ -116,12 +116,12 @@ If not noted otherwise, all tests run automated on CI, however their frequency (
 ### Rust tests
 
 ```sh
+cargo test --all-targets --all-features
+```
+or alternatively (if you've [installed cargo nextest](https://nexte.st/)):
+```sh
 cargo nextest run --all-targets --all-features
 cargo test --all-features --doc
-```
-or alternatively:
-```sh
-cargo test --all-targets --all-features
 ```
 
 Runs both unit & integration tests for Rust crates, including the Rerun viewer.
@@ -134,6 +134,8 @@ Some of the tests in the `rerun` family of crates are [`insta`](https://docs.rs/
 These tests work by comparing a textual output of a test against a checked-in reference.
 
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
+
+If the output of them changes (either intentionally or not), they will fail, and you can review the results by running `cargo insta review` (you first need to install it with `cargo install cargo-insta`).
 
 #### Image comparison tests
 
@@ -156,47 +158,7 @@ In order to update reference with the new image, run with `UPDATE_SNAPSHOTS=1` e
 
 Use `pixi run snapshots` to compare the results of all failed tests in Rerun.
 
-##### Guidelines for writing image comparison tests
-
-* avoid! Whenever **possible** prefer regular Rust tests or `insta` snapshot tests over image comparison tests.
-* images should…
-  * …be checked in as LFS file
-  * …depict exactly what's tested and nothing else
-  * …have a low resolution to avoid growth in repo size
-  * …have a low comparison threshold to avoid the test passing despite unwanted differences
-
-##### Why does CI / another computer produce a different image?
-
-First check whether the difference is due to a change in enabled rendering features, potentially due to difference in hardware (/software renderer) capabilitites - our setup generally avoids this by enforcing the same set of features, but this may happen nonetheless.
-
-However, smaller discrepancies may be caused by a variety of implementation details depending on the concrete GPU/driver (even between different versions of the same driver).
-For instance:
-* multi-sample anti-aliasing
-  * sample placement and sample resolve steps are implementation defined
-  * alpha-to-coverage algorithm/pattern can wary wildly between implementations
-  * by default we render without anti-aliasing
-* texture filtering
-  * different implementations may apply different optimizations *even* for simple linear texture filtering
-* out of bounds texture access (via `textureLoad`)
-  * implementations are free to return indeterminate values instead of clamping
-* floating point evaluation, for details see [WGSL spec § 15.7. Floating Point Evaluation](https://www.w3.org/TR/WGSL/#floating-point-evaluation). Notably:
-  * rounding mode may be inconsistent
-  * floating point math "optimizations" may occur
-    * depending on output shading language, different arithmetic optimizations may be performed upon floating point operations even if they change the result
-  * floating point denormal flush
-    * even on modern implementations, denormal float values may be flushed to zero
-  * `NaN`/`Inf` handling
-    * whenever the result of a function should yield `NaN`/`Inf`, implementations may free to yield an indeterminate value instead
-  * builtin-function function precision & error handling (trigonometric functions and others)
-* [partial derivatives (dpdx/dpdx)](https://www.w3.org/TR/WGSL/#dpdx-builtin)
-  * implementations are free to use either `dpdxFine` or `dpdxCoarse`
-* [...]
-
-
-Whenever you can't avoid these problems there's two types of thresholds you can tweak:
-* threshold for when a pixel is considered different (see [`egui_kittest::SnapshotOptions::threshold`])
-* how many pixels are allowed to differ (see [`HarnessExt::snapshot_with_broken_pixels_threshold`])
-  TODO(emilk/egui#5683): this should be natively supported by kittest
+For best practices & unexpected sources of image differences refer to the [egui_kittest README](https://github.com/emilk/egui/tree/master/crates/egui_kittest#snapshot-testing).
 
 ##### Rendering backend
 
