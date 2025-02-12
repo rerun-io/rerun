@@ -150,10 +150,10 @@ impl SorbetColumnDescriptors {
                 }
 
                 ColumnKind::Component => {
-                    components.push(ComponentColumnDescriptor::try_from_arrow_field(
+                    components.push(ComponentColumnDescriptor::from_arrow_field(
                         chunk_entity_path,
                         field,
-                    )?);
+                    ));
                 }
             }
         }

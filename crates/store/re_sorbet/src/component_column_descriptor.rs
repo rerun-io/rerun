@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _, MissingFieldMetadata};
+use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _};
 
 /// Describes a data/component column, such as `Position3D`, in a dataframe.
 ///
@@ -33,7 +33,9 @@ pub struct ComponentColumnDescriptor {
     /// If this column is part of a chunk batch,
     /// this is the same for all columns in the batch,
     /// and will also be set in the schema for the whole chunk.
-    pub entity_path: EntityPath, // TODO(#8744): make optional for sorbet batches
+    ///
+    /// If this is missing from the metadata, it will be set to `/`.
+    pub entity_path: EntityPath, // TODO(#8744): make optional for general sorbet batches
 
     /// Optional name of the `Archetype` associated with this data.
     ///
@@ -281,14 +283,13 @@ impl ComponentColumnDescriptor {
 impl ComponentColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
     /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
-    pub fn try_from_arrow_field(
-        chunk_entity_path: Option<&EntityPath>,
-        field: &ArrowField,
-    ) -> Result<Self, MissingFieldMetadata> {
-        let entity_path = if let Some(chunk_entity_path) = chunk_entity_path {
+    pub fn from_arrow_field(chunk_entity_path: Option<&EntityPath>, field: &ArrowField) -> Self {
+        let entity_path = if let Some(entity_path) = field.get_opt("rerun.entity_path") {
+            EntityPath::parse_forgiving(entity_path)
+        } else if let Some(chunk_entity_path) = chunk_entity_path {
             chunk_entity_path.clone()
         } else {
-            EntityPath::parse_forgiving(field.get_or_err("rerun.entity_path")?)
+            EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
         let component_name = if let Some(component_name) = field.get_opt("rerun.component") {
@@ -311,6 +312,6 @@ impl ComponentColumnDescriptor {
 
         schema.sanity_check();
 
-        Ok(schema)
+        schema
     }
 }
