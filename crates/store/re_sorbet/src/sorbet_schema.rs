@@ -3,42 +3,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ArrowBatchMetadata, ColumnError, MetadataExt as _, SorbetColumnDescriptors};
-
-#[derive(thiserror::Error, Debug)]
-pub enum InvalidSorbetSchema {
-    #[error(transparent)]
-    MissingMetadataKey(#[from] crate::MissingMetadataKey),
-
-    #[error(transparent)]
-    MissingFieldMetadata(#[from] crate::MissingFieldMetadata),
-
-    #[error(transparent)]
-    UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
-
-    #[error(transparent)]
-    WrongDatatypeError(#[from] crate::WrongDatatypeError),
-
-    #[error("Bad column '{field_name}': {error}")]
-    BadColumn {
-        field_name: String,
-        error: ColumnError,
-    },
-
-    #[error("Bad chunk schema: {reason}")]
-    Custom { reason: String },
-
-    #[error("The data columns were not the last columns. Index columns must come before any data columns.")]
-    UnorderedIndexAndDataColumns,
-}
-
-impl InvalidSorbetSchema {
-    pub fn custom(reason: impl Into<String>) -> Self {
-        Self::Custom {
-            reason: reason.into(),
-        }
-    }
-}
+use crate::{ArrowBatchMetadata, MetadataExt as _, SorbetColumnDescriptors, SorbetError};
 
 // ----------------------------------------------------------------------------
 
@@ -134,7 +99,7 @@ impl From<&SorbetSchema> for ArrowSchema {
 }
 
 impl TryFrom<&ArrowSchema> for SorbetSchema {
-    type Error = InvalidSorbetSchema;
+    type Error = SorbetError;
 
     fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
         let ArrowSchema { metadata, fields } = arrow_schema;
@@ -147,7 +112,7 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
 
         let chunk_id = if let Some(chunk_id_str) = metadata.get("rerun.id") {
             Some(chunk_id_str.parse().map_err(|err| {
-                InvalidSorbetSchema::custom(format!(
+                SorbetError::custom(format!(
                     "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
                 ))
             })?)

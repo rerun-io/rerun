@@ -4,8 +4,8 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, InvalidSorbetSchema,
-    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetSchema,
+    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
+    SorbetColumnDescriptors, SorbetError, SorbetSchema,
 };
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.
@@ -18,9 +18,15 @@ pub struct ChunkSchema {
 
     // Some things here are also in [`SorbetSchema]`, but are duplicated
     // here because they are non-optional:
-    pub row_id: RowIdColumnDescriptor,
-    pub chunk_id: ChunkId,
-    pub entity_path: EntityPath,
+    row_id: RowIdColumnDescriptor,
+    chunk_id: ChunkId,
+    entity_path: EntityPath,
+}
+
+impl From<ChunkSchema> for SorbetSchema {
+    fn from(value: ChunkSchema) -> Self {
+        value.sorbet
+    }
 }
 
 /// ## Builders
@@ -130,24 +136,31 @@ impl From<&ChunkSchema> for ArrowSchema {
 }
 
 impl TryFrom<&ArrowSchema> for ChunkSchema {
-    type Error = InvalidSorbetSchema;
+    type Error = SorbetError;
 
     fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
         let sorbet_schema = SorbetSchema::try_from(arrow_schema)?;
+        Self::try_from(sorbet_schema)
+    }
+}
 
+impl TryFrom<SorbetSchema> for ChunkSchema {
+    type Error = SorbetError;
+
+    fn try_from(sorbet_schema: SorbetSchema) -> Result<Self, Self::Error> {
         Ok(Self {
             row_id: sorbet_schema
                 .columns
                 .row_id
                 .clone()
-                .ok_or_else(|| InvalidSorbetSchema::custom("Missing row_id column"))?,
+                .ok_or_else(|| SorbetError::custom("Missing row_id column"))?,
             chunk_id: sorbet_schema
                 .chunk_id
-                .ok_or_else(|| InvalidSorbetSchema::custom("Missing chunk_id"))?,
+                .ok_or_else(|| SorbetError::custom("Missing chunk_id"))?,
             entity_path: sorbet_schema
                 .entity_path
                 .clone()
-                .ok_or_else(|| InvalidSorbetSchema::custom("Missing entity_path"))?,
+                .ok_or_else(|| SorbetError::custom("Missing entity_path"))?,
 
             sorbet: sorbet_schema,
         })

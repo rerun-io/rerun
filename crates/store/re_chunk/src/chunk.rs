@@ -56,7 +56,7 @@ pub enum ChunkError {
     MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
 
     #[error(transparent)]
-    InvalidSorbetSchema(#[from] re_sorbet::InvalidSorbetSchema),
+    InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;

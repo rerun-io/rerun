@@ -8,12 +8,10 @@ use arrow::{
 };
 
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
-use re_log_types::EntityPath;
-use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, InvalidSorbetSchema,
-    RowIdColumnDescriptor, SorbetSchema,
+    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
+    SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -44,25 +42,13 @@ impl SorbetBatch {
 }
 
 impl SorbetBatch {
-    /// The parsed rerun schema of this chunk.
+    /// The parsed rerun schema of this batch.
     #[inline]
-    pub fn chunk_schema(&self) -> &SorbetSchema {
+    pub fn sorbet_schema(&self) -> &SorbetSchema {
         &self.schema
     }
 
-    /// The globally unique ID of this chunk.
-    #[inline]
-    pub fn chunk_id(&self) -> Option<ChunkId> {
-        self.schema.chunk_id
-    }
-
-    /// Which entity is this chunk for?
-    #[inline]
-    pub fn entity_path(&self) -> Option<&EntityPath> {
-        self.schema.entity_path.as_ref()
-    }
-
-    /// The heap size of this chunk in bytes, if known.
+    /// The heap size of this batch in bytes, if known.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
         self.schema.heap_size_bytes
@@ -97,9 +83,10 @@ impl SorbetBatch {
 
     /// The columns of the indices (timelines).
     pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
+        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
         itertools::izip!(
             &self.schema.columns.indices,
-            self.batch.columns().iter().skip(1) // skip row IDs
+            self.batch.columns().iter().skip(num_row_id_columns)
         )
     }
 
@@ -107,12 +94,13 @@ impl SorbetBatch {
     pub fn component_columns(
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
+        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
         itertools::izip!(
             &self.schema.columns.components,
             self.batch
                 .columns()
                 .iter()
-                .skip(1 + self.schema.columns.indices.len()) // skip row IDs and indices
+                .skip(num_row_id_columns + self.schema.columns.indices.len())
         )
     }
 }
@@ -142,20 +130,20 @@ impl std::ops::Deref for SorbetBatch {
 
 impl From<SorbetBatch> for ArrowRecordBatch {
     #[inline]
-    fn from(chunk: SorbetBatch) -> Self {
-        chunk.batch
+    fn from(batch: SorbetBatch) -> Self {
+        batch.batch
     }
 }
 
 impl From<&SorbetBatch> for ArrowRecordBatch {
     #[inline]
-    fn from(chunk: &SorbetBatch) -> Self {
-        chunk.batch.clone()
+    fn from(batch: &SorbetBatch) -> Self {
+        batch.batch.clone()
     }
 }
 
 impl TryFrom<&ArrowRecordBatch> for SorbetBatch {
-    type Error = InvalidSorbetSchema;
+    type Error = SorbetError;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {

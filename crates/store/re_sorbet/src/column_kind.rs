@@ -1,6 +1,6 @@
 use arrow::datatypes::Field as ArrowField;
 
-use crate::{InvalidSorbetSchema, MetadataExt as _};
+use crate::{MetadataExt as _, SorbetError};
 
 /// The type of column in a sorbet batch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -11,7 +11,7 @@ pub enum ColumnKind {
 }
 
 impl TryFrom<&ArrowField> for ColumnKind {
-    type Error = InvalidSorbetSchema;
+    type Error = SorbetError;
 
     fn try_from(fields: &ArrowField) -> Result<Self, Self::Error> {
         let kind = fields.get_or_err("rerun.kind")?;
@@ -20,9 +20,7 @@ impl TryFrom<&ArrowField> for ColumnKind {
             "index" | "time" => Ok(Self::Index),
             "component" | "data" => Ok(Self::Component),
 
-            _ => Err(InvalidSorbetSchema::custom(format!(
-                "Unknown column kind: {kind}"
-            ))),
+            _ => Err(SorbetError::custom(format!("Unknown column kind: {kind}"))),
         }
     }
 }

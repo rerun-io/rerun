@@ -20,6 +20,7 @@ mod chunk_schema;
 mod column_descriptor;
 mod column_kind;
 mod component_column_descriptor;
+mod error;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
@@ -34,6 +35,7 @@ pub use self::{
     column_descriptor::{ColumnDescriptor, ColumnError},
     column_kind::ColumnKind,
     component_column_descriptor::ComponentColumnDescriptor,
+    error::SorbetError,
     index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
     ipc::{ipc_from_schema, schema_from_ipc},
     metadata::{
@@ -43,7 +45,7 @@ pub use self::{
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
     sorbet_batch::SorbetBatch,
     sorbet_columns::SorbetColumnDescriptors,
-    sorbet_schema::{InvalidSorbetSchema, SorbetSchema},
+    sorbet_schema::SorbetSchema,
 };
 
 /// The type of [`SorbetBatch`].

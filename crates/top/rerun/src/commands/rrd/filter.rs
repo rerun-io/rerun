@@ -114,7 +114,7 @@ impl FilterCommand {
                             match re_sorbet::ChunkSchema::try_from(msg.batch.schema_ref().as_ref())
                             {
                                 Ok(schema) => {
-                                    if !dropped_entity_paths.contains(&schema.entity_path) {
+                                    if !dropped_entity_paths.contains(schema.entity_path()) {
                                         None
                                     } else {
                                         let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(

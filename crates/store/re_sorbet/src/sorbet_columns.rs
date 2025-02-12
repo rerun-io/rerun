@@ -3,8 +3,8 @@ use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 use re_log_types::EntityPath;
 
 use crate::{
-    ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, InvalidSorbetSchema,
-    RowIdColumnDescriptor,
+    ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
+    SorbetError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,7 +57,7 @@ impl SorbetColumnDescriptors {
     pub fn try_from_arrow_fields(
         chunk_entity_path: Option<&EntityPath>,
         fields: &ArrowFields,
-    ) -> Result<Self, InvalidSorbetSchema> {
+    ) -> Result<Self, SorbetError> {
         let mut row_ids = Vec::new();
         let mut indices = Vec::new();
         let mut components = Vec::new();
@@ -70,9 +70,7 @@ impl SorbetColumnDescriptors {
                     if indices.is_empty() && components.is_empty() {
                         row_ids.push(RowIdColumnDescriptor::try_from(field)?);
                     } else {
-                        return Err(InvalidSorbetSchema::custom(
-                            "RowId column must be the first column",
-                        ));
+                        return Err(SorbetError::custom("RowId column must be the first column"));
                     }
                 }
 
@@ -80,7 +78,7 @@ impl SorbetColumnDescriptors {
                     if components.is_empty() {
                         indices.push(IndexColumnDescriptor::try_from(field)?);
                     } else {
-                        return Err(InvalidSorbetSchema::custom(
+                        return Err(SorbetError::custom(
                             "Index columns must come before any data columns",
                         ));
                     }
@@ -96,7 +94,7 @@ impl SorbetColumnDescriptors {
         }
 
         if row_ids.len() > 1 {
-            return Err(InvalidSorbetSchema::custom(
+            return Err(SorbetError::custom(
                 "Multiple row_id columns are not supported",
             ));
         }
