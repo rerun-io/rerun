@@ -75,14 +75,14 @@ impl ChunkBatch {
             }
         }
 
-        if data_arrays.len() != schema.data_columns().len() {
+        if data_arrays.len() != schema.component_columns().len() {
             return Err(MismatchedChunkSchemaError::custom(format!(
-                "Schema had {} data columns, but got {}",
-                schema.data_columns().len(),
+                "Schema had {} component columns, but got {}",
+                schema.component_columns().len(),
                 data_arrays.len()
             )));
         }
-        for (schema, array) in itertools::izip!(schema.data_columns(), &data_arrays) {
+        for (schema, array) in itertools::izip!(schema.component_columns(), &data_arrays) {
             WrongDatatypeError::compare_expected_actual(&schema.store_datatype, array.data_type())?;
             if array.len() != row_count {
                 return Err(MismatchedChunkSchemaError::custom(format!(
@@ -171,11 +171,11 @@ impl ChunkBatch {
     }
 
     /// The columns of the indices (timelines).
-    pub fn data_columns(
+    pub fn component_columns(
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
         itertools::izip!(
-            self.schema.data_columns(),
+            self.schema.component_columns(),
             self.batch
                 .columns()
                 .iter()

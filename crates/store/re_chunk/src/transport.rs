@@ -193,7 +193,7 @@ impl Chunk {
         let components = {
             let mut components = ChunkComponents::default();
 
-            for (schema, column) in batch.data_columns() {
+            for (schema, column) in batch.component_columns() {
                 let column = column
                     .downcast_array_ref::<ArrowListArray>()
                     .ok_or_else(|| ChunkError::Malformed {

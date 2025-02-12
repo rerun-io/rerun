@@ -107,7 +107,7 @@ impl ChunkSchema {
     }
 
     #[inline]
-    pub fn data_columns(&self) -> &[ComponentColumnDescriptor] {
+    pub fn component_columns(&self) -> &[ComponentColumnDescriptor] {
         &self.sorbet.columns.components
     }
 

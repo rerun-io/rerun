@@ -299,7 +299,7 @@ impl PyStorageNodeClient {
                     .cloned()
                     .map(re_sorbet::ColumnDescriptor::Time),
                 chunk_schema
-                    .data_columns()
+                    .component_columns()
                     .iter()
                     .cloned()
                     .map(re_sorbet::ColumnDescriptor::Component),
