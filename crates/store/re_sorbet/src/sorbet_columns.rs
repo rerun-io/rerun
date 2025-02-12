@@ -54,7 +54,7 @@ impl SorbetColumnDescriptors {
 }
 
 impl SorbetColumnDescriptors {
-    fn try_from_arrow_fields(
+    pub fn try_from_arrow_fields(
         chunk_entity_path: Option<&EntityPath>,
         fields: &ArrowFields,
     ) -> Result<Self, InvalidSorbetSchema> {

@@ -57,7 +57,7 @@ pub enum StreamError {
     InvalidUri(String),
 
     #[error(transparent)]
-    InvalidChunkSchema(#[from] re_sorbet::InvalidSorbetSchema),
+    InvalidSorbetSchema(#[from] re_sorbet::InvalidSorbetSchema),
 }
 
 #[cfg(target_arch = "wasm32")]
