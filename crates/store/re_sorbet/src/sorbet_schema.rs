@@ -124,6 +124,15 @@ impl SorbetSchema {
     }
 }
 
+impl From<&SorbetSchema> for ArrowSchema {
+    fn from(sorbet_schema: &SorbetSchema) -> Self {
+        Self {
+            metadata: sorbet_schema.arrow_batch_metadata(),
+            fields: sorbet_schema.columns.arrow_fields().into(),
+        }
+    }
+}
+
 impl TryFrom<&ArrowSchema> for SorbetSchema {
     type Error = InvalidSorbetSchema;
 

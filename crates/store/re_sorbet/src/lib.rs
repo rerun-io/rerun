@@ -2,11 +2,18 @@
 //!
 //! Handles the structure of arrow record batches and their meta data for different use cases for Rerun.
 //!
-//! An arrow record batch that follows a specific schema is called a `SorbetBatch`.
+//! An arrow record batch that follows a specific schema is called a [`SorbetBatch`].
 //!
-//! Some `SorbetBatch`es has even more constrained requirements, such as [`ChunkBatch`] and `DataframeBatch`.
-//! * Every [`ChunkBatch`] is a `SorbetBatch`.
-//! * Every `DataframeBatch` is a `SorbetBatch`.
+//! Some [`SorbetBatch`]es has even more constrained requirements, such as [`ChunkBatch`] and `DataframeBatch`.
+//! * Every [`ChunkBatch`] is a [`SorbetBatch`].
+//! * Every `DataframeBatch` is a [`SorbetBatch`].
+//!
+//! NOTE: `DataframeBatch` has not yet been implemented.
+//!
+//! Each batch type has a matching schema type:
+//! * [`SorbetBatch`] has a [`SorbetSchema`]
+//! * [`ChunkBatch`] has a [`ChunkSchema`]
+//! * `DataframeBatch` will have a `DataframeSchema`
 
 mod chunk_batch;
 mod chunk_schema;
@@ -17,6 +24,7 @@ mod index_column_descriptor;
 mod ipc;
 mod metadata;
 mod row_id_column_descriptor;
+mod sorbet_batch;
 mod sorbet_columns;
 mod sorbet_schema;
 
@@ -33,10 +41,12 @@ pub use self::{
         MissingMetadataKey,
     },
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
+    sorbet_batch::SorbetBatch,
     sorbet_columns::SorbetColumnDescriptors,
     sorbet_schema::{InvalidSorbetSchema, SorbetSchema},
 };
 
+/// The type of [`SorbetBatch`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BatchType {
     /// Data for one entity
