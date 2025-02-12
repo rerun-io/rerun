@@ -19,7 +19,6 @@ workspace = true
 all-features = true
 
 
-
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk_store.workspace = true
@@ -37,7 +36,7 @@ re_viewer_context.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-egui.workspace =  true
+egui.workspace = true
 egui_table.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
