@@ -330,7 +330,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "load_recording",
         ],
         class_list=[
-            "ComponentColumnDescriptor",
+            "DataColumnDescriptor",
             "ComponentColumnSelector",
             "IndexColumnDescriptor",
             "IndexColumnSelector",

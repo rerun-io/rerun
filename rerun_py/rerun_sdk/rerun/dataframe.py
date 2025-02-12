@@ -5,8 +5,8 @@ from typing import Any, Optional
 
 import pyarrow as pa
 from rerun_bindings import (
-    ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
+    DataColumnDescriptor as DataColumnDescriptor,
     IndexColumnDescriptor as IndexColumnDescriptor,
     IndexColumnSelector as IndexColumnSelector,
     Recording as Recording,

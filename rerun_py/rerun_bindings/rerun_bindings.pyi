@@ -68,7 +68,7 @@ class IndexColumnSelector:
         """
         ...
 
-class ComponentColumnDescriptor:
+class DataColumnDescriptor:
     """
     The descriptor of a component column.
 
@@ -161,7 +161,7 @@ class Schema:
     [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
     """
 
-    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]:
+    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, DataColumnDescriptor]]:
         """Iterate over all the column descriptors in the schema."""
         ...
 
@@ -169,11 +169,11 @@ class Schema:
         """Return a list of all the index columns in the schema."""
         ...
 
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
+    def component_columns(self) -> list[DataColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
         ...
 
-    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[DataColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -186,7 +186,7 @@ class Schema:
 
         Returns
         -------
-        Optional[ComponentColumnDescriptor]
+        Optional[DataColumnDescriptor]
             The column descriptor, if it exists.
 
         """
