@@ -27,6 +27,8 @@ use tower_http::cors::CorsLayer;
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
+// TODO(jan): Refactor `serve`/`spawn` variants into a builder?
+
 /// Start a Rerun server, listening on `addr`.
 ///
 /// A Rerun server is an in-memory implementation of a Storage Node.
