@@ -9,7 +9,7 @@
 /// TUID: Time-based Unique Identifier.
 ///
 /// Time-ordered globally unique 128-bit identifiers.
-#[repr(C)]
+#[repr(C, align(1))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::AnyBitPattern))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
