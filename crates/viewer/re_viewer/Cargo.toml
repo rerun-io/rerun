@@ -49,6 +49,7 @@ grpc = ["re_data_source/grpc", "re_grpc_client/redap"]
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
 re_capabilities.workspace = true
+re_catalog_hub.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
@@ -68,12 +69,10 @@ re_log_encoding = { workspace = true, features = [
 ] }
 re_log_types.workspace = true
 re_memory.workspace = true
-re_protos.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_smart_channel.workspace = true
-re_sorbet.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
@@ -121,9 +120,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
-tokio-stream.workspace = true
-tonic = { workspace = true, default-features = false, features = ["transport"] }
 uuid.workspace = true
 web-time.workspace = true
 wgpu.workspace = true

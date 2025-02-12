@@ -4,6 +4,7 @@
 
 mod annotations;
 mod app_options;
+mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
@@ -41,6 +42,7 @@ mod visitor_flow_control;
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     app_options::AppOptions,
+    async_runtime_handle::AsyncRuntimeHandle,
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
