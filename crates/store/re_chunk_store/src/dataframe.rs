@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -63,9 +63,9 @@ pub struct TimeColumnSelector {
     pub timeline: TimelineName,
 }
 
-impl From<TimeColumnDescriptor> for TimeColumnSelector {
+impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
-    fn from(desc: TimeColumnDescriptor) -> Self {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
             timeline: *desc.timeline.name(),
         }
@@ -95,7 +95,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name.to_string(),
+            component_name: desc.component_name.short_name().to_owned(),
         }
     }
 }
@@ -106,7 +106,7 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: C::name().to_string(),
+            component_name: C::name().short_name().to_owned(),
         }
     }
 
@@ -115,7 +115,7 @@ impl ComponentColumnSelector {
     pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component_name: component_name.to_string(),
+            component_name: component_name.short_name().to_owned(),
         }
     }
 }
@@ -380,7 +380,7 @@ impl ChunkStore {
         let timelines = self
             .all_timelines_sorted()
             .into_iter()
-            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor::from(timeline)));
+            .map(|timeline| ColumnDescriptor::Time(IndexColumnDescriptor::from(timeline)));
 
         let mut components = self
             .per_column_metadata
@@ -404,6 +404,8 @@ impl ChunkStore {
                     is_tombstone,
                     is_semantically_empty,
                 } = metadata;
+
+                component_descr.component_name.sanity_check();
 
                 ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
@@ -432,8 +434,8 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
-    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
         let timelines = self.all_timelines();
 
         let timeline = timelines
@@ -442,7 +444,7 @@ impl ChunkStore {
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor::from(timeline)
+        IndexColumnDescriptor::from(timeline)
     }
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
@@ -476,6 +478,8 @@ impl ChunkStore {
 
         let component_name =
             component_descr.map_or(selected_component_name, |descr| descr.component_name);
+
+        component_name.sanity_check();
 
         let ColumnMetadata {
             is_static,

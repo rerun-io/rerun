@@ -142,12 +142,11 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
         re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "grpc",
+        // vvv spawn(), connect() vvv
         re_smart_channel::SmartChannelSource::MessageProxy { .. } => "temp", // TODO(#8761): URL prefix
         re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
         re_smart_channel::SmartChannelSource::JsChannel { .. } => "javascript", // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => "sdk",                     // show()
-        re_smart_channel::SmartChannelSource::WsClient { .. } => "ws_client",   // spawn()
-        re_smart_channel::SmartChannelSource::TcpServer { .. } => "tcp_server", // connect()
         re_smart_channel::SmartChannelSource::Stdin => "stdin",
     });
 

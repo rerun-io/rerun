@@ -34,6 +34,7 @@ re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 

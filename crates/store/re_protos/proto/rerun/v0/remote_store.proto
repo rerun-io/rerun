@@ -145,7 +145,8 @@ message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
 
-message ReIndexResponse {}
+message ReIndexResponse {
+}
 
 // ---------------- SearchIndex ------------------
 

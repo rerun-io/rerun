@@ -4,7 +4,7 @@ use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
@@ -47,7 +47,7 @@ impl Chunk {
         let row_ids = {
             re_tracing::profile_scope!("row_ids");
 
-            let row_ids = arrow_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
+            let row_ids = re_arrow_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
@@ -105,7 +105,7 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
                         Some((component_desc.clone(), list_array))
@@ -113,7 +113,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            arrow_util::pad_list_array_back(
+                            re_arrow_util::pad_list_array_back(
                                 lhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
@@ -144,7 +144,7 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            re_arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
                         Some((component_desc.clone(), list_array))
@@ -152,7 +152,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            arrow_util::pad_list_array_front(
+                            re_arrow_util::pad_list_array_front(
                                 rhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),

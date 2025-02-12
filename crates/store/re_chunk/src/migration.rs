@@ -4,7 +4,7 @@ use arrow::array::{
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::arrow_helpers::as_array_ref;
 
 use crate::Chunk;
@@ -83,7 +83,8 @@ impl Chunk {
                         .map(|a| a.as_deref() as Option<&dyn ArrowArray>)
                         .collect_vec();
 
-                    if let Some(list_array_patched) = arrow_util::arrays_to_list_array_opt(&arrays)
+                    if let Some(list_array_patched) =
+                        re_arrow_util::arrays_to_list_array_opt(&arrays)
                     {
                         *list_array = list_array_patched;
                     }

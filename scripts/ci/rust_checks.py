@@ -42,9 +42,13 @@ class Result:
 
 def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Result:
     args = ["cargo", cargo_cmd]
-    if cargo_cmd not in ["deny", "fmt", "format"]:
+    if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
         args.append("--quiet")
     args += cargo_args.split(" ")
+
+    if cargo_cmd == "nextest":
+        # Needs to go after `run`, so append it last.
+        args.append("--cargo-quiet")
 
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str} ", end="", flush=True)
@@ -105,6 +109,7 @@ def main() -> None:
         ("docs", docs),
         ("docs_slow", docs_slow),
         ("tests", tests),
+        ("tests_without_all_features", tests_without_all_features),
     ]
     check_names = [check[0] for check in checks]
 
@@ -253,14 +258,17 @@ def docs_slow(results: list[Result]) -> None:
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-
-    # Just a normal `cargo test` should always work:
-    results.append(run_cargo("test", "--all-targets --no-run"))
-    results.append(run_cargo("test", "--all-targets"))
-
-    # Full test of everything:
     results.append(run_cargo("test", "--all-targets --all-features --no-run"))
-    results.append(run_cargo("test", "--all-targets --all-features"))
+    results.append(run_cargo("nextest", "run --all-targets --all-features"))
+
+    # Cargo nextest doesn't support doc tests yet, run those separately.
+    results.append(run_cargo("test", "--all-features --doc"))
+
+
+def tests_without_all_features(results: list[Result]) -> None:
+    # We first use `--no-run` to measure the time of compiling vs actually running
+    results.append(run_cargo("test", "--all-targets --no-run"))
+    results.append(run_cargo("nextest", "run --all-targets"))
 
 
 if __name__ == "__main__":

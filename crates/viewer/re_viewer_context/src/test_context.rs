@@ -75,7 +75,10 @@ pub struct TestContext {
     pub recording_store: EntityDb,
     pub blueprint_store: EntityDb,
     pub view_class_registry: ViewClassRegistry,
-    pub selection_state: ApplicationSelectionState,
+
+    // Mutex is needed, so we can swap the buffer from the `run` method.
+    pub selection_state: Mutex<ApplicationSelectionState>,
+
     // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
     pub recording_config: Arc<RecordingConfig>,
     pub view_states: Mutex<ViewStates>,
@@ -252,11 +255,12 @@ impl TestContext {
             .set_timeline(timeline);
     }
 
-    pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
-        edit_fn(&mut self.selection_state);
+    pub fn edit_selection(&self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
+        let mut selection_state = self.selection_state.lock();
+        edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        self.selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|_| true, None);
     }
 
     /// Log an entity to the recording store.
@@ -315,6 +319,8 @@ impl TestContext {
             .expect("No re_renderer::RenderContext in egui_render_state");
         render_ctx.begin_frame();
 
+        let mut selection_state = self.selection_state.lock();
+
         let ctx = ViewerContext {
             app_options: &Default::default(),
             cache: &Default::default(),
@@ -327,7 +333,7 @@ impl TestContext {
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,
             blueprint_cfg: &Default::default(),
-            selection_state: &self.selection_state,
+            selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
             egui_ctx,
             render_ctx,
@@ -348,6 +354,8 @@ impl TestContext {
                 to ensure that kittest & re_renderer use the same graphics device.");
 
         render_ctx.before_submit();
+
+        selection_state.on_frame_start(|_| true, None);
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
@@ -430,7 +438,7 @@ impl TestContext {
                 }
 
                 SystemCommand::SetSelection(item) => {
-                    self.selection_state.set_selection(item);
+                    self.selection_state.lock().set_selection(item);
                 }
 
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
@@ -481,7 +489,7 @@ mod test {
     /// from `TestContext::run`.
     #[test]
     fn test_edit_selection() {
-        let mut test_context = TestContext::default();
+        let test_context = TestContext::default();
 
         let item = Item::InstancePath(InstancePath::entity_all("/entity/path".into()));
 

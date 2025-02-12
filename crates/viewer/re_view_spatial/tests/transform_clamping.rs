@@ -243,7 +243,7 @@ fn run_view_ui_and_save_snapshot(
             let raw_input = harness.input_mut();
             raw_input
                 .events
-                .push(egui::Event::PointerMoved((150.0, 150.0).into()));
+                .push(egui::Event::PointerMoved((100.0, 100.0).into()));
             raw_input.events.push(egui::Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Line,
                 delta: egui::Vec2::UP * 2.0,

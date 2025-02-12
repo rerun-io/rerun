@@ -12,7 +12,7 @@ pub enum Item {
     /// Select a specific application, to see which recordings and blueprints are loaded for it.
     AppId(re_log_types::ApplicationId),
 
-    /// A place where data comes from, e.g. the path to a .rrd or a TCP port.
+    /// A place where data comes from, e.g. the path to a .rrd or a gRPC URL.
     DataSource(re_smart_channel::SmartChannelSource),
 
     /// A recording (or blueprint)

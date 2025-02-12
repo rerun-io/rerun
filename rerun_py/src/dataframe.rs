@@ -21,8 +21,8 @@ use pyo3::{
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
+    ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
@@ -70,7 +70,7 @@ fn py_rerun_warn(msg: &str) -> PyResult<()> {
 /// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
-struct PyIndexColumnDescriptor(TimeColumnDescriptor);
+struct PyIndexColumnDescriptor(IndexColumnDescriptor);
 
 #[pymethods]
 impl PyIndexColumnDescriptor {
@@ -94,8 +94,8 @@ impl PyIndexColumnDescriptor {
     }
 }
 
-impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
-    fn from(desc: TimeColumnDescriptor) -> Self {
+impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self(desc)
     }
 }
@@ -188,7 +188,7 @@ impl PyComponentColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn component_name(&self) -> &str {
-        &self.0.component_name
+        self.0.component_name.full_name()
     }
 
     /// Whether the column is static.

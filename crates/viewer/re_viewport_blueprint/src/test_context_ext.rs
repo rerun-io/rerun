@@ -1,6 +1,8 @@
 use ahash::HashMap;
 
-use re_viewer_context::{test_context::TestContext, Contents, ViewClassExt, ViewerContext};
+use re_viewer_context::{
+    test_context::TestContext, Contents, ViewClassExt, ViewerContext, VisitorControlFlow,
+};
 
 use crate::ViewportBlueprint;
 
@@ -65,7 +67,7 @@ impl TestContextExt for TestContext {
                 let mut query_results = HashMap::default();
 
                 self.run(egui_ctx, |ctx| {
-                    viewport_blueprint.visit_contents(&mut |contents, _| {
+                    viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
                             let view_blueprint = viewport_blueprint
                                 .view(view_id)
@@ -116,7 +118,7 @@ impl TestContextExt for TestContext {
                             query_results.insert(*view_id, data_query_result);
                         }
 
-                        true
+                        VisitorControlFlow::Continue
                     });
                 });
 

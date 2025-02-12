@@ -101,12 +101,10 @@ run = [
   "dep:re_data_source",
   "re_log_encoding/encoder",
   "re_log_encoding/decoder",
-  "dep:re_sdk_comms",
-  "dep:re_ws_comms",
 ]
 
-## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
-server = ["re_sdk_comms?/server"]
+## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
+server = ["dep:re_grpc_server"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
@@ -137,6 +135,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_video.workspace = true
 
@@ -145,18 +144,18 @@ arrow.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
+re_grpc_server = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
-re_sdk_comms = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
-re_ws_comms = { workspace = true, optional = true, features = ["server"] }
 
 env_logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }

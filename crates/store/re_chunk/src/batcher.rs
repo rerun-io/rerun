@@ -9,7 +9,7 @@ use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::arrow_util;
+use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
 use re_types_core::ComponentDescriptor;
@@ -749,7 +749,7 @@ impl PendingRow {
 
         let mut per_name = ChunkComponents::default();
         for (component_desc, array) in components {
-            let list_array = arrow_util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
                 per_name.insert_descriptor(component_desc, list_array);
             }
@@ -898,8 +898,7 @@ impl PendingRow {
                                     let mut per_name = ChunkComponents::default();
                                     for (component_desc, arrays) in std::mem::take(&mut components)
                                     {
-                                        let list_array =
-                                            arrow_util::arrays_to_list_array_opt(&arrays);
+                                        let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
                                             per_name.insert_descriptor(component_desc, list_array);
                                         }
@@ -944,7 +943,7 @@ impl PendingRow {
                     {
                         let mut per_name = ChunkComponents::default();
                         for (component_desc, arrays) in components {
-                            let list_array = arrow_util::arrays_to_list_array_opt(&arrays);
+                            let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
                                 per_name.insert_descriptor(component_desc, list_array);
                             }
@@ -1106,24 +1105,16 @@ mod tests {
             let expected_components = [
                 (
                     MyPoint::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*points1, &*points2, &*points3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
                 ), //
                 (
                     MyLabel::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*labels1, &*labels2, &*labels3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*labels1, &*labels2, &*labels3].map(Some)).unwrap(),
                 ), //
                 (
                     MyIndex::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*indices1, &*indices2, &*indices3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*indices1, &*indices2, &*indices3].map(Some))
+                        .unwrap(),
                 ), //
             ];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1307,8 +1298,7 @@ mod tests {
             let expected_timelines = [];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
-                    .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1387,7 +1377,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1411,7 +1401,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1494,7 +1484,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1524,7 +1514,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1603,7 +1593,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1627,7 +1617,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1730,10 +1720,8 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(
-                    &[&*points1, &*points2, &*points3, &*points4].map(Some),
-                )
-                .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3, &*points4].map(Some))
+                    .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1836,8 +1824,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
-                    .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1867,7 +1854,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,

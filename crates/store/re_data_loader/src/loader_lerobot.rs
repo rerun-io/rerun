@@ -16,7 +16,7 @@ use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, LeRobotDataset};
+use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
@@ -112,7 +112,7 @@ impl DataLoader for LeRobotDatasetLoader {
                         );
                     }
                     DType::Float32 | DType::Float64 => {
-                        chunks.extend(load_scalar(feature_key, &timelines, &data)?);
+                        chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
                     }
                 }
             }
@@ -269,19 +269,22 @@ impl Iterator for ScalarChunkIterator {
 impl ExactSizeIterator for ScalarChunkIterator {}
 
 fn load_scalar(
-    feature: &str,
+    feature_key: &str,
+    feature: &Feature,
     timelines: &IntMap<Timeline, TimeColumn>,
     data: &RecordBatch,
 ) -> Result<ScalarChunkIterator, DataLoaderError> {
     let field = data
         .schema_ref()
-        .field_with_name(feature)
-        .with_context(|| format!("Failed to get field for feature {feature} from parquet file"))?;
+        .field_with_name(feature_key)
+        .with_context(|| {
+            format!("Failed to get field for feature {feature_key} from parquet file")
+        })?;
 
     match field.data_type() {
         DataType::FixedSizeList(_, _) => {
             let fixed_size_array = data
-                .column_by_name(feature)
+                .column_by_name(feature_key)
                 .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
                 .ok_or_else(|| {
                     DataLoaderError::Other(anyhow!(
@@ -289,11 +292,12 @@ fn load_scalar(
                     ))
                 })?;
 
-            let batch_chunks = make_scalar_batch_entity_chunks(field, timelines, fixed_size_array)?;
+            let batch_chunks =
+                make_scalar_batch_entity_chunks(field, feature, timelines, fixed_size_array)?;
             Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
         }
         DataType::Float32 => {
-            let feature_data = data.column_by_name(feature).ok_or_else(|| {
+            let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
                 DataLoaderError::Other(anyhow!(
                     "Failed to get LeRobot dataset column data for: {:?}",
                     field.name()
@@ -321,6 +325,7 @@ fn load_scalar(
 
 fn make_scalar_batch_entity_chunks(
     field: &Field,
+    feature: &Feature,
     timelines: &IntMap<Timeline, TimeColumn>,
     data: &FixedSizeListArray,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
@@ -330,7 +335,13 @@ fn make_scalar_batch_entity_chunks(
     let mut chunks = Vec::with_capacity(num_elements);
 
     for idx in 0..num_elements {
-        let entity_path = format!("{}/{idx}", field.name());
+        let name = feature
+            .names
+            .as_ref()
+            .and_then(|names| names.name_for_index(idx).cloned())
+            .unwrap_or(format!("{idx}"));
+
+        let entity_path = format!("{}/{name}", field.name());
         chunks.push(make_scalar_entity_chunk(
             entity_path.into(),
             timelines,
@@ -363,11 +374,8 @@ fn make_scalar_entity_chunk(
     let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
     #[allow(clippy::unwrap_used)] // we know we've given the right field type
     let data_field_array: arrow::array::ListArray =
-        re_arrow_util::arrow_util::arrays_to_list_array(
-            data_field_inner.data_type().clone(),
-            &data_arrays,
-        )
-        .unwrap();
+        re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
+            .unwrap();
 
     Ok(Chunk::from_auto_row_ids(
         ChunkId::new(),

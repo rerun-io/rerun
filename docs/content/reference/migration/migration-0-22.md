@@ -410,6 +410,11 @@ As part of the switch to "eager archetype serialization" (serialization of arche
 
 However, it is still possible to do so with the `TensorData` component.
 
+### Default log level changed to `warn` in `re_log`
+
+With the addition of the notification center, the default log level in `re_log` is now set to `warn`.
+
+Logs at the `info` level will appear in the notification center.
 
 
 ## C++ API changes

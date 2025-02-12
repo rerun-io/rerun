@@ -276,7 +276,7 @@ impl Chunk {
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
-                let values = re_arrow_util::arrow_util::concat_arrays(&sorted_arrays).unwrap();
+                let values = re_arrow_util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
                     .nulls()
                     .map(|validity| swaps.iter().map(|&from| validity.is_valid(from)).collect());

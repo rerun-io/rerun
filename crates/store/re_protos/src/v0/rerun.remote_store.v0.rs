@@ -947,6 +947,7 @@ pub mod storage_node_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+
         /// The response to `SearchIndex` a RecordBatch with 3 columns:
         /// - 'resource_id' column with the id of the resource
         /// - timepoint column with the values representing the points in time

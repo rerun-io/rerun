@@ -1,24 +1,187 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::{
+    array::{
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, AsArray, ListArray as ArrowListArray,
+        RecordBatch as ArrowRecordBatch, RecordBatchOptions, StructArray as ArrowStructArray,
+    },
+    datatypes::{FieldRef as ArrowFieldRef, Fields as ArrowFields, Schema as ArrowSchema},
+};
 
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
 use re_log_types::EntityPath;
+use re_types_core::ChunkId;
+
+use crate::{
+    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor,
+    IndexColumnDescriptor, RowIdColumnDescriptor, WrongDatatypeError,
+};
 
 #[derive(thiserror::Error, Debug)]
-pub enum ChunkBatchError {
-    #[error("Missing record batch metadata key `{0}`")]
-    MissingRecordBatchMetadataKey(&'static str),
+pub enum MismatchedChunkSchemaError {
+    #[error("{0}")]
+    Custom(String),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] WrongDatatypeError),
 }
 
-/// The arrow [`ArrowRecordBatch`] representation of a Rerun chunk.
+impl MismatchedChunkSchemaError {
+    pub fn custom(s: impl Into<String>) -> Self {
+        Self::Custom(s.into())
+    }
+}
+
+/// The [`ArrowRecordBatch`] representation of a Rerun chunk.
 ///
-/// This is a wrapper around a [`ArrowRecordBatch`].
+/// This is a wrapper around a [`ChunkSchema`] and a [`ArrowRecordBatch`].
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
-/// It walwyas have a [`RowId`] column.
+/// It always has a [`re_types_core::RowId`] column.
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
-    entity_path: EntityPath,
+    schema: ChunkSchema,
     batch: ArrowRecordBatch,
+}
+
+impl ChunkBatch {
+    pub fn try_new(
+        schema: ChunkSchema,
+        row_ids: ArrowArrayRef,
+        index_arrays: Vec<ArrowArrayRef>,
+        data_arrays: Vec<ArrowArrayRef>,
+    ) -> Result<Self, MismatchedChunkSchemaError> {
+        let row_count = row_ids.len();
+
+        WrongDatatypeError::compare_expected_actual(
+            &schema.row_id_column.datatype(),
+            row_ids.data_type(),
+        )?;
+
+        if index_arrays.len() != schema.index_columns.len() {
+            return Err(MismatchedChunkSchemaError::custom(format!(
+                "Schema had {} index columns, but got {}",
+                schema.index_columns.len(),
+                index_arrays.len()
+            )));
+        }
+        for (schema, array) in itertools::izip!(&schema.index_columns, &index_arrays) {
+            WrongDatatypeError::compare_expected_actual(schema.datatype(), array.data_type())?;
+            if array.len() != row_count {
+                return Err(MismatchedChunkSchemaError::custom(format!(
+                    "Index column {:?} had {} rows, but we got {} row IDs",
+                    schema.name(),
+                    array.len(),
+                    row_count
+                )));
+            }
+        }
+
+        if data_arrays.len() != schema.data_columns.len() {
+            return Err(MismatchedChunkSchemaError::custom(format!(
+                "Schema had {} data columns, but got {}",
+                schema.data_columns.len(),
+                data_arrays.len()
+            )));
+        }
+        for (schema, array) in itertools::izip!(&schema.data_columns, &data_arrays) {
+            WrongDatatypeError::compare_expected_actual(&schema.store_datatype, array.data_type())?;
+            if array.len() != row_count {
+                return Err(MismatchedChunkSchemaError::custom(format!(
+                    "Data column {:?} had {} rows, but we got {} row IDs",
+                    schema.column_name(crate::BatchType::Chunk),
+                    array.len(),
+                    row_count
+                )));
+            }
+        }
+
+        let arrow_columns = itertools::chain!(Some(row_ids), index_arrays, data_arrays).collect();
+
+        let batch = ArrowRecordBatch::try_new_with_options(
+            std::sync::Arc::new(ArrowSchema::from(&schema)),
+            arrow_columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+        .map_err(|err| {
+            MismatchedChunkSchemaError::custom(format!(
+                "Failed to create arrow record batch: {err}"
+            ))
+        })?;
+
+        Ok(Self { schema, batch })
+    }
+}
+
+impl ChunkBatch {
+    /// The parsed rerun schema of this chunk.
+    #[inline]
+    pub fn chunk_schema(&self) -> &ChunkSchema {
+        &self.schema
+    }
+
+    /// The globally unique ID of this chunk.
+    #[inline]
+    pub fn chunk_id(&self) -> ChunkId {
+        self.schema.chunk_id()
+    }
+
+    /// Which entity is this chunk for?
+    #[inline]
+    pub fn entity_path(&self) -> &EntityPath {
+        self.schema.entity_path()
+    }
+
+    /// The heap size of this chunk in bytes, if known.
+    #[inline]
+    pub fn heap_size_bytes(&self) -> Option<u64> {
+        self.schema.heap_size_bytes()
+    }
+
+    /// Are we sorted by the row id column?
+    #[inline]
+    pub fn is_sorted(&self) -> bool {
+        self.schema.is_sorted()
+    }
+
+    #[inline]
+    pub fn fields(&self) -> &ArrowFields {
+        &self.schema_ref().fields
+    }
+
+    #[inline]
+    pub fn arrow_bacth_metadata(&self) -> &ArrowBatchMetadata {
+        &self.batch.schema_ref().metadata
+    }
+
+    pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
+        // The first column is always the row IDs.
+        (
+            &self.schema.row_id_column,
+            self.batch.columns()[0]
+                .as_struct_opt()
+                .expect("Row IDs should be encoded as struct"),
+        )
+    }
+
+    /// The columns of the indices (timelines).
+    pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(
+            &self.schema.index_columns,
+            self.batch.columns().iter().skip(1) // skip row IDs
+        )
+    }
+
+    /// The columns of the indices (timelines).
+    pub fn data_columns(
+        &self,
+    ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(
+            &self.schema.data_columns,
+            self.batch
+                .columns()
+                .iter()
+                .skip(1 + self.schema.index_columns.len()) // skip row IDs and indices
+        )
+    }
 }
 
 impl std::fmt::Display for ChunkBatch {
@@ -51,58 +214,78 @@ impl From<ChunkBatch> for ArrowRecordBatch {
     }
 }
 
-impl TryFrom<ArrowRecordBatch> for ChunkBatch {
-    type Error = ChunkBatchError;
+impl From<&ChunkBatch> for ArrowRecordBatch {
+    #[inline]
+    fn from(chunk: &ChunkBatch) -> Self {
+        chunk.batch.clone()
+    }
+}
 
-    fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
-        let mut schema = ArrowSchema::clone(&*batch.schema());
-        let metadata = &mut schema.metadata;
+impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
+    type Error = InvalidChunkSchema;
 
-        {
-            // Verify version
-            if let Some(batch_version) = metadata.get(Self::CHUNK_METADATA_KEY_VERSION) {
-                if batch_version != Self::CHUNK_METADATA_VERSION {
-                    re_log::warn_once!(
-                        "ChunkBatch version mismatch. Expected {:?}, got {batch_version:?}",
-                        Self::CHUNK_METADATA_VERSION
-                    );
-                }
-            }
-            metadata.insert(
-                Self::CHUNK_METADATA_KEY_VERSION.to_owned(),
-                Self::CHUNK_METADATA_VERSION.to_owned(),
-            );
+    /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
+        re_tracing::profile_function!();
+
+        let batch = make_all_data_columns_list_arrays(batch);
+
+        let chunk_schema = ChunkSchema::try_from(batch.schema_ref().as_ref())?;
+
+        for (field, column) in itertools::izip!(chunk_schema.arrow_fields(), batch.columns()) {
+            debug_assert_eq!(field.data_type(), column.data_type());
         }
 
-        let entity_path =
-            if let Some(entity_path) = metadata.get(Self::CHUNK_METADATA_KEY_ENTITY_PATH) {
-                EntityPath::parse_forgiving(entity_path)
-            } else {
-                return Err(ChunkBatchError::MissingRecordBatchMetadataKey(
-                    Self::CHUNK_METADATA_KEY_ENTITY_PATH,
-                ));
-            };
+        // Extend with any metadata that might have been missing:
+        let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());
+        arrow_schema
+            .metadata
+            .extend(chunk_schema.arrow_batch_metadata());
 
-        Ok(Self { entity_path, batch })
+        let batch = ArrowRecordBatch::try_new_with_options(
+            arrow_schema.into(),
+            batch.columns().to_vec(),
+            &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+        )
+        .expect("Can't fail");
+
+        Ok(Self {
+            schema: chunk_schema,
+            batch,
+        })
     }
 }
 
-/// ## Metadata keys for the record batch metadata
-impl ChunkBatch {
-    /// The key used to identify the version of the Rerun schema.
-    const CHUNK_METADATA_KEY_VERSION: &'static str = "rerun.version";
+/// Make sure all data columns are `ListArrays`.
+fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+    re_tracing::profile_function!();
 
-    /// The version of the Rerun schema.
-    const CHUNK_METADATA_VERSION: &'static str = "1";
+    let num_columns = batch.num_columns();
+    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
+    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
 
-    /// The key used to identify a Rerun [`EntityPath`] in the record batch metadata.
-    const CHUNK_METADATA_KEY_ENTITY_PATH: &'static str = "rerun.entity_path";
-}
-
-impl ChunkBatch {
-    /// Returns the [`EntityPath`] of the batch.
-    #[inline]
-    pub fn entity_path(&self) -> &EntityPath {
-        &self.entity_path
+    for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
+        let is_list_array = array.downcast_array_ref::<ArrowListArray>().is_some();
+        let is_data_column = field
+            .metadata()
+            .get("rerun.kind")
+            .is_some_and(|kind| kind == "data");
+        if is_data_column && !is_list_array {
+            let (field, array) = re_arrow_util::wrap_in_list_array(field, array.clone());
+            fields.push(field.into());
+            columns.push(into_arrow_ref(array));
+        } else {
+            fields.push(field.clone());
+            columns.push(array.clone());
+        }
     }
+
+    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+
+    ArrowRecordBatch::try_new_with_options(
+        schema.into(),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .expect("Can't fail")
 }

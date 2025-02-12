@@ -5,7 +5,6 @@ use arrow::array::{
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_arrow_util::arrow_util;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -366,7 +365,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, &validity_filter),
+            row_ids: re_arrow_util::filter_array(row_ids, &validity_filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -374,7 +373,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::filter_array(list_array, &validity_filter);
+                    let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
                     let filtered = if component_desc.component_name == component_name_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
@@ -537,7 +536,7 @@ impl Chunk {
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
-            row_ids: arrow_util::take_array(
+            row_ids: re_arrow_util::take_array(
                 &self.row_ids,
                 &arrow::array::Int32Array::from(indices.clone()),
             ),
@@ -550,7 +549,7 @@ impl Chunk {
                 .components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::take_array(list_array, &indices);
+                    let filtered = re_arrow_util::take_array(list_array, &indices);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -613,7 +612,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, filter),
+            row_ids: re_arrow_util::filter_array(row_ids, filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -621,7 +620,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::filter_array(list_array, filter);
+                    let filtered = re_arrow_util::filter_array(list_array, filter);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -693,7 +692,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::take_array(
+            row_ids: re_arrow_util::take_array(
                 row_ids,
                 &arrow::array::Int32Array::from(indices.clone()),
             ),
@@ -704,7 +703,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let taken = arrow_util::take_array(list_array, indices);
+                    let taken = re_arrow_util::take_array(list_array, indices);
                     (component_desc.clone(), taken)
                 })
                 .collect(),
@@ -841,9 +840,12 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow_util::filter_array(&arrow::array::Int64Array::new(times.clone(), None), filter)
-                .into_parts()
-                .1,
+            re_arrow_util::filter_array(
+                &arrow::array::Int64Array::new(times.clone(), None),
+                filter,
+            )
+            .into_parts()
+            .1,
         )
     }
 
@@ -859,7 +861,7 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        let new_times = arrow_util::take_array(
+        let new_times = re_arrow_util::take_array(
             &arrow::array::Int64Array::new(times.clone(), None),
             &arrow::array::Int32Array::from(indices.clone()),
         )

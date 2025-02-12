@@ -55,15 +55,14 @@ re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1"
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
+re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.23.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.23.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.23.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.23.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.23.0-alpha.1", default-features = false }
-re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.23.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.23.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.23.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.23.0-alpha.1", default-features = false }
-re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/top:
 re_sdk = { path = "crates/top/re_sdk", version = "=0.23.0-alpha.1", default-features = false }
@@ -177,6 +176,7 @@ clean-path = "0.2"
 colored = "2.1"
 comfy-table = { version = "7.0", default-features = false }
 console_error_panic_hook = "0.1.6"
+const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"

@@ -1,6 +1,5 @@
 //! Web-specific tools used by various parts of the application.
 
-use anyhow::Context as _;
 use re_log::ResultExt;
 use serde::Deserialize;
 use std::{ops::ControlFlow, sync::Arc};
@@ -88,13 +87,9 @@ enum EndpointCategory {
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
     RerunGrpc(String),
 
-    /// A remote Rerun server.
-    WebSocket(String),
-
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
 
-    #[cfg(feature = "grpc")]
     /// A stream of messages over gRPC, relayed from the SDK.
     MessageProxy(String),
 }
@@ -105,28 +100,20 @@ impl EndpointCategory {
             Self::HttpRrd(uri)
         } else if uri.starts_with("rerun://") {
             Self::RerunGrpc(uri)
-        } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
             // TODO(#8761): URL prefix
-            #[cfg(feature = "grpc")]
-            {
-                Self::MessageProxy(uri)
-            }
-            #[cfg(not(feature = "grpc"))]
-            {
-                panic!("Required the 'grpc' feature flag to be enabled");
-            }
+            Self::MessageProxy(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::info!("Assuming WebSocket endpoint");
+            re_log::info!("Assuming gRPC endpoint");
             if uri.contains("://") {
-                Self::WebSocket(uri)
+                Self::MessageProxy(uri)
             } else {
-                Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
+                // TODO(jan): this should be `https` if it's not localhost or same-origin
+                Self::MessageProxy(format!("http://{uri}"))
             }
         }
     }
@@ -154,7 +141,7 @@ pub fn url_to_receiver(
 
         #[cfg(feature = "grpc")]
         EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
+            re_grpc_client::redap::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
         }
         #[cfg(not(feature = "grpc"))]
         EndpointCategory::RerunGrpc(_url) => {
@@ -193,12 +180,9 @@ pub fn url_to_receiver(
             }));
             Ok(rx)
         }
-        EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
-            .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
 
-        #[cfg(feature = "grpc")]
         EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker))
+            re_grpc_client::message_proxy::read::stream(&url, Some(ui_waker))
                 .map_err(|err| err.into())
         }
     }
