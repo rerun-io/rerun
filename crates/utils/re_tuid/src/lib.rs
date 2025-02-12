@@ -12,7 +12,6 @@
 #[repr(C, align(1))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::AnyBitPattern))]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
     /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
@@ -307,4 +306,39 @@ fn test_tuid_formatting() {
         Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4).to_string(),
         "182342300C5F8C327a7b4a6e5a379ac4"
     );
+}
+
+// -------------------------------------------------------------------------------
+
+// For backwards compatibility with our MsgPack encoder/decoder
+#[cfg(feature = "serde")]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+struct LegacyTuid {
+    time_ns: u64,
+    inc: u64,
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Tuid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        LegacyTuid {
+            time_ns: self.nanoseconds_since_epoch(),
+            inc: self.inc(),
+        }
+        .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Tuid {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let LegacyTuid { time_ns, inc } = serde::Deserialize::deserialize(deserializer)?;
+        Ok(Self::from_nanos_and_inc(time_ns, inc))
+    }
 }
