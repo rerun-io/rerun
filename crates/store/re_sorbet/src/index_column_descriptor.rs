@@ -12,7 +12,7 @@ pub struct UnsupportedTimeType {
 
 /// Describes a time column, such as `log_time`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TimeColumnDescriptor {
+pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
     pub timeline: Timeline,
 
@@ -23,14 +23,14 @@ pub struct TimeColumnDescriptor {
     pub is_sorted: bool,
 }
 
-impl PartialOrd for TimeColumnDescriptor {
+impl PartialOrd for IndexColumnDescriptor {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for TimeColumnDescriptor {
+impl Ord for IndexColumnDescriptor {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let Self {
@@ -42,7 +42,7 @@ impl Ord for TimeColumnDescriptor {
     }
 }
 
-impl TimeColumnDescriptor {
+impl IndexColumnDescriptor {
     /// Used when returning a null column, i.e. when a lookup failed.
     #[inline]
     pub fn new_null(name: TimelineName) -> Self {
@@ -98,7 +98,7 @@ impl TimeColumnDescriptor {
     }
 }
 
-impl From<Timeline> for TimeColumnDescriptor {
+impl From<Timeline> for IndexColumnDescriptor {
     fn from(timeline: Timeline) -> Self {
         Self {
             timeline,
@@ -108,7 +108,7 @@ impl From<Timeline> for TimeColumnDescriptor {
     }
 }
 
-impl TryFrom<&ArrowField> for TimeColumnDescriptor {
+impl TryFrom<&ArrowField> for IndexColumnDescriptor {
     type Error = UnsupportedTimeType;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {

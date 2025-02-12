@@ -35,6 +35,14 @@ impl std::fmt::Display for ChunkId {
     }
 }
 
+impl std::str::FromStr for ChunkId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        re_tuid::Tuid::from_str(s).map(Self)
+    }
+}
+
 impl ChunkId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
     pub const MAX: Self = Self(re_tuid::Tuid::MAX);
@@ -69,20 +77,9 @@ impl ChunkId {
         Self(self.0.incremented_by(n))
     }
 
-    /// When the `ChunkId` was created, in nanoseconds since unix epoch.
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.0.nanoseconds_since_epoch()
-    }
-
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
     }
 }
 
@@ -167,6 +164,14 @@ impl std::fmt::Display for RowId {
     }
 }
 
+impl std::str::FromStr for RowId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        re_tuid::Tuid::from_str(s).map(Self)
+    }
+}
+
 impl RowId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
     pub const MAX: Self = Self(re_tuid::Tuid::MAX);
@@ -206,20 +211,9 @@ impl RowId {
         Self(self.0.incremented_by(n))
     }
 
-    /// When the `RowId` was created, in nanoseconds since unix epoch.
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.0.nanoseconds_since_epoch()
-    }
-
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
     }
 }
 

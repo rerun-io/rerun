@@ -71,7 +71,7 @@ pub fn stream_from_redap(
                 recording_id,
             } => {
                 if let Err(err) = stream_recording_async(tx, origin, recording_id, on_msg).await {
-                    re_log::warn!(
+                    re_log::error!(
                         "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
                     );
@@ -79,7 +79,7 @@ pub fn stream_from_redap(
             }
             RedapAddress::Catalog { origin } => {
                 if let Err(err) = stream_catalog_async(tx, origin, on_msg).await {
-                    re_log::warn!(
+                    re_log::error!(
                         "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
                     );

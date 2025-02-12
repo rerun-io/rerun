@@ -9,7 +9,7 @@ use arrow::datatypes::{
 
 use re_log_types::EntityPath;
 
-use crate::{ComponentColumnDescriptor, MetadataExt as _, TimeColumnDescriptor};
+use crate::{ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ColumnError {
@@ -26,11 +26,11 @@ pub enum ColumnError {
 // Describes any kind of column.
 //
 // See:
-// * [`TimeColumnDescriptor`]
+// * [`IndexColumnDescriptor`]
 // * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
-    Time(TimeColumnDescriptor),
+    Time(IndexColumnDescriptor),
     Component(ComponentColumnDescriptor),
 }
 
@@ -115,7 +115,7 @@ impl ColumnDescriptor {
     ) -> Result<Self, ColumnError> {
         let kind = field.get_or_err("rerun.kind")?;
         match kind {
-            "index" | "time" => Ok(Self::Time(TimeColumnDescriptor::try_from(field)?)),
+            "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
 
             "data" => Ok(Self::Component(
                 ComponentColumnDescriptor::try_from_arrow_field(chunk_entity_path, field)?,
@@ -133,7 +133,7 @@ fn test_schema_over_ipc() {
     #![expect(clippy::disallowed_methods)] // Schema::new
 
     let original_columns = [
-        ColumnDescriptor::Time(TimeColumnDescriptor {
+        ColumnDescriptor::Time(IndexColumnDescriptor {
             timeline: re_log_types::Timeline::log_time(),
             datatype: arrow::datatypes::DataType::Timestamp(
                 arrow::datatypes::TimeUnit::Nanosecond,
