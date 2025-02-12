@@ -19,13 +19,13 @@ use re_viewer_context::{
     ViewClassRegistry, ViewClassRegistryError,
 };
 
+use crate::app_state::DisplayMode;
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     AppState,
 };
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -879,7 +879,12 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => self.state.show_datastore_ui ^= true,
+            UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+                DisplayMode::Viewer | DisplayMode::RedapBrowser => {
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser
+                }
+                DisplayMode::ChunkStoreBrowser => self.state.display_mode = DisplayMode::Viewer,
+            },
 
             #[cfg(debug_assertions)]
             UICommand::ToggleBlueprintInspectionPanel => {

@@ -1,5 +1,6 @@
 use ahash::HashMap;
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
+use std::cmp::PartialEq;
 
 use re_catalog_hub::CatalogHub;
 use re_chunk_store::LatestAtQuery;
@@ -23,6 +24,19 @@ use crate::{
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
+
+/// Which display mode are we currently in?
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayMode {
+    /// Regular viewer, including the view port.
+    Viewer,
+
+    /// The Redap server/catalog/collection browser.
+    RedapBrowser,
+
+    /// The current recording's data store browser.
+    ChunkStoreBrowser,
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -49,9 +63,9 @@ pub struct AppState {
     #[serde(skip)]
     datastore_ui: re_chunk_store_ui::DatastoreUi,
 
-    /// Display the datastore UI instead of the regular viewer UI.
+    /// The current display mode.
     #[serde(skip)]
-    pub(crate) show_datastore_ui: bool,
+    pub(crate) display_mode: DisplayMode,
 
     /// Display the settings UI.
     ///
@@ -91,7 +105,7 @@ impl Default for AppState {
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
-            show_datastore_ui: false,
+            display_mode: DisplayMode::Viewer,
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -170,7 +184,7 @@ impl AppState {
             blueprint_tree,
             welcome_screen,
             datastore_ui,
-            show_datastore_ui,
+            display_mode,
             show_settings_ui,
             view_states,
             selection_state,
@@ -364,14 +378,17 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if *show_datastore_ui {
-            datastore_ui.ui(&ctx, ui, show_datastore_ui, app_options.time_zone);
+        } else if *display_mode == DisplayMode::ChunkStoreBrowser {
+            let datastore_view_active = datastore_ui.ui(&ctx, ui, app_options.time_zone);
+            if !datastore_view_active {
+                *display_mode = DisplayMode::Viewer;
+            }
         } else {
             //
             // Blueprint time panel
             //
 
-            if app_options.inspect_blueprint_timeline {
+            if app_options.inspect_blueprint_timeline && *display_mode == DisplayMode::Viewer {
                 let blueprint_db = ctx.store_context.blueprint;
 
                 let undo_state = self
@@ -420,27 +437,31 @@ impl AppState {
             // Time panel
             //
 
-            time_panel.show_panel(
-                &ctx,
-                &viewport_ui.blueprint,
-                ctx.recording(),
-                ctx.rec_cfg,
-                ui,
-                app_blueprint.time_panel_state(),
-                DesignTokens::bottom_panel_frame(),
-            );
+            if *display_mode == DisplayMode::Viewer {
+                time_panel.show_panel(
+                    &ctx,
+                    &viewport_ui.blueprint,
+                    ctx.recording(),
+                    ctx.rec_cfg,
+                    ui,
+                    app_blueprint.time_panel_state(),
+                    DesignTokens::bottom_panel_frame(),
+                );
+            }
 
             //
             // Selection Panel
             //
 
-            selection_panel.show_panel(
-                &ctx,
-                &viewport_ui.blueprint,
-                view_states,
-                ui,
-                app_blueprint.selection_panel_state().is_expanded(),
-            );
+            if *display_mode == DisplayMode::Viewer {
+                selection_panel.show_panel(
+                    &ctx,
+                    &viewport_ui.blueprint,
+                    view_states,
+                    ui,
+                    app_blueprint.selection_panel_state().is_expanded(),
+                );
+            }
 
             //
             // Left panel (recordings and blueprint)
@@ -468,37 +489,43 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    if !catalog_hub.is_empty() {
-                        catalog_hub.server_panel_ui(ui);
+                    display_mode_toggle_ui(ui, display_mode);
 
-                        ui.add_space(4.0);
-                    }
+                    match display_mode {
+                        DisplayMode::Viewer => {
+                            let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
-                    let resizable = ctx.store_context.bundle.recordings().count() > 3;
+                            if resizable {
+                                // Don't shrink either recordings panel or blueprint panel below this height
+                                let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
 
-                    if resizable {
-                        // Don't shrink either recordings panel or blueprint panel below this height
-                        let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
-
-                        egui::TopBottomPanel::top("recording_panel")
-                            .frame(egui::Frame::new())
-                            .resizable(resizable)
-                            .show_separator_line(false)
-                            .min_height(min_height_each)
-                            .default_height(210.0)
-                            .max_height(ui.available_height() - min_height_each)
-                            .show_inside(ui, |ui| {
+                                egui::TopBottomPanel::top("recording_panel")
+                                    .frame(egui::Frame::new())
+                                    .resizable(resizable)
+                                    .show_separator_line(false)
+                                    .min_height(min_height_each)
+                                    .default_height(210.0)
+                                    .max_height(ui.available_height() - min_height_each)
+                                    .show_inside(ui, |ui| {
+                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                    });
+                            } else {
                                 recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                            });
-                    } else {
-                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                    }
+                            }
 
-                    ui.add_space(4.0);
+                            ui.add_space(4.0);
 
-                    if !show_welcome {
-                        blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
-                    }
+                            if !show_welcome {
+                                blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
+                            }
+                        }
+
+                        DisplayMode::RedapBrowser => {
+                            catalog_hub.server_panel_ui(ui);
+                        }
+
+                        DisplayMode::ChunkStoreBrowser => {} // handled above
+                    };
                 },
             );
 
@@ -514,17 +541,25 @@ impl AppState {
             egui::CentralPanel::default()
                 .frame(viewport_frame)
                 .show_inside(ui, |ui| {
-                    if show_welcome {
-                        welcome_screen.ui(
-                            ui,
-                            command_sender,
-                            welcome_screen_state,
-                            is_history_enabled,
-                        );
-                    } else if catalog_hub.is_collection_selected() {
-                        catalog_hub.selected_collection_ui(&ctx, ui);
-                    } else {
-                        viewport_ui.viewport_ui(ui, &ctx, view_states);
+                    match display_mode {
+                        DisplayMode::Viewer => {
+                            if show_welcome {
+                                welcome_screen.ui(
+                                    ui,
+                                    command_sender,
+                                    welcome_screen_state,
+                                    is_history_enabled,
+                                );
+                            } else {
+                                viewport_ui.viewport_ui(ui, &ctx, view_states);
+                            }
+                        }
+
+                        DisplayMode::RedapBrowser => {
+                            catalog_hub.ui(&ctx, ui);
+                        }
+
+                        DisplayMode::ChunkStoreBrowser => {} // Handled above
                     }
                 });
         }
@@ -636,6 +671,42 @@ fn move_time(
     {
         ctx.egui_ctx.request_repaint();
     }
+}
+
+fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
+    ui.allocate_ui_with_layout(
+        egui::vec2(
+            ui.available_width(),
+            re_ui::DesignTokens::title_bar_height(),
+        ),
+        egui::Layout::left_to_right(egui::Align::Center),
+        |ui| {
+            egui::Frame::new()
+                .inner_margin(re_ui::DesignTokens::panel_margin())
+                .show(ui, |ui| {
+                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                    ui.visuals_mut().widgets.active.expansion = 0.0;
+                    ui.visuals_mut().widgets.inactive.expansion = 0.0;
+
+                    ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
+                    ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
+                    ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+
+                    ui.visuals_mut().widgets.hovered.fg_stroke.color =
+                        ui.visuals().widgets.inactive.fg_stroke.color;
+                    ui.visuals_mut().widgets.active.fg_stroke.color =
+                        ui.visuals().widgets.inactive.fg_stroke.color;
+                    ui.visuals_mut().widgets.inactive.fg_stroke.color =
+                        ui.visuals().widgets.noninteractive.fg_stroke.color;
+
+                    ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
+                    ui.spacing_mut().item_spacing.x = 3.0;
+
+                    ui.selectable_value(display_mode, DisplayMode::Viewer, "Viewer");
+                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Redap Browser");
+                });
+        },
+    );
 }
 
 pub(crate) fn recording_config_entry<'cfgs>(

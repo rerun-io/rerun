@@ -165,7 +165,9 @@ impl CatalogHub {
         }
     }
 
-    pub fn selected_collection_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        //TODO(ab): we should display something even if no catalog is currently selected.
+
         if let Some(selected_collection) = self.selected_collection.as_ref() {
             let catalogs = self.catalogs.lock();
             if let Some(catalog) = catalogs.get(&selected_collection.server_origin) {
@@ -196,7 +198,7 @@ async fn stream_catalog_async(
 
         #[cfg(not(target_arch = "wasm32"))]
         let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+            //.tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 
