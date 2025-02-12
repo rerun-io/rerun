@@ -211,7 +211,7 @@ impl FilterCommand {
 
 // Does the given field represent a timeline that is in the given set?
 fn is_field_timeline_of(field: &ArrowField, dropped_timelines: &HashSet<String>) -> bool {
-    re_sorbet::TimeColumnDescriptor::try_from(field)
+    re_sorbet::IndexColumnDescriptor::try_from(field)
         .ok()
         .is_some_and(|schema| dropped_timelines.contains(schema.name().as_str()))
 }

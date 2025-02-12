@@ -12,7 +12,7 @@ use re_types_core::ChunkId;
 
 use crate::{
     chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor,
-    RowIdColumnDescriptor, TimeColumnDescriptor, WrongDatatypeError,
+    IndexColumnDescriptor, RowIdColumnDescriptor, WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -163,7 +163,7 @@ impl ChunkBatch {
     }
 
     /// The columns of the indices (timelines).
-    pub fn index_columns(&self) -> impl Iterator<Item = (&TimeColumnDescriptor, &ArrowArrayRef)> {
+    pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
         itertools::izip!(
             &self.schema.index_columns,
             self.batch.columns().iter().skip(1) // skip row IDs

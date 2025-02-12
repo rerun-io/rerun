@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -63,9 +63,9 @@ pub struct TimeColumnSelector {
     pub timeline: TimelineName,
 }
 
-impl From<TimeColumnDescriptor> for TimeColumnSelector {
+impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
-    fn from(desc: TimeColumnDescriptor) -> Self {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
             timeline: *desc.timeline.name(),
         }
@@ -380,7 +380,7 @@ impl ChunkStore {
         let timelines = self
             .all_timelines_sorted()
             .into_iter()
-            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor::from(timeline)));
+            .map(|timeline| ColumnDescriptor::Time(IndexColumnDescriptor::from(timeline)));
 
         let mut components = self
             .per_column_metadata
@@ -434,8 +434,8 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
-    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
         let timelines = self.all_timelines();
 
         let timeline = timelines
@@ -444,7 +444,7 @@ impl ChunkStore {
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor::from(timeline)
+        IndexColumnDescriptor::from(timeline)
     }
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].

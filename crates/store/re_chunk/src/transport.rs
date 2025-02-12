@@ -61,7 +61,7 @@ impl Chunk {
                     } = info;
 
                     let array = info.times_array();
-                    let schema = re_sorbet::TimeColumnDescriptor {
+                    let schema = re_sorbet::IndexColumnDescriptor {
                         timeline: *timeline,
                         datatype: array.data_type().clone(),
                         is_sorted: *is_sorted,

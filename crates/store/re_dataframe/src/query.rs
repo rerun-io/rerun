@@ -27,8 +27,8 @@ use re_chunk::{
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, Index, IndexValue, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector,
+    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
@@ -400,7 +400,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             || {
                                 (
                                     usize::MAX,
-                                    ColumnDescriptor::Time(TimeColumnDescriptor::new_null(
+                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
                                         *selected_timeline,
                                     )),
                                 )
