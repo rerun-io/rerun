@@ -78,7 +78,7 @@ impl ChunkBatch {
         &self.schema_ref().fields
     }
 
-    /// The [`RowId`] column.
+    /// The `RowId` column.
     pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
         // The first column is always the row IDs.
         (

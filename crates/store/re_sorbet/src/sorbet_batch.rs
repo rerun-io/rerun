@@ -70,7 +70,7 @@ impl SorbetBatch {
         &self.batch.schema_ref().metadata
     }
 
-    /// The [`RowId`] column, if any.
+    /// The `RowId` column, if any.
     pub fn row_id_column(&self) -> Option<(&RowIdColumnDescriptor, &ArrowStructArray)> {
         self.schema.columns.row_id.as_ref().map(|row_id_desc| {
             (
