@@ -3,9 +3,13 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Array, ArrayRef, ArrowPrimitiveType, BooleanArray, ListArray, PrimitiveArray},
+    array::{
+        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+        PrimitiveArray, UInt32Array,
+    },
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
+    error::ArrowError,
 };
 use itertools::Itertools as _;
 
@@ -383,6 +387,30 @@ where
         .clone();
     array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
     array
+}
+
+/// Extract the element at `idx` from a `FixedSizeListArray`.
+///
+/// For example:
+/// `[[1, 2], [3, 4], [5, 6]] -> [1, 3, 5]`
+pub fn extract_fixed_size_array_element(
+    data: &FixedSizeListArray,
+    idx: u32,
+) -> Result<ArrayRef, ArrowError> {
+    let num_elements = data.value_length() as u32;
+    let num_values = data.len() as u32;
+
+    let indices = UInt32Array::from(
+        (0..num_values)
+            .map(|i| i * num_elements + idx)
+            .collect::<Vec<_>>(),
+    );
+
+    // We have forbidden using arrow::take, but it really is what we want here
+    // `take_array` results in an unwrap so it appears not to be the right choice.
+    // TODO(jleibs): Follow up with cmc on if there's a different way to do this.
+    #[allow(clippy::disallowed_methods)]
+    arrow::compute::kernels::take::take(data.values(), &indices, None)
 }
 
 // ----------------------------------------------------------------------------
