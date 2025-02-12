@@ -160,6 +160,62 @@ pub async fn serve_from_channel(
 
 /// Start a Rerun server, listening on `addr`.
 ///
+/// This function additionally accepts a `ReceiveSet`, from which the
+/// server will read all messages. It is similar to creating a client
+/// and sending messages through `WriteMessages`, but without the overhead
+/// of a localhost connection.
+///
+/// See [`serve`] for more information about what a Rerun server is.
+pub fn spawn_from_rx_set(
+    addr: SocketAddr,
+    memory_limit: MemoryLimit,
+    shutdown: shutdown::Shutdown,
+    rxs: re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+) {
+    let message_proxy = MessageProxy::new(memory_limit);
+    let event_tx = message_proxy.event_tx.clone();
+
+    tokio::spawn(async move {
+        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+            re_log::error!("message proxy server crashed: {err}");
+        }
+    });
+
+    tokio::spawn(async move {
+        loop {
+            let msg = match rxs.try_recv().and_then(|(_, m)| m.into_data()) {
+                Some(msg) => msg,
+                None => {
+                    tokio::task::yield_now().await;
+                    if rxs.is_empty() {
+                        // We won't ever receive more data:
+                        break;
+                    }
+                    continue;
+                }
+            };
+
+            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
+                msg,
+                re_log_encoding::Compression::LZ4,
+            ) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error!("failed to encode message: {err}");
+                    continue;
+                }
+            };
+
+            if event_tx.send(Event::Message(msg)).await.is_err() {
+                re_log::debug!("shut down, closing sender");
+                break;
+            }
+        }
+    });
+}
+
+/// Start a Rerun server, listening on `addr`.
+///
 /// This function additionally creates a smart channel, and returns its receiving end.
 /// Any messages received by the server are sent through the channel. This is similar
 /// to creating a client and calling `ReadMessages`, but without the overhead of a

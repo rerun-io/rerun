@@ -729,7 +729,12 @@ fn run_impl(
                     "A process is already listening at this address. Assuming it's a Rerun Viewer."
                 );
                 is_another_server_running = true;
-            } else {
+
+            // NOTE: In case of serve-web, we don't want to turn the server into a receiver,
+            //       we want all receivers to push their data to the server.
+            //       For that we spawn the server a bit further down, after we've collected
+            //       all receivers into `rxs`.
+            } else if !args.serve && !args.serve_web {
                 let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
                     server_addr,
                     server_memory_limit,
@@ -775,6 +780,15 @@ fn run_impl(
 
         #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
+            // Spawn a server which the Web Viewer can connect to.
+            // All `rxs` are consumed by the server.
+            re_grpc_server::spawn_from_rx_set(
+                server_addr,
+                server_memory_limit,
+                re_grpc_server::shutdown::never(),
+                ReceiveSet::new(rxs),
+            );
+
             // We always host the web-viewer in case the users wants it,
             // but we only open a browser automatically with the `--web-viewer` flag.
             let open_browser = args.web_viewer;
