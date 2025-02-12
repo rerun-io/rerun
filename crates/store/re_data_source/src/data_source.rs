@@ -91,7 +91,10 @@ impl DataSource {
         let path = std::path::Path::new(&uri).to_path_buf();
 
         #[cfg(feature = "grpc")]
-        if uri.starts_with("rerun://") {
+        if uri.starts_with("rerun://")
+            || uri.starts_with("rerun+http://")
+            || uri.starts_with("rerun+https://")
+        {
             return Self::RerunGrpcUrl { url: uri };
         }
 
