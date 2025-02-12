@@ -343,7 +343,7 @@ fn make_scalar_batch_entity_chunks(
         // The data that comes out of lerobot is structured as a fixed size array, but Rerun
         // needs us to submit these as individual chunks of scalar values, so for each element
         // in the source array we create a new chunk.
-        // TODO(wumpf): Once we have Rerun support for native fixed size list arrays we can stop
+        // TODO(#9005): Once we have Rerun support for native fixed size list arrays we can stop
         // doing this.
         let scalar_values = extract_fixed_size_array_element(data, idx as u32).map_err(|err| {
             anyhow!(
