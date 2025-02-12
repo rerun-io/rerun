@@ -195,7 +195,8 @@ async fn stream_catalog_async(
         );
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_http_scheme())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 
