@@ -387,16 +387,23 @@ where
 
 // ----------------------------------------------------------------------------
 
-/// Convert `[A, B, null, D, …]` into `[[A], [B], null, [D], …]`
+/// Convert `[A, B, null, D, …]` into `[[A], [B], null, [D], …]`.
 pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) {
     re_tracing::profile_function!();
+
+    // The current code reuses the input array as the "item" array,
+    // with an offset-buffer that is all one-length lists.
+    // This means the function is zero-copy, which is good.
+    // TODO(emilk): if the input is mostly nulls we should instead
+    // reallocate the inner array so that it is dense (non-nullable),
+    // and use an offset-buffer with zero-length lists for the nulls.
 
     debug_assert_eq!(field.data_type(), array.data_type());
 
     let item_field = Arc::new(Field::new(
         "item",
         field.data_type().clone(),
-        field.is_nullable(), // TODO(emilk): it would be nice to remove the "inner nullability", and just have outer nullability.
+        field.is_nullable(),
     ));
 
     let offsets = OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
@@ -426,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_wrap_in_list_array() {
-        // Convert [42, 1337, null, 69] into [[42], [1337], null, [69]]
+        // Convert [42, 69, null, 1337] into [[42], [69], null, [1337]]
         let original_field = Field::new("item", DataType::Int32, true);
         let original_array = Int32Array::new(
             ScalarBuffer::from(vec![42, 69, -1, 1337]),
@@ -441,6 +448,7 @@ mod tests {
         assert_eq!(new_field.data_type(), new_array.data_type());
         assert_eq!(new_array.len(), original_array.len());
         assert_eq!(new_array.null_count(), original_array.null_count());
+        assert_eq!(original_field.data_type(), &new_array.value_type());
 
         assert_eq!(
             new_array
