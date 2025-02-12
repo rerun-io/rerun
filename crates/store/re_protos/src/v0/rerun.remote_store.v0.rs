@@ -43,6 +43,7 @@ impl ::prost::Name for GetChunkIdsRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunkIdsResponse {
+    /// a batch of chunk ids for chunks that are within the specified time range
     #[prost(message, repeated, tag = "1")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v0::Tuid>,
 }
@@ -128,6 +129,25 @@ impl ::prost::Name for CreateIndexRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v0.CreateIndexRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReIndexRequest {
+    /// which catalog entry do we want to reindex for
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// which column do we want to reindex
+    #[prost(message, optional, tag = "2")]
+    pub column: ::core::option::Option<IndexColumn>,
+}
+impl ::prost::Name for ReIndexRequest {
+    const NAME: &'static str = "ReIndexRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ReIndexRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ReIndexRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -220,6 +240,18 @@ impl ::prost::Name for CreateIndexResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v0.CreateIndexResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReIndexResponse {}
+impl ::prost::Name for ReIndexResponse {
+    const NAME: &'static str = "ReIndexResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ReIndexResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ReIndexResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -856,6 +888,23 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn re_index(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ReIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/rerun.remote_store.v0.StorageNode/ReIndex");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "ReIndex",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn get_chunk_ids(
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunkIdsRequest>,
@@ -1087,6 +1136,10 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
+        async fn re_index(
+            &self,
+            request: tonic::Request<super::ReIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the GetChunkIds method.
         type GetChunkIdsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::GetChunkIdsResponse, tonic::Status>,
@@ -1341,6 +1394,44 @@ pub mod storage_node_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = CreateIndexSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/ReIndex" => {
+                    #[allow(non_camel_case_types)]
+                    struct ReIndexSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
+                        type Response = super::ReIndexResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ReIndexRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut =
+                                async move { <T as StorageNode>::re_index(&inner, request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ReIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

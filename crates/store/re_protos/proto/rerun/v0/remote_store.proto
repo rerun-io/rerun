@@ -10,6 +10,7 @@ service StorageNode {
     rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
     rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+    rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
     rpc GetChunkIds(GetChunkIdsRequest) returns (stream GetChunkIdsResponse) {}
     rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v0.RerunChunk) {}
@@ -102,6 +103,13 @@ message CreateIndexRequest {
     rerun.common.v0.IndexColumnSelector time_index = 4;
 }
 
+message ReIndexRequest {
+    // which catalog entry do we want to reindex for
+    CatalogEntry entry = 1;
+    // which column do we want to reindex
+    IndexColumn column = 2;
+}
+
 message IndexProperties {
     oneof props {
         InvertedIndex inverted = 1;
@@ -136,6 +144,8 @@ message BTreeIndex {
 message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
+
+message ReIndexResponse {}
 
 // ---------------- SearchIndex ------------------
 
