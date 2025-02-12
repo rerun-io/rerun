@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
+use re_catalog_hub::CatalogHub;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
@@ -13,17 +14,16 @@ use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
-    ViewClassRegistryError,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, PlayState, StoreContext, SystemCommand, SystemCommandSender, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
-    catalog_hub::CatalogHub,
-    AppState, AsyncRuntimeHandle,
+    AppState,
 };
 
 // ----------------------------------------------------------------------------

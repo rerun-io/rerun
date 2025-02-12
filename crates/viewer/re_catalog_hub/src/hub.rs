@@ -8,9 +8,7 @@ use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, QueryCatalogRequest};
 use re_ui::{list_item, UiExt};
-use re_viewer_context::ViewerContext;
-
-use crate::AsyncRuntimeHandle;
+use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 pub struct CollectionHandle {
     server_origin: redap::Origin,

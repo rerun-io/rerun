@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use egui::NumExt as _;
 
+use re_catalog_hub::CatalogHub;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
@@ -16,7 +17,6 @@ use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::catalog_hub::CatalogHub;
 use crate::{
     app_blueprint::AppBlueprint,
     ui::{recordings_panel_ui, settings_screen_ui},

@@ -70,6 +70,7 @@ slotmap.workspace = true
 smallvec.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
 

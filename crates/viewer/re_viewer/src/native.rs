@@ -1,7 +1,6 @@
 use re_capabilities::MainThreadToken;
 use re_log_types::LogMsg;
-
-use crate::AsyncRuntimeHandle;
+use re_viewer_context::AsyncRuntimeHandle;
 
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";

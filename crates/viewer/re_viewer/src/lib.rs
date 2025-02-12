@@ -6,9 +6,7 @@
 mod app;
 mod app_blueprint;
 mod app_state;
-mod async_runtime_handle;
 mod background_tasks;
-mod catalog_hub;
 pub mod env_vars;
 mod saving;
 mod screenshotter;
@@ -29,8 +27,9 @@ pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use app::{App, StartupOptions};
 
-pub use async_runtime_handle::AsyncRuntimeHandle;
 pub use re_capabilities::MainThreadToken;
+
+pub use re_viewer_context::AsyncRuntimeHandle;
 
 pub mod external {
     pub use {eframe, egui};
