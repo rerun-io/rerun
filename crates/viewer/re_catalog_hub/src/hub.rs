@@ -29,8 +29,9 @@ impl Catalog {
 
 /// An individual collection of recordings within a catalog.
 pub struct RecordingCollection {
-    // TODO: other information.
-    // TODO: transport chunk is going away.
+    pub collection_id: egui::Id,
+
+    //TODO(ab): in the future, this will be `SorbetBatch` instead
     pub collection: Vec<RecordBatch>,
 }
 
@@ -60,9 +61,9 @@ impl CatalogHub {
         let catalogs = self.catalogs.clone();
         runtime.spawn_future(async move {
             let result = stream_catalog_async(redap_endpoint, catalogs).await;
-            if let Err(e) = result {
-                // TODO(andreas,antoine): Surface this in the UI in a better way.
-                re_log::error!("Failed to fetch catalog: {e}");
+            if let Err(err) = result {
+                // TODO(andreas,ab): Surface this in the UI in a better way.
+                re_log::error!("Failed to fetch catalog: {err}");
             }
         });
     }
@@ -198,7 +199,7 @@ async fn stream_catalog_async(
 
         #[cfg(not(target_arch = "wasm32"))]
         let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_http_scheme())?
-            //.tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
 
@@ -230,8 +231,13 @@ async fn stream_catalog_async(
         .collect::<Result<Vec<_>, _>>()
         .await?;
 
+    //TODO(ab): ideally this is provided by the server
+    let collection_id = egui::Id::new(redap_endpoint.clone()).with("__top_level_collection__");
     let catalog = Catalog {
-        collections: vec![RecordingCollection { collection: chunks }],
+        collections: vec![RecordingCollection {
+            collection_id,
+            collection: chunks,
+        }],
     };
 
     let previous_catalog = catalogs.lock().insert(redap_endpoint.clone(), catalog);

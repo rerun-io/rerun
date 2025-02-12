@@ -5,6 +5,7 @@ pub use message_proxy::MessageProxyUrl;
 
 #[cfg(feature = "redap")]
 pub mod redap;
+
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(pub tonic::Status);

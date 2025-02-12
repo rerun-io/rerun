@@ -1,14 +1,14 @@
-use arrow::array::ArrayRef;
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
 use egui::Ui;
 use egui_table::{CellInfo, HeaderCellInfo};
+
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
 
 use super::hub::{Command, RecordingCollection};
 
 pub fn collection_ui(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     collection: &RecordingCollection,
 ) -> Vec<Command> {
@@ -16,8 +16,7 @@ pub fn collection_ui(
 
     let schema = {
         let Some(recording_batch) = collection.collection.first() else {
-            //TODO: make that nicer
-            ui.label("empty");
+            ui.label(egui::RichText::new("This collection is empty").italics());
             return commands;
         };
 
@@ -25,8 +24,7 @@ pub fn collection_ui(
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    //TODO: this needs to be fine-tuned for the column cache to behave correctly.
-    let table_id_salt = egui::Id::new("__collection_ui__");
+    let table_id_salt = collection.collection_id.with("__collection_table__");
 
     let num_rows = collection
         .collection
@@ -35,10 +33,8 @@ pub fn collection_ui(
         .sum();
 
     let mut table_delegate = CollectionTableDelegate {
-        ctx,
         record_batches: &collection.collection,
         schema: schema.clone(),
-        num_rows,
     };
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
@@ -70,10 +66,8 @@ pub fn collection_ui(
 }
 
 struct CollectionTableDelegate<'a> {
-    ctx: &'a ViewerContext<'a>,
     record_batches: &'a Vec<RecordBatch>,
     schema: SchemaRef,
-    num_rows: u64,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {

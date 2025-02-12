@@ -881,7 +881,7 @@ impl App {
 
             UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
                 DisplayMode::Viewer | DisplayMode::RedapBrowser => {
-                    self.state.display_mode = DisplayMode::ChunkStoreBrowser
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
                 }
                 DisplayMode::ChunkStoreBrowser => self.state.display_mode = DisplayMode::Viewer,
             },

@@ -8,10 +8,12 @@ use std::net::Ipv4Addr;
 
 /// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-pub struct InvalidRedapAddress {
-    url: String,
-    msg: String,
+pub enum AddressError {
+    #[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
+    InvalidRedapAddress { url: String, msg: String },
+
+    #[error("Catalog URL {origin:?} cannot be loaded as a recording")]
+    CannotLoadCatalogAsRecording { origin: Origin },
 }
 
 /// The different schemes supported by Rerun.
@@ -94,7 +96,7 @@ impl std::fmt::Display for RedapAddress {
 }
 
 impl TryFrom<&str> for RedapAddress {
-    type Error = InvalidRedapAddress;
+    type Error = AddressError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let (scheme, rewritten) = if value.starts_with("rerun://") {
@@ -107,7 +109,7 @@ impl TryFrom<&str> for RedapAddress {
                 value.replace("rerun+https://", "https://"),
             ))
         } else {
-            Err(InvalidRedapAddress {
+            Err(AddressError::InvalidRedapAddress {
                 url: value.to_owned(),
                 msg: "Invalid scheme, expected `rerun://`,`rerun+http://`, or `rerun+https://`"
                     .to_owned(),
@@ -117,13 +119,14 @@ impl TryFrom<&str> for RedapAddress {
         // We have to first rewrite the endpoint, because `Url` does not allow
         // `.set_scheme()` for non-opaque origins, nor does it return a proper
         // `Origin` in that case.
-        let redap_endpoint = url::Url::parse(&rewritten).map_err(|err| InvalidRedapAddress {
-            url: value.to_owned(),
-            msg: err.to_string(),
-        })?;
+        let redap_endpoint =
+            url::Url::parse(&rewritten).map_err(|err| AddressError::InvalidRedapAddress {
+                url: value.to_owned(),
+                msg: err.to_string(),
+            })?;
 
         let url::Origin::Tuple(_, host, port) = redap_endpoint.origin() else {
-            return Err(InvalidRedapAddress {
+            return Err(AddressError::InvalidRedapAddress {
                 url: value.to_owned(),
                 msg: "Opaque origin".to_owned(),
             });
@@ -139,7 +142,7 @@ impl TryFrom<&str> for RedapAddress {
         // adjusted when adding additional resources.
         let segments = redap_endpoint
             .path_segments()
-            .ok_or_else(|| InvalidRedapAddress {
+            .ok_or_else(|| AddressError::InvalidRedapAddress {
                 url: value.to_owned(),
                 msg: "Cannot be a base URL".to_owned(),
             })?
@@ -153,7 +156,7 @@ impl TryFrom<&str> for RedapAddress {
             }),
             ["catalog"] => Ok(Self::Catalog { origin }),
 
-            _ => Err(InvalidRedapAddress {
+            _ => Err(AddressError::InvalidRedapAddress {
                 url: value.to_owned(),
                 msg: "Missing path'".to_owned(),
             }),
@@ -257,7 +260,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::AddressError::InvalidRedapAddress { .. }
         ));
     }
 
@@ -268,7 +271,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::AddressError::InvalidRedapAddress { .. }
         ));
     }
 }
