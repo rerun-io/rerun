@@ -9,7 +9,7 @@ use arrow::datatypes::{
 
 use re_log_types::EntityPath;
 
-use crate::{DataColumnDescriptor, IndexColumnDescriptor, MetadataExt as _};
+use crate::{ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ColumnError {
@@ -27,11 +27,11 @@ pub enum ColumnError {
 //
 // See:
 // * [`IndexColumnDescriptor`]
-// * [`DataColumnDescriptor`]
+// * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
     Time(IndexColumnDescriptor),
-    Component(DataColumnDescriptor),
+    Component(ComponentColumnDescriptor),
 }
 
 impl ColumnDescriptor {
@@ -94,7 +94,7 @@ impl ColumnDescriptor {
     }
 
     /// `chunk_entity_path`: if this column is part of a chunk batch,
-    /// what is its entity path (so we can set [`DataColumnDescriptor::entity_path`])?
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
     pub fn from_arrow_fields(
         chunk_entity_path: Option<&EntityPath>,
         fields: &[ArrowFieldRef],
@@ -108,7 +108,7 @@ impl ColumnDescriptor {
 
 impl ColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
-    /// what is its entity path (so we can set [`DataColumnDescriptor::entity_path`])?
+    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
     pub fn try_from_arrow_field(
         chunk_entity_path: Option<&EntityPath>,
         field: &ArrowField,
@@ -117,10 +117,9 @@ impl ColumnDescriptor {
         match kind {
             "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
 
-            "data" => Ok(Self::Component(DataColumnDescriptor::try_from_arrow_field(
-                chunk_entity_path,
-                field,
-            )?)),
+            "data" => Ok(Self::Component(
+                ComponentColumnDescriptor::try_from_arrow_field(chunk_entity_path, field)?,
+            )),
 
             _ => Err(ColumnError::UnsupportedColumnKind {
                 kind: kind.to_owned(),
@@ -142,7 +141,7 @@ fn test_schema_over_ipc() {
             ),
             is_sorted: true,
         }),
-        ColumnDescriptor::Component(DataColumnDescriptor {
+        ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype_name: Some("archetype".to_owned().into()),
             archetype_field_name: Some("field".to_owned().into()),

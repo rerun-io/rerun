@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptor, DataColumnDescriptor, IndexColumnDescriptor};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -90,9 +90,9 @@ pub struct ComponentColumnSelector {
     pub component_name: String,
 }
 
-impl From<DataColumnDescriptor> for ComponentColumnSelector {
+impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     #[inline]
-    fn from(desc: DataColumnDescriptor) -> Self {
+    fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
             component_name: desc.component_name.short_name().to_owned(),
@@ -407,7 +407,7 @@ impl ChunkStore {
 
                 component_descr.component_name.sanity_check();
 
-                DataColumnDescriptor {
+                ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
@@ -447,13 +447,13 @@ impl ChunkStore {
         IndexColumnDescriptor::from(timeline)
     }
 
-    /// Given a [`ComponentColumnSelector`], returns the corresponding [`DataColumnDescriptor`].
+    /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
     ///
     /// If the component is not found in the store, a default descriptor is returned with a null datatype.
     pub fn resolve_component_selector(
         &self,
         selector: &ComponentColumnSelector,
-    ) -> DataColumnDescriptor {
+    ) -> ComponentColumnDescriptor {
         // Happy path if this string is a valid component
         // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
         // in long-running servers. In practice this probably doesn't matter.
@@ -499,7 +499,7 @@ impl ChunkStore {
             .lookup_datatype(&component_name)
             .unwrap_or(ArrowDatatype::Null);
 
-        DataColumnDescriptor {
+        ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
@@ -559,7 +559,7 @@ impl ChunkStore {
             selection: _,
         } = query;
 
-        let filter = |column: &DataColumnDescriptor| {
+        let filter = |column: &ComponentColumnDescriptor| {
             let is_part_of_view_contents = || {
                 view_contents.as_ref().map_or(true, |view_contents| {
                     view_contents

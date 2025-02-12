@@ -92,7 +92,7 @@ impl Chunk {
 
                     component_name.sanity_check();
 
-                    let schema = re_sorbet::DataColumnDescriptor {
+                    let schema = re_sorbet::ComponentColumnDescriptor {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
@@ -100,7 +100,7 @@ impl Chunk {
                         archetype_field_name,
                         component_name,
 
-                        // These are a consequence of using `DataColumnDescriptor` both for chunk batches and dataframe batches.
+                        // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
                         // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
                         // TODO(#8744): figure out what to do here
                         is_static: false,

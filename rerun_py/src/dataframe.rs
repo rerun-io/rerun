@@ -21,7 +21,7 @@ use pyo3::{
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnSelector, DataColumnDescriptor, IndexColumnDescriptor, QueryExpression,
+    ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor, QueryExpression,
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
@@ -151,12 +151,12 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "DataColumnDescriptor")]
+#[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(DataColumnDescriptor);
+pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
 
-impl From<DataColumnDescriptor> for PyComponentColumnDescriptor {
-    fn from(desc: DataColumnDescriptor) -> Self {
+impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
+    fn from(desc: ComponentColumnDescriptor) -> Self {
         Self(desc)
     }
 }
@@ -200,7 +200,7 @@ impl PyComponentColumnDescriptor {
     }
 }
 
-impl From<PyComponentColumnDescriptor> for DataColumnDescriptor {
+impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
     fn from(desc: PyComponentColumnDescriptor) -> Self {
         desc.0
     }
@@ -550,7 +550,7 @@ impl PySchema {
     ///
     /// Returns
     /// -------
-    /// Optional[DataColumnDescriptor]
+    /// Optional[ComponentColumnDescriptor]
     ///     The column descriptor, if it exists.
     fn column_for(
         &self,

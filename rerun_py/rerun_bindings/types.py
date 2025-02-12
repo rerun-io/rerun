@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from rerun._baseclasses import ComponentMixin
 
     from .rerun_bindings import (
+        ComponentColumnDescriptor as ComponentColumnDescriptor,
         ComponentColumnSelector as ComponentColumnSelector,
-        DataColumnDescriptor as DataColumnDescriptor,
         IndexColumnDescriptor as IndexColumnDescriptor,
         IndexColumnSelector as IndexColumnSelector,
         VectorDistanceMetric as VectorDistanceMetric,
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 AnyColumn: TypeAlias = Union[
     str,
-    "DataColumnDescriptor",
+    "ComponentColumnDescriptor",
     "ComponentColumnSelector",
     "IndexColumnDescriptor",
     "IndexColumnSelector",
@@ -30,7 +30,7 @@ AnyColumn: TypeAlias = Union[
 
 AnyComponentColumn: TypeAlias = Union[
     str,
-    "DataColumnDescriptor",
+    "ComponentColumnDescriptor",
     "ComponentColumnSelector",
 ]
 """A type alias for any component-column-like object."""

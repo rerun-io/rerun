@@ -5,8 +5,9 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptor, ColumnError, DataColumnDescriptor, IndexColumnDescriptor,
-    MetadataExt as _, MissingMetadataKey, RowIdColumnDescriptor, WrongDatatypeError,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnError, ComponentColumnDescriptor,
+    IndexColumnDescriptor, MetadataExt as _, MissingMetadataKey, RowIdColumnDescriptor,
+    WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -63,7 +64,7 @@ pub struct ChunkSchema {
     pub index_columns: Vec<IndexColumnDescriptor>,
 
     /// The actual component data
-    pub data_columns: Vec<DataColumnDescriptor>,
+    pub data_columns: Vec<ComponentColumnDescriptor>,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -82,7 +83,7 @@ impl ChunkSchema {
         entity_path: EntityPath,
         row_id_column: RowIdColumnDescriptor,
         index_columns: Vec<IndexColumnDescriptor>,
-        data_columns: Vec<DataColumnDescriptor>,
+        data_columns: Vec<ComponentColumnDescriptor>,
     ) -> Self {
         Self {
             chunk_id,

@@ -9,7 +9,7 @@
 mod chunk_batch;
 mod chunk_schema;
 mod column_descriptor;
-mod data_column_descriptor;
+mod component_column_descriptor;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
@@ -19,7 +19,7 @@ pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
     chunk_schema::{ChunkSchema, InvalidChunkSchema},
     column_descriptor::{ColumnDescriptor, ColumnError},
-    data_column_descriptor::DataColumnDescriptor,
+    component_column_descriptor::ComponentColumnDescriptor,
     index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
     ipc::{ipc_from_schema, schema_from_ipc},
     metadata::{

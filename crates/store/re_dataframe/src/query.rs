@@ -26,9 +26,9 @@ use re_chunk::{
     Timeline, UnitChunkShared,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnSelector, DataColumnDescriptor,
-    Index, IndexColumnDescriptor, IndexValue, QueryExpression, SparseFillStrategy,
-    TimeColumnSelector,
+    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
@@ -435,7 +435,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             || {
                                 (
                                     usize::MAX,
-                                    ColumnDescriptor::Component(DataColumnDescriptor {
+                                    ColumnDescriptor::Component(ComponentColumnDescriptor {
                                         entity_path: selected_entity_path.clone(),
                                         archetype_name: None,
                                         archetype_field_name: None,

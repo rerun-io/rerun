@@ -37,7 +37,7 @@ pub use self::{
     store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
-pub use re_sorbet::{ColumnDescriptor, DataColumnDescriptor, IndexColumnDescriptor};
+pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
 pub(crate) use self::store::ColumnMetadataState;
 

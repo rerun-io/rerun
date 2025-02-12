@@ -11,7 +11,7 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, DataColumnDescriptor,
+    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor,
     IndexColumnDescriptor, RowIdColumnDescriptor, WrongDatatypeError,
 };
 
@@ -171,7 +171,9 @@ impl ChunkBatch {
     }
 
     /// The columns of the indices (timelines).
-    pub fn data_columns(&self) -> impl Iterator<Item = (&DataColumnDescriptor, &ArrowArrayRef)> {
+    pub fn data_columns(
+        &self,
+    ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
         itertools::izip!(
             &self.schema.data_columns,
             self.batch
