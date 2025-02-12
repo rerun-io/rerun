@@ -12,7 +12,7 @@ use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _, MissingFieldMetadat
 // TODO(#6889): Fully sorbetize this thing? `ArchetypeName` and such don't make sense in that
 // context. And whatever `archetype_field_name` ends up being, it needs interning.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ComponentColumnDescriptor {
+pub struct DataColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
     /// This is the log-time datatype corresponding to how this data is encoded
@@ -64,14 +64,14 @@ pub struct ComponentColumnDescriptor {
     pub is_semantically_empty: bool,
 }
 
-impl PartialOrd for ComponentColumnDescriptor {
+impl PartialOrd for DataColumnDescriptor {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for ComponentColumnDescriptor {
+impl Ord for DataColumnDescriptor {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let Self {
@@ -94,7 +94,7 @@ impl Ord for ComponentColumnDescriptor {
     }
 }
 
-impl std::fmt::Display for ComponentColumnDescriptor {
+impl std::fmt::Display for DataColumnDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
@@ -124,9 +124,9 @@ impl std::fmt::Display for ComponentColumnDescriptor {
     }
 }
 
-impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
+impl From<DataColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
-    fn from(descr: ComponentColumnDescriptor) -> Self {
+    fn from(descr: DataColumnDescriptor) -> Self {
         descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
@@ -136,9 +136,9 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     }
 }
 
-impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
+impl From<&DataColumnDescriptor> for re_types_core::ComponentDescriptor {
     #[inline]
-    fn from(descr: &ComponentColumnDescriptor) -> Self {
+    fn from(descr: &DataColumnDescriptor) -> Self {
         descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
@@ -148,7 +148,7 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     }
 }
 
-impl ComponentColumnDescriptor {
+impl DataColumnDescriptor {
     /// Debug-only sanity check.
     #[inline]
     #[track_caller]
@@ -278,9 +278,9 @@ impl ComponentColumnDescriptor {
     }
 }
 
-impl ComponentColumnDescriptor {
+impl DataColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
-    /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
+    /// what is its entity path (so we can set [`DataColumnDescriptor::entity_path`])?
     pub fn try_from_arrow_field(
         chunk_entity_path: Option<&EntityPath>,
         field: &ArrowField,

@@ -5,8 +5,8 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptor, ColumnError, ComponentColumnDescriptor, MetadataExt as _,
-    MissingMetadataKey, RowIdColumnDescriptor, TimeColumnDescriptor, WrongDatatypeError,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnError, DataColumnDescriptor, IndexColumnDescriptor,
+    MetadataExt as _, MissingMetadataKey, RowIdColumnDescriptor, WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -60,10 +60,10 @@ pub struct ChunkSchema {
     pub row_id_column: RowIdColumnDescriptor,
 
     /// Index columns (timelines).
-    pub index_columns: Vec<TimeColumnDescriptor>,
+    pub index_columns: Vec<IndexColumnDescriptor>,
 
     /// The actual component data
-    pub data_columns: Vec<ComponentColumnDescriptor>,
+    pub data_columns: Vec<DataColumnDescriptor>,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -81,8 +81,8 @@ impl ChunkSchema {
         chunk_id: ChunkId,
         entity_path: EntityPath,
         row_id_column: RowIdColumnDescriptor,
-        index_columns: Vec<TimeColumnDescriptor>,
-        data_columns: Vec<ComponentColumnDescriptor>,
+        index_columns: Vec<IndexColumnDescriptor>,
+        data_columns: Vec<DataColumnDescriptor>,
     ) -> Self {
         Self {
             chunk_id,
@@ -216,13 +216,12 @@ impl TryFrom<&ArrowSchema> for ChunkSchema {
         let ArrowSchema { metadata, fields } = arrow_schema;
 
         let chunk_id = {
-            let chunk_id = metadata.get_or_err("rerun.id")?;
-            let chunk_id = u128::from_str_radix(chunk_id, 16).map_err(|err| {
+            let chunk_id_str = metadata.get_or_err("rerun.id")?;
+            chunk_id_str.parse().map_err(|err| {
                 InvalidChunkSchema::custom(format!(
-                    "Failed to deserialize chunk id {chunk_id:?}: {err}"
+                    "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
                 ))
-            })?;
-            ChunkId::from_u128(chunk_id)
+            })?
         };
 
         let entity_path = EntityPath::parse_forgiving(metadata.get_or_err("rerun.entity_path")?);

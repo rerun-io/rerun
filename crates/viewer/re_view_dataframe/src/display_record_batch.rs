@@ -13,7 +13,7 @@ use arrow::{
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
+use re_chunk_store::{ColumnDescriptor, DataColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::ComponentName;
@@ -47,7 +47,7 @@ pub(crate) enum ComponentData {
 
 impl ComponentData {
     fn try_new(
-        descriptor: &ComponentColumnDescriptor,
+        descriptor: &DataColumnDescriptor,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {

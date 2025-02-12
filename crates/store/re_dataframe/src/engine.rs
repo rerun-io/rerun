@@ -11,7 +11,7 @@ use crate::QueryHandle;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use re_chunk_store::ComponentColumnDescriptor;
+use re_chunk_store::DataColumnDescriptor;
 
 // --- Queries ---
 

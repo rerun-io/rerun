@@ -21,8 +21,8 @@ use pyo3::{
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
+    ComponentColumnSelector, DataColumnDescriptor, IndexColumnDescriptor, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
@@ -70,7 +70,7 @@ fn py_rerun_warn(msg: &str) -> PyResult<()> {
 /// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
-struct PyIndexColumnDescriptor(TimeColumnDescriptor);
+struct PyIndexColumnDescriptor(IndexColumnDescriptor);
 
 #[pymethods]
 impl PyIndexColumnDescriptor {
@@ -94,8 +94,8 @@ impl PyIndexColumnDescriptor {
     }
 }
 
-impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
-    fn from(desc: TimeColumnDescriptor) -> Self {
+impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self(desc)
     }
 }
@@ -151,12 +151,12 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
+#[pyclass(frozen, name = "DataColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+pub struct PyComponentColumnDescriptor(DataColumnDescriptor);
 
-impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
-    fn from(desc: ComponentColumnDescriptor) -> Self {
+impl From<DataColumnDescriptor> for PyComponentColumnDescriptor {
+    fn from(desc: DataColumnDescriptor) -> Self {
         Self(desc)
     }
 }
@@ -200,7 +200,7 @@ impl PyComponentColumnDescriptor {
     }
 }
 
-impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
+impl From<PyComponentColumnDescriptor> for DataColumnDescriptor {
     fn from(desc: PyComponentColumnDescriptor) -> Self {
         desc.0
     }
@@ -550,7 +550,7 @@ impl PySchema {
     ///
     /// Returns
     /// -------
-    /// Optional[ComponentColumnDescriptor]
+    /// Optional[DataColumnDescriptor]
     ///     The column descriptor, if it exists.
     fn column_for(
         &self,

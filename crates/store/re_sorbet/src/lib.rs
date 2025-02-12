@@ -8,25 +8,25 @@
 
 mod chunk_batch;
 mod chunk_schema;
-mod column_schema;
-mod data_column_schema;
-mod index_column_schema;
+mod column_descriptor;
+mod data_column_descriptor;
+mod index_column_descriptor;
 mod ipc;
 mod metadata;
-mod row_id_column_schema;
+mod row_id_column_descriptor;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
     chunk_schema::{ChunkSchema, InvalidChunkSchema},
-    column_schema::{ColumnDescriptor, ColumnError},
-    data_column_schema::ComponentColumnDescriptor,
-    index_column_schema::{TimeColumnDescriptor, UnsupportedTimeType},
+    column_descriptor::{ColumnDescriptor, ColumnError},
+    data_column_descriptor::DataColumnDescriptor,
+    index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
     ipc::{ipc_from_schema, schema_from_ipc},
     metadata::{
         ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
         MissingMetadataKey,
     },
-    row_id_column_schema::{RowIdColumnDescriptor, WrongDatatypeError},
+    row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

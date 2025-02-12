@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
+use re_sorbet::{ColumnDescriptor, DataColumnDescriptor, IndexColumnDescriptor};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -63,9 +63,9 @@ pub struct TimeColumnSelector {
     pub timeline: TimelineName,
 }
 
-impl From<TimeColumnDescriptor> for TimeColumnSelector {
+impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
-    fn from(desc: TimeColumnDescriptor) -> Self {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
             timeline: *desc.timeline.name(),
         }
@@ -90,9 +90,9 @@ pub struct ComponentColumnSelector {
     pub component_name: String,
 }
 
-impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
+impl From<DataColumnDescriptor> for ComponentColumnSelector {
     #[inline]
-    fn from(desc: ComponentColumnDescriptor) -> Self {
+    fn from(desc: DataColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
             component_name: desc.component_name.short_name().to_owned(),
@@ -380,7 +380,7 @@ impl ChunkStore {
         let timelines = self
             .all_timelines_sorted()
             .into_iter()
-            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor::from(timeline)));
+            .map(|timeline| ColumnDescriptor::Time(IndexColumnDescriptor::from(timeline)));
 
         let mut components = self
             .per_column_metadata
@@ -407,7 +407,7 @@ impl ChunkStore {
 
                 component_descr.component_name.sanity_check();
 
-                ComponentColumnDescriptor {
+                DataColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
@@ -434,8 +434,8 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
-    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
         let timelines = self.all_timelines();
 
         let timeline = timelines
@@ -444,16 +444,16 @@ impl ChunkStore {
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor::from(timeline)
+        IndexColumnDescriptor::from(timeline)
     }
 
-    /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
+    /// Given a [`ComponentColumnSelector`], returns the corresponding [`DataColumnDescriptor`].
     ///
     /// If the component is not found in the store, a default descriptor is returned with a null datatype.
     pub fn resolve_component_selector(
         &self,
         selector: &ComponentColumnSelector,
-    ) -> ComponentColumnDescriptor {
+    ) -> DataColumnDescriptor {
         // Happy path if this string is a valid component
         // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
         // in long-running servers. In practice this probably doesn't matter.
@@ -499,7 +499,7 @@ impl ChunkStore {
             .lookup_datatype(&component_name)
             .unwrap_or(ArrowDatatype::Null);
 
-        ComponentColumnDescriptor {
+        DataColumnDescriptor {
             entity_path: selector.entity_path.clone(),
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
@@ -559,7 +559,7 @@ impl ChunkStore {
             selection: _,
         } = query;
 
-        let filter = |column: &ComponentColumnDescriptor| {
+        let filter = |column: &DataColumnDescriptor| {
             let is_part_of_view_contents = || {
                 view_contents.as_ref().map_or(true, |view_contents| {
                     view_contents
