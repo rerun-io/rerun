@@ -1,43 +1,12 @@
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
-use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptor, ColumnError, ComponentColumnDescriptor,
-    IndexColumnDescriptor, MetadataExt as _, MissingMetadataKey, RowIdColumnDescriptor,
-    WrongDatatypeError,
+    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, InvalidSorbetSchema,
+    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetSchema,
 };
-
-#[derive(thiserror::Error, Debug)]
-pub enum InvalidChunkSchema {
-    #[error(transparent)]
-    MissingMetadataKey(#[from] MissingMetadataKey),
-
-    #[error("Bad RowId columns: {0}")]
-    BadRowIdColumn(WrongDatatypeError),
-
-    #[error("Bad column '{field_name}': {error}")]
-    BadColumn {
-        field_name: String,
-        error: ColumnError,
-    },
-
-    #[error("Bad chunk schema: {reason}")]
-    Custom { reason: String },
-
-    #[error("The data columns were not the last columns. Index columns must come before any data columns.")]
-    UnorderedIndexAndDataColumns,
-}
-
-impl InvalidChunkSchema {
-    fn custom(reason: impl Into<String>) -> Self {
-        Self::Custom {
-            reason: reason.into(),
-        }
-    }
-}
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.
 ///
@@ -45,35 +14,13 @@ impl InvalidChunkSchema {
 /// It only contains the metadata used by Rerun.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkSchema {
-    /// The globally unique ID of this chunk.
+    sorbet: SorbetSchema,
+
+    // Some things here are also in [`SorbetSchema]`, but are duplicated
+    // here because they are non-optional:
+    pub row_id: RowIdColumnDescriptor,
     pub chunk_id: ChunkId,
-
-    /// Which entity is this chunk for?
     pub entity_path: EntityPath,
-
-    /// The heap size of this chunk in bytes, if known.
-    pub heap_size_bytes: Option<u64>,
-
-    /// Are we sorted by the row id column?
-    pub is_sorted: bool,
-
-    /// The primary row id column.
-    pub row_id_column: RowIdColumnDescriptor,
-
-    /// Index columns (timelines).
-    pub index_columns: Vec<IndexColumnDescriptor>,
-
-    /// The actual component data
-    pub data_columns: Vec<ComponentColumnDescriptor>,
-}
-
-/// ## Metadata keys for the record batch metadata
-impl ChunkSchema {
-    /// The key used to identify the version of the Rerun schema.
-    const CHUNK_METADATA_KEY_VERSION: &'static str = "rerun.version";
-
-    /// The version of the Rerun schema.
-    const CHUNK_METADATA_VERSION: &'static str = "1";
 }
 
 /// ## Builders
@@ -81,30 +28,37 @@ impl ChunkSchema {
     pub fn new(
         chunk_id: ChunkId,
         entity_path: EntityPath,
-        row_id_column: RowIdColumnDescriptor,
-        index_columns: Vec<IndexColumnDescriptor>,
-        data_columns: Vec<ComponentColumnDescriptor>,
+        row_id: RowIdColumnDescriptor,
+        indices: Vec<IndexColumnDescriptor>,
+        components: Vec<ComponentColumnDescriptor>,
     ) -> Self {
         Self {
+            sorbet: SorbetSchema {
+                columns: SorbetColumnDescriptors {
+                    row_id: Some(row_id.clone()),
+                    indices,
+                    components,
+                },
+                chunk_id: Some(chunk_id),
+                entity_path: Some(entity_path.clone()),
+                heap_size_bytes: None,
+                is_sorted: false, // assume the worst
+            },
+            row_id,
             chunk_id,
             entity_path,
-            heap_size_bytes: None,
-            is_sorted: false, // assume the worst
-            row_id_column,
-            index_columns,
-            data_columns,
         }
     }
 
     #[inline]
     pub fn with_heap_size_bytes(mut self, heap_size_bytes: u64) -> Self {
-        self.heap_size_bytes = Some(heap_size_bytes);
+        self.sorbet.heap_size_bytes = Some(heap_size_bytes);
         self
     }
 
     #[inline]
     pub fn with_sorted(mut self, sorted: bool) -> Self {
-        self.is_sorted = sorted;
+        self.sorbet.is_sorted = sorted;
         self
     }
 }
@@ -126,78 +80,43 @@ impl ChunkSchema {
     /// The heap size of this chunk in bytes, if known.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
-        self.heap_size_bytes
+        self.sorbet.heap_size_bytes
     }
 
     /// Are we sorted by the row id column?
     #[inline]
     pub fn is_sorted(&self) -> bool {
-        self.is_sorted
+        self.sorbet.is_sorted
     }
 
     /// Total number of columns in this chunk,
     /// including the row id column, the index columns,
     /// and the data columns.
     pub fn num_columns(&self) -> usize {
-        1 + self.index_columns.len() + self.data_columns.len()
+        self.sorbet.columns.num_columns()
     }
 
-    pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-        ("rerun.id".to_owned(), format!("{:X}", chunk_id.as_u128()))
+    #[inline]
+    pub fn row_id_column(&self) -> &RowIdColumnDescriptor {
+        &self.row_id
     }
 
-    pub fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
-        ("rerun.entity_path".to_owned(), entity_path.to_string())
+    #[inline]
+    pub fn index_columns(&self) -> &[IndexColumnDescriptor] {
+        &self.sorbet.columns.indices
+    }
+
+    #[inline]
+    pub fn data_columns(&self) -> &[ComponentColumnDescriptor] {
+        &self.sorbet.columns.components
     }
 
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
-        let Self {
-            chunk_id,
-            entity_path,
-            heap_size_bytes,
-            is_sorted,
-            row_id_column: _,
-            index_columns: _,
-            data_columns: _,
-        } = self;
-
-        let mut arrow_metadata = ArrowBatchMetadata::from([
-            (
-                Self::CHUNK_METADATA_KEY_VERSION.to_owned(),
-                Self::CHUNK_METADATA_VERSION.to_owned(),
-            ),
-            Self::chunk_id_metadata(chunk_id),
-            Self::entity_path_metadata(entity_path),
-        ]);
-        if let Some(heap_size_bytes) = heap_size_bytes {
-            arrow_metadata.insert(
-                "rerun.heap_size_bytes".to_owned(),
-                heap_size_bytes.to_string(),
-            );
-        }
-        if *is_sorted {
-            arrow_metadata.insert("rerun.is_sorted".to_owned(), "true".to_owned());
-        }
-
-        arrow_metadata
+        self.sorbet.arrow_batch_metadata()
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
-        let Self {
-            row_id_column,
-            index_columns,
-            data_columns,
-            ..
-        } = self;
-        let mut fields: Vec<ArrowField> = Vec::with_capacity(self.num_columns());
-        fields.push(row_id_column.to_arrow_field());
-        fields.extend(index_columns.iter().map(|column| column.to_arrow_field()));
-        fields.extend(
-            data_columns
-                .iter()
-                .map(|column| column.to_arrow_field(crate::BatchType::Chunk)),
-        );
-        fields
+        self.sorbet.columns.arrow_fields()
     }
 }
 
@@ -211,98 +130,26 @@ impl From<&ChunkSchema> for ArrowSchema {
 }
 
 impl TryFrom<&ArrowSchema> for ChunkSchema {
-    type Error = InvalidChunkSchema;
+    type Error = InvalidSorbetSchema;
 
     fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
-        let ArrowSchema { metadata, fields } = arrow_schema;
-
-        let chunk_id = {
-            let chunk_id_str = metadata.get_or_err("rerun.id")?;
-            chunk_id_str.parse().map_err(|err| {
-                InvalidChunkSchema::custom(format!(
-                    "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
-                ))
-            })?
-        };
-
-        let entity_path = EntityPath::parse_forgiving(metadata.get_or_err("rerun.entity_path")?);
-        let is_sorted = metadata.get_bool("rerun.is_sorted");
-        let heap_size_bytes = if let Some(heap_size_bytes) = metadata.get("rerun.heap_size_bytes") {
-            heap_size_bytes
-                .parse()
-                .map_err(|err| {
-                    re_log::warn_once!(
-                        "Failed to parse heap_size_bytes {heap_size_bytes:?} in chunk: {err}"
-                    );
-                })
-                .ok()
-        } else {
-            None
-        };
-
-        // Verify version
-        if let Some(batch_version) = metadata.get(Self::CHUNK_METADATA_KEY_VERSION) {
-            if batch_version != Self::CHUNK_METADATA_VERSION {
-                re_log::warn_once!(
-                    "ChunkSchema version mismatch. Expected {:?}, got {batch_version:?}",
-                    Self::CHUNK_METADATA_VERSION
-                );
-            }
-        }
-
-        // The first field must be the row id column:
-        let Some(first_field) = fields.first() else {
-            return Err(InvalidChunkSchema::custom("No fields in schema"));
-        };
-
-        let row_id_column = RowIdColumnDescriptor::try_from(first_field.as_ref())
-            .map_err(InvalidChunkSchema::BadRowIdColumn)?;
-
-        let index_and_data_columns: Result<Vec<_>, _> = fields
-            .iter()
-            .skip(1)
-            .map(|field| {
-                ColumnDescriptor::try_from_arrow_field(Some(&entity_path), field.as_ref()).map_err(
-                    |err| InvalidChunkSchema::BadColumn {
-                        field_name: field.name().to_owned(),
-                        error: err,
-                    },
-                )
-            })
-            .collect();
-        let index_and_data_columns = index_and_data_columns?;
-
-        // Index columns should always come first:
-        let num_index_columns =
-            index_and_data_columns.partition_point(|p| matches!(p, ColumnDescriptor::Time(_)));
-
-        let index_columns = index_and_data_columns[0..num_index_columns]
-            .iter()
-            .filter_map(|c| match c {
-                ColumnDescriptor::Time(column) => Some(column.clone()),
-                ColumnDescriptor::Component(_) => None,
-            })
-            .collect_vec();
-        let data_columns = index_and_data_columns[num_index_columns..]
-            .iter()
-            .filter_map(|c| match c {
-                ColumnDescriptor::Time(_) => None,
-                ColumnDescriptor::Component(column) => Some(column.clone()),
-            })
-            .collect_vec();
-
-        if index_columns.len() + data_columns.len() != index_and_data_columns.len() {
-            return Err(InvalidChunkSchema::UnorderedIndexAndDataColumns);
-        }
+        let sorbet_schema = SorbetSchema::try_from(arrow_schema)?;
 
         Ok(Self {
-            chunk_id,
-            entity_path,
-            heap_size_bytes,
-            is_sorted,
-            row_id_column,
-            index_columns,
-            data_columns,
+            row_id: sorbet_schema
+                .columns
+                .row_id
+                .clone()
+                .ok_or_else(|| InvalidSorbetSchema::custom("Missing row_id column"))?,
+            chunk_id: sorbet_schema
+                .chunk_id
+                .ok_or_else(|| InvalidSorbetSchema::custom("Missing chunk_id"))?,
+            entity_path: sorbet_schema
+                .entity_path
+                .clone()
+                .ok_or_else(|| InvalidSorbetSchema::custom("Missing entity_path"))?,
+
+            sorbet: sorbet_schema,
         })
     }
 }

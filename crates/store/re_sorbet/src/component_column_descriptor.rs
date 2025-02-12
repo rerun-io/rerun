@@ -20,12 +20,20 @@ pub struct ComponentColumnDescriptor {
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
 
+    /// Semantic name associated with this data.
+    ///
+    /// This is fully implied by `archetype_name` and `archetype_field`, but
+    /// included for semantic convenience.
+    ///
+    /// Example: `rerun.components.Position3D`.
+    pub component_name: ComponentName,
+
     /// The path of the entity.
     ///
     /// If this column is part of a chunk batch,
     /// this is the same for all columns in the batch,
     /// and will also be set in the schema for the whole chunk.
-    pub entity_path: EntityPath,
+    pub entity_path: EntityPath, // TODO(#8744): make optional for sorbet batches
 
     /// Optional name of the `Archetype` associated with this data.
     ///
@@ -40,14 +48,6 @@ pub struct ComponentColumnDescriptor {
     ///
     /// Example: `positions`.
     pub archetype_field_name: Option<ArchetypeFieldName>,
-
-    /// Semantic name associated with this data.
-    ///
-    /// This is fully implied by `archetype_name` and `archetype_field`, but
-    /// included for semantic convenience.
-    ///
-    /// Example: `rerun.components.Position3D`.
-    pub component_name: ComponentName,
 
     /// Whether this column represents static data.
     pub is_static: bool,

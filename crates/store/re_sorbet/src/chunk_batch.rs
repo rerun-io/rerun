@@ -11,8 +11,8 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    chunk_schema::InvalidChunkSchema, ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor,
-    IndexColumnDescriptor, RowIdColumnDescriptor, WrongDatatypeError,
+    ArrowBatchMetadata, ChunkSchema, ComponentColumnDescriptor, IndexColumnDescriptor,
+    InvalidSorbetSchema, RowIdColumnDescriptor, WrongDatatypeError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -52,18 +52,18 @@ impl ChunkBatch {
         let row_count = row_ids.len();
 
         WrongDatatypeError::compare_expected_actual(
-            &schema.row_id_column.datatype(),
+            &schema.row_id_column().datatype(),
             row_ids.data_type(),
         )?;
 
-        if index_arrays.len() != schema.index_columns.len() {
+        if index_arrays.len() != schema.index_columns().len() {
             return Err(MismatchedChunkSchemaError::custom(format!(
                 "Schema had {} index columns, but got {}",
-                schema.index_columns.len(),
+                schema.index_columns().len(),
                 index_arrays.len()
             )));
         }
-        for (schema, array) in itertools::izip!(&schema.index_columns, &index_arrays) {
+        for (schema, array) in itertools::izip!(schema.index_columns(), &index_arrays) {
             WrongDatatypeError::compare_expected_actual(schema.datatype(), array.data_type())?;
             if array.len() != row_count {
                 return Err(MismatchedChunkSchemaError::custom(format!(
@@ -75,14 +75,14 @@ impl ChunkBatch {
             }
         }
 
-        if data_arrays.len() != schema.data_columns.len() {
+        if data_arrays.len() != schema.data_columns().len() {
             return Err(MismatchedChunkSchemaError::custom(format!(
                 "Schema had {} data columns, but got {}",
-                schema.data_columns.len(),
+                schema.data_columns().len(),
                 data_arrays.len()
             )));
         }
-        for (schema, array) in itertools::izip!(&schema.data_columns, &data_arrays) {
+        for (schema, array) in itertools::izip!(schema.data_columns(), &data_arrays) {
             WrongDatatypeError::compare_expected_actual(&schema.store_datatype, array.data_type())?;
             if array.len() != row_count {
                 return Err(MismatchedChunkSchemaError::custom(format!(
@@ -155,7 +155,7 @@ impl ChunkBatch {
     pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
         // The first column is always the row IDs.
         (
-            &self.schema.row_id_column,
+            self.schema.row_id_column(),
             self.batch.columns()[0]
                 .as_struct_opt()
                 .expect("Row IDs should be encoded as struct"),
@@ -165,7 +165,7 @@ impl ChunkBatch {
     /// The columns of the indices (timelines).
     pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
         itertools::izip!(
-            &self.schema.index_columns,
+            self.schema.index_columns(),
             self.batch.columns().iter().skip(1) // skip row IDs
         )
     }
@@ -175,11 +175,11 @@ impl ChunkBatch {
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
         itertools::izip!(
-            &self.schema.data_columns,
+            self.schema.data_columns(),
             self.batch
                 .columns()
                 .iter()
-                .skip(1 + self.schema.index_columns.len()) // skip row IDs and indices
+                .skip(1 + self.schema.index_columns().len()) // skip row IDs and indices
         )
     }
 }
@@ -222,7 +222,7 @@ impl From<&ChunkBatch> for ArrowRecordBatch {
 }
 
 impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
-    type Error = InvalidChunkSchema;
+    type Error = InvalidSorbetSchema;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {

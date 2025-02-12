@@ -294,12 +294,14 @@ impl PyStorageNodeClient {
 
             let column_descriptors = itertools::chain!(
                 chunk_schema
-                    .index_columns
-                    .into_iter()
+                    .index_columns()
+                    .iter()
+                    .cloned()
                     .map(re_sorbet::ColumnDescriptor::Time),
                 chunk_schema
-                    .data_columns
-                    .into_iter()
+                    .data_columns()
+                    .iter()
+                    .cloned()
                     .map(re_sorbet::ColumnDescriptor::Component),
             )
             .collect();
