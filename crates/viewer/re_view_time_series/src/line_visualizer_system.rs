@@ -392,17 +392,17 @@ impl SeriesLineSystem {
                     {
                         re_tracing::profile_scope!("override/default fast path");
 
-                        let stroke_width = all_stroke_width_chunks[0]
+                        if let Some(stroke_widths) = all_stroke_width_chunks[0]
                             .iter_slices::<f32>(StrokeWidth::name())
                             .next()
-                            .and_then(|stroke_widths| stroke_widths.first().copied());
-
-                        if let Some(stroke_width) = stroke_width {
-                            // TODO: multistrokewidth plz
-                            for points in &mut points_per_series {
-                                points
-                                    .iter_mut()
-                                    .for_each(|p| p.attrs.radius_ui = stroke_width * 0.5);
+                        {
+                            for (points, stroke_width) in points_per_series
+                                .iter_mut()
+                                .zip(clamped_or_nothing(stroke_widths, num_series))
+                            {
+                                for point in points {
+                                    point.attrs.radius_ui = stroke_width * 0.5;
+                                }
                             }
                         }
                     } else {
@@ -422,16 +422,28 @@ impl SeriesLineSystem {
                             re_query::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
                                 .enumerate();
 
-                        all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
-                            if let Some(stroke_width) = stroke_widths
-                                .and_then(|stroke_widths| stroke_widths.first().copied())
-                            {
-                                // TODO: multistrokewidth plz
-                                for points in &mut points_per_series {
+                        // Simplified path for single series.
+                        if num_series == 1 {
+                            let points = &mut points_per_series[0];
+                            all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
+                                if let Some(stroke_width) = stroke_widths
+                                    .and_then(|stroke_widths| stroke_widths.first().copied())
+                                {
                                     points[i].attrs.radius_ui = stroke_width * 0.5;
                                 }
-                            }
-                        });
+                            });
+                        } else {
+                            all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
+                                if let Some(stroke_widths) = stroke_widths {
+                                    for (points, stroke_width) in points_per_series
+                                        .iter_mut()
+                                        .zip(clamped_or_nothing(stroke_widths, num_series))
+                                    {
+                                        points[i].attrs.radius_ui = stroke_width * 0.5;
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
             }
