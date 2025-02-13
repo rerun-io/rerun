@@ -41,17 +41,15 @@ fn encode_roundtrip() {
     let store_id = StoreId::empty_recording();
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
-    for option in [EncodingOptions::PROTOBUF_COMPRESSED] {
-        let crate_version = CrateVersion::LOCAL;
-        let encoded =
-            encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-        let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
-        similar_asserts::assert_eq!(
-            strip_arrow_extensions_from_log_messages(&decoded),
-            strip_arrow_extensions_from_log_messages(&messages),
-            "Failed to roundtrip chunk with option {option:?}"
-        );
-    }
+    let option = EncodingOptions::PROTOBUF_COMPRESSED;
+    let crate_version = CrateVersion::LOCAL;
+    let encoded = encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
+    let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
+    similar_asserts::assert_eq!(
+        strip_arrow_extensions_from_log_messages(&decoded),
+        strip_arrow_extensions_from_log_messages(&messages),
+        "Failed to roundtrip chunk with option {option:?}"
+    );
 }
 
 // TODO(#3741): remove this once we are all in on arrow-rs
