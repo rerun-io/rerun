@@ -12,6 +12,9 @@ service StorageNode {
     rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
     rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
+    rpc GetChunkIds(GetChunkIdsRequest) returns (stream GetChunkIdsResponse) {}
+    rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v0.RerunChunk) {}
+
     // The response to `SearchIndex` a RecordBatch with 3 columns:
     // - 'resource_id' column with the id of the resource
     // - timepoint column with the values representing the points in time
@@ -44,6 +47,31 @@ message DataframePart {
 
     // Data payload is Arrow IPC encoded RecordBatch
     bytes payload = 1000;
+}
+
+// ---------------- GetChunkIds ------------------
+
+message GetChunkIdsRequest {
+    // recording id from which we're want to fetch the chunk ids
+    rerun.common.v0.RecordingId recording_id = 1;
+    // timeline for which we specify the time range
+    rerun.common.v0.IndexColumnSelector time_index = 2;
+    // time range for which we want to fetch the chunk ids
+    rerun.common.v0.TimeRange time_range = 3;
+}
+
+message GetChunkIdsResponse {
+    // a batch of chunk ids for chunks that are within the specified time range
+    repeated rerun.common.v0.Tuid chunk_ids = 1;
+}
+
+// ---------------- GetChunk ---------------------
+
+message GetChunksRequest {
+    // recording id from which we're want to fetch the chunk ids
+    rerun.common.v0.RecordingId recording_id = 1;
+    // batch of chunk ids for which we want to stream back chunks
+    repeated rerun.common.v0.Tuid chunk_ids = 2;
 }
 
 // ---------------- CreateIndex ------------------
