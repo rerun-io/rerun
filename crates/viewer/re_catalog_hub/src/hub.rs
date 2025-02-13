@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::RecordBatch;
 use parking_lot::Mutex;
 use tokio_stream::StreamExt as _;
 
 use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, QueryCatalogRequest};
+use re_sorbet::SorbetBatch;
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
@@ -32,7 +32,7 @@ pub struct RecordingCollection {
     pub collection_id: egui::Id,
 
     //TODO(ab): in the future, this will be `SorbetBatch` instead
-    pub collection: Vec<RecordBatch>,
+    pub collection: Vec<SorbetBatch>,
 }
 
 /// All catalogs known to the viewer.
@@ -216,7 +216,7 @@ async fn stream_catalog_async(
         .await
         .map_err(TonicStatusError)?;
 
-    let chunks = catalog_query_response
+    let sorbet_batches = catalog_query_response
         .into_inner()
         .map(|streaming_result| {
             streaming_result
@@ -228,6 +228,10 @@ async fn stream_catalog_async(
                 .map_err(TonicStatusError)
                 .map_err(StreamError::from)
         })
+        .map(|record_batch| {
+            record_batch
+                .and_then(|record_batch| SorbetBatch::try_from(&record_batch).map_err(Into::into))
+        })
         .collect::<Result<Vec<_>, _>>()
         .await?;
 
@@ -236,7 +240,7 @@ async fn stream_catalog_async(
     let catalog = Catalog {
         collections: vec![RecordingCollection {
             collection_id,
-            collection: chunks,
+            collection: sorbet_batches,
         }],
     };
 

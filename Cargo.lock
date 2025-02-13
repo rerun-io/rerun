@@ -5829,6 +5829,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_protos",
+ "re_sorbet",
  "re_ui",
  "re_viewer_context",
  "tokio-stream",

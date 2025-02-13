@@ -1,7 +1,8 @@
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use arrow::datatypes::SchemaRef;
 use egui::Ui;
 use egui_table::{CellInfo, HeaderCellInfo};
 
+use re_sorbet::SorbetBatch;
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
 
@@ -66,7 +67,7 @@ pub fn collection_ui(
 }
 
 struct CollectionTableDelegate<'a> {
-    record_batches: &'a Vec<RecordBatch>,
+    record_batches: &'a Vec<SorbetBatch>,
     schema: SchemaRef,
 }
 
