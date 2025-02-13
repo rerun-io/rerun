@@ -130,7 +130,7 @@ fn active_default_ui(
 
             if let Some(component_array) = component_array {
                 let value_fn = |ui: &mut egui::Ui| {
-                    ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
+                    ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
                         &query_context,
                         ui,
                         db,
@@ -237,7 +237,7 @@ fn components_to_show_in_add_menu(
             // TODO(andreas): Can only handle single line editors right now.
             let types = ctx
                 .viewer_ctx
-                .component_ui_registry
+                .component_ui_registry()
                 .registered_ui_types(component);
 
             if types.contains(ComponentUiTypes::SingleLineEditor) {

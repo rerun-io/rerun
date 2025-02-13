@@ -263,9 +263,11 @@ impl AppState {
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
-            global_context: GlobalContext { app_options },
+            global_context: GlobalContext {
+                app_options,
+                reflection,
+            },
             view_class_registry,
-            reflection,
             component_ui_registry,
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
@@ -341,9 +343,11 @@ impl AppState {
         // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
         // it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
-            global_context: GlobalContext { app_options },
+            global_context: GlobalContext {
+                app_options,
+                reflection,
+            },
             view_class_registry,
-            reflection,
             component_ui_registry,
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,

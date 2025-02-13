@@ -21,28 +21,40 @@ use crate::{
 };
 
 impl ViewerContext<'_> {
+    #[inline(always)]
     pub fn app_options(&self) -> &AppOptions {
         self.global_context.app_options
+    }
+
+    #[inline(always)]
+    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
+        self.global_context.reflection
+    }
+
+    #[inline(always)]
+    pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
+        self.global_context.component_ui_registry
     }
 }
 
 // TODO: move this to correct place
+// TODO: reorder to match Antoine's PR
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
     /// Global options for the whole viewer.
     pub app_options: &'a AppOptions,
-    // /// Runtime info about components and archetypes.
-    // ///
-    // /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    // /// is not able to provide a value.
-    // ///
-    // /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    // /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    // pub reflection: &'a re_types_core::reflection::Reflection,
 
-    // /// How to display components.
-    // pub component_ui_registry: &'a ComponentUiRegistry,
+    /// Runtime info about components and archetypes.
+    ///
+    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// is not able to provide a value.
+    ///
+    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
+    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
+    pub reflection: &'a re_types_core::reflection::Reflection,
 
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
     // /// Registry of all known classes of views.
     // pub view_class_registry: &'a ViewClassRegistry,
 
@@ -60,18 +72,6 @@ pub struct GlobalContext<'a> {
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
-
-    /// Runtime info about components and archetypes.
-    ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    /// is not able to provide a value.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    pub reflection: &'a re_types_core::reflection::Reflection,
-
-    /// How to display components.
-    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Registry of all known classes of views.
     pub view_class_registry: &'a ViewClassRegistry,
@@ -270,7 +270,7 @@ impl ViewerContext<'_> {
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
     pub fn placeholder_for(&self, component: re_chunk::ComponentName) -> ArrayRef {
-        let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
+        let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
                 return placeholder.clone();

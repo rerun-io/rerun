@@ -237,7 +237,7 @@ impl Query {
                 .filter_map(|c| {
                     c.indicator_component_archetype()
                         .and_then(|archetype_short_name| {
-                            ctx.reflection
+                            ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)
                         })
                 })

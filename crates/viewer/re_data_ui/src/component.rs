@@ -128,7 +128,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         };
 
         if num_instances <= 1 {
-            ctx.component_ui_registry.ui(
+            ctx.component_ui_registry().ui(
                 ctx,
                 ui,
                 ui_layout,
@@ -176,7 +176,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                             );
                         });
                         row.col(|ui| {
-                            ctx.component_ui_registry.ui(
+                            ctx.component_ui_registry().ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,

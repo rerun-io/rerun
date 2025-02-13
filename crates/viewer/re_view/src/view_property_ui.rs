@@ -29,7 +29,7 @@ fn view_property_ui_impl(
     fallback_provider: &dyn ComponentFallbackProvider,
     view_state: &dyn ViewState,
 ) {
-    let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
+    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -94,11 +94,11 @@ pub fn view_property_component_ui(
 
     let ui_types = ctx
         .viewer_ctx
-        .component_ui_registry
+        .component_ui_registry()
         .registered_ui_types(field.component_name);
 
     let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-        ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
+        ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),
@@ -111,7 +111,7 @@ pub fn view_property_component_ui(
     };
 
     let multiline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-        ctx.viewer_ctx.component_ui_registry.multiline_edit_ui(
+        ctx.viewer_ctx.component_ui_registry().multiline_edit_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),

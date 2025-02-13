@@ -146,7 +146,7 @@ impl ComponentData {
                 data
             };
 
-            ctx.component_ui_registry.ui_raw(
+            ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
                 UiLayout::List,

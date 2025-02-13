@@ -235,7 +235,7 @@ fn component_list_ui(
                                 db,
                             );
                         } else {
-                            ctx.component_ui_registry.ui(
+                            ctx.component_ui_registry().ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,

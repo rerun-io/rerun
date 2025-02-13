@@ -13,8 +13,8 @@ use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
+    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
 
 pub trait HarnessExt {
@@ -322,10 +322,11 @@ impl TestContext {
         let mut selection_state = self.selection_state.lock();
 
         let ctx = ViewerContext {
-            app_options: &Default::default(),
-            cache: &Default::default(),
-            reflection: &self.reflection,
-            component_ui_registry: &self.component_ui_registry,
+            global_context: GlobalContext {
+                app_options: &Default::default(),
+                reflection: &self.reflection,
+                component_ui_registry: &self.component_ui_registry,
+            },
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
