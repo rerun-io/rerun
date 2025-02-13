@@ -17,12 +17,12 @@
 )]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    /// A BE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
     time_ns: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
-    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    /// A BE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
     inc: [u8; 8],
 }
 
@@ -101,8 +101,8 @@ impl Tuid {
 
     /// All ones.
     pub const MAX: Self = Self {
-        time_ns: u64::MAX.to_le_bytes(),
-        inc: u64::MAX.to_le_bytes(),
+        time_ns: u64::MAX.to_be_bytes(),
+        inc: u64::MAX.to_be_bytes(),
     };
 
     /// Create a new unique [`Tuid`] based on the current time.
@@ -141,8 +141,8 @@ impl Tuid {
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
         Self {
-            time_ns: time_ns.to_le_bytes(),
-            inc: inc.to_le_bytes(),
+            time_ns: time_ns.to_be_bytes(),
+            inc: inc.to_be_bytes(),
         }
     }
 
@@ -167,7 +167,7 @@ impl Tuid {
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
-        u64::from_le_bytes(self.time_ns)
+        u64::from_be_bytes(self.time_ns)
     }
 
     /// The increment part of the [`Tuid`].
@@ -175,7 +175,7 @@ impl Tuid {
     /// The lower 64 bits of the [`Tuid`].
     #[inline]
     pub fn inc(&self) -> u64 {
-        u64::from_le_bytes(self.inc)
+        u64::from_be_bytes(self.inc)
     }
 
     /// Returns the next logical [`Tuid`].
@@ -191,7 +191,7 @@ impl Tuid {
 
         Self {
             time_ns,
-            inc: u64::from_le_bytes(inc).wrapping_add(1).to_le_bytes(),
+            inc: u64::from_be_bytes(inc).wrapping_add(1).to_be_bytes(),
         }
     }
 
@@ -208,7 +208,7 @@ impl Tuid {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
-            inc: u64::from_le_bytes(inc).wrapping_add(n).to_le_bytes(),
+            inc: u64::from_be_bytes(inc).wrapping_add(n).to_be_bytes(),
         }
     }
 
@@ -257,7 +257,7 @@ fn nanos_since_epoch() -> u64 {
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
     getrandom::getrandom(&mut bytes).expect("Couldn't get random bytes");
-    u64::from_le_bytes(bytes)
+    u64::from_be_bytes(bytes)
 }
 
 impl re_byte_size::SizeBytes for Tuid {
