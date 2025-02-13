@@ -553,11 +553,11 @@ fn available_inactive_visualizers(
     // should do this earlier and store it with the View?
     let maybe_visualizable_entities = ctx
         .viewer_ctx
-        .view_class_registry
+        .view_class_registry()
         .maybe_visualizable_entities_for_visualizer_systems(&entity_db.store_id());
 
     let visualizable_entities = view
-        .class(ctx.viewer_ctx.view_class_registry)
+        .class(ctx.viewer_ctx.view_class_registry())
         .determine_visualizable_entities(
             &maybe_visualizable_entities,
             entity_db,

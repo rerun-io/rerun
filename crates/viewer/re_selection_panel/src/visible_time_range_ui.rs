@@ -31,7 +31,7 @@ pub fn visible_time_range_ui_for_view(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),
-        ctx.view_class_registry,
+        ctx.view_class_registry(),
         view_state,
     );
 

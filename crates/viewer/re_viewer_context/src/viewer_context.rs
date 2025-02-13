@@ -35,6 +35,12 @@ impl ViewerContext<'_> {
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
         self.global_context.component_ui_registry
     }
+
+    /// Registry of all known classes of views.
+    #[inline(always)]
+    pub fn view_class_registry(&self) -> &ViewClassRegistry {
+        self.global_context.view_class_registry
+    }
 }
 
 // TODO: move this to correct place
@@ -55,9 +61,9 @@ pub struct GlobalContext<'a> {
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
-    // /// Registry of all known classes of views.
-    // pub view_class_registry: &'a ViewClassRegistry,
 
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
     // /// The [`egui::Context`].
     // pub egui_ctx: &'a egui::Context,
 
@@ -72,9 +78,6 @@ pub struct GlobalContext<'a> {
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
-
-    /// Registry of all known classes of views.
-    pub view_class_registry: &'a ViewClassRegistry,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,

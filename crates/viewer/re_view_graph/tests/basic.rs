@@ -149,9 +149,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         .with_max_steps(256) // Give it some time to settle the graph.
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {
-                let view_class = ctx
-                    .view_class_registry
-                    .get_class_or_log_error(GraphView::identifier());
+                let view_class = ctx.view_class_registry                    .get_class_or_log_error(GraphView::identifier());
 
                 let view_blueprint = ViewBlueprint::try_from_db(
                     view_id,

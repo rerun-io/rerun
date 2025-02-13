@@ -175,7 +175,7 @@ fn action_list(
                 Box::new(SubMenu {
                     label: "Add view".to_owned(),
                     actions: ctx
-                        .view_class_registry
+                        .view_class_registry()
                         .iter_registry()
                         .map(|entry| {
                             Box::new(AddViewAction {

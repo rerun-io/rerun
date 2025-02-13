@@ -400,7 +400,7 @@ impl ViewBlueprint {
         view_states: &'a mut ViewStates,
     ) -> ViewContext<'a> {
         let class = ctx
-            .view_class_registry
+            .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
         let view_state = view_states.get_mut_or_create(self.id, class);
 
@@ -437,7 +437,7 @@ impl ViewBlueprint {
             .entry(self.class_identifier())
             .or_insert_with(|| {
                 Arc::new(
-                    ctx.view_class_registry
+                    ctx.view_class_registry()
                         .new_visualizer_collection(self.class_identifier()),
                 )
             })
@@ -527,7 +527,7 @@ mod tests {
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
         let resolver = view.contents.build_resolver(
-            &test_ctx.view_class_registry,
+            &test_ctx.view_class_registry(),
             &view,
             &maybe_visualizable_entities,
             &visualizable_entities,
@@ -775,7 +775,7 @@ mod tests {
 
         let mut query_result = view.contents.execute_query(
             &store_ctx,
-            &test_ctx.view_class_registry,
+            &test_ctx.view_class_registry(),
             &test_ctx.blueprint_query,
             view.id,
             visualizable_entities,
@@ -787,7 +787,7 @@ mod tests {
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
                 ctx.rec_cfg.time_ctrl.read().timeline(),
-                ctx.view_class_registry,
+                ctx.view_class_registry(),
                 &mut query_result,
                 &mut view_states,
             );

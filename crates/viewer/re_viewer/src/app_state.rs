@@ -266,9 +266,9 @@ impl AppState {
             global_context: GlobalContext {
                 app_options,
                 reflection,
+                component_ui_registry,
+                view_class_registry,
             },
-            view_class_registry,
-            component_ui_registry,
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -346,9 +346,9 @@ impl AppState {
             global_context: GlobalContext {
                 app_options,
                 reflection,
+                component_ui_registry,
+                view_class_registry,
             },
-            view_class_registry,
-            component_ui_registry,
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,

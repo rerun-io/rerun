@@ -364,7 +364,7 @@ impl BlueprintTree {
         let item = Item::View(view_data.id);
 
         let class = ctx
-            .view_class_registry
+            .view_class_registry()
             .get_class_or_log_error(view_data.class_identifier);
 
         let is_item_hovered =

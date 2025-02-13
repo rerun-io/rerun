@@ -377,11 +377,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 });
             }
 
-            let class = view_blueprint.class(self.ctx.view_class_registry);
+            let class = view_blueprint.class(self.ctx.view_class_registry());
             execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class))
         });
 
-        let class = view_blueprint.class(self.ctx.view_class_registry);
+        let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
         ui.scope(|ui| {
@@ -545,7 +545,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             }
         }
 
-        let view_class = view_blueprint.class(self.ctx.view_class_registry);
+        let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
         let view_state = self.view_states.get_mut_or_create(view_id, view_class);
@@ -662,7 +662,7 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer.tab_title_for_pane(view_id),
                         user_named: view.display_name.is_some(),
-                        icon: view.class(tab_viewer.ctx.view_class_registry).icon(),
+                        icon: view.class(tab_viewer.ctx.view_class_registry()).icon(),
                         item: Some(Item::View(*view_id)),
                     }
                 } else {
