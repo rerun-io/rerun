@@ -41,11 +41,7 @@ fn encode_roundtrip() {
     let store_id = StoreId::empty_recording();
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
-    for option in [
-        EncodingOptions::MSGPACK_UNCOMPRESSED,
-        EncodingOptions::MSGPACK_COMPRESSED,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-    ] {
+    for option in [EncodingOptions::PROTOBUF_COMPRESSED] {
         let crate_version = CrateVersion::LOCAL;
         let encoded =
             encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
