@@ -35,8 +35,10 @@ use re_types::{
 // ----------------------------------------------------------------------------
 
 mod address;
+mod error;
 
-pub use address::{InvalidRedapAddress, RedapAddress};
+pub use address::RedapAddress;
+pub use error::ConnectionError;
 
 use crate::spawn_future;
 use crate::StreamError;
@@ -54,7 +56,7 @@ const CATALOG_APPLICATION_ID: &str = "redap_catalog";
 pub fn stream_from_redap(
     url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, RedapConnectionError> {
     re_log::debug!("Loading {url}…");
 
     let address = url.as_str().try_into()?;
@@ -100,22 +102,7 @@ async fn stream_recording_async(
     use tokio_stream::StreamExt as _;
 
     re_log::debug!("Connecting to {origin}…");
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        // TODO(#8411): figure out the right size for this
-        StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching catalog data for {recording_id}…");
 
@@ -258,24 +245,8 @@ async fn stream_catalog_async(
     origin: Origin,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        StorageNodeClient::new(tonic_client)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching catalog…");
 

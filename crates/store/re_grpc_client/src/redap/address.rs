@@ -6,13 +6,9 @@
 
 use std::net::Ipv4Addr;
 
-/// The given url is not a valid Rerun storage node URL.
-#[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-pub struct InvalidRedapAddress {
-    url: String,
-    msg: String,
-}
+use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
+
+use super::ConnectionError;
 
 /// The different schemes supported by Rerun.
 ///
@@ -52,14 +48,41 @@ pub struct Origin {
 }
 
 impl Origin {
-    // Converts an entire [`Origin`] to a `http` or `https` URL.
-    pub fn to_http_scheme(&self) -> String {
+    /// Converts an entire [`Origin`] to a `http` or `https` URL.
+    fn to_http_scheme(&self) -> String {
         format!(
             "{}://{}:{}",
             self.scheme.to_http_scheme(),
             self.host,
             self.port
         )
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn tonic_client(&self) -> Result<tonic::transport::Channel, ConnectionError> {
+        tonic::transport::Endpoint::new(self.to_http_scheme())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+            .connect()
+            .await
+            .map_err(|e| ConnectionError::Transport(e))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    async fn tonic_client(&self) -> Result<tonic::transport::Endpoint, tonic::transport::Error> {
+        tonic_web_wasm_client::Client::new_with_options(
+            origin.to_http_scheme(),
+            tonic_web_wasm_client::options::FetchOptions::new(),
+        );
+    }
+
+    /// All [`StorageNodeClients`](StorageNodeClient) should be create via this
+    /// method, as it guarantees proper SSL and URI handling.
+
+    pub async fn client<T>(&self) -> Result<StorageNodeClient<T>, ConnectionError> {
+        use tokio_stream::StreamExt as _;
+        // TODO(#8411): figure out the right size for this
+        let client = self.client().await?;
+        Ok(StorageNodeClient::new(client).max_decoding_message_size(usize::MAX))
     }
 }
 
