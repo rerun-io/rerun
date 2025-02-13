@@ -1,3 +1,4 @@
+use std::sync::mpsc::Sender;
 use std::thread;
 
 use anyhow::{anyhow, Context};
@@ -13,12 +14,13 @@ use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
-use re_log_types::StoreId;
+use re_log_types::{ApplicationId, StoreId};
 use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
@@ -39,9 +41,9 @@ impl DataLoader for LeRobotDatasetLoader {
         &self,
         _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        if !is_le_robot_dataset(&filepath) {
+        if !is_lerobot_dataset(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath));
         }
 
@@ -77,23 +79,20 @@ impl DataLoader for LeRobotDatasetLoader {
         _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: std::sync::mpsc::Sender<LoadedData>,
+        _tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
         Err(DataLoaderError::Incompatible(filepath))
     }
 }
 
-fn load_and_stream(dataset: &LeRobotDataset, tx: &std::sync::mpsc::Sender<crate::LoadedData>) {
-    for episode in &dataset.metadata.episodes {
-        let episode = episode.index;
+fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
+    // set up all recordings
+    let episodes = prepare_episode_chunks(dataset, tx);
 
-        match load_episode(dataset, episode) {
+    for (episode, store_id) in &episodes {
+        // log episode data to its respective recording
+        match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let store_id = StoreId::from_string(
-                    re_log_types::StoreKind::Recording,
-                    format!("episode_{}", episode.0),
-                );
-
                 for chunk in chunks {
                     let data = LoadedData::Chunk(
                         LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
@@ -114,6 +113,41 @@ fn load_and_stream(dataset: &LeRobotDataset, tx: &std::sync::mpsc::Sender<crate:
             }
         }
     }
+}
+
+/// Prepare the viewer for all episodes, by sending out a [`SetStoreInfo`](`re_log_types::SetStoreInfo`)
+/// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
+fn prepare_episode_chunks(
+    dataset: &LeRobotDataset,
+    tx: &Sender<crate::LoadedData>,
+) -> Vec<(EpisodeIndex, StoreId)> {
+    let application_id = ApplicationId(format!("{:?}", dataset.path));
+    let mut store_ids = vec![];
+
+    for episode in &dataset.metadata.episodes {
+        let episode = episode.index;
+
+        let store_id = StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            format!("episode_{}", episode.0),
+        );
+        let set_store_info = LoadedData::LogMsg(
+            LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
+            prepare_store_info(
+                application_id.clone(),
+                &store_id,
+                re_log_types::FileSource::Sdk,
+            ),
+        );
+
+        if tx.send(set_store_info).is_err() {
+            break;
+        }
+
+        store_ids.push((episode, store_id.clone()));
+    }
+
+    store_ids
 }
 
 fn load_episode(
