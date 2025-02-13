@@ -408,7 +408,7 @@ fn latest_at_query_video_from_datastore(
             blob_row_id,
             &blob,
             media_type.as_ref(),
-            ctx.app_options.video_decoder_settings(),
+            ctx.app_options().video_decoder_settings(),
         )
     });
     Some((video, blob))

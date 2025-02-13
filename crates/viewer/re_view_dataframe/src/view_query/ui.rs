@@ -75,7 +75,7 @@ impl Query {
                                 time_drag_value,
                                 None,
                                 *timeline_type,
-                                ctx.app_options.time_zone,
+                                ctx.app_options().time_zone,
                                 &mut start,
                             );
 
@@ -110,7 +110,7 @@ impl Query {
                                 time_drag_value,
                                 Some(start),
                                 *timeline_type,
-                                ctx.app_options.time_zone,
+                                ctx.app_options().time_zone,
                                 &mut end,
                             );
 

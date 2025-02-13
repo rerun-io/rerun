@@ -95,7 +95,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 let formatted_time = query
                     .timeline()
                     .typ()
-                    .format(time, ctx.app_options.time_zone);
+                    .format(time, ctx.app_options().time_zone);
                 ui.horizontal(|ui| {
                     ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
                     ui.label(format!("Temporal component at {formatted_time}"));

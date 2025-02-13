@@ -132,7 +132,7 @@ pub fn blob_preview_and_save_ui(
                             blob_row_id,
                             blob,
                             media_type,
-                            ctx.app_options.video_decoder_settings(),
+                            ctx.app_options().video_decoder_settings(),
                         )
                     });
             video_result_ui(ui, ui_layout, &video_result);

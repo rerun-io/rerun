@@ -9,7 +9,7 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, PlayState, RecordingConfig, StoreContext, StoreHub,
+    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
     SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
@@ -263,7 +263,7 @@ impl AppState {
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
-            app_options,
+            global_context: GlobalContext { app_options },
             view_class_registry,
             reflection,
             component_ui_registry,
@@ -341,7 +341,7 @@ impl AppState {
         // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
         // it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
-            app_options,
+            global_context: GlobalContext { app_options },
             view_class_registry,
             reflection,
             component_ui_registry,
@@ -610,7 +610,7 @@ fn move_time(
         timeline_callbacks,
     );
 
-    let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+    let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
         ctx.blueprint_cfg.time_ctrl.write().update(
             ctx.store_context.blueprint.times_per_timeline(),
             dt,

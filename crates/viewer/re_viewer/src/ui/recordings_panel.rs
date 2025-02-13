@@ -125,7 +125,7 @@ fn recording_list_ui(
     if let Some(entity_dbs) = entity_dbs_map.remove(&StoreHub::welcome_screen_app_id()) {
         // Always show welcome screen first, if at all:
         if ctx
-            .app_options
+            .app_options()
             .include_welcome_screen_button_in_recordings_panel
             && !welcome_screen_state.hide
         {

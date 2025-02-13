@@ -207,7 +207,7 @@ pub fn guess_query_and_db_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
 ) -> (re_chunk_store::LatestAtQuery, &'a re_entity_db::EntityDb) {
-    if ctx.app_options.inspect_blueprint_timeline
+    if ctx.app_options().inspect_blueprint_timeline
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
         (
@@ -547,7 +547,7 @@ pub fn time_button(
 
     let response = ui.selectable_label(
         is_selected,
-        timeline.typ().format(value, ctx.app_options.time_zone),
+        timeline.typ().format(value, ctx.app_options().time_zone),
     );
     if response.clicked() {
         ctx.rec_cfg
@@ -748,7 +748,7 @@ pub fn entity_db_button_ui(
         .store_info()
         .and_then(|info| {
             info.started
-                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
         })
         .unwrap_or("<unknown time>".to_owned());
 

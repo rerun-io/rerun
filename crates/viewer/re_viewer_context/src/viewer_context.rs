@@ -1,3 +1,9 @@
+//! This module introduces a hierarchy of contexts from general to increasingly
+//! specific. Each part of the viewer should only have access a narrow context.
+//! The hierarchy looks as follows:
+//!
+//! [`ViewerContext`] -> [`GlobalContext`]
+
 use ahash::HashMap;
 use arrow::array::ArrayRef;
 use parking_lot::RwLock;
@@ -14,10 +20,46 @@ use crate::{
     ViewClassRegistry, ViewId,
 };
 
-/// Common things needed by many parts of the viewer.
-pub struct ViewerContext<'a> {
+impl ViewerContext<'_> {
+    pub fn app_options(&self) -> &AppOptions {
+        self.global_context.app_options
+    }
+}
+
+// TODO: move this to correct place
+/// Application context that is shared across all parts of the viewer.
+pub struct GlobalContext<'a> {
     /// Global options for the whole viewer.
     pub app_options: &'a AppOptions,
+    // /// Runtime info about components and archetypes.
+    // ///
+    // /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    // /// is not able to provide a value.
+    // ///
+    // /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
+    // /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
+    // pub reflection: &'a re_types_core::reflection::Reflection,
+
+    // /// How to display components.
+    // pub component_ui_registry: &'a ComponentUiRegistry,
+
+    // /// Registry of all known classes of views.
+    // pub view_class_registry: &'a ViewClassRegistry,
+
+    // /// The [`egui::Context`].
+    // pub egui_ctx: &'a egui::Context,
+
+    // /// The global `re_renderer` context, holds on to all GPU resources.
+    // pub render_ctx: &'a re_renderer::RenderContext,
+
+    // /// Interface for sending commands back to the app
+    // pub command_sender: &'a CommandSender,
+}
+
+/// Common things needed by many parts of the viewer.
+pub struct ViewerContext<'a> {
+    /// Global context shared across all parts of the viewer.
+    pub global_context: GlobalContext<'a>,
 
     /// Runtime info about components and archetypes.
     ///

@@ -87,7 +87,7 @@ pub use self::{
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
         VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
     },
-    viewer_context::{RecordingConfig, ViewerContext},
+    viewer_context::{GlobalContext, RecordingConfig, ViewerContext},
     visitor_flow_control::VisitorControlFlow,
 };
 

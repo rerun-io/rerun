@@ -57,7 +57,7 @@ pub fn picking(
         ),
         query.view_id.gpu_readback_id(),
         (),
-        ctx.app_options.show_picking_debug_overlay,
+        ctx.app_options().show_picking_debug_overlay,
     );
 
     let annotations = system_output

@@ -78,7 +78,7 @@ impl DataUi for InstancePath {
                     query
                         .timeline()
                         .typ()
-                        .format(query.at(), ctx.app_options.time_zone),
+                        .format(query.at(), ctx.app_options().time_zone),
                 ),
             );
             return;
