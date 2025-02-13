@@ -185,16 +185,15 @@ pub fn spawn_from_rx_set(
 
     tokio::spawn(async move {
         loop {
-            let msg = match rxs.try_recv().and_then(|(_, m)| m.into_data()) {
-                Some(msg) => msg,
-                None => {
-                    tokio::task::yield_now().await;
-                    if rxs.is_empty() {
-                        // We won't ever receive more data:
-                        break;
-                    }
-                    continue;
+            let Some(msg) = rxs.try_recv().and_then(|(_, m)| m.into_data()) else {
+                if rxs.is_empty() {
+                    // We won't ever receive more data:
+                    break;
                 }
+                // Because `try_recv` is blocking, we should give other tasks
+                // a chance to run before we continue
+                tokio::task::yield_now().await;
+                continue;
             };
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
