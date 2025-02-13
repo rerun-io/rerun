@@ -50,6 +50,11 @@ impl DataLoader for LeRobotDatasetLoader {
         let dataset = LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
 
+        // NOTE(1): `spawn` is fine, this whole function is native-only.
+        // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
+        // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
+        // their response via channels: we cannot be waiting for these responses on the
+        // common rayon thread pool.
         thread::Builder::new()
             .name(format!("load_and_stream({filepath:?}"))
             .spawn({
@@ -57,7 +62,7 @@ impl DataLoader for LeRobotDatasetLoader {
                     re_log::info!(
                         "Loading LeRobot dataset from {:?}, with {} episode(s)",
                         dataset.path,
-                        dataset.metadata.episodes.len()
+                        dataset.metadata.episodes.len(),
                     );
                     load_and_stream(&dataset, &tx);
                 }
@@ -97,6 +102,7 @@ fn load_and_stream(dataset: &LeRobotDataset, tx: &std::sync::mpsc::Sender<crate:
                         store_id.clone(),
                         chunk,
                     );
+
                     if tx.send(data).is_err() {
                         break; // The other end has decided to hang up, not our problem.
                     }
