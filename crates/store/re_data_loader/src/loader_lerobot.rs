@@ -191,6 +191,7 @@ fn load_episode(
                     time_column.clone(),
                 )?);
             }
+
             DType::Image => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
             DType::Int64 if feature_key == "task_index" => {
                 // special case int64 task_index columns
