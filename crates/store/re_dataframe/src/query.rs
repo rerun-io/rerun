@@ -174,7 +174,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .unwrap_or_else(|| Timeline::new_sequence(""));
 
         // 1. Compute the schema for the query.
-        let view_contents = store.schema_for_query(&self.query);
+        let view_contents = store.schema_for_query(&self.query).indices_and_components();
 
         // 2. Compute the schema of the selected contents.
         //
@@ -353,10 +353,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 })
                 .collect_vec()
         };
-
-        for descr in &view_contents {
-            descr.sanity_check();
-        }
 
         for (_, descr) in &selected_contents {
             descr.sanity_check();

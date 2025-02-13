@@ -1277,7 +1277,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.read().schema(),
+            schema: self.store.read().schema().indices_and_components(),
         }
     }
 

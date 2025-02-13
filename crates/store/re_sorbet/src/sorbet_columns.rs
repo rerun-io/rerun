@@ -1,10 +1,11 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 
+use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 
 use crate::{
-    ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
-    SorbetError,
+    ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor, SorbetError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +22,15 @@ pub struct SorbetColumnDescriptors {
 }
 
 impl SorbetColumnDescriptors {
+    /// Debug-only sanity check.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        for component in &self.components {
+            component.sanity_check();
+        }
+    }
+
     /// Total number of columns in this chunk,
     /// including the row id column, the index columns,
     /// and the data columns.
@@ -31,6 +41,27 @@ impl SorbetColumnDescriptors {
             components,
         } = self;
         row_id.is_some() as usize + indices.len() + components.len()
+    }
+
+    /// All unique entity paths present in the view contents.
+    pub fn entity_paths(&self) -> IntSet<EntityPath> {
+        self.components
+            .iter()
+            .map(|col| col.entity_path.clone())
+            .collect()
+    }
+
+    /// Returns all indices and then all components;
+    /// skipping the `row_id` column.
+    pub fn indices_and_components(&self) -> Vec<ColumnDescriptor> {
+        itertools::chain!(
+            self.indices.iter().cloned().map(ColumnDescriptor::Time),
+            self.components
+                .iter()
+                .cloned()
+                .map(ColumnDescriptor::Component),
+        )
+        .collect()
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
@@ -50,6 +81,13 @@ impl SorbetColumnDescriptors {
                 .map(|column| column.to_arrow_field(crate::BatchType::Chunk)),
         );
         fields
+    }
+
+    /// Keep only the component columns that satisfy the given predicate.
+    #[must_use]
+    pub fn filter_components(mut self, keep: impl Fn(&ComponentColumnDescriptor) -> bool) -> Self {
+        self.components.retain(keep);
+        self
     }
 }
 
