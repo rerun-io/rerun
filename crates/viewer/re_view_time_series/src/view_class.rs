@@ -480,7 +480,7 @@ impl ViewClass for TimeSeriesView {
                             *state.scalar_range.end_mut() = p.1;
                         }
 
-                        [(p.0 - time_offset) as _, p.1]
+                        [p.0.saturating_sub(time_offset) as _, p.1]
                     })
                     .collect::<Vec<_>>();
 

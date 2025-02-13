@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive};
+use re_types::components::{AggregationPolicy, ClearIsRecursive, Translation3D};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
@@ -43,6 +43,9 @@ impl VisualizerSystem for SeriesLineSystem {
                 .iter()
                 .map(|descr| descr.component_name),
         );
+
+        // TODO: Hack without redemption.
+        query_info.required.clear();
 
         query_info.indicators =
             std::iter::once(SeriesLine::descriptor_indicator().component_name).collect();
@@ -193,13 +196,24 @@ impl SeriesLineSystem {
                 // cut-off the data early at the edge of the view.
                 .include_extended_bounds(true);
 
+            // If we have no scalars, we can't do anything.
+
+            // HACK-O-TOPIA
+            const FIXED_ARRAY_SIZE: usize = 3;
+            let (data_component_name, is_f64_scalar) = if false {
+                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
+                (Scalar::name(), true)
+            } else {
+                (Translation3D::name(), false)
+            };
+
             let results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,
                 data_result,
                 [
-                    Scalar::name(),
+                    data_component_name,
                     Color::name(),
                     StrokeWidth::name(),
                     Name::name(),
@@ -207,8 +221,7 @@ impl SeriesLineSystem {
                 ],
             );
 
-            // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) = results.get_required_chunks(&data_component_name) else {
                 return;
             };
 
@@ -216,7 +229,7 @@ impl SeriesLineSystem {
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(&query.timeline(), &data_component_name)
                     })
                     // That is just so we can satisfy the `range_zip` contract later on.
                     .map(|index| (index, ()))
@@ -226,14 +239,17 @@ impl SeriesLineSystem {
             // TODO(andreas): We should determine this only once and cache the result.
             // As data comes in we can validate that the number of series is consistent.
             // Keep in mind clears here.
-            let num_series = all_scalar_chunks
+            let mut num_series = all_scalar_chunks
                 .iter()
                 .find_map(|chunk| {
                     chunk
-                        .iter_slices::<f64>(Scalar::name())
-                        .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
+                        .iter_component_offsets(&data_component_name)
+                        .find_map(|(_offset, len)| (len > 0).then_some(len))
                 })
                 .unwrap_or(1);
+            if !is_f64_scalar {
+                num_series *= FIXED_ARRAY_SIZE;
+            }
 
             // Allocate all points.
             {
@@ -253,17 +269,14 @@ impl SeriesLineSystem {
                 let points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(&query.timeline(), &data_component_name)
                     })
-                    .map(|(data_time, _)| {
-                        debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-
-                        PlotPoint {
-                            time: data_time.as_i64(),
-                            ..default_point.clone()
-                        }
+                    .map(|(data_time, _)| PlotPoint {
+                        time: data_time.as_i64(),
+                        ..default_point.clone()
                     })
                     .collect_vec();
+                dbg!(entity_path, points.len());
                 points_per_series = vec![points; num_series];
             }
 
@@ -273,29 +286,51 @@ impl SeriesLineSystem {
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
 
-                if num_series == 1 {
-                    let points = &mut points_per_series[0];
-                    all_scalar_chunks
-                        .iter()
-                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
-                        .enumerate()
-                        .for_each(|(i, values)| {
-                            if let Some(value) = values.first() {
-                                points[i].value = *value;
-                            } else {
-                                points[i].attrs.kind = PlotSeriesKind::Clear;
-                            }
-                        });
+                if is_f64_scalar {
+                    if num_series == 1 {
+                        let points = &mut points_per_series[0];
+                        all_scalar_chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.iter_slices::<f64>(data_component_name))
+                            .enumerate()
+                            .for_each(|(i, values)| {
+                                if let Some(value) = values.first() {
+                                    points[i].value = *value;
+                                } else {
+                                    points[i].attrs.kind = PlotSeriesKind::Clear;
+                                }
+                            });
+                    } else {
+                        all_scalar_chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.iter_slices::<f64>(data_component_name))
+                            .enumerate()
+                            .for_each(|(i, values)| {
+                                for (points, value) in points_per_series.iter_mut().zip(values) {
+                                    points[i].value = *value;
+                                }
+                                for points in points_per_series.iter_mut().skip(values.len()) {
+                                    points[i].attrs.kind = PlotSeriesKind::Clear;
+                                }
+                            });
+                    }
                 } else {
                     all_scalar_chunks
                         .iter()
-                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
+                        .flat_map(|chunk| {
+                            chunk.iter_slices::<[f32; FIXED_ARRAY_SIZE]>(data_component_name)
+                        })
                         .enumerate()
                         .for_each(|(i, values)| {
-                            for (points, value) in points_per_series.iter_mut().zip(values) {
-                                points[i].value = *value;
+                            for (points, value) in
+                                points_per_series.iter_mut().zip(values.iter().flatten())
+                            {
+                                points[i].value = *value as f64;
                             }
-                            for points in points_per_series.iter_mut().skip(values.len()) {
+                            for points in points_per_series
+                                .iter_mut()
+                                .skip(values.len() * FIXED_ARRAY_SIZE)
+                            {
                                 points[i].attrs.kind = PlotSeriesKind::Clear;
                             }
                         });
