@@ -30289,8 +30289,8 @@ packages:
   - watchfiles ; extra == 'dev'
 - pypi: rerun_notebook
   name: rerun-notebook
-  version: 0.23.0a1+dev
-  sha256: 7deb8b26f0bf6a1498e5a246c59e909a0e465f8c95a358ae3bd45630710057d2
+  version: 0.23.0a1+47328dc
+  sha256: fc5b866109c933397aae83b3b96ae3db7b33e6762745c02a398e4b3880cadc68
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -30365,7 +30365,7 @@ packages:
   requires_python: '>=3.8,<3.13'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.23.0a1+dev
+  version: 0.23.0a1+3eb6d00
   sha256: 83b45b30cc640231c5c391186bdc885ddcb79a3f5fa182fabe4c456ff41e6ec9
   requires_dist:
   - attrs>=23.1.0
