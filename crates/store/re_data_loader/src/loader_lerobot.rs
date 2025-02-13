@@ -149,7 +149,7 @@ fn load_episode(
     {
         match feature.dtype {
             DType::Video => {
-                chunks.extend(log_episode_video(
+                chunks.extend(load_episode_video(
                     dataset,
                     feature_key,
                     episode,
@@ -157,7 +157,7 @@ fn load_episode(
                     time_column.clone(),
                 )?);
             }
-            DType::Image => chunks.extend(log_episode_images(feature_key, &timeline, &data)?),
+            DType::Image => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
             DType::Int64 | DType::Bool => {
                 re_log::warn_once!(
                     "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
@@ -174,7 +174,7 @@ fn load_episode(
     Ok(chunks)
 }
 
-fn log_episode_images(
+fn load_episode_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
@@ -206,7 +206,7 @@ fn log_episode_images(
     })?))
 }
 
-fn log_episode_video(
+fn load_episode_video(
     dataset: &LeRobotDataset,
     observation: &str,
     episode: EpisodeIndex,
