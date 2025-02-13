@@ -377,7 +377,7 @@ impl SeriesPointSystem {
                             itertools::izip!(
                                 chunk
                                     .iter_component_indices(&query.timeline(), &MarkerSize::name()),
-                                chunk.iter_slices::<f32>(Color::name())
+                                chunk.iter_slices::<f32>(MarkerSize::name())
                             )
                         });
 
