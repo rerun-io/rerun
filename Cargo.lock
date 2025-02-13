@@ -5821,7 +5821,6 @@ name = "re_catalog_hub"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "egui",
  "egui_table",
  "parking_lot",
@@ -5831,6 +5830,7 @@ dependencies = [
  "re_protos",
  "re_sorbet",
  "re_ui",
+ "re_view_dataframe",
  "re_viewer_context",
  "tokio-stream",
  "tonic",
