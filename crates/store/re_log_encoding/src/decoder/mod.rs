@@ -291,7 +291,12 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                     self.size_bytes += read_bytes;
                     msg
                 }
-                Err(err) => return Some(Err(err)),
+                Err(err) => match err {
+                    DecodeError::Read(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        return None;
+                    }
+                    _ => return Some(Err(err)),
+                },
             },
         };
 
