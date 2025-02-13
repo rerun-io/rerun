@@ -5821,27 +5821,19 @@ name = "re_catalog_hub"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "anyhow",
  "arrow",
  "egui",
  "egui_table",
- "itertools 0.13.0",
  "parking_lot",
- "re_arrow_util",
- "re_chunk_store",
  "re_grpc_client",
  "re_log",
  "re_log_encoding",
- "re_log_types",
  "re_protos",
- "re_sorbet",
- "re_tracing",
- "re_types_core",
  "re_ui",
  "re_viewer_context",
- "thiserror 1.0.65",
  "tokio-stream",
  "tonic",
+ "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -6036,6 +6028,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "tokio",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]

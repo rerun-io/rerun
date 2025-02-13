@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::{SystemCommand, SystemCommandSender};
+use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
@@ -702,7 +702,14 @@ fn create_app(
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
-    let mut app = crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
+    let mut app = crate::App::new(
+        main_thread_token,
+        build_info,
+        &app_env,
+        startup_options,
+        cc,
+        AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
+    );
 
     if enable_history {
         install_popstate_listener(&mut app).ok_or_log_js_error();

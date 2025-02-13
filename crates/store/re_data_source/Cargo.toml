@@ -42,9 +42,14 @@ re_tracing.workspace = true
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio.workspace = true
 
-# Optional dependencies:
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true
