@@ -27,6 +27,8 @@ use tower_http::cors::CorsLayer;
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
+// TODO(jan): Refactor `serve`/`spawn` variants into a builder?
+
 /// Start a Rerun server, listening on `addr`.
 ///
 /// A Rerun server is an in-memory implementation of a Storage Node.
@@ -156,6 +158,61 @@ pub async fn serve_from_channel(
     if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
         re_log::error!("message proxy server crashed: {err}");
     }
+}
+
+/// Start a Rerun server, listening on `addr`.
+///
+/// This function additionally accepts a `ReceiveSet`, from which the
+/// server will read all messages. It is similar to creating a client
+/// and sending messages through `WriteMessages`, but without the overhead
+/// of a localhost connection.
+///
+/// See [`serve`] for more information about what a Rerun server is.
+pub fn spawn_from_rx_set(
+    addr: SocketAddr,
+    memory_limit: MemoryLimit,
+    shutdown: shutdown::Shutdown,
+    rxs: re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+) {
+    let message_proxy = MessageProxy::new(memory_limit);
+    let event_tx = message_proxy.event_tx.clone();
+
+    tokio::spawn(async move {
+        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+            re_log::error!("message proxy server crashed: {err}");
+        }
+    });
+
+    tokio::spawn(async move {
+        loop {
+            let Some(msg) = rxs.try_recv().and_then(|(_, m)| m.into_data()) else {
+                if rxs.is_empty() {
+                    // We won't ever receive more data:
+                    break;
+                }
+                // Because `try_recv` is blocking, we should give other tasks
+                // a chance to run before we continue
+                tokio::task::yield_now().await;
+                continue;
+            };
+
+            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
+                msg,
+                re_log_encoding::Compression::LZ4,
+            ) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error!("failed to encode message: {err}");
+                    continue;
+                }
+            };
+
+            if event_tx.send(Event::Message(msg)).await.is_err() {
+                re_log::debug!("shut down, closing sender");
+                break;
+            }
+        }
+    });
 }
 
 /// Start a Rerun server, listening on `addr`.
