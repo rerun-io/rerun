@@ -1108,7 +1108,7 @@ impl Chunk {
     ///
     /// This could be in any order if this chunk is unsorted.
     #[inline]
-    pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
+    pub fn row_ids(&self) -> impl ExactSizeIterator<Item = RowId> + '_ {
         self.row_ids_slice().iter().copied()
     }
 

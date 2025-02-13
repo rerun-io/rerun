@@ -83,7 +83,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = self.row_ids().collect_vec();
+            let row_ids = self.row_ids_slice();
             let mut swaps = (0..row_ids.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| row_ids[i]);
             swaps
@@ -130,7 +130,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = chunk.row_ids().collect_vec();
+            let row_ids = chunk.row_ids_slice();
             let times = time_column.times_raw().to_vec();
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| (times[i], row_ids[i]));
