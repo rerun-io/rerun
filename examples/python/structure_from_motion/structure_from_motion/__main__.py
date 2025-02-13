@@ -41,7 +41,7 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 FILTER_MIN_VISIBLE: Final = 500
 
 
-def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
+def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float64]]:
     """Scale the camera intrinsics to match the resized image."""
     assert camera.model == "PINHOLE"
     new_width = resize[0]
