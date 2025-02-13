@@ -21,7 +21,7 @@ use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 #[derive(Error, Debug)]
-pub(crate) enum DisplayRecordBatchError {
+pub enum DisplayRecordBatchError {
     #[error("Bad column for timeline '{timeline}': {error}")]
     BadTimeColumn {
         timeline: String,
@@ -36,7 +36,7 @@ pub(crate) enum DisplayRecordBatchError {
 ///
 /// Abstracts over the different possible arrow representation of component data.
 #[derive(Debug)]
-pub(crate) enum ComponentData {
+pub enum ComponentData {
     Null,
     ListArray(ArrowListArray),
     DictionaryArray {
@@ -165,7 +165,7 @@ impl ComponentData {
 
 /// A single column of data in a record batch.
 #[derive(Debug)]
-pub(crate) enum DisplayColumn {
+pub enum DisplayColumn {
     Timeline {
         timeline: Timeline,
         time_data: ArrowScalarBuffer<i64>,
@@ -208,7 +208,7 @@ impl DisplayColumn {
         }
     }
 
-    pub(crate) fn instance_count(&self, row_index: usize) -> u64 {
+    pub fn instance_count(&self, row_index: usize) -> u64 {
         match self {
             Self::Timeline { .. } => 1,
             Self::Component { component_data, .. } => component_data.instance_count(row_index),
@@ -221,7 +221,7 @@ impl DisplayColumn {
     /// - Argument `instance_index` is the specific instance within the row to display. If `None`,
     ///   a summary of all instances is displayed. If the instance is out-of-bound (aka greater than
     ///   [`Self::instance_count`]), nothing is displayed.
-    pub(crate) fn data_ui(
+    pub fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -264,6 +264,7 @@ impl DisplayColumn {
                     ui.label("-");
                 }
             }
+
             Self::Component {
                 entity_path,
                 component_name,
@@ -285,7 +286,7 @@ impl DisplayColumn {
     /// Try to decode the time from the given row index.
     ///
     /// Succeeds only if the column is a `Timeline` column.
-    pub(crate) fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
+    pub fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
         match self {
             Self::Timeline { time_data, .. } => {
                 let timestamp = time_data.get(row_index)?;
@@ -297,7 +298,7 @@ impl DisplayColumn {
 }
 
 #[derive(Debug)]
-pub(crate) struct DisplayRecordBatch {
+pub struct DisplayRecordBatch {
     num_rows: usize,
     columns: Vec<DisplayColumn>,
 }
@@ -307,8 +308,8 @@ impl DisplayRecordBatch {
     ///
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
-    pub(crate) fn try_new(
-        row_data: &Vec<ArrowArrayRef>,
+    pub fn try_new(
+        row_data: &[ArrowArrayRef],
         selected_columns: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
         let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
@@ -327,11 +328,11 @@ impl DisplayRecordBatch {
         })
     }
 
-    pub(crate) fn num_rows(&self) -> usize {
+    pub fn num_rows(&self) -> usize {
         self.num_rows
     }
 
-    pub(crate) fn columns(&self) -> &[DisplayColumn] {
+    pub fn columns(&self) -> &[DisplayColumn] {
         &self.columns
     }
 }

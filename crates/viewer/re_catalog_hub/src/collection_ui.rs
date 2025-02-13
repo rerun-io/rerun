@@ -1,27 +1,28 @@
-use arrow::datatypes::SchemaRef;
 use egui::Ui;
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_sorbet::SorbetBatch;
-use re_ui::UiLayout;
+use re_sorbet::ColumnDescriptor;
+use re_ui::UiExt;
+use re_view_dataframe::display_record_batch::DisplayRecordBatch;
+use re_viewer_context::external::re_log_types::Timeline;
 use re_viewer_context::ViewerContext;
 
 use super::hub::{Command, RecordingCollection};
 
 pub fn collection_ui(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     collection: &RecordingCollection,
 ) -> Vec<Command> {
     let mut commands = vec![];
 
-    let schema = {
+    let sorbet_schema = {
         let Some(recording_batch) = collection.collection.first() else {
             ui.label(egui::RichText::new("This collection is empty").italics());
             return commands;
         };
 
-        recording_batch.schema()
+        recording_batch.sorbet_schema()
     };
 
     // The table id mainly drives column widths, along with the id of each column.
@@ -33,9 +34,39 @@ pub fn collection_ui(
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
 
+    let columns = sorbet_schema
+        .columns
+        .indices
+        .iter()
+        .map(|desc| ColumnDescriptor::Time(desc.clone()))
+        .chain(
+            sorbet_schema
+                .columns
+                .components
+                .iter()
+                .map(|desc| ColumnDescriptor::Component(desc.clone())),
+        )
+        .collect::<Vec<_>>();
+
+    let display_record_batches: Result<Vec<_>, _> = collection
+        .collection
+        .iter()
+        .map(|sorbet_batch| DisplayRecordBatch::try_new(&sorbet_batch.columns()[1..], &columns))
+        .collect();
+
+    let display_record_batches = match display_record_batches {
+        Ok(display_record_batches) => display_record_batches,
+        Err(err) => {
+            //TODO: better error handling?
+            ui.error_label(err.to_string());
+            return commands;
+        }
+    };
+
     let mut table_delegate = CollectionTableDelegate {
-        record_batches: &collection.collection,
-        schema: schema.clone(),
+        ctx,
+        display_record_batches: &display_record_batches,
+        selected_columns: &columns,
     };
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
@@ -46,13 +77,12 @@ pub fn collection_ui(
         egui_table::Table::new()
             .id_salt(table_id_salt)
             .columns(
-                schema
-                    .fields
+                columns
                     .iter()
                     .map(|field| {
                         egui_table::Column::new(200.0)
                             .resizable(true)
-                            .id(egui::Id::new(field.name()))
+                            .id(egui::Id::new(field))
                     })
                     .collect::<Vec<_>>(),
             )
@@ -67,14 +97,15 @@ pub fn collection_ui(
 }
 
 struct CollectionTableDelegate<'a> {
-    record_batches: &'a Vec<SorbetBatch>,
-    schema: SchemaRef,
+    ctx: &'a ViewerContext<'a>,
+    display_record_batches: &'a Vec<DisplayRecordBatch>,
+    selected_columns: &'a Vec<ColumnDescriptor>,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut Ui, cell: &HeaderCellInfo) {
-        let name = self.schema.fields[cell.group_index].name().as_str();
-        let name = name.strip_prefix("rerun_").unwrap_or(name);
+        let name = self.selected_columns[cell.group_index].short_name();
+        // let name = name.strip_prefix("rerun_").unwrap_or(name);
 
         ui.strong(name);
     }
@@ -83,17 +114,28 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
         // find record batch
         let mut row_index = cell.row_nr as usize;
 
-        for record_batch in self.record_batches {
-            let row_count = record_batch.num_rows();
+        for display_record_batch in self.display_record_batches {
+            let row_count = display_record_batch.num_rows();
             if row_index < row_count {
                 // this is the one
-                let column = record_batch.column(cell.col_nr);
+                let column = &display_record_batch.columns()[cell.col_nr];
 
-                if column.is_null(row_index) {
-                    ui.label("-");
-                } else {
-                    re_ui::arrow_ui(ui, UiLayout::List, &column.slice(row_index, 1));
-                }
+                column.data_ui(
+                    self.ctx,
+                    ui,
+                    //TODO: oh god
+                    &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                        Timeline::new_sequence("unknown"),
+                    ),
+                    row_index,
+                    None,
+                );
+
+                // if column.is_null(row_index) {
+                //     ui.label("-");
+                // } else {
+                //     re_ui::arrow_ui(ui, UiLayout::List, &column.slice(row_index, 1));
+                // }
             } else {
                 row_index -= row_count;
             }
