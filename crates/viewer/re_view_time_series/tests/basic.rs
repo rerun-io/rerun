@@ -5,7 +5,7 @@ use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass, V
 use re_viewport_blueprint::{test_context_ext::TestContextExt, ViewBlueprint};
 
 #[test]
-pub fn test_clear_single_series_points_and_line() {
+pub fn test_clear_series_points_and_line() {
     let mut test_context = get_test_context();
 
     test_context.log_entity("plots/line".into(), |builder| {
@@ -55,7 +55,64 @@ pub fn test_clear_single_series_points_and_line() {
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
-        "clear_single_series_points_and_line",
+        "clear_series_points_and_line",
+        egui::vec2(300.0, 300.0),
+    );
+}
+
+#[test]
+fn test_line_properties() {
+    let mut test_context = get_test_context();
+
+    test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::SeriesLine::new()
+                .with_width(4.0)
+                .with_color(re_types::components::Color::from_rgb(255, 0, 255))
+                .with_name("static"),
+        )
+    });
+
+    for step in 0..32 {
+        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+
+        test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::Scalar::new((step as f64 / 5.0).cos()),
+            )
+        });
+        test_context.log_entity("not_what_is_displayed_dynamic_props".into(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &re_types::archetypes::SeriesLine::new()
+                        .with_color(re_types::components::Color::from_rgb(
+                            (step * 8) as u8,
+                            255 - (step * 8) as u8,
+                            0,
+                        ))
+                        .with_width((32.0 - step as f32) * 0.5)
+                        // Only the first name will be shown, but should be handled gracefully.
+                        .with_name(format!("dynamic_{}", step)),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &re_types::archetypes::Scalar::new((step as f64 / 5.0).sin()),
+                )
+        });
+    }
+
+    let view_id = setup_blueprint(&mut test_context);
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        "line_color_and_width",
         egui::vec2(300.0, 300.0),
     );
 }
