@@ -1,3 +1,6 @@
+use std::sync::mpsc::Sender;
+use std::thread;
+
 use anyhow::{anyhow, Context};
 use arrow::array::{
     ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
@@ -11,22 +14,18 @@ use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
-use re_log_types::StoreId;
+use re_log_types::{ApplicationId, StoreId};
 use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_le_robot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
-const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] = &[
-    "episode_index",
-    "task_index",
-    "index",
-    "frame_index",
-    "timestamp",
-];
+const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
+    &["episode_index", "index", "frame_index", "timestamp"];
 
 /// A [`DataLoader`] for `LeRobot` datasets.
 ///
@@ -42,88 +41,35 @@ impl DataLoader for LeRobotDatasetLoader {
         &self,
         _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        if !is_le_robot_dataset(&filepath) {
+        if !is_lerobot_dataset(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath));
         }
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
 
-        re_log::info!(
-            "Loading LeRobot dataset from {:?}, with {} episode(s)",
-            dataset.path,
-            dataset.metadata.episodes.len()
-        );
-
-        for episode in &dataset.metadata.episodes {
-            let episode_idx = episode.index;
-            let store_id = StoreId::from_string(
-                re_log_types::StoreKind::Recording,
-                format!("episode_{}", episode_idx.0),
-            );
-
-            let data = dataset
-                .read_episode_data(episode_idx)
-                .map_err(|err| anyhow!("Reading data for episode {episode_idx:?} failed: {err}"))?;
-
-            let frame_indices = data
-                .column_by_name("frame_index")
-                .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
-                .clone();
-
-            let timeline = re_log_types::Timeline::new_sequence("frame_index");
-            let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-                .downcast_array_ref::<Int64Array>()
-                .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
-                .values();
-
-            let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
-            let timelines = std::iter::once((timeline, time_column.clone())).collect();
-
-            let mut chunks = Vec::new();
-
-            for (feature_key, feature) in dataset
-                .metadata
-                .info
-                .features
-                .iter()
-                .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
-            {
-                match feature.dtype {
-                    DType::Video => {
-                        chunks.extend(log_episode_video(
-                            &dataset,
-                            feature_key,
-                            episode_idx,
-                            &timeline,
-                            time_column.clone(),
-                        )?);
-                    }
-                    DType::Image => {
-                        chunks.extend(log_episode_images(feature_key, &timeline, &data)?);
-                    }
-                    DType::Int64 | DType::Bool => {
-                        re_log::warn_once!(
-                            "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
-                            feature_key,
-                            feature.dtype
-                        );
-                    }
-                    DType::Float32 | DType::Float64 => {
-                        chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
-                    }
+        // NOTE(1): `spawn` is fine, this whole function is native-only.
+        // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
+        // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
+        // their response via channels: we cannot be waiting for these responses on the
+        // common rayon thread pool.
+        thread::Builder::new()
+            .name(format!("load_and_stream({filepath:?}"))
+            .spawn({
+                move || {
+                    re_log::info!(
+                        "Loading LeRobot dataset from {:?}, with {} episode(s)",
+                        dataset.path,
+                        dataset.metadata.episodes.len(),
+                    );
+                    load_and_stream(&dataset, &tx);
                 }
-            }
-
-            for chunk in chunks {
-                let data = LoadedData::Chunk(self.name(), store_id.clone(), chunk);
-                if tx.send(data).is_err() {
-                    break; // The other end has decided to hang up, not our problem.
-                }
-            }
-        }
+            })
+            .with_context(|| {
+                format!("Failed to spawn IO thread to load LeRobot dataset {filepath:?} ")
+            })?;
 
         Ok(())
     }
@@ -133,13 +79,136 @@ impl DataLoader for LeRobotDatasetLoader {
         _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: std::sync::mpsc::Sender<LoadedData>,
+        _tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
         Err(DataLoaderError::Incompatible(filepath))
     }
 }
 
-fn log_episode_images(
+fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
+    // set up all recordings
+    let episodes = prepare_episode_chunks(dataset, tx);
+
+    for (episode, store_id) in &episodes {
+        // log episode data to its respective recording
+        match load_episode(dataset, *episode) {
+            Ok(chunks) => {
+                for chunk in chunks {
+                    let data = LoadedData::Chunk(
+                        LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
+                        store_id.clone(),
+                        chunk,
+                    );
+
+                    if tx.send(data).is_err() {
+                        break; // The other end has decided to hang up, not our problem.
+                    }
+                }
+            }
+            Err(err) => {
+                re_log::warn!(
+                    "Failed to load episode {} from LeRobot dataset: {err}",
+                    episode.0
+                );
+            }
+        }
+    }
+}
+
+/// Prepare the viewer for all episodes, by sending out a [`SetStoreInfo`](`re_log_types::SetStoreInfo`)
+/// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
+fn prepare_episode_chunks(
+    dataset: &LeRobotDataset,
+    tx: &Sender<crate::LoadedData>,
+) -> Vec<(EpisodeIndex, StoreId)> {
+    let application_id = ApplicationId(format!("{:?}", dataset.path));
+    let mut store_ids = vec![];
+
+    for episode in &dataset.metadata.episodes {
+        let episode = episode.index;
+
+        let store_id = StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            format!("episode_{}", episode.0),
+        );
+        let set_store_info = LoadedData::LogMsg(
+            LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
+            prepare_store_info(
+                application_id.clone(),
+                &store_id,
+                re_log_types::FileSource::Sdk,
+            ),
+        );
+
+        if tx.send(set_store_info).is_err() {
+            break;
+        }
+
+        store_ids.push((episode, store_id.clone()));
+    }
+
+    store_ids
+}
+
+fn load_episode(
+    dataset: &LeRobotDataset,
+    episode: EpisodeIndex,
+) -> Result<Vec<Chunk>, DataLoaderError> {
+    let data = dataset
+        .read_episode_data(episode)
+        .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
+
+    let frame_indices = data
+        .column_by_name("frame_index")
+        .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
+        .clone();
+
+    let timeline = re_log_types::Timeline::new_sequence("frame_index");
+    let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
+        .downcast_array_ref::<Int64Array>()
+        .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
+        .values();
+
+    let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
+    let timelines = std::iter::once((timeline, time_column.clone())).collect();
+
+    let mut chunks = Vec::new();
+
+    for (feature_key, feature) in dataset
+        .metadata
+        .info
+        .features
+        .iter()
+        .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
+    {
+        match feature.dtype {
+            DType::Video => {
+                chunks.extend(load_episode_video(
+                    dataset,
+                    feature_key,
+                    episode,
+                    &timeline,
+                    time_column.clone(),
+                )?);
+            }
+            DType::Image => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
+            DType::Int64 | DType::Bool => {
+                re_log::warn_once!(
+                    "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
+                    feature_key,
+                    feature.dtype
+                );
+            }
+            DType::Float32 | DType::Float64 => {
+                chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
+            }
+        }
+    }
+
+    Ok(chunks)
+}
+
+fn load_episode_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
@@ -171,7 +240,7 @@ fn log_episode_images(
     })?))
 }
 
-fn log_episode_video(
+fn load_episode_video(
     dataset: &LeRobotDataset,
     observation: &str,
     episode: EpisodeIndex,
