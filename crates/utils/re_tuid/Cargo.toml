@@ -38,7 +38,7 @@ once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies
-bytemuck = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 
 [dev-dependencies]
