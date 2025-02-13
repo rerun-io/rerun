@@ -112,7 +112,79 @@ fn test_line_properties() {
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
-        "line_color_and_width",
+        "line_properties",
+        egui::vec2(300.0, 300.0),
+    );
+}
+
+#[test]
+fn test_point_properties() {
+    let mut test_context = get_test_context();
+
+    let marker_list = [
+        re_types::components::MarkerShape::Circle,
+        re_types::components::MarkerShape::Diamond,
+        re_types::components::MarkerShape::Square,
+        re_types::components::MarkerShape::Cross,
+        re_types::components::MarkerShape::Plus,
+        re_types::components::MarkerShape::Up,
+        re_types::components::MarkerShape::Down,
+        re_types::components::MarkerShape::Left,
+        re_types::components::MarkerShape::Right,
+        re_types::components::MarkerShape::Asterisk,
+    ];
+
+    test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::SeriesPoint::new()
+                .with_marker_size(4.0)
+                .with_marker(re_types::components::MarkerShape::Cross)
+                .with_color(re_types::components::Color::from_rgb(255, 0, 255))
+                .with_name("static"),
+        )
+    });
+
+    for step in 0..32 {
+        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+
+        test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::Scalar::new((step as f64 / 5.0).cos()),
+            )
+        });
+        test_context.log_entity("not_what_is_displayed_dynamic_props".into(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &re_types::archetypes::SeriesPoint::new()
+                        .with_color(re_types::components::Color::from_rgb(
+                            (step * 8) as u8,
+                            255 - (step * 8) as u8,
+                            0,
+                        ))
+                        .with_marker_size((32.0 - step as f32) * 0.5)
+                        .with_marker(marker_list[step as usize % marker_list.len()])
+                        // Only the first name will be shown, but should be handled gracefully.
+                        .with_name(format!("dynamic_{}", step)),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &re_types::archetypes::Scalar::new((step as f64 / 5.0).sin()),
+                )
+        });
+    }
+
+    let view_id = setup_blueprint(&mut test_context);
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        "point_properties",
         egui::vec2(300.0, 300.0),
     );
 }
