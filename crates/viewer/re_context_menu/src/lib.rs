@@ -275,7 +275,7 @@ impl<'a> ContextMenuContext<'a> {
     }
 
     pub fn egui_context(&self) -> &egui::Context {
-        self.viewer_context.egui_ctx
+        self.viewer_context.egui_ctx()
     }
 }
 

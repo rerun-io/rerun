@@ -212,7 +212,7 @@ impl VideoFrameReferenceVisualizer {
 
                             if is_pending {
                                 // Keep polling for a fresh texture
-                                ctx.viewer_ctx.egui_ctx.request_repaint();
+                                ctx.viewer_ctx.egui_ctx().request_repaint();
                             }
 
                             if show_spinner {

@@ -268,6 +268,7 @@ impl AppState {
                 reflection,
                 component_ui_registry,
                 view_class_registry,
+                egui_ctx: &egui_ctx,
             },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
@@ -277,7 +278,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            egui_ctx: &egui_ctx,
             render_ctx,
             command_sender,
             focused_item,
@@ -348,6 +348,7 @@ impl AppState {
                 reflection,
                 component_ui_registry,
                 view_class_registry,
+                egui_ctx: &egui_ctx,
             },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
@@ -357,7 +358,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            egui_ctx: &egui_ctx,
             render_ctx,
             command_sender,
             focused_item,
@@ -528,7 +528,7 @@ impl AppState {
         //
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx);
+        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
 
         // Process deferred layout operations and apply updates back to blueprint:
         viewport_ui.save_to_blueprint_store(&ctx);
@@ -598,7 +598,7 @@ fn move_time(
     rx: &ReceiveSet<LogMsg>,
     timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
 ) {
-    let dt = ctx.egui_ctx.input(|i| i.stable_dt);
+    let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
     // Are we still connected to the data source for the current store?
     let more_data_is_coming = if let Some(store_source) = &recording.data_source {
@@ -628,7 +628,7 @@ fn move_time(
     if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
         || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
     {
-        ctx.egui_ctx.request_repaint();
+        ctx.egui_ctx().request_repaint();
     }
 }
 

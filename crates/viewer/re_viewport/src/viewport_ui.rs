@@ -261,8 +261,8 @@ impl ViewportUi {
         }
 
         // drop incoming!
-        if ctx.egui_ctx.input(|i| i.pointer.any_released()) {
-            egui::DragAndDrop::clear_payload(ctx.egui_ctx);
+        if ctx.egui_ctx().input(|i| i.pointer.any_released()) {
+            egui::DragAndDrop::clear_payload(ctx.egui_ctx());
 
             view_blueprint
                 .contents
@@ -418,7 +418,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         } else {
             // All panes are views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("ViewId missing during egui_tiles");
-            self.ctx.egui_ctx.error_text("Internal error").into()
+            self.ctx.egui_ctx().error_text("Internal error").into()
         }
     }
 
@@ -669,7 +669,7 @@ impl TabWidget {
                     re_log::warn_once!("View {view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.egui_ctx.error_text("Unknown view").into(),
+                        label: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -693,7 +693,11 @@ impl TabWidget {
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
                         (
-                            tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
+                            tab_viewer
+                                .ctx
+                                .egui_ctx()
+                                .error_text("Internal error")
+                                .into(),
                             false,
                         )
                     };
@@ -719,7 +723,7 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer
                             .ctx
-                            .egui_ctx
+                            .egui_ctx()
                             .error_text("Unknown container")
                             .into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
@@ -732,7 +736,11 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
+                    label: tab_viewer
+                        .ctx
+                        .egui_ctx()
+                        .error_text("Internal error")
+                        .into(),
                     icon: &re_ui::icons::VIEW_UNKNOWN,
                     user_named: false,
                     item: None,

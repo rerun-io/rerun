@@ -21,25 +21,35 @@ use crate::{
 };
 
 impl ViewerContext<'_> {
-    #[inline(always)]
+    /// Global options for the whole viewer.
     pub fn app_options(&self) -> &AppOptions {
         self.global_context.app_options
     }
 
-    #[inline(always)]
+    /// Runtime info about components and archetypes.
+    ///
+    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// is not able to provide a value.
+    ///
+    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
+    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
     pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
         self.global_context.reflection
     }
 
-    #[inline(always)]
+    /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
         self.global_context.component_ui_registry
     }
 
     /// Registry of all known classes of views.
-    #[inline(always)]
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
         self.global_context.view_class_registry
+    }
+
+    /// The [`egui::Context`].
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.global_context.egui_ctx
     }
 }
 
@@ -64,9 +74,9 @@ pub struct GlobalContext<'a> {
 
     /// Registry of all known classes of views.
     pub view_class_registry: &'a ViewClassRegistry,
-    // /// The [`egui::Context`].
-    // pub egui_ctx: &'a egui::Context,
 
+    /// The [`egui::Context`].
+    pub egui_ctx: &'a egui::Context,
     // /// The global `re_renderer` context, holds on to all GPU resources.
     // pub render_ctx: &'a re_renderer::RenderContext,
 
@@ -107,9 +117,6 @@ pub struct ViewerContext<'a> {
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
-
-    /// The [`egui::Context`].
-    pub egui_ctx: &'a egui::Context,
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub render_ctx: &'a re_renderer::RenderContext,
