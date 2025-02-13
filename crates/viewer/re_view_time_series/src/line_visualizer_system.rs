@@ -10,11 +10,11 @@ use re_types::{
     components::{Color, Name, Scalar, StrokeWidth},
     Archetype as _, Component, Loggable,
 };
-use re_view::range_with_blueprint_resolved_data;
+use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    auto_color_egui, auto_color_for_entity_path, IdentifiedViewSystem, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
@@ -170,20 +170,9 @@ impl SeriesLineSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
+        // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
         let fallback_color: Color = self.fallback_for(&query_ctx);
         let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
-
-        // All the default values for a `PlotPoint`, accounting for both overrides and default
-        // values.
-        let default_point = PlotPoint {
-            time: 0,
-            value: 0.0,
-            attrs: PlotPointAttrs {
-                color: fallback_color.into(),
-                radius_ui: 0.5 * *fallback_stroke_width.0,
-                kind: PlotSeriesKind::Continuous,
-            },
-        };
 
         let mut points_per_series;
 
@@ -233,19 +222,37 @@ impl SeriesLineSystem {
                     .map(|index| (index, ()))
             };
 
+            // Determine how many lines we have.
+            // TODO(andreas): We should determine this only once and cache the result.
+            // As data comes in we can validate that the number of series is consistent.
+            // Keep in mind clears here.
+            let num_expected_series = all_scalar_chunks
+                .iter()
+                .next()
+                .and_then(|chunk| chunk.iter_slices::<f64>(Scalar::name()).next())
+                .map(|slice| slice.len())
+                .unwrap_or(1);
+            if num_expected_series == 0 {
+                re_log::warn_once!("Empty scalar array found for {entity_path:?}");
+                return;
+            }
+
             // Allocate all points.
             {
                 re_tracing::profile_scope!("alloc");
 
-                // TODO: did we regrees perf here?
+                // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+                let default_point = PlotPoint {
+                    time: 0,
+                    value: 0.0,
+                    attrs: PlotPointAttrs {
+                        color: fallback_color.into(),
+                        radius_ui: 0.5 * *fallback_stroke_width.0,
+                        kind: PlotSeriesKind::Continuous,
+                    },
+                };
 
-                // Determine how many lines we have.
-                let num_series = all_scalar_chunks
-                    .iter()
-                    .next()
-                    .and_then(|chunk| chunk.iter_slices::<f64>(Scalar::name()).next())
-                    .map(|slice| slice.len())
-                    .unwrap_or(1);
+                // TODO: did we regrees perf here?
 
                 let points = all_scalar_chunks
                     .iter()
@@ -261,12 +268,7 @@ impl SeriesLineSystem {
                         }
                     })
                     .collect_vec();
-
-                if num_series == 1 {
-                    points_per_series = vec![points];
-                } else {
-                    points_per_series = vec![points; num_series];
-                }
+                points_per_series = vec![points; num_expected_series];
             }
 
             // Fill in values.
@@ -281,13 +283,8 @@ impl SeriesLineSystem {
                     .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
                     .enumerate()
                     .for_each(|(i, values)| {
+                        // TODO(andreas): proper support for clears when dealing with multiple scalars?
                         if !values.is_empty() {
-                            if values.len() > 1 {
-                                re_log::warn_once!(
-                                    "found a scalar batch in {entity_path:?} -- those have no effect"
-                                );
-                            }
-
                             for (points, value) in points_per_series.iter_mut().zip(values) {
                                 points[i].value = *value;
                             }
@@ -305,52 +302,76 @@ impl SeriesLineSystem {
 
                 debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
 
-                fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
-                    raw.first().map(|c| {
-                        let [a, b, g, r] = c.to_le_bytes();
-                        if a == 255 {
-                            // Common-case optimization
-                            re_renderer::Color32::from_rgb(r, g, b)
-                        } else {
-                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                        }
-                    })
+                fn map_raw_color(raw: &u32) -> re_renderer::Color32 {
+                    let [a, b, g, r] = raw.to_le_bytes();
+                    re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                 }
 
-                {
-                    let all_color_chunks = results.get_optional_chunks(&Color::name());
-                    if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
-                        re_tracing::profile_scope!("override/default fast path");
+                let all_color_chunks = results.get_optional_chunks(&Color::name());
+                if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
+                    re_tracing::profile_scope!("override/default fast path");
 
-                        let color = all_color_chunks[0]
-                            .iter_slices::<u32>(Color::name())
-                            .next()
-                            .and_then(map_raw_color);
-
-                        if let Some(color) = color {
-                            // TODO: multicolor plz
-                            for points in &mut points_per_series {
-                                points.iter_mut().for_each(|p| p.attrs.color = color);
+                    if let Some(colors) =
+                        all_color_chunks[0].iter_slices::<u32>(Color::name()).next()
+                    {
+                        for (points, color) in points_per_series
+                            .iter_mut()
+                            .zip(clamped_or_nothing(colors, num_expected_series))
+                        {
+                            let color = map_raw_color(color);
+                            for point in points {
+                                point.attrs.color = color;
                             }
                         }
-                    } else {
-                        re_tracing::profile_scope!("standard path");
+                    }
+                } else if all_color_chunks.is_empty() {
+                    if num_expected_series > 1 {
+                        re_tracing::profile_scope!("default color for multiple series");
 
-                        let all_colors = all_color_chunks.iter().flat_map(|chunk| {
-                            itertools::izip!(
-                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
-                                chunk.iter_slices::<u32>(Color::name())
-                            )
-                        });
+                        // Have to fill in additional default colors.
+                        // TODO(andreas): Could they somehow be provided by the fallback provider?
+                        // It's tricky since the fallback provider doesn't know how many colors to produce!
+                        for (i, points) in points_per_series.iter_mut().skip(1).enumerate() {
+                            // Normally we generate colors from entity names, but getting the display label needs extra processing,
+                            // and it's nice to not care about that here.
+                            let fallback_color = auto_color_egui(
+                                (re_log_types::hash::Hash64::hash((entity_path, i)).hash64()
+                                    % u16::MAX as u64) as u16,
+                            );
+                            for point in points {
+                                point.attrs.color = fallback_color;
+                            }
+                        }
+                    }
+                } else {
+                    re_tracing::profile_scope!("standard path");
 
-                        let all_frames =
-                            re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+                    let all_colors = all_color_chunks.iter().flat_map(|chunk| {
+                        itertools::izip!(
+                            chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                            chunk.iter_slices::<u32>(Color::name())
+                        )
+                    });
 
+                    let all_frames =
+                        re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+
+                    // Simplified path for single series.
+                    if num_expected_series == 1 {
+                        let points = &mut points_per_series[0];
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
-                            if let Some(color) = colors.and_then(map_raw_color) {
-                                // TODO: multicolor plz
-                                for points in &mut points_per_series {
-                                    points[i].attrs.color = color;
+                            if let Some(color) = colors.and_then(|c| c.first()) {
+                                points[i].attrs.color = map_raw_color(color);
+                            }
+                        });
+                    } else {
+                        all_frames.for_each(|(i, (_index, _scalars, colors))| {
+                            if let Some(colors) = colors {
+                                for (points, color) in points_per_series
+                                    .iter_mut()
+                                    .zip(clamped_or_nothing(colors, num_expected_series))
+                                {
+                                    points[i].attrs.color = map_raw_color(color);
                                 }
                             }
                         });
@@ -457,11 +478,14 @@ impl SeriesLineSystem {
                 let has_discontinuities = !cleared_indices.is_empty();
 
                 for points in &mut points_per_series {
-                    points.extend(cleared_indices.iter().map(|(data_time, _)| {
-                        let mut point = default_point.clone();
-                        point.time = data_time.as_i64();
-                        point.attrs.kind = PlotSeriesKind::Clear;
-                        point
+                    points.extend(cleared_indices.iter().map(|(data_time, _)| PlotPoint {
+                        time: data_time.as_i64(),
+                        value: 0.0,
+                        attrs: PlotPointAttrs {
+                            color: egui::Color32::TRANSPARENT,
+                            radius_ui: 0.0,
+                            kind: PlotSeriesKind::Clear,
+                        },
                     }));
                 }
 
