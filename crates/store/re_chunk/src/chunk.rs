@@ -15,8 +15,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable, LoggableBatch,
-    SerializationError,
+    ComponentDescriptor, ComponentName, DeserializationError, Loggable, SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -398,14 +397,7 @@ impl Chunk {
             .take(self.row_ids.len())
             .collect_vec();
 
-        #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
-            // Unwrap: native RowIds cannot fail to serialize.
-            .unwrap()
-            .downcast_array_ref::<FixedSizeBinaryArray>()
-            // Unwrap: RowId schema is known in advance to be a struct array -- always.
-            .unwrap()
-            .clone();
+        let row_ids = RowId::arrow_from_slice(&row_ids);
 
         Self { row_ids, ..self }
     }
@@ -770,19 +762,7 @@ impl Chunk {
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
-        let row_ids = row_ids
-            .to_arrow()
-            // NOTE: impossible, but better safe than sorry.
-            .map_err(|err| ChunkError::Malformed {
-                reason: format!("RowIds failed to serialize: {err}"),
-            })?
-            .downcast_array_ref::<FixedSizeBinaryArray>()
-            // NOTE: impossible, but better safe than sorry.
-            .ok_or_else(|| ChunkError::Malformed {
-                reason: "RowIds failed to downcast".to_owned(),
-            })?
-            .clone();
-
+        let row_ids = RowId::arrow_from_slice(row_ids);
         Self::new(id, entity_path, is_sorted, row_ids, timelines, components)
     }
 
