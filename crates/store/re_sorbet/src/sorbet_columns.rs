@@ -53,6 +53,8 @@ impl SorbetColumnDescriptors {
 
     /// Returns all indices and then all components;
     /// skipping the `row_id` column.
+    ///
+    /// See also [`Self::get_index_or_component`].
     pub fn indices_and_components(&self) -> Vec<ColumnDescriptor> {
         itertools::chain!(
             self.indices.iter().cloned().map(ColumnDescriptor::Time),
@@ -62,6 +64,25 @@ impl SorbetColumnDescriptors {
                 .map(ColumnDescriptor::Component),
         )
         .collect()
+    }
+
+    /// Index the index- and component columns, ignoring the `row_id` column completely.
+    ///
+    /// That is, `get_index_or_component(0)` will return the first index column (if any; otherwise
+    /// the first component column).
+    ///
+    /// See also [`Self::indices_and_components`].
+    pub fn get_index_or_component(&self, index_ignoring_row_id: usize) -> Option<ColumnDescriptor> {
+        if index_ignoring_row_id < self.indices.len() {
+            Some(ColumnDescriptor::Time(
+                self.indices[index_ignoring_row_id].clone(),
+            ))
+        } else {
+            self.components
+                .get(index_ignoring_row_id - self.indices.len())
+                .cloned()
+                .map(ColumnDescriptor::Component)
+        }
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
