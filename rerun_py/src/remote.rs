@@ -292,22 +292,8 @@ impl PyStorageNodeClient {
             let chunk_schema = re_sorbet::ChunkSchema::try_from(&arrow_schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let column_descriptors = itertools::chain!(
-                chunk_schema
-                    .index_columns()
-                    .iter()
-                    .cloned()
-                    .map(re_sorbet::ColumnDescriptor::Time),
-                chunk_schema
-                    .component_columns()
-                    .iter()
-                    .cloned()
-                    .map(re_sorbet::ColumnDescriptor::Component),
-            )
-            .collect();
-
             Ok(PySchema {
-                schema: column_descriptors,
+                schema: chunk_schema.columns.clone(),
             })
         })
     }
