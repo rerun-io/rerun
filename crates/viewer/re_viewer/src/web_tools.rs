@@ -98,7 +98,10 @@ impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
-        } else if uri.starts_with("rerun://") {
+        } else if uri.starts_with("rerun://")
+            || uri.starts_with("rerun+http://")
+            || uri.starts_with("rerun+https://")
+        {
             Self::RerunGrpc(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
