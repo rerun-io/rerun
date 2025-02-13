@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     rerun::Color::from_rgb(step * 4, 255 - step * 4, 0),
                     rerun::Color::from_rgb(0, step * 4, 255 - step * 4),
                 ])
-                .with_many_width([64.0 - step as f32, step as f32]),
+                .with_many_width([(64.0 - step as f32) * 0.5, step as f32 * 0.5]),
         )?;
 
         match step {
@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // full gap
                 rec.log("multi_colored", &rerun::Clear::new(false))?;
             }
-            41..60 => {}
+            41..55 => {}
 
             _ => {
                 rec.log(
