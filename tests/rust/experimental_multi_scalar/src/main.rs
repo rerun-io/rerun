@@ -5,10 +5,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log_static(
         "scalar",
-        &rerun::SeriesLine::new().with_many_color([
-            rerun::Color::from_rgb(255, 0, 0),
-            rerun::Color::from_rgb(0, 0, 255),
-        ]),
+        &rerun::SeriesLine::new()
+            .with_many_color([
+                rerun::Color::from_rgb(255, 0, 0),
+                rerun::Color::from_rgb(0, 0, 255),
+            ])
+            .with_many_name(["sin", "cos"]),
     )?;
 
     for step in 0..64 {

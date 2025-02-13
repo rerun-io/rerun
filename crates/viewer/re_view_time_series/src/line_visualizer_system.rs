@@ -226,13 +226,13 @@ impl SeriesLineSystem {
             // TODO(andreas): We should determine this only once and cache the result.
             // As data comes in we can validate that the number of series is consistent.
             // Keep in mind clears here.
-            let num_expected_series = all_scalar_chunks
+            let num_series = all_scalar_chunks
                 .iter()
                 .next()
                 .and_then(|chunk| chunk.iter_slices::<f64>(Scalar::name()).next())
                 .map(|slice| slice.len())
                 .unwrap_or(1);
-            if num_expected_series == 0 {
+            if num_series == 0 {
                 re_log::warn_once!("Empty scalar array found for {entity_path:?}");
                 return;
             }
@@ -268,7 +268,7 @@ impl SeriesLineSystem {
                         }
                     })
                     .collect_vec();
-                points_per_series = vec![points; num_expected_series];
+                points_per_series = vec![points; num_series];
             }
 
             // Fill in values.
@@ -316,7 +316,7 @@ impl SeriesLineSystem {
                     {
                         for (points, color) in points_per_series
                             .iter_mut()
-                            .zip(clamped_or_nothing(colors, num_expected_series))
+                            .zip(clamped_or_nothing(colors, num_series))
                         {
                             let color = map_raw_color(color);
                             for point in points {
@@ -325,7 +325,7 @@ impl SeriesLineSystem {
                         }
                     }
                 } else if all_color_chunks.is_empty() {
-                    if num_expected_series > 1 {
+                    if num_series > 1 {
                         re_tracing::profile_scope!("default color for multiple series");
 
                         // Have to fill in additional default colors.
@@ -357,7 +357,7 @@ impl SeriesLineSystem {
                         re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
 
                     // Simplified path for single series.
-                    if num_expected_series == 1 {
+                    if num_series == 1 {
                         let points = &mut points_per_series[0];
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
                             if let Some(color) = colors.and_then(|c| c.first()) {
@@ -369,7 +369,7 @@ impl SeriesLineSystem {
                             if let Some(colors) = colors {
                                 for (points, color) in points_per_series
                                     .iter_mut()
-                                    .zip(clamped_or_nothing(colors, num_expected_series))
+                                    .zip(clamped_or_nothing(colors, num_series))
                                 {
                                     points[i].attrs.color = map_raw_color(color);
                                 }
@@ -437,12 +437,26 @@ impl SeriesLineSystem {
             }
 
             // Extract the series name
-            let series_name = results
+            let series_names: Vec<String> = results
                 .get_optional_chunks(&Name::name())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
-                .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+                .and_then(|chunk| chunk.iter_slices::<String>(Name::name()).next())
+                .map_or_else(
+                    || {
+                        let fallback_name: String =
+                            TypedComponentFallbackProvider::<Name>::fallback_for(self, &query_ctx)
+                                .to_string();
+                        if num_series == 1 {
+                            vec![fallback_name]
+                        } else {
+                            (0..num_series)
+                                .map(|i| format!("{fallback_name}/{i}"))
+                                .collect()
+                        }
+                    },
+                    |slice| slice.into_iter().map(|s| s.to_string()).collect(),
+                );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -501,15 +515,7 @@ impl SeriesLineSystem {
                 }
             }
 
-            let single_series = points_per_series.len() == 1;
-            for (i, points) in points_per_series.into_iter().enumerate() {
-                // TODO: handle this better
-                let label = if single_series {
-                    series_name.clone().into()
-                } else {
-                    format!("{series_name}/{i}")
-                };
-
+            for (points, label) in points_per_series.into_iter().zip(series_names.into_iter()) {
                 points_to_series(
                     &data_result.entity_path,
                     time_per_pixel,
