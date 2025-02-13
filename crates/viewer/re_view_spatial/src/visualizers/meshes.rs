@@ -67,7 +67,7 @@ impl Mesh3DVisualizer {
                 continue;
             }
 
-            let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
+            let mesh = ctx.viewer_ctx.store_context.caches.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
                     query_result_hash: data.query_result_hash,

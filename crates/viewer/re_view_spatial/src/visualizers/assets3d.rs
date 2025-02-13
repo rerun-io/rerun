@@ -58,7 +58,7 @@ impl Asset3DVisualizer {
 
             // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
-            let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
+            let mesh = ctx.viewer_ctx.store_context.caches.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
                     query_result_hash: data.query_result_hash,

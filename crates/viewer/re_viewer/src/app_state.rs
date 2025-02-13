@@ -264,7 +264,6 @@ impl AppState {
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
-            cache: store_context.caches,
             view_class_registry,
             reflection,
             component_ui_registry,
@@ -343,7 +342,6 @@ impl AppState {
         // it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
             app_options,
-            cache: store_context.caches,
             view_class_registry,
             reflection,
             component_ui_registry,
