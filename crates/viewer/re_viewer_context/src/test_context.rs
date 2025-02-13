@@ -279,6 +279,22 @@ impl TestContext {
             .expect("chunk should be successfully added");
     }
 
+    /// Log an entity to the recording store.
+    ///
+    /// The provided closure should add content using the [`ChunkBuilder`] passed as argument.
+    pub fn log_entity_static(
+        &mut self,
+        entity_path: EntityPath,
+        build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
+    ) {
+        let builder = build_chunk(Chunk::builder(entity_path));
+        self.recording_store
+            .add_chunk(&Arc::new(
+                builder.build().expect("chunk should be successfully built"),
+            ))
+            .expect("chunk should be successfully added");
+    }
+
     /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
         self.view_class_registry
