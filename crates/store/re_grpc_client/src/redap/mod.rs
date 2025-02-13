@@ -335,8 +335,8 @@ async fn stream_catalog_async(
             let mut metadata = record_batch.schema_ref().metadata.clone();
 
             for (key, value) in [
-                re_sorbet::ChunkSchema::chunk_id_metadata(&ChunkId::new()),
-                re_sorbet::ChunkSchema::entity_path_metadata(&entity_path),
+                re_sorbet::SorbetSchema::chunk_id_metadata(&ChunkId::new()),
+                re_sorbet::SorbetSchema::entity_path_metadata(&entity_path),
             ] {
                 metadata.entry(key).or_insert(value);
             }

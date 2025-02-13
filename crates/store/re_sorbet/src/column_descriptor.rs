@@ -118,7 +118,7 @@ impl ColumnDescriptor {
             "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
 
             "data" => Ok(Self::Component(
-                ComponentColumnDescriptor::try_from_arrow_field(chunk_entity_path, field)?,
+                ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
             )),
 
             _ => Err(ColumnError::UnsupportedColumnKind {
