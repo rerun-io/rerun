@@ -11,7 +11,10 @@
 /// Time-ordered globally unique 128-bit identifiers.
 #[repr(C, align(1))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "bytemuck", derive(bytemuck::AnyBitPattern))]
+#[cfg_attr(
+    feature = "bytemuck",
+    derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
+)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
     /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
@@ -151,6 +154,12 @@ impl Tuid {
     #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
+    }
+
+    /// Returns most significant byte first (big endian).
+    #[inline]
+    pub fn as_bytes(&self) -> [u8; 16] {
+        self.as_u128().to_be_bytes()
     }
 
     /// Approximate nanoseconds since unix epoch.

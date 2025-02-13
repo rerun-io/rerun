@@ -1,3 +1,7 @@
+use arrow::array::Array;
+
+use crate::Loggable as _;
+
 /// A unique ID for a `Chunk`.
 ///
 /// `Chunk`s are the atomic unit of ingestion, transport, storage, events and GC in Rerun.
@@ -111,8 +115,6 @@ impl std::ops::DerefMut for ChunkId {
     }
 }
 
-crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId");
-
 // ---
 
 /// A unique ID for a row's worth of data within a chunk.
@@ -154,7 +156,19 @@ crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId");
 ///
 /// This has very important implications when inserting data far into the past or into the future:
 /// think carefully about your `RowId`s in these cases.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C, align(1))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::AnyBitPattern,
+    bytemuck::NoUninit,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RowId(pub(crate) re_tuid::Tuid);
 
@@ -214,6 +228,16 @@ impl RowId {
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
+    }
+
+    pub fn arrow_from_slice(slice: &[Self]) -> arrow::array::FixedSizeBinaryArray {
+        crate::tuids_to_arrow(bytemuck::cast_slice(slice))
+    }
+
+    /// Panics if the array is of the wrong width
+    pub fn slice_from_arrow(array: &arrow::array::FixedSizeBinaryArray) -> &[Self] {
+        debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
+        bytemuck::cast_slice(array.value_data())
     }
 }
 

@@ -32,23 +32,9 @@ impl Chunk {
             .and_then(|per_desc| per_desc.get(component_desc))?;
 
         if self.is_sorted() {
-            let row_id_128 = row_id.as_u128();
-            let row_id_time_ns = (row_id_128 >> 64) as u64;
-            let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
-
-            let (times, incs) = self.row_ids_raw();
-            let times = times.values();
-            let incs = incs.values();
-
-            let mut index = times.partition_point(|&time| time < row_id_time_ns);
-            while index < incs.len() && incs[index] < row_id_inc {
-                index += 1;
-            }
-
-            let found_it =
-                times.get(index) == Some(&row_id_time_ns) && incs.get(index) == Some(&row_id_inc);
-
-            (found_it && list_array.is_valid(index)).then(|| list_array.value(index))
+            let row_ids = self.row_ids_slice();
+            let index = row_ids.binary_search(&row_id).ok()?;
+            list_array.is_valid(index).then(|| list_array.value(index))
         } else {
             self.row_ids()
                 .find_position(|id| *id == row_id)
@@ -427,7 +413,7 @@ impl Chunk {
             entity_path,
             heap_size_bytes: _,
             is_sorted: _,
-            row_ids,
+            row_ids: _,
             timelines,
             components,
         } = self;
@@ -439,7 +425,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: arrow::array::StructBuilder::from_fields(row_ids.fields().clone(), 0).finish(),
+            row_ids: RowId::arrow_from_slice(&[]),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))

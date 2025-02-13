@@ -1,4 +1,4 @@
-use arrow::array::StructArray as ArrowStructArray;
+use arrow::array::FixedSizeBinaryArray;
 use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use itertools::{izip, Itertools};
@@ -51,7 +51,7 @@ impl Chunk {
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
-                .downcast_array_ref::<ArrowStructArray>()
+                .downcast_array_ref::<FixedSizeBinaryArray>()
                 .unwrap()
                 .clone()
         };
