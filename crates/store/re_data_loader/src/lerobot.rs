@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 /// Check whether the provided path contains a Le Robot dataset.
-pub fn is_le_robot_dataset(path: impl AsRef<Path>) -> bool {
+pub fn is_lerobot_dataset(path: impl AsRef<Path>) -> bool {
     let path = path.as_ref();
 
     if !path.is_dir() {
