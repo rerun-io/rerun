@@ -106,6 +106,7 @@ impl SorbetColumnDescriptors {
 
     /// Keep only the component columns that satisfy the given predicate.
     #[must_use]
+    #[inline]
     pub fn filter_components(mut self, keep: impl Fn(&ComponentColumnDescriptor) -> bool) -> Self {
         self.components.retain(keep);
         self
