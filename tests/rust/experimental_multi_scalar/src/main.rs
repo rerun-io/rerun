@@ -39,13 +39,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ])
                 .with_many_width([64.0 - step as f32, step as f32]),
         )?;
-        rec.log(
-            "multi_colored",
-            &rerun::Scalar::update_fields().with_many_scalar([
-                (step as f64 / 10.0).sin() + 2.0,
-                (step as f64 / 10.0).cos() + 2.0,
-            ]),
-        )?;
+
+        match step {
+            32..40 => {
+                // Partial gap.
+                rec.log(
+                    "multi_colored",
+                    &rerun::Scalar::update_fields()
+                        .with_many_scalar([(step as f64 / 10.0).sin() + 2.0]),
+                )?;
+            }
+
+            40 => {
+                // full gap
+                rec.log("multi_colored", &rerun::Clear::new(false))?;
+            }
+            41..60 => {}
+
+            _ => {
+                rec.log(
+                    "multi_colored",
+                    &rerun::Scalar::update_fields().with_many_scalar([
+                        (step as f64 / 10.0).sin() + 2.0,
+                        (step as f64 / 10.0).cos() + 2.0,
+                    ]),
+                )?;
+            }
+        }
     }
 
     Ok(())

@@ -252,8 +252,6 @@ impl SeriesLineSystem {
                     },
                 };
 
-                // TODO: did we regrees perf here?
-
                 let points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
@@ -275,25 +273,35 @@ impl SeriesLineSystem {
             {
                 re_tracing::profile_scope!("fill values");
 
-                // TODO: did we regress perf here? likely.
-
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                all_scalar_chunks
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
-                    .enumerate()
-                    .for_each(|(i, values)| {
-                        // TODO(andreas): proper support for clears when dealing with multiple scalars?
-                        if !values.is_empty() {
+
+                if num_series == 1 {
+                    let points = &mut points_per_series[0];
+                    all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
+                        .enumerate()
+                        .for_each(|(i, values)| {
+                            if let Some(value) = values.first() {
+                                points[i].value = *value;
+                            } else {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            }
+                        });
+                } else {
+                    all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
+                        .enumerate()
+                        .for_each(|(i, values)| {
                             for (points, value) in points_per_series.iter_mut().zip(values) {
                                 points[i].value = *value;
                             }
-                        } else {
-                            for points in &mut points_per_series {
+                            for points in points_per_series.iter_mut().skip(values.len()) {
                                 points[i].attrs.kind = PlotSeriesKind::Clear;
                             }
-                        }
-                    });
+                        });
+                }
             }
 
             // Fill in colors.
