@@ -228,14 +228,12 @@ impl SeriesLineSystem {
             // Keep in mind clears here.
             let num_series = all_scalar_chunks
                 .iter()
-                .next()
-                .and_then(|chunk| chunk.iter_slices::<f64>(Scalar::name()).next())
-                .map(|slice| slice.len())
+                .find_map(|chunk| {
+                    chunk
+                        .iter_slices::<f64>(Scalar::name())
+                        .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
+                })
                 .unwrap_or(1);
-            if num_series == 0 {
-                re_log::warn_once!("Empty scalar array found for {entity_path:?}");
-                return;
-            }
 
             // Allocate all points.
             {
