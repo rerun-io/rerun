@@ -287,7 +287,7 @@ impl SeriesLineSystem {
                     }
                 },
                 _ => {
-                    panic!("Expected a list datatype, got {:?}", data_datatype);
+                    panic!("Expected a list datatype, got {data_datatype:?}");
                 }
             };
 
@@ -600,7 +600,28 @@ impl SeriesLineSystem {
                             vec![fallback_name]
                         } else {
                             (0..num_series)
-                                .map(|i| format!("{fallback_name}/{i}"))
+                                .map(|i| {
+                                    if num_f32_elements == 3 {
+                                        let index = i / 3;
+                                        let name = ["x", "y", "z"][i % 3];
+                                        if num_series > 3 {
+                                            format!("{fallback_name}/{index}-{name}")
+                                        } else {
+                                            format!("{fallback_name}/{name}")
+                                        }
+                                    } else if num_f32_elements == 9 {
+                                        let index = i / 9;
+                                        let row = ((i % 9) / 3) + 1;
+                                        let column = ((i % 9) % 3) + 1;
+                                        if num_series > 9 {
+                                            format!("{fallback_name}/m{row}{column}-{index}")
+                                        } else {
+                                            format!("{fallback_name}/m{row}{column}")
+                                        }
+                                    } else {
+                                        format!("{fallback_name}/{i}")
+                                    }
+                                })
                                 .collect()
                         }
                     },
