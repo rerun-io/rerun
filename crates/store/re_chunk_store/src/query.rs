@@ -743,7 +743,8 @@ impl ChunkStore {
         chunks
     }
 
-    /// Returns the most-relevant _temporal_ chunk(s) for the given [`RangeQuery`].
+    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`]. Optionally, static chunks
+    /// can be included in the results.
     ///
     /// The returned vector is guaranteed free of duplicates, by definition.
     ///
@@ -753,11 +754,12 @@ impl ChunkStore {
     /// The caller should filter the returned chunks further (see [`Chunk::range`]) in order to
     /// determine how exactly each row of data fit with the rest.
     ///
-    /// **This ignores static data.**
+    ///
     pub fn range_relevant_chunks_for_all_components(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
+        include_static: bool,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
@@ -785,7 +787,23 @@ impl ChunkStore {
 
         debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
 
-        chunks
+        if include_static {
+            let static_chunks = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .map(|static_chunks_per_component| {
+                    static_chunks_per_component
+                        .values()
+                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
+                        .collect_vec()
+                })
+                .unwrap_or_default();
+
+            debug_assert!(static_chunks.iter().map(|chunk| chunk.id()).all_unique());
+            static_chunks.into_iter().chain(chunks).collect()
+        } else {
+            chunks
+        }
     }
 
     fn range<'a>(
