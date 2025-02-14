@@ -150,10 +150,7 @@ impl RowsDisplayData {
             .into_iter()
             .map(|data| {
                 DisplayRecordBatch::try_new(
-                    selected_columns
-                        .iter()
-                        .map(|desc| desc.clone().into())
-                        .zip(data),
+                    selected_columns.iter().map(|desc| desc.into()).zip(data),
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;

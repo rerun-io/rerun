@@ -1,6 +1,6 @@
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_sorbet::AnyColumnDescriptor;
+use re_sorbet::ColumnDescriptorRef;
 use re_ui::UiExt;
 use re_view_dataframe::display_record_batch::DisplayRecordBatch;
 use re_viewer_context::external::re_log_types::Timeline;
@@ -92,7 +92,7 @@ pub fn collection_ui(
 struct CollectionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
-    selected_columns: &'a Vec<AnyColumnDescriptor>,
+    selected_columns: &'a Vec<ColumnDescriptorRef<'a>>,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {

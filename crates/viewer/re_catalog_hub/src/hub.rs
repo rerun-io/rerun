@@ -153,7 +153,7 @@ impl CatalogHub {
                         false
                     };
 
-                let content = list_item::LabelContent::new(collection.name.as_ref());
+                let content = list_item::LabelContent::new(&collection.name);
                 let response = ui.list_item().selected(is_selected).show_flat(ui, content);
 
                 if response.clicked() {
