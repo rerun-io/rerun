@@ -1168,6 +1168,17 @@ pub trait UiExt {
         })
         .inner
     }
+
+    /// Set [`egui::Style::wrap_mode`] to [`egui::TextWrapMode::Truncate`], unless this is a sizing
+    /// pass, in which case it is set to [`egui::TextWrapMode::Extend`].
+    fn set_truncate_style(&mut self) {
+        let ui = self.ui_mut();
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        } else {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        }
+    }
 }
 
 impl UiExt for egui::Ui {

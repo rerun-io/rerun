@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
+use re_catalog_hub::CatalogHub;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
@@ -13,17 +14,18 @@ use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
-    ViewClassRegistryError,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, PlayState, StoreContext, SystemCommand, SystemCommandSender, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError,
 };
 
-use crate::app_blueprint::PanelStateOverrides;
+use crate::app_state::DisplayMode;
 use crate::{
-    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+    app_blueprint::{AppBlueprint, PanelStateOverrides},
+    app_state::WelcomeScreenState,
+    background_tasks::BackgroundTasks,
     AppState,
 };
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -203,6 +205,9 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
+    /// Interface for all catalogs
+    catalog_hub: CatalogHub,
+
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
@@ -236,6 +241,14 @@ pub struct App {
     /// This field isn't used directly, but is propagated to all recording configs
     /// when they are created.
     pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
+
+    /// The async runtime that should be used for all asynchronous operations.
+    ///
+    /// Using the global tokio runtime should be avoided since:
+    /// * we don't have a tokio runtime on web
+    /// * we want the user to have full control over the runtime,
+    ///   and not expect that a global runtime exists.
+    async_runtime: AsyncRuntimeHandle,
 }
 
 impl App {
@@ -246,6 +259,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -408,6 +422,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
+            catalog_hub: CatalogHub::default(),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -433,6 +448,7 @@ impl App {
             reflection,
 
             timeline_callbacks,
+            async_runtime: tokio_runtime,
         }
     }
 
@@ -572,8 +588,9 @@ impl App {
                 });
 
                 match data_source.stream(Some(waker)) {
-                    Ok(rx) => {
-                        self.add_receiver(rx);
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
+                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
+                        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -862,7 +879,12 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => self.state.show_datastore_ui ^= true,
+            UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+                DisplayMode::Viewer | DisplayMode::RedapBrowser => {
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
+                }
+                DisplayMode::ChunkStoreBrowser => self.state.display_mode = DisplayMode::Viewer,
+            },
 
             #[cfg(debug_assertions)]
             UICommand::ToggleBlueprintInspectionPanel => {
@@ -1176,6 +1198,8 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
+                        self.catalog_hub.on_frame_start();
+
                         render_ctx.begin_frame();
                         self.state.show(
                             app_blueprint,
@@ -1183,6 +1207,7 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_context,
+                            &self.catalog_hub,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1706,6 +1731,10 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
+    }
+
+    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
+        self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
     }
 }
 

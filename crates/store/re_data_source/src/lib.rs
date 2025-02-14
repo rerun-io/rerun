@@ -11,7 +11,7 @@ mod data_source;
 #[cfg(not(target_arch = "wasm32"))]
 mod load_stdin;
 
-pub use self::data_source::DataSource;
+pub use self::data_source::{DataSource, StreamSource};
 
 // ----------------------------------------------------------------------------
 
