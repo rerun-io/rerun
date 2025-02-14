@@ -449,6 +449,18 @@ impl TestContext {
                         .set_timeline(timeline);
                 }
 
+                SystemCommand::SetLoopSelection {
+                    rec_id,
+                    timeline,
+                    time_range,
+                } => {
+                    assert_eq!(rec_id, self.recording_store.store_id());
+                    let mut guard = self.recording_config.time_ctrl.write();
+                    guard.set_timeline(timeline);
+                    guard.set_loop_selection(time_range.into());
+                    guard.set_looping(crate::Looping::Selection);
+                }
+
                 // not implemented
                 SystemCommand::SetFocus(_)
                 | SystemCommand::ActivateApp(_)

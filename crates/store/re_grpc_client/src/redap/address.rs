@@ -8,10 +8,11 @@ use std::net::Ipv4Addr;
 
 /// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-pub struct InvalidRedapAddress {
-    url: String,
-    msg: String,
+pub enum InvalidRedapAddress {
+    #[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
+    Url { url: String, msg: String },
+    #[error("{0}")]
+    TimeRange(#[from] InvalidTimeRange),
 }
 
 /// The different schemes supported by Rerun.
@@ -41,6 +42,87 @@ impl Scheme {
             Self::Rerun | Self::RerunHttps => "https",
             Self::RerunHttp => "http",
         }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid time range: {s:?}")]
+pub struct InvalidTimeRange {
+    s: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TimeRange {
+    pub timeline: re_log_types::Timeline,
+    pub time_range: re_log_types::ResolvedTimeRange,
+}
+
+impl std::fmt::Display for TimeRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            timeline,
+            time_range,
+        } = self;
+        write!(
+            f,
+            "{}@{}..{}",
+            timeline.name(),
+            time_range.min().as_f64(),
+            time_range.max().as_f64(),
+        )
+    }
+}
+
+impl TryFrom<&str> for TimeRange {
+    type Error = InvalidTimeRange;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let (timeline, time_range) = value.split_once('@').ok_or_else(|| InvalidTimeRange {
+            s: value.to_owned(),
+        })?;
+
+        // TODO: don't assume type
+
+        let timeline = match timeline {
+            "log_time" => re_log_types::Timeline::new_temporal(timeline),
+            "log_tick" => re_log_types::Timeline::new_sequence(timeline),
+            "frame" => re_log_types::Timeline::new_sequence(timeline),
+            "frame_nr" => re_log_types::Timeline::new_sequence(timeline),
+            _ => re_log_types::Timeline::new_temporal(timeline),
+        };
+        let time_range = {
+            let (min, max) = time_range
+                .split_once("..")
+                .ok_or_else(|| InvalidTimeRange {
+                    s: value.to_owned(),
+                })?;
+
+            re_log_types::ResolvedTimeRange::new(
+                re_log_types::TimeInt::from_seconds(
+                    min.parse::<i64>()
+                        .map_err(|_| InvalidTimeRange {
+                            s: value.to_owned(),
+                        })?
+                        .try_into()
+                        .ok()
+                        .unwrap_or_default(),
+                ),
+                re_log_types::TimeInt::from_seconds(
+                    max.parse::<i64>()
+                        .map_err(|_| InvalidTimeRange {
+                            s: value.to_owned(),
+                        })?
+                        .try_into()
+                        .ok()
+                        .unwrap_or_default(),
+                ),
+            )
+        };
+
+        Ok(Self {
+            timeline,
+            time_range,
+        })
     }
 }
 
@@ -76,6 +158,11 @@ pub enum RedapAddress {
         origin: Origin,
         recording_id: String,
     },
+    TimeRange {
+        origin: Origin,
+        recording_id: String,
+        time_range: TimeRange,
+    },
     Catalog {
         origin: Origin,
     },
@@ -88,6 +175,14 @@ impl std::fmt::Display for RedapAddress {
                 origin,
                 recording_id,
             } => write!(f, "{origin}/recording/{recording_id}",),
+            Self::TimeRange {
+                origin,
+                recording_id,
+                time_range,
+            } => write!(
+                f,
+                "{origin}/recording/{recording_id}?time_range={time_range}"
+            ),
             Self::Catalog { origin } => write!(f, "{origin}/catalog",),
         }
     }
@@ -107,7 +202,7 @@ impl TryFrom<&str> for RedapAddress {
                 value.replace("rerun+https://", "https://"),
             ))
         } else {
-            Err(InvalidRedapAddress {
+            Err(InvalidRedapAddress::Url {
                 url: value.to_owned(),
                 msg: "Invalid scheme, expected `rerun://`,`rerun+http://`, or `rerun+https://`"
                     .to_owned(),
@@ -117,13 +212,14 @@ impl TryFrom<&str> for RedapAddress {
         // We have to first rewrite the endpoint, because `Url` does not allow
         // `.set_scheme()` for non-opaque origins, nor does it return a proper
         // `Origin` in that case.
-        let redap_endpoint = url::Url::parse(&rewritten).map_err(|err| InvalidRedapAddress {
-            url: value.to_owned(),
-            msg: err.to_string(),
-        })?;
+        let redap_endpoint =
+            url::Url::parse(&rewritten).map_err(|err| InvalidRedapAddress::Url {
+                url: value.to_owned(),
+                msg: err.to_string(),
+            })?;
 
         let url::Origin::Tuple(_, host, port) = redap_endpoint.origin() else {
-            return Err(InvalidRedapAddress {
+            return Err(InvalidRedapAddress::Url {
                 url: value.to_owned(),
                 msg: "Opaque origin".to_owned(),
             });
@@ -139,21 +235,33 @@ impl TryFrom<&str> for RedapAddress {
         // adjusted when adding additional resources.
         let segments = redap_endpoint
             .path_segments()
-            .ok_or_else(|| InvalidRedapAddress {
+            .ok_or_else(|| InvalidRedapAddress::Url {
                 url: value.to_owned(),
                 msg: "Cannot be a base URL".to_owned(),
             })?
             .take(2)
             .collect::<Vec<_>>();
 
+        let time_range = redap_endpoint
+            .query_pairs()
+            .find(|(key, _)| key == "time_range")
+            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
+
         match segments.as_slice() {
-            ["recording", recording_id] => Ok(Self::Recording {
-                origin,
-                recording_id: (*recording_id).to_owned(),
-            }),
+            ["recording", recording_id] => match time_range {
+                Some(time_range) => Ok(Self::TimeRange {
+                    origin,
+                    recording_id: (*recording_id).to_owned(),
+                    time_range: time_range?,
+                }),
+                None => Ok(Self::Recording {
+                    origin,
+                    recording_id: (*recording_id).to_owned(),
+                }),
+            },
             ["catalog"] => Ok(Self::Catalog { origin }),
 
-            _ => Err(InvalidRedapAddress {
+            _ => Err(InvalidRedapAddress::Url {
                 url: value.to_owned(),
                 msg: "Missing path'".to_owned(),
             }),
@@ -257,7 +365,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::InvalidRedapAddress::Url { .. }
         ));
     }
 
@@ -268,7 +376,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::InvalidRedapAddress::Url { .. }
         ));
     }
 }

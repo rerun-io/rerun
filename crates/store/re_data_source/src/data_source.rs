@@ -155,6 +155,7 @@ impl DataSource {
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        on_cmd: Box<dyn Fn(re_grpc_client::redap::Command) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
@@ -245,7 +246,8 @@ impl DataSource {
 
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
-                re_grpc_client::redap::stream_from_redap(url, on_msg).map_err(|err| err.into())
+                re_grpc_client::redap::stream_from_redap(url, on_cmd, on_msg)
+                    .map_err(|err| err.into())
             }
 
             Self::MessageProxy { url } => {
