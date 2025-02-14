@@ -133,7 +133,9 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx.store_context.caches
+                let tensor_stats = ctx
+                    .store_context
+                    .caches
                     .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);

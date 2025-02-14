@@ -155,9 +155,13 @@ impl EncodedImageVisualizer {
                 .and_then(|media_types| media_types.first().cloned())
                 .map(|media_type| MediaType(media_type.into()));
 
-            let image = ctx.viewer_ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
-                c.entry(tensor_data_row_id, blob, media_type.as_ref())
-            });
+            let image = ctx
+                .viewer_ctx
+                .store_context
+                .caches
+                .entry(|c: &mut ImageDecodeCache| {
+                    c.entry(tensor_data_row_id, blob, media_type.as_ref())
+                });
 
             let image = match image {
                 Ok(image) => image,

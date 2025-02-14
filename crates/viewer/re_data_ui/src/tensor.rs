@@ -59,7 +59,9 @@ pub fn tensor_ui(
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = ctx.store_context.caches
+    let tensor_stats = ctx
+        .store_context
+        .caches
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
     if ui_layout.is_single_line() {
