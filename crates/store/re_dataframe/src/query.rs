@@ -32,7 +32,6 @@ use re_chunk_store::{
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
-use re_sorbet::SorbetColumnDescriptors;
 use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
 
 // ---
@@ -77,7 +76,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: Vec<ColumnDescriptor>,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -175,8 +174,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .unwrap_or_else(|| Timeline::new_sequence(""));
 
         // 1. Compute the schema for the query.
-        let view_contents_schema = store.schema_for_query(&self.query);
-        let view_contents = view_contents_schema.indices_and_components();
+        let view_contents = store.schema_for_query(&self.query);
 
         // 2. Compute the schema of the selected contents.
         //
@@ -356,12 +354,16 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .collect_vec()
         };
 
+        for descr in &view_contents {
+            descr.sanity_check();
+        }
+
         for (_, descr) in &selected_contents {
             descr.sanity_check();
         }
 
         QueryHandleState {
-            view_contents: view_contents_schema,
+            view_contents,
             selected_contents,
             selected_static_values,
             filtered_index,
@@ -662,7 +664,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &[ColumnDescriptor] {
         &self.init().view_contents
     }
 
@@ -1047,7 +1049,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 for (view_idx, streaming_state) in null_streaming_states {
                     let Some(ColumnDescriptor::Component(descr)) =
-                        state.view_contents.get_index_or_component(view_idx)
+                        state.view_contents.get(view_idx)
                     else {
                         continue;
                     };
@@ -1069,8 +1071,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                     let results = cache.latest_at(
                         &query,
-                        &descr.entity_path.clone(),
-                        [ComponentDescriptor::from(descr.clone())],
+                        &descr.entity_path,
+                        [ComponentDescriptor::from(descr)],
                     );
 
                     *streaming_state = results
@@ -1180,7 +1182,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
+                            let component_desc = state.view_contents.get(view_idx).and_then(|col| match col {
                                 ColumnDescriptor::Component(descr) => {
                                     descr.component_name.sanity_check();
                                     Some(re_types_core::ComponentDescriptor {

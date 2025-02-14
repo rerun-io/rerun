@@ -89,13 +89,6 @@ impl SorbetSchema {
     }
 }
 
-impl From<SorbetSchema> for SorbetColumnDescriptors {
-    #[inline]
-    fn from(sorbet_schema: SorbetSchema) -> Self {
-        sorbet_schema.columns
-    }
-}
-
 impl From<&SorbetSchema> for ArrowSchema {
     fn from(sorbet_schema: &SorbetSchema) -> Self {
         Self {

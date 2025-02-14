@@ -13,11 +13,8 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{
-    ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, SorbetColumnDescriptors,
-};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 use re_types_core::ComponentName;
-use tap::Tap as _;
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -377,16 +374,15 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema(&self) -> SorbetColumnDescriptors {
+    pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let indices = self
+        let timelines = self
             .all_timelines_sorted()
             .into_iter()
-            .map(IndexColumnDescriptor::from)
-            .collect();
+            .map(|timeline| ColumnDescriptor::Time(IndexColumnDescriptor::from(timeline)));
 
-        let components = self
+        let mut components = self
             .per_column_metadata
             .iter()
             .flat_map(|(entity_path, per_name)| {
@@ -429,15 +425,13 @@ impl ChunkStore {
                     is_semantically_empty,
                 }
             })
-            .collect_vec()
-            .tap_mut(|components| components.sort());
+            .collect_vec();
 
-        SorbetColumnDescriptors {
-            row_id: Some(re_sorbet::RowIdColumnDescriptor::new()),
-            indices,
-            components,
-        }
-        .tap(|schema| schema.sanity_check())
+        components.sort();
+
+        timelines
+            .chain(components.into_iter().map(ColumnDescriptor::Component))
+            .collect()
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
@@ -548,7 +542,7 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
+    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
         let QueryExpression {
@@ -591,6 +585,12 @@ impl ChunkStore {
                 && passes_tombstone_check()
         };
 
-        self.schema().filter_components(filter)
+        self.schema()
+            .into_iter()
+            .filter(|column| match column {
+                ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Component(column) => filter(column),
+            })
+            .collect()
     }
 }
