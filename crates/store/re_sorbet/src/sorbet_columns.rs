@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 
 use crate::{
-    AnyColumnDescriptor, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
+    ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
     RowIdColumnDescriptor, SorbetError,
     ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
     RowIdColumnDescriptor, SorbetError,
@@ -53,18 +53,12 @@ impl SorbetColumnDescriptors {
             .collect()
     }
 
-    pub fn descriptors(&self) -> impl Iterator<Item = AnyColumnDescriptor> + '_ {
+    pub fn descriptors(&self) -> impl Iterator<Item = ColumnDescriptorRef<'_>> + '_ {
         self.row_id
             .iter()
-            .cloned()
-            .map(AnyColumnDescriptor::from)
-            .chain(self.indices.iter().cloned().map(AnyColumnDescriptor::from))
-            .chain(
-                self.components
-                    .iter()
-                    .cloned()
-                    .map(AnyColumnDescriptor::from),
-            )
+            .map(ColumnDescriptorRef::from)
+            .chain(self.indices.iter().map(ColumnDescriptorRef::from))
+            .chain(self.components.iter().map(ColumnDescriptorRef::from))
     }
 
     /// Returns all indices and then all components;

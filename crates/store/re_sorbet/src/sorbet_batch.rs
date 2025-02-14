@@ -10,7 +10,7 @@ use arrow::{
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
 
 use crate::{
-    AnyColumnDescriptor, ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor,
+    ArrowBatchMetadata, ColumnDescriptorRef, ComponentColumnDescriptor, IndexColumnDescriptor,
     RowIdColumnDescriptor, SorbetError, SorbetSchema,
 };
 
@@ -83,7 +83,7 @@ impl SorbetBatch {
     }
 
     /// All the columns along with their descriptors.
-    pub fn all_columns(&self) -> impl Iterator<Item = (AnyColumnDescriptor, &ArrowArrayRef)> {
+    pub fn all_columns(&self) -> impl Iterator<Item = (ColumnDescriptorRef<'_>, &ArrowArrayRef)> {
         self.schema.columns.descriptors().zip(self.batch.columns())
     }
 
