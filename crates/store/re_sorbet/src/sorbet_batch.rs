@@ -10,8 +10,8 @@ use arrow::{
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
 
 use crate::{
-    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
-    SorbetError, SorbetSchema,
+    AnyColumnDescriptor, ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -80,6 +80,11 @@ impl SorbetBatch {
                     .expect("Row IDs should be encoded as struct"),
             )
         })
+    }
+
+    /// All the columns along with their descriptors.
+    pub fn all_columns(&self) -> impl Iterator<Item = (AnyColumnDescriptor, &ArrowArrayRef)> {
+        self.schema.columns.descriptors().zip(self.batch.columns())
     }
 
     /// The columns of the indices (timelines).

@@ -35,6 +35,12 @@ impl RowIdColumnDescriptor {
     }
 
     #[inline]
+    #[expect(clippy::unused_self)]
+    pub fn name(&self) -> &'static str {
+        "row id"
+    }
+
+    #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         let Self {} = self;
 
