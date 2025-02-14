@@ -98,7 +98,7 @@ fn test_line_properties() {
                         ))
                         .with_width((32.0 - step as f32) * 0.5)
                         // Only the first name will be shown, but should be handled gracefully.
-                        .with_name(format!("dynamic_{}", step)),
+                        .with_name(format!("dynamic_{step}")),
                 )
                 .with_archetype(
                     RowId::new(),
@@ -170,7 +170,7 @@ fn test_point_properties() {
                         .with_marker_size((32.0 - step as f32) * 0.5)
                         .with_marker(marker_list[step as usize % marker_list.len()])
                         // Only the first name will be shown, but should be handled gracefully.
-                        .with_name(format!("dynamic_{}", step)),
+                        .with_name(format!("dynamic_{step}")),
                 )
                 .with_archetype(
                     RowId::new(),
