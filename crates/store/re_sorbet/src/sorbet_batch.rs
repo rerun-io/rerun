@@ -54,12 +54,6 @@ impl SorbetBatch {
         self.schema.heap_size_bytes
     }
 
-    /// Are we sorted by the row id column?
-    #[inline]
-    pub fn is_sorted(&self) -> bool {
-        self.schema.is_sorted
-    }
-
     #[inline]
     pub fn fields(&self) -> &ArrowFields {
         &self.schema_ref().fields

@@ -6,9 +6,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
+use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkResult, RowId, TimeColumn};
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkResult, TimeColumn};
 
 // ---
 
@@ -45,7 +45,9 @@ impl Chunk {
             components,
         } = self;
 
-        let row_id_schema = re_sorbet::RowIdColumnDescriptor::try_from(RowId::arrow_datatype())?;
+        let row_id_schema = re_sorbet::RowIdColumnDescriptor {
+            is_sorted: *is_sorted,
+        };
 
         let (index_schemas, index_arrays): (Vec<_>, Vec<_>) = {
             re_tracing::profile_scope!("timelines");
@@ -124,8 +126,7 @@ impl Chunk {
             index_schemas,
             data_schemas,
         )
-        .with_heap_size_bytes(heap_size_bytes)
-        .with_sorted(*is_sorted);
+        .with_heap_size_bytes(heap_size_bytes);
 
         Ok(re_sorbet::ChunkBatch::try_new(
             schema,
@@ -150,13 +151,6 @@ impl Chunk {
             batch.num_columns(),
             batch.num_rows()
         ));
-
-        // Metadata
-        let (id, entity_path, is_sorted) = (
-            batch.chunk_id(),
-            batch.entity_path().clone(),
-            batch.is_sorted(),
-        );
 
         let row_ids = batch.row_id_column().1.clone();
 
@@ -224,10 +218,11 @@ impl Chunk {
             components
         };
 
+        let is_sorted_by_row_id = batch.chunk_schema().row_id_column().is_sorted;
         let mut res = Self::new(
-            id,
-            entity_path,
-            is_sorted.then_some(true),
+            batch.chunk_id(),
+            batch.entity_path().clone(),
+            is_sorted_by_row_id.then_some(true),
             row_ids,
             timelines,
             components,
@@ -277,7 +272,7 @@ mod tests {
         example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
     };
-    use re_types_core::{ChunkId, Component as _};
+    use re_types_core::{ChunkId, Component as _, Loggable as _, RowId};
 
     use super::*;
 

@@ -3,7 +3,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ArrowBatchMetadata, MetadataExt as _, SorbetColumnDescriptors, SorbetError};
+use crate::{ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError};
 
 // ----------------------------------------------------------------------------
 
@@ -24,9 +24,6 @@ pub struct SorbetSchema {
 
     /// The heap size of this batch in bytes, if known.
     pub heap_size_bytes: Option<u64>,
-
-    /// Are we sorted by the row id column?
-    pub is_sorted: bool, // TODO(emilk): move to `RowIdColumnDescriptor`.
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -45,12 +42,6 @@ impl SorbetSchema {
         self
     }
 
-    #[inline]
-    pub fn with_sorted(mut self, sorted_by_row_id: bool) -> Self {
-        self.is_sorted = sorted_by_row_id;
-        self
-    }
-
     pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
         ("rerun.id".to_owned(), format!("{:X}", chunk_id.as_u128()))
     }
@@ -65,7 +56,6 @@ impl SorbetSchema {
             chunk_id,
             entity_path,
             heap_size_bytes,
-            is_sorted,
         } = self;
 
         [
@@ -81,7 +71,6 @@ impl SorbetSchema {
                     heap_size_bytes.to_string(),
                 )
             }),
-            is_sorted.then(|| ("rerun.is_sorted".to_owned(), "true".to_owned())),
         ]
         .into_iter()
         .flatten()
@@ -127,7 +116,6 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
             None
         };
 
-        let sorted_by_row_id = metadata.get_bool("rerun.is_sorted");
         let heap_size_bytes = if let Some(heap_size_bytes) = metadata.get("rerun.heap_size_bytes") {
             heap_size_bytes
                 .parse()
@@ -156,7 +144,6 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
             chunk_id,
             entity_path,
             heap_size_bytes,
-            is_sorted: sorted_by_row_id,
         })
     }
 }
