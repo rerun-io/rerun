@@ -65,7 +65,7 @@ impl ChunkUi {
             }
         };
 
-        let row_ids = chunk.row_ids().collect_vec();
+        let row_ids = chunk.row_ids_slice();
         let reverse = self.sort_column.direction == SortDirection::Descending;
 
         //

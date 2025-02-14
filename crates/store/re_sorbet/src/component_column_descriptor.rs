@@ -169,6 +169,11 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
+    pub fn is_static(&self) -> bool {
+        self.is_static
+    }
+
+    #[inline]
     pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
     }

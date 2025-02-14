@@ -71,7 +71,7 @@ impl crate::DataLoader for RrdLoader {
                             );
                         }
                     })
-                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+                    .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
             }
 
             "rrd" => {
@@ -95,7 +95,7 @@ impl crate::DataLoader for RrdLoader {
                             );
                         }
                     })
-                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+                    .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
             }
             _ => unreachable!(),
         }

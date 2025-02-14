@@ -32,6 +32,7 @@ use re_chunk_store::{
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
+use re_sorbet::SorbetColumnDescriptors;
 use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
 
 // ---
@@ -76,7 +77,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: Vec<ColumnDescriptor>,
+    view_contents: SorbetColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -174,7 +175,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .unwrap_or_else(|| Timeline::new_sequence(""));
 
         // 1. Compute the schema for the query.
-        let view_contents = store.schema_for_query(&self.query);
+        let view_contents_schema = store.schema_for_query(&self.query);
+        let view_contents = view_contents_schema.indices_and_components();
 
         // 2. Compute the schema of the selected contents.
         //
@@ -354,16 +356,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .collect_vec()
         };
 
-        for descr in &view_contents {
-            descr.sanity_check();
-        }
-
         for (_, descr) in &selected_contents {
             descr.sanity_check();
         }
 
         QueryHandleState {
-            view_contents,
+            view_contents: view_contents_schema,
             selected_contents,
             selected_static_values,
             filtered_index,
@@ -664,7 +662,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &[ColumnDescriptor] {
+    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -927,22 +925,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .timelines()
                     .get(&state.filtered_index)
                     .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
-                let cur_index_row_ids = cur_chunk.row_ids_raw();
-
-                // NOTE: "Deserializing" everything into a native vec is way too much for rustc to
-                // follow and doesn't get optimized at all -- we have to work with raw arrow data
-                // all the way, so this gets a bit complicated.
-                let cur_index_row_id_at = |at: usize| {
-                    let (times, incs) = cur_index_row_ids;
-
-                    let times = times.values();
-                    let incs = incs.values();
-
-                    let time = *times.get(at)?;
-                    let inc = *incs.get(at)?;
-
-                    Some(RowId::from_u128(((time as u128) << 64) | (inc as u128)))
-                };
+                let cur_index_row_ids = cur_chunk.row_ids_slice();
 
                 let (index_value, cur_row_id) = 'walk: loop {
                     let (Some(mut index_value), Some(mut cur_row_id)) = (
@@ -950,7 +933,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .get(cur_cursor_value as usize)
                             .copied()
                             .map(TimeInt::new_temporal),
-                        cur_index_row_id_at(cur_cursor_value as usize),
+                        cur_index_row_ids.get(cur_cursor_value as usize).copied(),
                     ) else {
                         continue 'overlaps;
                     };
@@ -964,7 +947,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 .get(cur_cursor_value as usize + 1)
                                 .copied()
                                 .map(TimeInt::new_temporal),
-                            cur_index_row_id_at(cur_cursor_value as usize + 1),
+                            cur_index_row_ids
+                                .get(cur_cursor_value as usize + 1)
+                                .copied(),
                         ) {
                             if next_index_value == *cur_index_value {
                                 index_value = next_index_value;
@@ -1049,7 +1034,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 for (view_idx, streaming_state) in null_streaming_states {
                     let Some(ColumnDescriptor::Component(descr)) =
-                        state.view_contents.get(view_idx)
+                        state.view_contents.get_index_or_component(view_idx)
                     else {
                         continue;
                     };
@@ -1071,8 +1056,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                     let results = cache.latest_at(
                         &query,
-                        &descr.entity_path,
-                        [ComponentDescriptor::from(descr)],
+                        &descr.entity_path.clone(),
+                        [ComponentDescriptor::from(descr.clone())],
                     );
 
                     *streaming_state = results
@@ -1182,7 +1167,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get(view_idx).and_then(|col| match col {
+                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
                                 ColumnDescriptor::Component(descr) => {
                                     descr.component_name.sanity_check();
                                     Some(re_types_core::ComponentDescriptor {
