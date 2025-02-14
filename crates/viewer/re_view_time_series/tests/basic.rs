@@ -4,8 +4,22 @@ use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass, ViewId};
 use re_viewport_blueprint::{test_context_ext::TestContextExt, ViewBlueprint};
 
+fn color_gradient0(step: i64) -> re_types::components::Color {
+    re_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
+}
+
+fn color_gradient1(step: i64) -> re_types::components::Color {
+    re_types::components::Color::from_rgb(255 - (step * 8) as u8, 0, (step * 8) as u8)
+}
+
 #[test]
 pub fn test_clear_series_points_and_line() {
+    for two_series_per_entity in [false, true] {
+        test_clear_series_points_and_line_impl(two_series_per_entity);
+    }
+}
+
+fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let mut test_context = get_test_context();
 
     test_context.log_entity("plots/line".into(), |builder| {
@@ -40,12 +54,20 @@ pub fn test_clear_series_points_and_line() {
                 // Gap.
             }
             _ => {
-                let scalar = re_types::archetypes::Scalar::new((i as f64 / 5.0).sin());
+                let data = if two_series_per_entity {
+                    re_types::archetypes::Scalar::default().with_many_scalar([
+                        (i as f64 / 5.0).sin(),
+                        (i as f64 / 5.0 + 1.0).cos(), // Shifted a bit to make the cap more visible
+                    ])
+                } else {
+                    re_types::archetypes::Scalar::new((i as f64 / 5.0).sin())
+                };
+
                 test_context.log_entity("plots/line".into(), |builder| {
-                    builder.with_archetype(RowId::new(), timepoint.clone(), &scalar)
+                    builder.with_archetype(RowId::new(), timepoint.clone(), &data)
                 });
                 test_context.log_entity("plots/point".into(), |builder| {
-                    builder.with_archetype(RowId::new(), timepoint, &scalar)
+                    builder.with_archetype(RowId::new(), timepoint, &data)
                 });
             }
         }
@@ -55,7 +77,14 @@ pub fn test_clear_series_points_and_line() {
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
-        "clear_series_points_and_line",
+        &format!(
+            "clear_series_points_and_line{}",
+            if two_series_per_entity {
+                "__two_series_per_entity"
+            } else {
+                ""
+            }
+        ),
         egui::vec2(300.0, 300.0),
     );
 }
@@ -91,11 +120,7 @@ fn test_line_properties() {
                     RowId::new(),
                     timepoint.clone(),
                     &re_types::archetypes::SeriesLine::new()
-                        .with_color(re_types::components::Color::from_rgb(
-                            (step * 8) as u8,
-                            255 - (step * 8) as u8,
-                            0,
-                        ))
+                        .with_color(color_gradient0(step))
                         .with_width((32.0 - step as f32) * 0.5)
                         // Only the first name will be shown, but should be handled gracefully.
                         .with_name(format!("dynamic_{step}")),
@@ -118,21 +143,81 @@ fn test_line_properties() {
 }
 
 #[test]
-fn test_point_properties() {
+fn test_line_properties_two_series_per_entity() {
     let mut test_context = get_test_context();
 
-    let marker_list = [
-        re_types::components::MarkerShape::Circle,
-        re_types::components::MarkerShape::Diamond,
-        re_types::components::MarkerShape::Square,
-        re_types::components::MarkerShape::Cross,
-        re_types::components::MarkerShape::Plus,
-        re_types::components::MarkerShape::Up,
-        re_types::components::MarkerShape::Down,
-        re_types::components::MarkerShape::Left,
-        re_types::components::MarkerShape::Right,
-        re_types::components::MarkerShape::Asterisk,
-    ];
+    test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::SeriesLine::new()
+                .with_many_width([4.0, 8.0])
+                .with_many_color([
+                    re_types::components::Color::from_rgb(255, 0, 255),
+                    re_types::components::Color::from_rgb(0, 255, 0),
+                ])
+                .with_many_name(["static_0", "static_1"]),
+        )
+    });
+
+    for step in 0..32 {
+        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+
+        test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::Scalar::default()
+                    .with_many_scalar([(step as f64 / 5.0).cos(), (step as f64 / 5.0).sin()]),
+            )
+        });
+        test_context.log_entity("not_what_is_displayed_dynamic_props".into(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &re_types::archetypes::SeriesLine::new()
+                        .with_many_color([color_gradient0(step), color_gradient1(step)])
+                        .with_many_width([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
+                        // Only the first set of name will be shown, but should be handled gracefully.
+                        .with_many_name([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &re_types::archetypes::Scalar::default().with_many_scalar([
+                        (step as f64 / 5.0).sin() + 1.0,
+                        (step as f64 / 5.0).cos() + 1.0,
+                    ]),
+                )
+        });
+    }
+
+    let view_id = setup_blueprint(&mut test_context);
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        "line_properties_two_series_per_entity",
+        egui::vec2(300.0, 300.0),
+    );
+}
+
+const MARKER_LIST: [re_types::components::MarkerShape; 10] = [
+    re_types::components::MarkerShape::Circle,
+    re_types::components::MarkerShape::Diamond,
+    re_types::components::MarkerShape::Square,
+    re_types::components::MarkerShape::Cross,
+    re_types::components::MarkerShape::Plus,
+    re_types::components::MarkerShape::Up,
+    re_types::components::MarkerShape::Down,
+    re_types::components::MarkerShape::Left,
+    re_types::components::MarkerShape::Right,
+    re_types::components::MarkerShape::Asterisk,
+];
+
+#[test]
+fn test_point_properties() {
+    let mut test_context = get_test_context();
 
     test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
         builder.with_archetype(
@@ -162,13 +247,9 @@ fn test_point_properties() {
                     RowId::new(),
                     timepoint.clone(),
                     &re_types::archetypes::SeriesPoint::new()
-                        .with_color(re_types::components::Color::from_rgb(
-                            (step * 8) as u8,
-                            255 - (step * 8) as u8,
-                            0,
-                        ))
+                        .with_color(color_gradient0(step))
                         .with_marker_size((32.0 - step as f32) * 0.5)
-                        .with_marker(marker_list[step as usize % marker_list.len()])
+                        .with_marker(MARKER_LIST[step as usize % MARKER_LIST.len()])
                         // Only the first name will be shown, but should be handled gracefully.
                         .with_name(format!("dynamic_{step}")),
                 )
@@ -185,6 +266,74 @@ fn test_point_properties() {
         &mut test_context,
         view_id,
         "point_properties",
+        egui::vec2(300.0, 300.0),
+    );
+}
+
+#[test]
+fn test_point_properties_two_series_per_entity() {
+    let mut test_context = get_test_context();
+
+    test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &re_types::archetypes::SeriesPoint::new()
+                .with_many_marker_size([4.0, 8.0])
+                .with_many_marker([
+                    re_types::components::MarkerShape::Cross,
+                    re_types::components::MarkerShape::Plus,
+                ])
+                .with_many_color([
+                    re_types::components::Color::from_rgb(255, 0, 255),
+                    re_types::components::Color::from_rgb(0, 255, 0),
+                ])
+                .with_many_name(["static_0", "static_1"]),
+        )
+    });
+
+    for step in 0..32 {
+        let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+
+        test_context.log_entity("not_what_is_displayed_static_props".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::Scalar::default()
+                    .with_many_scalar([(step as f64 / 5.0).cos(), (step as f64 / 5.0).sin()]),
+            )
+        });
+        test_context.log_entity("not_what_is_displayed_dynamic_props".into(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &re_types::archetypes::SeriesPoint::new()
+                        .with_many_color([color_gradient0(step), color_gradient1(step)])
+                        .with_many_marker_size([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
+                        .with_many_marker([
+                            MARKER_LIST[step as usize % MARKER_LIST.len()],
+                            MARKER_LIST[(step + 1) as usize % MARKER_LIST.len()],
+                        ])
+                        // Only the first name will be shown, but should be handled gracefully.
+                        .with_many_name([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &re_types::archetypes::Scalar::default().with_many_scalar([
+                        (step as f64 / 5.0).sin() + 1.0,
+                        (step as f64 / 5.0).cos() + 1.0,
+                    ]),
+                )
+        });
+    }
+
+    let view_id = setup_blueprint(&mut test_context);
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        "point_properties_two_series_per_entity",
         egui::vec2(300.0, 300.0),
     );
 }
