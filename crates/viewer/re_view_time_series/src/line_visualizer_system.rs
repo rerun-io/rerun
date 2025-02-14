@@ -455,26 +455,25 @@ impl SeriesLineSystem {
             }
 
             // Extract the series name
-            let series_names: Vec<String> = results
+            let mut series_names: Vec<String> = results
                 .get_optional_chunks(&Name::name())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.iter_slices::<String>(Name::name()).next())
-                .map_or_else(
-                    || {
-                        let fallback_name: String =
-                            TypedComponentFallbackProvider::<Name>::fallback_for(self, &query_ctx)
-                                .to_string();
-                        if num_series == 1 {
-                            vec![fallback_name]
-                        } else {
-                            (0..num_series)
-                                .map(|i| format!("{fallback_name}/{i}"))
-                                .collect()
-                        }
-                    },
-                    |slice| slice.into_iter().map(|s| s.to_string()).collect(),
-                );
+                .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
+                .unwrap_or_default();
+            if series_names.len() < num_series {
+                let fallback_name: String =
+                    TypedComponentFallbackProvider::<Name>::fallback_for(self, &query_ctx)
+                        .to_string();
+                if num_series == 1 {
+                    series_names.push(fallback_name);
+                } else {
+                    series_names.extend(
+                        (series_names.len()..num_series).map(|i| format!("{fallback_name}/{i}")),
+                    );
+                }
+            }
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -533,6 +532,7 @@ impl SeriesLineSystem {
                 }
             }
 
+            debug_assert_eq!(points_per_series.len(), series_names.len());
             for (points, label) in points_per_series.into_iter().zip(series_names.into_iter()) {
                 points_to_series(
                     &data_result.entity_path,
