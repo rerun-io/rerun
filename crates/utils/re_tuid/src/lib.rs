@@ -9,35 +9,30 @@
 /// TUID: Time-based Unique Identifier.
 ///
 /// Time-ordered globally unique 128-bit identifiers.
+///
+/// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
+/// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
 #[repr(C, align(1))]
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(
     feature = "bytemuck",
     derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
 )]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    /// A BE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// A big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// We use big-endian so that the raw bytes of the `Tuid` sorts in time order.
     time_ns: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
-    /// A BE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// Uses big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// We use big-endian so that the raw bytes of the `Tuid` sorts in creation order.
     inc: [u8; 8],
-}
-
-impl Ord for Tuid {
-    #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.as_u128().cmp(&other.as_u128())
-    }
-}
-
-impl PartialOrd for Tuid {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 impl Tuid {
