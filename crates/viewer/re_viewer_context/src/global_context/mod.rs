@@ -9,15 +9,18 @@ mod command_sender;
 mod component_ui_registry;
 mod item;
 
-pub use app_options::AppOptions;
+pub use self::{
+    app_options::AppOptions,
+    command_sender::{
+        command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+    },
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
+    item::Item,
+};
 
 use crate::ViewClassRegistry;
-pub use command_sender::{
-    command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
-};
-pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes};
+
 pub(crate) use item::resolve_mono_instance_path_item;
-pub use item::Item;
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {

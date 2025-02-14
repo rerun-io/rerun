@@ -15,49 +15,6 @@ use crate::{
     ViewClassRegistry, ViewId,
 };
 
-impl ViewerContext<'_> {
-    /// Global options for the whole viewer.
-    pub fn app_options(&self) -> &AppOptions {
-        self.global_context.app_options
-    }
-
-    /// Runtime info about components and archetypes.
-    ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    /// is not able to provide a value.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
-        self.global_context.reflection
-    }
-
-    /// How to display components.
-    pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.global_context.component_ui_registry
-    }
-
-    /// Registry of all known classes of views.
-    pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.global_context.view_class_registry
-    }
-
-    /// The [`egui::Context`].
-    pub fn egui_ctx(&self) -> &egui::Context {
-        self.global_context.egui_ctx
-    }
-
-    /// The global `re_renderer` context, holds on to all GPU resources.
-    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
-        self.global_context.render_ctx
-    }
-
-    /// Interface for sending commands back to the app
-    pub fn command_sender(&self) -> &CommandSender {
-        self.global_context.command_sender
-    }
-}
-
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
@@ -100,6 +57,51 @@ pub struct ViewerContext<'a> {
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
+}
+
+// Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a
+// separate block for easier refactoring (i.e. macros) in the future.
+impl ViewerContext<'_> {
+    /// Global options for the whole viewer.
+    pub fn app_options(&self) -> &AppOptions {
+        self.global_context.app_options
+    }
+
+    /// Runtime info about components and archetypes.
+    ///
+    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// is not able to provide a value.
+    ///
+    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
+    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
+    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
+        self.global_context.reflection
+    }
+
+    /// How to display components.
+    pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
+        self.global_context.component_ui_registry
+    }
+
+    /// Registry of all known classes of views.
+    pub fn view_class_registry(&self) -> &ViewClassRegistry {
+        self.global_context.view_class_registry
+    }
+
+    /// The [`egui::Context`].
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.global_context.egui_ctx
+    }
+
+    /// The global `re_renderer` context, holds on to all GPU resources.
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.global_context.render_ctx
+    }
+
+    /// Interface for sending commands back to the app
+    pub fn command_sender(&self) -> &CommandSender {
+        self.global_context.command_sender
+    }
 }
 
 impl ViewerContext<'_> {
