@@ -3,8 +3,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use ahash::HashMap;
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
-        ListArray as ArrowListArray,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array,
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
@@ -15,7 +15,8 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable, SerializationError,
+    ComponentDescriptor, ComponentName, DeserializationError, Loggable, LoggableBatch,
+    SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -198,7 +199,7 @@ pub struct Chunk {
     pub(crate) is_sorted: bool,
 
     /// The respective [`RowId`]s for each row of data.
-    pub(crate) row_ids: FixedSizeBinaryArray,
+    pub(crate) row_ids: ArrowStructArray,
 
     /// The time columns.
     ///
@@ -377,9 +378,18 @@ impl Chunk {
         .take(self.row_ids.len())
         .collect_vec();
 
+        #[allow(clippy::unwrap_used)]
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+            // Unwrap: native RowIds cannot fail to serialize.
+            .unwrap()
+            .downcast_array_ref::<ArrowStructArray>()
+            // Unwrap: RowId schema is known in advance to be a struct array -- always.
+            .unwrap()
+            .clone();
+
         Self {
             id,
-            row_ids: RowId::arrow_from_slice(&row_ids),
+            row_ids,
             ..self.clone()
         }
     }
@@ -397,7 +407,14 @@ impl Chunk {
             .take(self.row_ids.len())
             .collect_vec();
 
-        let row_ids = RowId::arrow_from_slice(&row_ids);
+        #[allow(clippy::unwrap_used)]
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+            // Unwrap: native RowIds cannot fail to serialize.
+            .unwrap()
+            .downcast_array_ref::<ArrowStructArray>()
+            // Unwrap: RowId schema is known in advance to be a struct array -- always.
+            .unwrap()
+            .clone();
 
         Self { row_ids, ..self }
     }
@@ -723,7 +740,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: FixedSizeBinaryArray,
+        row_ids: ArrowStructArray,
         timelines: IntMap<Timeline, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
@@ -762,7 +779,19 @@ impl Chunk {
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
-        let row_ids = RowId::arrow_from_slice(row_ids);
+        let row_ids = row_ids
+            .to_arrow()
+            // NOTE: impossible, but better safe than sorry.
+            .map_err(|err| ChunkError::Malformed {
+                reason: format!("RowIds failed to serialize: {err}"),
+            })?
+            .downcast_array_ref::<ArrowStructArray>()
+            // NOTE: impossible, but better safe than sorry.
+            .ok_or_else(|| ChunkError::Malformed {
+                reason: "RowIds failed to downcast".to_owned(),
+            })?
+            .clone();
+
         Self::new(id, entity_path, is_sorted, row_ids, timelines, components)
     }
 
@@ -807,7 +836,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: FixedSizeBinaryArray,
+        row_ids: ArrowStructArray,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         Self::new(
@@ -827,7 +856,11 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: RowId::arrow_from_slice(&[]),
+            row_ids: arrow::array::StructBuilder::from_fields(
+                re_types_core::tuid_arrow_fields(),
+                0,
+            )
+            .finish(),
             timelines: Default::default(),
             components: Default::default(),
         }
@@ -1095,21 +1128,34 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn row_ids_array(&self) -> &FixedSizeBinaryArray {
+    pub fn row_ids_array(&self) -> &ArrowStructArray {
         &self.row_ids
     }
 
+    /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
-    pub fn row_ids_slice(&self) -> &[RowId] {
-        RowId::slice_from_arrow(&self.row_ids)
+    pub fn row_ids_raw(&self) -> (&ArrowUInt64Array, &ArrowUInt64Array) {
+        let [times, counters] = self.row_ids.columns() else {
+            panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
+        };
+
+        #[allow(clippy::unwrap_used)]
+        let times = times.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
+
+        #[allow(clippy::unwrap_used)]
+        let counters = counters.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
+
+        (times, counters)
     }
 
     /// All the [`RowId`] in this chunk.
     ///
     /// This could be in any order if this chunk is unsorted.
     #[inline]
-    pub fn row_ids(&self) -> impl ExactSizeIterator<Item = RowId> + '_ {
-        self.row_ids_slice().iter().copied()
+    pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
+        let (times, counters) = self.row_ids_raw();
+        izip!(times.values(), counters.values())
+            .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
     }
 
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
@@ -1149,20 +1195,41 @@ impl Chunk {
             return None;
         }
 
-        let row_ids = self.row_ids_slice();
+        let (times, counters) = self.row_ids_raw();
+        let (times, counters) = (times.values(), counters.values());
 
         #[allow(clippy::unwrap_used)] // checked above
-        Some(if self.is_sorted() {
+        let (index_min, index_max) = if self.is_sorted() {
             (
-                row_ids.first().copied().unwrap(),
-                row_ids.last().copied().unwrap(),
+                (
+                    times.first().copied().unwrap(),
+                    counters.first().copied().unwrap(),
+                ),
+                (
+                    times.last().copied().unwrap(),
+                    counters.last().copied().unwrap(),
+                ),
             )
         } else {
             (
-                row_ids.iter().min().copied().unwrap(),
-                row_ids.iter().max().copied().unwrap(),
+                (
+                    times.iter().min().copied().unwrap(),
+                    counters.iter().min().copied().unwrap(),
+                ),
+                (
+                    times.iter().max().copied().unwrap(),
+                    counters.iter().max().copied().unwrap(),
+                ),
             )
-        })
+        };
+
+        let (time_min, counter_min) = index_min;
+        let (time_max, counter_max) = index_max;
+
+        Some((
+            RowId::from_u128((time_min as u128) << 64 | (counter_min as u128)),
+            RowId::from_u128((time_max as u128) << 64 | (counter_max as u128)),
+        ))
     }
 
     #[inline]

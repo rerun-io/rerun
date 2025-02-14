@@ -1,6 +1,7 @@
 use arrow::{
     array::{
-        ArrayRef as ArrowArrayRef, AsArray, FixedSizeBinaryArray, RecordBatch as ArrowRecordBatch,
+        ArrayRef as ArrowArrayRef, AsArray, RecordBatch as ArrowRecordBatch,
+        StructArray as ArrowStructArray,
     },
     datatypes::Fields as ArrowFields,
 };
@@ -78,11 +79,13 @@ impl ChunkBatch {
     }
 
     /// The `RowId` column.
-    pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &FixedSizeBinaryArray) {
+    pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &ArrowStructArray) {
         // The first column is always the row IDs.
         (
             self.schema.row_id_column(),
-            self.columns()[0].as_fixed_size_binary(),
+            self.columns()[0]
+                .as_struct_opt()
+                .expect("Row IDs should be encoded as struct"),
         )
     }
 }

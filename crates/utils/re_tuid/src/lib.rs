@@ -9,30 +9,32 @@
 /// TUID: Time-based Unique Identifier.
 ///
 /// Time-ordered globally unique 128-bit identifiers.
-///
-/// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
-/// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
 #[repr(C, align(1))]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-#[cfg_attr(
-    feature = "bytemuck",
-    derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
-)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "bytemuck", derive(bytemuck::AnyBitPattern))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    ///
-    /// A big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
-    ///
-    /// We use big-endian so that the raw bytes of the `Tuid` sorts in time order.
+    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
     time_ns: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
-    ///
-    /// Uses big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
-    ///
-    /// We use big-endian so that the raw bytes of the `Tuid` sorts in creation order.
+    /// A LE u64 encoded as bytes to keep the alignment of `Tuid` to 1.
     inc: [u8; 8],
+}
+
+impl Ord for Tuid {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_u128().cmp(&other.as_u128())
+    }
+}
+
+impl PartialOrd for Tuid {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Tuid {
@@ -96,8 +98,8 @@ impl Tuid {
 
     /// All ones.
     pub const MAX: Self = Self {
-        time_ns: u64::MAX.to_be_bytes(),
-        inc: u64::MAX.to_be_bytes(),
+        time_ns: u64::MAX.to_le_bytes(),
+        inc: u64::MAX.to_le_bytes(),
     };
 
     /// Create a new unique [`Tuid`] based on the current time.
@@ -136,8 +138,8 @@ impl Tuid {
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
         Self {
-            time_ns: time_ns.to_be_bytes(),
-            inc: inc.to_be_bytes(),
+            time_ns: time_ns.to_le_bytes(),
+            inc: inc.to_le_bytes(),
         }
     }
 
@@ -151,18 +153,12 @@ impl Tuid {
         ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
     }
 
-    /// Returns most significant byte first (big endian).
-    #[inline]
-    pub fn as_bytes(&self) -> [u8; 16] {
-        self.as_u128().to_be_bytes()
-    }
-
     /// Approximate nanoseconds since unix epoch.
     ///
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
-        u64::from_be_bytes(self.time_ns)
+        u64::from_le_bytes(self.time_ns)
     }
 
     /// The increment part of the [`Tuid`].
@@ -170,7 +166,7 @@ impl Tuid {
     /// The lower 64 bits of the [`Tuid`].
     #[inline]
     pub fn inc(&self) -> u64 {
-        u64::from_be_bytes(self.inc)
+        u64::from_le_bytes(self.inc)
     }
 
     /// Returns the next logical [`Tuid`].
@@ -186,7 +182,7 @@ impl Tuid {
 
         Self {
             time_ns,
-            inc: u64::from_be_bytes(inc).wrapping_add(1).to_be_bytes(),
+            inc: u64::from_le_bytes(inc).wrapping_add(1).to_le_bytes(),
         }
     }
 
@@ -203,7 +199,7 @@ impl Tuid {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
-            inc: u64::from_be_bytes(inc).wrapping_add(n).to_be_bytes(),
+            inc: u64::from_le_bytes(inc).wrapping_add(n).to_le_bytes(),
         }
     }
 
@@ -252,7 +248,7 @@ fn nanos_since_epoch() -> u64 {
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
     getrandom::getrandom(&mut bytes).expect("Couldn't get random bytes");
-    u64::from_be_bytes(bytes)
+    u64::from_le_bytes(bytes)
 }
 
 impl re_byte_size::SizeBytes for Tuid {
