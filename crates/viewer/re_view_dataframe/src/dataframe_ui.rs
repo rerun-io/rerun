@@ -148,7 +148,14 @@ impl RowsDisplayData {
     ) -> Result<Self, DisplayRecordBatchError> {
         let display_record_batches = row_data
             .into_iter()
-            .map(|data| DisplayRecordBatch::try_new(&data, selected_columns))
+            .map(|data| {
+                DisplayRecordBatch::try_new(
+                    selected_columns
+                        .iter()
+                        .map(|desc| desc.clone().into())
+                        .zip(data),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut batch_ref_from_row = BTreeMap::new();
@@ -226,11 +233,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
-        if ui.is_sizing_pass() {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        } else {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-        }
+        ui.set_truncate_style();
 
         egui::Frame::new()
             .inner_margin(egui::Margin::symmetric(4, 0))
@@ -410,11 +413,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
         let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
-        if ui.is_sizing_pass() {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        } else {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-        }
+        ui.set_truncate_style();
 
         let instance_count = column.instance_count(batch_row_idx);
         let additional_lines = self.expanded_rows.additional_lines_for_row(cell.row_nr);

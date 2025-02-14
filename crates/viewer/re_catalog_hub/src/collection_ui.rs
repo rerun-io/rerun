@@ -1,7 +1,6 @@
-use egui::Ui;
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_sorbet::ColumnDescriptor;
+use re_sorbet::AnyColumnDescriptor;
 use re_ui::UiExt;
 use re_view_dataframe::display_record_batch::DisplayRecordBatch;
 use re_viewer_context::external::re_log_types::Timeline;
@@ -34,24 +33,18 @@ pub fn collection_ui(
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
 
-    let columns = sorbet_schema
-        .columns
-        .indices
-        .iter()
-        .map(|desc| ColumnDescriptor::Time(desc.clone()))
-        .chain(
-            sorbet_schema
-                .columns
-                .components
-                .iter()
-                .map(|desc| ColumnDescriptor::Component(desc.clone())),
-        )
-        .collect::<Vec<_>>();
+    let columns = sorbet_schema.columns.descriptors().collect::<Vec<_>>();
 
     let display_record_batches: Result<Vec<_>, _> = collection
         .collection
         .iter()
-        .map(|sorbet_batch| DisplayRecordBatch::try_new(&sorbet_batch.columns()[1..], &columns))
+        .map(|sorbet_batch| {
+            DisplayRecordBatch::try_new(
+                sorbet_batch
+                    .all_columns()
+                    .map(|(desc, array)| (desc, array.clone())),
+            )
+        })
         .collect();
 
     let display_record_batches = match display_record_batches {
@@ -99,20 +92,27 @@ pub fn collection_ui(
 struct CollectionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
-    selected_columns: &'a Vec<ColumnDescriptor>,
+    selected_columns: &'a Vec<AnyColumnDescriptor>,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
-    fn header_cell_ui(&mut self, ui: &mut Ui, cell: &HeaderCellInfo) {
+    fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
+        ui.set_truncate_style();
+
         let name = self.selected_columns[cell.group_index].short_name();
-        // let name = name.strip_prefix("rerun_").unwrap_or(name);
+        let name = name
+            .strip_prefix("rerun_")
+            .unwrap_or(name.as_str())
+            .replace('_', " ");
 
         ui.strong(name);
     }
 
-    fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
+    fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
         // find record batch
         let mut row_index = cell.row_nr as usize;
+
+        ui.set_truncate_style();
 
         for display_record_batch in self.display_record_batches {
             let row_count = display_record_batch.num_rows();
@@ -130,12 +130,6 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     row_index,
                     None,
                 );
-
-                // if column.is_null(row_index) {
-                //     ui.label("-");
-                // } else {
-                //     re_ui::arrow_ui(ui, UiLayout::List, &column.slice(row_index, 1));
-                // }
             } else {
                 row_index -= row_count;
             }
