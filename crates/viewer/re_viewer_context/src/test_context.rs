@@ -323,7 +323,6 @@ impl TestContext {
 
         let ctx = ViewerContext {
             app_options: &Default::default(),
-            cache: &Default::default(),
             reflection: &self.reflection,
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
