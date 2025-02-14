@@ -31,6 +31,8 @@ impl Catalog {
 pub struct RecordingCollection {
     pub collection_id: egui::Id,
 
+    pub name: String,
+
     //TODO(ab): in the future, this will be `SorbetBatch` instead
     pub collection: Vec<SorbetBatch>,
 }
@@ -142,7 +144,7 @@ impl CatalogHub {
         if catalog.is_empty() {
             ui.list_item_flat_noninteractive(list_item::LabelContent::new("(empty)").italics(true));
         } else {
-            for (index, _collection) in catalog.collections.iter().enumerate() {
+            for (index, collection) in catalog.collections.iter().enumerate() {
                 let is_selected =
                     if let Some(selected_collection) = self.selected_collection.as_ref() {
                         selected_collection.server_origin == *origin
@@ -151,7 +153,7 @@ impl CatalogHub {
                         false
                     };
 
-                let content = list_item::LabelContent::new(format!("collection {index}"));
+                let content = list_item::LabelContent::new(collection.name.as_ref());
                 let response = ui.list_item().selected(is_selected).show_flat(ui, content);
 
                 if response.clicked() {
@@ -163,6 +165,14 @@ impl CatalogHub {
                         }));
                 }
             }
+        }
+
+        // deselect when clicking in empty space
+        let empty_space_response = ui.allocate_response(ui.available_size(), egui::Sense::click());
+
+        // clear selection upon clicking the empty space
+        if empty_space_response.clicked() {
+            self.command_queue.lock().push(Command::DeselectCollection);
         }
     }
 
@@ -240,6 +250,8 @@ async fn stream_catalog_async(
     let catalog = Catalog {
         collections: vec![RecordingCollection {
             collection_id,
+            //TODO(ab): this should be provided by the server
+            name: "default".to_owned(),
             collection: sorbet_batches,
         }],
     };
