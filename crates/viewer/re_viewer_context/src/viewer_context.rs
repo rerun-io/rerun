@@ -123,11 +123,11 @@ pub struct ViewerContext<'a> {
     /// UI config for the current blueprint.
     pub blueprint_cfg: &'a RecordingConfig,
 
-    /// Selection & hovering state.
-    pub selection_state: &'a ApplicationSelectionState,
-
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
+
+    /// Selection & hovering state.
+    pub selection_state: &'a ApplicationSelectionState,
 
     /// Item that got focused on the last frame if any.
     ///
