@@ -93,6 +93,12 @@ pub enum SystemCommand {
         timeline: re_chunk::Timeline,
     },
 
+    SetLoopSelection {
+        rec_id: StoreId,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRange,
+    },
+
     /// Sets the focus to the given item.
     ///
     /// The focused item is cleared out every frame.

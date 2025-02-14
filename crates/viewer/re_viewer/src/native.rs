@@ -1,5 +1,6 @@
 use re_capabilities::MainThreadToken;
 use re_log_types::LogMsg;
+use re_viewer_context::command_channel;
 
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
@@ -96,12 +97,20 @@ pub fn run_native_viewer_with_messages(
         tx.send(log_msg).ok();
     }
 
+    let (command_sender, command_receiver) = command_channel();
     let force_wgpu_backend = startup_options.force_wgpu_backend.clone();
     run_native_app(
         main_thread_token,
         Box::new(move |cc| {
-            let mut app =
-                crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
+            let mut app = crate::App::new(
+                main_thread_token,
+                build_info,
+                &app_env,
+                startup_options,
+                cc,
+                command_sender,
+                command_receiver,
+            );
             app.add_receiver(rx);
             Box::new(app)
         }),

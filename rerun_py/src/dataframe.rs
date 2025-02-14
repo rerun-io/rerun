@@ -28,7 +28,6 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
-use re_sorbet::SorbetColumnDescriptors;
 
 #[cfg(feature = "remote")]
 use crate::remote::PyRemoteRecording;
@@ -483,7 +482,7 @@ impl SchemaIterator {
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
-    pub schema: SorbetColumnDescriptors,
+    pub schema: Vec<ColumnDescriptor>,
 }
 
 /// The schema representing a set of available columns.
@@ -492,13 +491,13 @@ pub struct PySchema {
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
-    /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
+    /// Iterate over all the column descriptors in the schema.
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
         let py = slf.py();
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .indices_and_components()
+                .clone()
                 .into_iter()
                 .map(|col| match col {
                     ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
@@ -515,18 +514,28 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
-            .indices
             .iter()
-            .map(|c| c.clone().into())
+            .filter_map(|column| {
+                if let ColumnDescriptor::Time(col) = column {
+                    Some(col.clone().into())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
-            .components
             .iter()
-            .map(|c| c.clone().into())
+            .filter_map(|column| {
+                if let ColumnDescriptor::Component(col) = column {
+                    Some(col.clone().into())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
@@ -550,12 +559,13 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.components.iter().find_map(|col| {
-            if col.matches(&entity_path, &component.0) {
-                Some(col.clone().into())
-            } else {
-                None
+        self.schema.iter().find_map(|col| {
+            if let ColumnDescriptor::Component(col) = col {
+                if col.matches(&entity_path, &component.0) {
+                    return Some(col.clone().into());
+                }
             }
+            None
         })
     }
 }
@@ -663,8 +673,10 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
+                let contents = query_handle.view_contents();
+
                 Ok(PySchema {
-                    schema: query_handle.view_contents().clone(),
+                    schema: contents.to_vec(),
                 })
             }
             #[cfg(feature = "remote")]
@@ -723,7 +735,11 @@ impl PyRecordingView {
 
                 // If the only contents found are static, we might need to warn the user since
                 // this means we won't naturally have any rows in the result.
-                let available_data_columns = &query_handle.view_contents().components;
+                let available_data_columns = query_handle
+                    .view_contents()
+                    .iter()
+                    .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+                    .collect::<Vec<_>>();
 
                 // We only consider all contents static if there at least some columns
                 let all_contents_are_static = !available_data_columns.is_empty()
@@ -811,10 +827,9 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)?
                     .schema
-                    .components
                     .iter()
                     .filter(|col| col.is_static())
-                    .map(|col| ColumnDescriptor::Component(col.clone()).into())
+                    .map(|col| col.clone().into())
                     .collect())
             })?;
 

@@ -56,7 +56,7 @@ pub use self::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
     },
-    tuid::tuids_to_arrow,
+    tuid::tuid_arrow_fields,
     view::{View, ViewClassIdentifier},
 };
 

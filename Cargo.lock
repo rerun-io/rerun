@@ -5877,7 +5877,6 @@ dependencies = [
  "re_types",
  "re_types_core",
  "similar-asserts",
- "tap",
  "thiserror 1.0.65",
  "tinyvec",
  "web-time",
@@ -5914,6 +5913,7 @@ dependencies = [
  "re_data_source",
  "re_data_ui",
  "re_format",
+ "re_grpc_client",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -6586,7 +6586,6 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "itertools 0.13.0",
- "nohash-hasher",
  "re_arrow_util",
  "re_format_arrow",
  "re_log",
@@ -8671,12 +8670,6 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
-
-[[package]]
-name = "tap"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-lexicon"

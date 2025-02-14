@@ -2,7 +2,7 @@ use re_types::components::RecordingUri;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn singleline_view_recording_uri(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, RecordingUri>,
 ) -> egui::Response {
@@ -32,8 +32,23 @@ pub fn singleline_view_recording_uri(
                 value.uri().to_owned(),
             );
 
-            match data_source.stream(None) {
-                Ok(rx) => _ctx
+            let cmd_sender = ctx.command_sender.clone();
+            let on_cmd = Box::new(move |cmd| match cmd {
+                re_grpc_client::redap::Command::SetLoopSelection {
+                    recording_id,
+                    time_range,
+                } => cmd_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: re_log_types::StoreId::from_string(
+                        re_log_types::StoreKind::Recording,
+                        recording_id,
+                    ),
+                    timeline: time_range.timeline,
+                    time_range: time_range.time_range,
+                }),
+            });
+
+            match data_source.stream(on_cmd, None) {
+                Ok(rx) => ctx
                     .command_sender
                     .send_system(SystemCommand::AddReceiver(rx)),
                 Err(err) => re_log::warn!("Could not open recording URI: {err}"),

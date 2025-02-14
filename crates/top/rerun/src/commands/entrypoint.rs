@@ -2,6 +2,7 @@ use std::net::IpAddr;
 
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
+use re_viewer::external::re_viewer_context::command_channel;
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
@@ -673,6 +674,8 @@ fn run_impl(
         }
     };
 
+    let (command_sender, command_receiver) = command_channel();
+
     #[cfg(feature = "server")]
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
     #[cfg(feature = "server")]
@@ -709,10 +712,28 @@ fn run_impl(
             }
         }
 
+        let cmd_sender = command_sender.clone();
+        let on_cmd = Box::new(move |cmd| match cmd {
+            re_sdk::external::re_grpc_client::redap::Command::SetLoopSelection {
+                recording_id,
+                time_range,
+            } => re_viewer::external::re_viewer_context::SystemCommandSender::send_system(
+                &cmd_sender,
+                re_viewer::external::re_viewer_context::SystemCommand::SetLoopSelection {
+                    rec_id: re_log_types::StoreId::from_string(
+                        re_log_types::StoreKind::Recording,
+                        recording_id,
+                    ),
+                    timeline: time_range.timeline,
+                    time_range: time_range.time_range,
+                },
+            ),
+        });
+
         // We may need to spawn tasks from this point on:
         let mut rxs = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(None))
+            .map(|data_source| data_source.stream(on_cmd.clone(), None))
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -859,6 +880,8 @@ fn run_impl(
                     &call_source.app_env(),
                     startup_options,
                     cc,
+                    command_sender,
+                    command_receiver,
                 );
                 for rx in rxs {
                     app.add_receiver(rx);
