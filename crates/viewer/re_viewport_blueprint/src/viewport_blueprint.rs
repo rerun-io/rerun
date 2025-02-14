@@ -298,7 +298,7 @@ impl ViewportBlueprint {
 
         re_tracing::profile_function!();
 
-        for entry in ctx.view_class_registry.iter_registry() {
+        for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
             let mut recommended_views = entry.class.spawn_heuristics(ctx).into_vec();
 
@@ -904,7 +904,7 @@ impl ViewportBlueprint {
         }
 
         if run_auto_layout {
-            self.tree = super::auto_layout::tree_from_views(ctx.view_class_registry, &self.views);
+            self.tree = super::auto_layout::tree_from_views(ctx.view_class_registry(), &self.views);
         }
 
         // Simplify before we save the tree.

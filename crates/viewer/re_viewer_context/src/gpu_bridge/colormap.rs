@@ -109,10 +109,10 @@ pub fn colormap_edit_or_view_ui(
                 return ui.label("<no variants>");
             };
 
-            let mut response = colormap_variant_ui(ctx.render_ctx, ui, first, map);
+            let mut response = colormap_variant_ui(ctx.render_ctx(), ui, first, map);
 
             for option in iter {
-                response |= colormap_variant_ui(ctx.render_ctx, ui, option, map);
+                response |= colormap_variant_ui(ctx.render_ctx(), ui, option, map);
             }
 
             response
@@ -132,7 +132,7 @@ pub fn colormap_edit_or_view_ui(
     } else {
         let map: re_types::components::Colormap = **map;
         let colormap_response = {
-            let result = colormap_preview_ui(ctx.render_ctx, ui, map);
+            let result = colormap_preview_ui(ctx.render_ctx(), ui, map);
             if let Err(err) = &result {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }

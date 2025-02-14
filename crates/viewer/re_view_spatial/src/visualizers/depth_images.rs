@@ -318,7 +318,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         let mut draw_data_list = Vec::new();
 
         match re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &DepthClouds {
                 clouds: depth_clouds,
                 radius_boost_in_ui_points_for_outlines:
@@ -336,7 +336,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         }
 
         draw_data_list.push(PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?);
 

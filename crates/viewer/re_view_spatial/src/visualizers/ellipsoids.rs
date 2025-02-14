@@ -123,7 +123,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             view_query,
             "ellipsoids",
             &Fallback,

@@ -22,7 +22,7 @@ impl ContextMenuAction for AddViewAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         ctx.viewer_context
-            .view_class_registry
+            .view_class_registry()
             .get_class_or_log_error(self.id)
             .display_name()
             .to_owned()

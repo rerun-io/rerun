@@ -18,7 +18,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
-    ctx.view_class_registry
+    ctx.view_class_registry()
         .new_visualizer_collection(view_class_identifier)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {

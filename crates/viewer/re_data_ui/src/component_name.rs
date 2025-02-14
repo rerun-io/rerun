@@ -25,7 +25,7 @@ impl DataUi for ComponentName {
 
                 // Only show the first line of the docs:
                 if let Some(markdown) = ctx
-                    .reflection
+                    .reflection()
                     .components
                     .get(self)
                     .map(|info| info.docstring_md)

@@ -28,7 +28,7 @@ pub fn textured_rect_from_image(
         .entry(|c: &mut ImageStatsCache| c.entry(image));
 
     match gpu_bridge::image_to_gpu(
-        ctx.render_ctx,
+        ctx.render_ctx(),
         &debug_name,
         image,
         &tensor_stats,

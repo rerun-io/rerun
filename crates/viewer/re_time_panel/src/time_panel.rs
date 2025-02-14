@@ -506,7 +506,7 @@ impl TimePanel {
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
             time_ctrl.time_type(),
-            ctx.app_options.time_zone,
+            ctx.app_options().time_zone,
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
@@ -697,7 +697,7 @@ impl TimePanel {
                 id,
                 entity_data.default_open,
                 list_item::LabelContent::new(format_matching_text(
-                    ctx.egui_ctx,
+                    ctx.egui_ctx(),
                     &entity_data.label,
                     entity_data.highlight_sections.iter().cloned(),
                     None,
@@ -1029,7 +1029,7 @@ impl TimePanel {
             return;
         }
 
-        let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
+        let modifiers = ctx.egui_ctx().input(|i| i.modifiers);
 
         if modifiers.shift {
             if let Some(anchor_item) = &self.range_selection_anchor_item {
@@ -1112,7 +1112,7 @@ impl TimePanel {
             }
 
             let is_expanded = entity_data
-                .is_open(ctx.egui_ctx, collapse_scope)
+                .is_open(ctx.egui_ctx(), collapse_scope)
                 .unwrap_or(false);
 
             if is_expanded {
@@ -1354,7 +1354,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut T
         match time_type {
             re_log_types::TimeType::Time => {
                 // TODO(#7653): parse time stamps
-                ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
+                ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
             }
             re_log_types::TimeType::Sequence => {
                 // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
@@ -1371,7 +1371,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut T
                     }
                 } else {
                     // Avoid the precision problems by just displaying the number without the ability to change it (here).
-                    ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
+                    ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
                 }
             }
         }

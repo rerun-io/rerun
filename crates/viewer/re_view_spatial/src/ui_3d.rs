@@ -493,7 +493,7 @@ impl SpatialView3D {
         };
 
         // Various ui interactions draw additional lines.
-        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -518,7 +518,7 @@ impl SpatialView3D {
             state.bounding_boxes.current.extend(glam::Vec3::ZERO);
         }
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -687,7 +687,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx(), self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -732,7 +732,7 @@ impl SpatialView3D {
             grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &re_renderer::renderer::WorldGridConfiguration {
                 color: color.into(),
                 plane: plane.into(),

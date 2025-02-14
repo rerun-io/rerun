@@ -72,11 +72,11 @@ pub fn create_entity_add_info(
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     // TODO(andreas): This should be state that is already available because it's part of the view's state.
-    let class = view.class(ctx.view_class_registry);
+    let class = view.class(ctx.view_class_registry());
     let visualizable_entities = class.determine_visualizable_entities(
         ctx.maybe_visualizable_entities_per_visualizer,
         ctx.recording(),
-        &ctx.view_class_registry
+        &ctx.view_class_registry()
             .new_visualizer_collection(view.class_identifier()),
         &view.space_origin,
     );

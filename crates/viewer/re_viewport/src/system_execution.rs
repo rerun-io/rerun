@@ -89,10 +89,10 @@ pub fn execute_systems_for_view<'a>(
     };
 
     let mut context_systems = ctx
-        .view_class_registry
+        .view_class_registry()
         .new_context_collection(view.class_identifier());
     let mut view_systems = ctx
-        .view_class_registry
+        .view_class_registry()
         .new_visualizer_collection(view.class_identifier());
 
     let draw_data = run_view_systems(
@@ -124,7 +124,7 @@ pub fn execute_systems_for_all_views<'a>(
 
     // During system execution we only have read access to the view states, so we need to ensure they exist ahead of time.
     for (view_id, view) in views {
-        view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry));
+        view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry()));
     }
 
     tree.active_tiles()

@@ -61,7 +61,7 @@ impl ItemTitle {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
                     item_title.with_tooltip(
-                        SyntaxHighlightedBuilder::new(ctx.egui_ctx.style())
+                        SyntaxHighlightedBuilder::new(ctx.egui_ctx().style())
                             .append(instance_path)
                             .append(&format!(" in view '{}'", view.display_name_or_default())),
                     )
@@ -79,7 +79,7 @@ impl ItemTitle {
             if let Some(info) = entity_db.store_info() {
                 let time = info
                     .started
-                    .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
+                    .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
                     .unwrap_or("<unknown time>".to_owned());
 
                 format!("{} - {}", info.application_id, time)
@@ -192,7 +192,7 @@ impl ItemTitle {
         view_id: &ViewId,
     ) -> Self {
         if let Some(view) = viewport.view(view_id) {
-            let view_class = view.class(ctx.view_class_registry);
+            let view_class = view.class(ctx.view_class_registry());
 
             let hover_text = if let Some(display_name) = view.display_name.as_ref() {
                 format!("{} view {display_name:?}", view_class.display_name(),)
@@ -204,7 +204,7 @@ impl ItemTitle {
 
             Self::new(
                 view_name.as_ref(),
-                view.class(ctx.view_class_registry).icon(),
+                view.class(ctx.view_class_registry()).icon(),
             )
             .with_label_style(contents_name_style(&view_name))
             .with_tooltip(hover_text)

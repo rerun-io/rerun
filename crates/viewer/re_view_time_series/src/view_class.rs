@@ -383,7 +383,7 @@ impl ViewClass for TimeSeriesView {
         }
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
-        let time_zone_for_timestamps = ctx.app_options.time_zone;
+        let time_zone_for_timestamps = ctx.app_options().time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.view_id))
             .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.

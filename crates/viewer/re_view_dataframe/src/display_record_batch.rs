@@ -146,7 +146,7 @@ impl ComponentData {
                 data
             };
 
-            ctx.component_ui_registry.ui_raw(
+            ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
                 UiLayout::List,
@@ -254,7 +254,11 @@ impl DisplayColumn {
                 if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
                     match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
-                            ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                            ui.label(
+                                timeline
+                                    .typ()
+                                    .format(timestamp, ctx.app_options().time_zone),
+                            );
                         }
                         Err(err) => {
                             ui.error_with_details_on_hover(err.to_string());

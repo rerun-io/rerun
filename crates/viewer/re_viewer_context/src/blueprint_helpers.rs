@@ -51,7 +51,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -76,7 +76,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -106,7 +106,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -187,7 +187,7 @@ impl ViewerContext<'_> {
 
         match chunk {
             Ok(chunk) => self
-                .command_sender
+                .command_sender()
                 .send_system(SystemCommand::UpdateBlueprint(
                     blueprint.store_id().clone(),
                     vec![chunk],

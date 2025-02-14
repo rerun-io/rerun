@@ -78,7 +78,7 @@ pub fn textured_rect_hover_ui(
         let annotations = annotations.0.find(&instance_path.entity_path);
 
         show_zoomed_image_region(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             ui,
             texture,
             image,

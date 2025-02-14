@@ -191,7 +191,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );

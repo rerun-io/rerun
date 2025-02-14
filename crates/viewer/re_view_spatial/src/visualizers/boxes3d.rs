@@ -116,7 +116,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             view_query,
             "boxes3d",
             &Fallback,

@@ -104,7 +104,7 @@ impl VisualizerSystem for EncodedImageVisualizer {
         });
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?])
     }

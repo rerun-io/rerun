@@ -13,8 +13,8 @@ use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
+    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
 
 pub trait HarnessExt {
@@ -322,10 +322,15 @@ impl TestContext {
         let mut selection_state = self.selection_state.lock();
 
         let ctx = ViewerContext {
-            app_options: &Default::default(),
-            reflection: &self.reflection,
-            component_ui_registry: &self.component_ui_registry,
-            view_class_registry: &self.view_class_registry,
+            global_context: GlobalContext {
+                app_options: &Default::default(),
+                reflection: &self.reflection,
+                component_ui_registry: &self.component_ui_registry,
+                view_class_registry: &self.view_class_registry,
+                egui_ctx,
+                command_sender: &self.command_sender,
+                render_ctx,
+            },
             store_context: &store_context,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -334,9 +339,6 @@ impl TestContext {
             blueprint_cfg: &Default::default(),
             selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            egui_ctx,
-            render_ctx,
-            command_sender: &self.command_sender,
             focused_item: &None,
             drag_and_drop_manager: &drag_and_drop_manager,
         };

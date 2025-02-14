@@ -227,7 +227,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
-        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx);
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );

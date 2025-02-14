@@ -229,7 +229,7 @@ fn visualizer_components(
             let multiline = false;
             if raw_current_value.len() > 1
                 // TODO(andreas): If component_ui_registry's `edit_ui_raw` wouldn't need db & query context (i.e. a query) we could use this directly here.
-                || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
+                || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
                     raw_current_value.as_ref()                    ,
@@ -264,7 +264,7 @@ fn visualizer_components(
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
                         // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry.ui_raw(
+                        ctx.viewer_ctx.component_ui_registry().ui_raw(
                             ctx.viewer_ctx,
                             ui,
                             UiLayout::List,
@@ -357,7 +357,7 @@ fn visualizer_components(
                     ui.list_item_flat_noninteractive(
                         list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
                             // TODO(andreas): db & entity path don't make sense here.
-                            ctx.viewer_ctx.component_ui_registry.ui_raw(
+                            ctx.viewer_ctx.component_ui_registry().ui_raw(
                                 ctx.viewer_ctx,
                                 ui,
                                 UiLayout::List,
@@ -423,7 +423,7 @@ fn editable_blueprint_component_list_item(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let allow_multiline = false;
-                query_ctx.viewer_ctx.component_ui_registry.edit_ui_raw(
+                query_ctx.viewer_ctx.component_ui_registry().edit_ui_raw(
                     query_ctx,
                     ui,
                     query_ctx.viewer_ctx.blueprint_db(),
@@ -553,11 +553,11 @@ fn available_inactive_visualizers(
     // should do this earlier and store it with the View?
     let maybe_visualizable_entities = ctx
         .viewer_ctx
-        .view_class_registry
+        .view_class_registry()
         .maybe_visualizable_entities_for_visualizer_systems(&entity_db.store_id());
 
     let visualizable_entities = view
-        .class(ctx.viewer_ctx.view_class_registry)
+        .class(ctx.viewer_ctx.view_class_registry())
         .determine_visualizable_entities(
             &maybe_visualizable_entities,
             entity_db,

@@ -8,7 +8,7 @@ pub struct MapProviderVariantAvailable;
 impl VariantAvailableProvider<MapProvider> for MapProviderVariantAvailable {
     fn is_variant_enabled(ctx: &ViewerContext<'_>, variant: MapProvider) -> VariantAvailable {
         let map_box_available = if ctx
-            .app_options
+            .app_options()
             .mapbox_access_token()
             .is_some_and(|token| !token.is_empty())
         {

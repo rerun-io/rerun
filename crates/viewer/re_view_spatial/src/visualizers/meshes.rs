@@ -229,7 +229,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 self.process_data(
                     ctx,
-                    ctx.viewer_ctx.render_ctx,
+                    ctx.viewer_ctx.render_ctx(),
                     &mut instances,
                     spatial_ctx,
                     data,
@@ -239,7 +239,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");

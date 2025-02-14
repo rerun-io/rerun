@@ -303,16 +303,16 @@ impl ViewClass for MapView {
         //
 
         let mut view_builder =
-            create_view_builder(ctx.render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx.render_ctx(), ui.ctx(), map_rect, &query.highlights);
 
         geo_line_strings_visualizers.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
         )?;
         geo_points_visualizer.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
@@ -320,7 +320,7 @@ impl ViewClass for MapView {
 
         handle_picking_and_ui_interactions(
             ctx,
-            ctx.render_ctx,
+            ctx.render_ctx(),
             ui.ctx(),
             &mut view_builder,
             query,
@@ -444,7 +444,7 @@ fn handle_picking_and_ui_interactions(
             ),
             picking_readback_identifier,
             (),
-            ctx.app_options.show_picking_debug_overlay,
+            ctx.app_options().show_picking_debug_overlay,
         )?;
     } else {
         // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
@@ -505,7 +505,7 @@ fn handle_ui_interactions(
 fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
     #[cfg(not(target_arch = "wasm32"))]
     let options = walkers::HttpOptions {
-        cache: _ctx.app_options.cache_subdirectory("map_view"),
+        cache: _ctx.app_options().cache_subdirectory("map_view"),
         ..Default::default()
     };
 
@@ -520,7 +520,7 @@ fn get_tile_manager(
     provider: MapProvider,
     egui_ctx: &Context,
 ) -> HttpTiles {
-    let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
+    let mapbox_access_token = ctx.app_options().mapbox_access_token().unwrap_or_default();
 
     let options = http_options(ctx);
 
