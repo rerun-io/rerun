@@ -925,22 +925,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .timelines()
                     .get(&state.filtered_index)
                     .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
-                let cur_index_row_ids = cur_chunk.row_ids_raw();
-
-                // NOTE: "Deserializing" everything into a native vec is way too much for rustc to
-                // follow and doesn't get optimized at all -- we have to work with raw arrow data
-                // all the way, so this gets a bit complicated.
-                let cur_index_row_id_at = |at: usize| {
-                    let (times, incs) = cur_index_row_ids;
-
-                    let times = times.values();
-                    let incs = incs.values();
-
-                    let time = *times.get(at)?;
-                    let inc = *incs.get(at)?;
-
-                    Some(RowId::from_u128(((time as u128) << 64) | (inc as u128)))
-                };
+                let cur_index_row_ids = cur_chunk.row_ids_slice();
 
                 let (index_value, cur_row_id) = 'walk: loop {
                     let (Some(mut index_value), Some(mut cur_row_id)) = (
@@ -948,7 +933,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .get(cur_cursor_value as usize)
                             .copied()
                             .map(TimeInt::new_temporal),
-                        cur_index_row_id_at(cur_cursor_value as usize),
+                        cur_index_row_ids.get(cur_cursor_value as usize).copied(),
                     ) else {
                         continue 'overlaps;
                     };
@@ -962,7 +947,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 .get(cur_cursor_value as usize + 1)
                                 .copied()
                                 .map(TimeInt::new_temporal),
-                            cur_index_row_id_at(cur_cursor_value as usize + 1),
+                            cur_index_row_ids
+                                .get(cur_cursor_value as usize + 1)
+                                .copied(),
                         ) {
                             if next_index_value == *cur_index_value {
                                 index_value = next_index_value;
