@@ -39,7 +39,7 @@ impl DataLoader for LeRobotDatasetLoader {
 
     fn load_from_path(
         &self,
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
@@ -49,6 +49,10 @@ impl DataLoader for LeRobotDatasetLoader {
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
+        let application_id = settings
+            .application_id
+            .clone()
+            .unwrap_or(ApplicationId(format!("{filepath:?}")));
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -64,7 +68,7 @@ impl DataLoader for LeRobotDatasetLoader {
                         dataset.path,
                         dataset.metadata.episodes.len(),
                     );
-                    load_and_stream(&dataset, &tx);
+                    load_and_stream(&dataset, application_id, &tx);
                 }
             })
             .with_context(|| {
@@ -85,9 +89,13 @@ impl DataLoader for LeRobotDatasetLoader {
     }
 }
 
-fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
+fn load_and_stream(
+    dataset: &LeRobotDataset,
+    application_id: ApplicationId,
+    tx: &Sender<crate::LoadedData>,
+) {
     // set up all recordings
-    let episodes = prepare_episode_chunks(dataset, tx);
+    let episodes = prepare_episode_chunks(dataset, application_id, tx);
 
     for (episode, store_id) in &episodes {
         // log episode data to its respective recording
@@ -119,9 +127,9 @@ fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
 /// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
 fn prepare_episode_chunks(
     dataset: &LeRobotDataset,
+    application_id: ApplicationId,
     tx: &Sender<crate::LoadedData>,
 ) -> Vec<(EpisodeIndex, StoreId)> {
-    let application_id = ApplicationId(format!("{:?}", dataset.path));
     let mut store_ids = vec![];
 
     for episode in &dataset.metadata.episodes {
