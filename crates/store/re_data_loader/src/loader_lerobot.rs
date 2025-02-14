@@ -15,11 +15,11 @@ use re_chunk::{
 };
 
 use re_log_types::{ApplicationId, StoreId};
-use re_types::archetypes::{AssetVideo, EncodedImage, VideoFrameReference};
+use re_types::archetypes::{AssetVideo, EncodedImage, TextDocument, VideoFrameReference};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset};
+use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex};
 use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -39,7 +39,7 @@ impl DataLoader for LeRobotDatasetLoader {
 
     fn load_from_path(
         &self,
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
@@ -49,6 +49,10 @@ impl DataLoader for LeRobotDatasetLoader {
 
         let dataset = LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
+        let application_id = settings
+            .application_id
+            .clone()
+            .unwrap_or(ApplicationId(format!("{filepath:?}")));
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -64,7 +68,7 @@ impl DataLoader for LeRobotDatasetLoader {
                         dataset.path,
                         dataset.metadata.episodes.len(),
                     );
-                    load_and_stream(&dataset, &tx);
+                    load_and_stream(&dataset, &application_id, &tx);
                 }
             })
             .with_context(|| {
@@ -85,9 +89,13 @@ impl DataLoader for LeRobotDatasetLoader {
     }
 }
 
-fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
+fn load_and_stream(
+    dataset: &LeRobotDataset,
+    application_id: &ApplicationId,
+    tx: &Sender<crate::LoadedData>,
+) {
     // set up all recordings
-    let episodes = prepare_episode_chunks(dataset, tx);
+    let episodes = prepare_episode_chunks(dataset, application_id, tx);
 
     for (episode, store_id) in &episodes {
         // log episode data to its respective recording
@@ -119,9 +127,9 @@ fn load_and_stream(dataset: &LeRobotDataset, tx: &Sender<crate::LoadedData>) {
 /// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
 fn prepare_episode_chunks(
     dataset: &LeRobotDataset,
+    application_id: &ApplicationId,
     tx: &Sender<crate::LoadedData>,
 ) -> Vec<(EpisodeIndex, StoreId)> {
-    let application_id = ApplicationId(format!("{:?}", dataset.path));
     let mut store_ids = vec![];
 
     for episode in &dataset.metadata.episodes {
@@ -191,8 +199,14 @@ fn load_episode(
                     time_column.clone(),
                 )?);
             }
+
             DType::Image => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-            DType::Int64 | DType::Bool => {
+            DType::Int64 if feature_key == "task_index" => {
+                // special case int64 task_index columns
+                // this always refers to the task description in the dataset metadata.
+                chunks.extend(log_episode_task(dataset, &timeline, &data)?);
+            }
+            DType::Int64 | DType::Bool | DType::String => {
                 re_log::warn_once!(
                     "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
                     feature_key,
@@ -206,6 +220,42 @@ fn load_episode(
     }
 
     Ok(chunks)
+}
+
+fn log_episode_task(
+    dataset: &LeRobotDataset,
+    timeline: &Timeline,
+    data: &RecordBatch,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    let task_indices = data
+        .column_by_name("task_index")
+        .and_then(|c| c.downcast_array_ref::<Int64Array>())
+        .with_context(|| "Failed to get task_index field from dataset!")?;
+
+    let mut chunk = Chunk::builder("task".into());
+    let mut row_id = RowId::new();
+    let mut time_int = TimeInt::ZERO;
+
+    for task_index in task_indices {
+        let Some(task) = task_index
+            .and_then(|i| usize::try_from(i).ok())
+            .and_then(|i| dataset.task_by_index(TaskIndex(i)))
+        else {
+            // if there is no valid task for the current frame index, we skip it.
+            time_int = time_int.inc();
+            continue;
+        };
+
+        let mut timepoint = TimePoint::default();
+        timepoint.insert(*timeline, time_int);
+        let text = TextDocument::new(task.task.clone());
+        chunk = chunk.with_archetype(row_id, timepoint, &text);
+
+        row_id = row_id.next();
+        time_int = time_int.inc();
+    }
+
+    Ok(std::iter::once(chunk.build()?))
 }
 
 fn load_episode_images(
