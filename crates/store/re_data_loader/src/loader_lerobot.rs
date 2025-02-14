@@ -68,7 +68,7 @@ impl DataLoader for LeRobotDatasetLoader {
                         dataset.path,
                         dataset.metadata.episodes.len(),
                     );
-                    load_and_stream(&dataset, application_id, &tx);
+                    load_and_stream(&dataset, &application_id, &tx);
                 }
             })
             .with_context(|| {
@@ -91,7 +91,7 @@ impl DataLoader for LeRobotDatasetLoader {
 
 fn load_and_stream(
     dataset: &LeRobotDataset,
-    application_id: ApplicationId,
+    application_id: &ApplicationId,
     tx: &Sender<crate::LoadedData>,
 ) {
     // set up all recordings
@@ -127,7 +127,7 @@ fn load_and_stream(
 /// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
 fn prepare_episode_chunks(
     dataset: &LeRobotDataset,
-    application_id: ApplicationId,
+    application_id: &ApplicationId,
     tx: &Sender<crate::LoadedData>,
 ) -> Vec<(EpisodeIndex, StoreId)> {
     let mut store_ids = vec![];
