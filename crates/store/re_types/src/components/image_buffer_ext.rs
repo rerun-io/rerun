@@ -1,14 +1,12 @@
 #[cfg(feature = "image")]
 use crate::{datatypes::ColorModel, image::ImageChannelType};
 
-#[cfg(feature = "image")]
 use super::{ImageBuffer, ImageFormat};
 
-#[cfg(feature = "image")]
 impl ImageBuffer {
     /// Utility method for constructing an image & format
     /// from a byte buffer given its resolution and using the data type of the given vector.
-    fn from_elements<T: ImageChannelType>(
+    pub fn from_elements<T: ImageChannelType>(
         elements: &[T],
         [width, height]: [u32; 2],
         color_model: ColorModel,
@@ -30,6 +28,7 @@ impl ImageBuffer {
     /// Construct an image buffer & image format from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
+    #[cfg(feature = "image")]
     pub fn from_image(
         image: impl Into<image::DynamicImage>,
     ) -> Result<(Self, ImageFormat), crate::image::ImageConversionError> {
@@ -39,6 +38,7 @@ impl ImageBuffer {
     /// Construct an image buffer & image format from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
+    #[cfg(feature = "image")]
     pub fn from_dynamic_image(
         image: image::DynamicImage,
     ) -> Result<(Self, ImageFormat), crate::image::ImageConversionError> {

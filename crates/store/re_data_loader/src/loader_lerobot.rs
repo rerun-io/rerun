@@ -311,10 +311,9 @@ fn load_episode_depth_images(
     for idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(idx);
         let depth_image = DepthImage::from_file_contents(img_buffer.to_owned());
-        let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
         let mut timepoint = TimePoint::default();
         timepoint.insert(*timeline, time_int);
-        chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
+        chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
         time_int = time_int.inc();
