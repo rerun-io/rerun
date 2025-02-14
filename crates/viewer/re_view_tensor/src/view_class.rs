@@ -133,7 +133,9 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx.store_context.caches
+                let tensor_stats = ctx
+                    .store_context
+                    .caches
                     .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
@@ -356,7 +358,7 @@ impl TensorView {
             value_range: [data_range.start() as f32, data_range.end() as f32],
         };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             *tensor_row_id,
             tensor,
             slice_selection,
@@ -397,7 +399,7 @@ impl TensorView {
         };
 
         gpu_bridge::render_image(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &painter,
             image_rect,
             colormapped_texture,

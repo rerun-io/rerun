@@ -51,6 +51,11 @@ impl ViewerContext<'_> {
     pub fn egui_ctx(&self) -> &egui::Context {
         self.global_context.egui_ctx
     }
+
+    /// The global `re_renderer` context, holds on to all GPU resources.
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.global_context.render_ctx
+    }
 }
 
 // TODO: move this to correct place
@@ -77,9 +82,9 @@ pub struct GlobalContext<'a> {
 
     /// The [`egui::Context`].
     pub egui_ctx: &'a egui::Context,
-    // /// The global `re_renderer` context, holds on to all GPU resources.
-    // pub render_ctx: &'a re_renderer::RenderContext,
 
+    /// The global `re_renderer` context, holds on to all GPU resources.
+    pub render_ctx: &'a re_renderer::RenderContext,
     // /// Interface for sending commands back to the app
     // pub command_sender: &'a CommandSender,
 }
@@ -117,9 +122,6 @@ pub struct ViewerContext<'a> {
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
-
-    /// The global `re_renderer` context, holds on to all GPU resources.
-    pub render_ctx: &'a re_renderer::RenderContext,
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,

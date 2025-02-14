@@ -303,16 +303,16 @@ impl ViewClass for MapView {
         //
 
         let mut view_builder =
-            create_view_builder(ctx.render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx.render_ctx(), ui.ctx(), map_rect, &query.highlights);
 
         geo_line_strings_visualizers.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
         )?;
         geo_points_visualizer.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
@@ -320,7 +320,7 @@ impl ViewClass for MapView {
 
         handle_picking_and_ui_interactions(
             ctx,
-            ctx.render_ctx,
+            ctx.render_ctx(),
             ui.ctx(),
             &mut view_builder,
             query,

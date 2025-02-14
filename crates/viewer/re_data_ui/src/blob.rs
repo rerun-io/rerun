@@ -186,7 +186,7 @@ pub fn blob_preview_and_save_ui(
                 ui.separator();
 
                 show_decoded_frame_info(
-                    ctx.render_ctx,
+                    ctx.render_ctx(),
                     ui,
                     ui_layout,
                     video,
