@@ -28,6 +28,7 @@ pub enum ColumnError {
 // See:
 // * [`IndexColumnDescriptor`]
 // * [`ComponentColumnDescriptor`]
+//TODO(#9034): This should support RowId as well, but this has ramifications on the dataframe API.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
     Time(IndexColumnDescriptor),
