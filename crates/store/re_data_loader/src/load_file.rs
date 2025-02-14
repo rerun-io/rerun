@@ -23,8 +23,6 @@ pub fn load_from_path(
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
     tx: &Sender<LogMsg>,
 ) -> Result<(), DataLoaderError> {
-    use crate::DataLoaderSettings;
-
     re_tracing::profile_function!(path.to_string_lossy());
 
     if !path.exists() {
@@ -40,7 +38,7 @@ pub fn load_from_path(
     // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
     // loader handles this automatically.
     let settings = if crate::lerobot::is_lerobot_dataset(path) {
-        &DataLoaderSettings {
+        &crate::DataLoaderSettings {
             force_store_info: false,
             ..settings.clone()
         }
