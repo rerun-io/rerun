@@ -167,7 +167,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    let mut name = "line_properties".to_string();
+    let mut name = "line_properties".to_owned();
     if multiple_properties {
         name += "_multiple_properties";
     }
@@ -257,7 +257,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    let mut name = "point_properties".to_string();
+    let mut name = "point_properties".to_owned();
     if multiple_properties {
         name += "_multiple_properties";
     }
