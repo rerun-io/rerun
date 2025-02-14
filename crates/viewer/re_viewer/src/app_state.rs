@@ -270,6 +270,7 @@ impl AppState {
                 view_class_registry,
                 egui_ctx: &egui_ctx,
                 render_ctx,
+                command_sender,
             },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
@@ -279,7 +280,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            command_sender,
             focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
@@ -350,6 +350,7 @@ impl AppState {
                 view_class_registry,
                 egui_ctx: &egui_ctx,
                 render_ctx,
+                command_sender,
             },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
@@ -359,7 +360,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            command_sender,
             focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };

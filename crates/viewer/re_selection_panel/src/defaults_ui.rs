@@ -310,7 +310,7 @@ fn add_popup_ui(
             {
                 Ok(chunk) => {
                     ctx.viewer_ctx
-                        .command_sender
+                        .command_sender()
                         .send_system(SystemCommand::UpdateBlueprint(
                             ctx.blueprint_db().store_id().clone(),
                             vec![chunk],

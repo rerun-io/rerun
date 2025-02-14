@@ -2,7 +2,7 @@ use re_types::components::RecordingUri;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn singleline_view_recording_uri(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, RecordingUri>,
 ) -> egui::Response {
@@ -33,8 +33,8 @@ pub fn singleline_view_recording_uri(
             );
 
             match data_source.stream(None) {
-                Ok(rx) => _ctx
-                    .command_sender
+                Ok(rx) => ctx
+                    .command_sender()
                     .send_system(SystemCommand::AddReceiver(rx)),
                 Err(err) => re_log::warn!("Could not open recording URI: {err}"),
             }
