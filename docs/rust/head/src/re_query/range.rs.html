@@ -326,8 +326,6 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{borrow::Cow, collections::BTreeSet, sync::Arc};
 
 <span class="kw">use </span>ahash::HashMap;
@@ -645,8 +643,6 @@
 
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>handle_pending_invalidation(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">re_tracing::profile_function!</span>();
-
         <span class="kw">let </span><span class="self">Self </span>{
             cache_key: <span class="kw">_</span>,
             chunks,
