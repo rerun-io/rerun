@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
+use re_chunk_store::external::re_chunk::ArrowArray;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive, Text, Translation3D};
+use re_types::components::{AggregationPolicy, ClearIsRecursive, Text};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
@@ -206,7 +207,6 @@ impl SeriesLineSystem {
 
             // ----------------------------------------
             // HACK-O-TOPIA
-            const FIXED_ARRAY_SIZE: usize = 3;
             let data_component_name_query_result = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
@@ -227,7 +227,6 @@ impl SeriesLineSystem {
                 data_component_name = format!("rerun.components.{data_component_name}");
             }
             let data_component_name = re_types::ComponentName::from(data_component_name); // Subtle hack in a hack: this generates lots of interned strings?
-            let is_f64_scalar = data_component_name == Scalar::name();
 
             // ----------------------------------------
 
@@ -247,6 +246,49 @@ impl SeriesLineSystem {
 
             let Some(all_scalar_chunks) = results.get_required_chunks(&data_component_name) else {
                 return;
+            };
+
+            let data_datatype = all_scalar_chunks
+                .first()
+                .map(|chunk| {
+                    chunk
+                        .components()
+                        .get(&data_component_name)
+                        .unwrap()
+                        .iter()
+                        .next()
+                        .unwrap()
+                        .1
+                        .data_type()
+                })
+                .unwrap();
+
+            let num_f32_elements = match data_datatype {
+                ArrowDatatype::List(field) => match field.data_type() {
+                    ArrowDatatype::Float64 => 0,
+                    ArrowDatatype::FixedSizeList(typ, num) => {
+                        if typ.data_type() != &ArrowDatatype::Float32 {
+                            re_log::warn!(
+                                "Can't handle type {} of {:?}",
+                                data_component_name,
+                                field.data_type()
+                            );
+                            return;
+                        }
+                        *num
+                    }
+                    _ => {
+                        re_log::warn!(
+                            "Can't handle type {} of {:?}",
+                            data_component_name,
+                            field.data_type()
+                        );
+                        return;
+                    }
+                },
+                _ => {
+                    panic!("Expected a list datatype, got {:?}", data_datatype);
+                }
             };
 
             let all_scalars_indices = || {
@@ -271,8 +313,8 @@ impl SeriesLineSystem {
                         .find_map(|(_offset, len)| (len > 0).then_some(len))
                 })
                 .unwrap_or(1);
-            if !is_f64_scalar {
-                num_series *= FIXED_ARRAY_SIZE;
+            if num_f32_elements != 0 {
+                num_series *= num_f32_elements as usize;
             }
 
             // Allocate all points.
@@ -309,7 +351,7 @@ impl SeriesLineSystem {
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
 
-                if is_f64_scalar {
+                if num_f32_elements == 0 {
                     if num_series == 1 {
                         let points = &mut points_per_series[0];
                         all_scalar_chunks
@@ -337,7 +379,9 @@ impl SeriesLineSystem {
                                 }
                             });
                     }
-                } else {
+                } else if num_f32_elements == 3 {
+                    const FIXED_ARRAY_SIZE: usize = 3;
+
                     all_scalar_chunks
                         .iter()
                         .flat_map(|chunk| {
@@ -357,6 +401,35 @@ impl SeriesLineSystem {
                                 points[i].attrs.kind = PlotSeriesKind::Clear;
                             }
                         });
+                } else if num_f32_elements == 9 {
+                    const FIXED_ARRAY_SIZE: usize = 9;
+
+                    all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| {
+                            chunk.iter_slices::<[f32; FIXED_ARRAY_SIZE]>(data_component_name)
+                        })
+                        .enumerate()
+                        .for_each(|(i, values)| {
+                            for (points, value) in
+                                points_per_series.iter_mut().zip(values.iter().flatten())
+                            {
+                                points[i].value = *value as f64;
+                            }
+                            for points in points_per_series
+                                .iter_mut()
+                                .skip(values.len() * FIXED_ARRAY_SIZE)
+                            {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            }
+                        });
+                } else {
+                    re_log::warn!(
+                        "Can't handle type {} of {:?}",
+                        data_component_name,
+                        data_datatype
+                    );
+                    return;
                 }
             }
 
