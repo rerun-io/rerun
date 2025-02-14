@@ -115,6 +115,8 @@ impl std::ops::DerefMut for ChunkId {
     }
 }
 
+crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the dataplatform
+
 // ---
 
 /// A unique ID for a row's worth of data within a chunk.
