@@ -469,6 +469,7 @@ impl SeriesLineSystem {
                 if num_series == 1 {
                     series_names.push(fallback_name);
                 } else {
+                    // Repeating a name never makes sense, so we fill up the remaining names with made up ones instead.
                     series_names.extend(
                         (series_names.len()..num_series).map(|i| format!("{fallback_name}/{i}")),
                     );
