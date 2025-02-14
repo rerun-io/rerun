@@ -4,10 +4,8 @@ use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 
 use crate::{
-    ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetError,
-    ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetError,
+    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
+    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,8 +92,6 @@ impl SorbetColumnDescriptors {
                 .map(ColumnDescriptor::Component)
         }
     }
-
-
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
         let Self {
