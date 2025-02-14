@@ -30,6 +30,9 @@ table SeriesLine (
     /// Used in the legend.
     name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
 
+    /// TODO: Hack!
+    component_name: rerun.components.Text ("attr.rerun.component_optional", nullable, order: 3001);
+
     /// Configures the zoom-dependent scalar aggregation.
     ///
     /// This is done only if steps on the X axis go below a single pixel,

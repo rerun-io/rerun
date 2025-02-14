@@ -1755,9 +1755,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     }, ArchetypeFieldReflection { name : "name", display_name : "Name",
                     component_name : "rerun.components.Name".into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "aggregation_policy",
-                    display_name : "Aggregation policy", component_name :
-                    "rerun.components.AggregationPolicy".into(), docstring_md :
+                    false, }, ArchetypeFieldReflection { name : "component_name",
+                    display_name : "Component name", component_name :
+                    "rerun.components.Text".into(), docstring_md : "TODO: Hack!",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "aggregation_policy", display_name : "Aggregation policy",
+                    component_name : "rerun.components.AggregationPolicy".into(),
+                    docstring_md :
                     "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                     is_required : false, },
                 ],

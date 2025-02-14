@@ -70,6 +70,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
+        component_name: datatypes.Utf8Like | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ):
         """
@@ -85,6 +86,8 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        component_name:
+            TODO: Hack!
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -96,7 +99,13 @@ class SeriesLine(Archetype):
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, width=width, name=name, aggregation_policy=aggregation_policy)
+            self.__attrs_init__(
+                color=color,
+                width=width,
+                name=name,
+                component_name=component_name,
+                aggregation_policy=aggregation_policy,
+            )
             return
         self.__attrs_clear__()
 
@@ -106,6 +115,7 @@ class SeriesLine(Archetype):
             color=None,
             width=None,
             name=None,
+            component_name=None,
             aggregation_policy=None,
         )
 
@@ -124,6 +134,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
+        component_name: datatypes.Utf8Like | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ) -> SeriesLine:
         """
@@ -141,6 +152,8 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        component_name:
+            TODO: Hack!
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -156,6 +169,7 @@ class SeriesLine(Archetype):
                 "color": color,
                 "width": width,
                 "name": name,
+                "component_name": component_name,
                 "aggregation_policy": aggregation_policy,
             }
 
@@ -180,6 +194,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32ArrayLike | None = None,
         width: datatypes.Float32ArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
+        component_name: datatypes.Utf8ArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -200,6 +215,8 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        component_name:
+            TODO: Hack!
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -215,6 +232,7 @@ class SeriesLine(Archetype):
                 color=color,
                 width=width,
                 name=name,
+                component_name=component_name,
                 aggregation_policy=aggregation_policy,
             )
 
@@ -255,6 +273,15 @@ class SeriesLine(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    component_name: components.TextBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TextBatch._converter,  # type: ignore[misc]
+    )
+    # TODO: Hack!
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

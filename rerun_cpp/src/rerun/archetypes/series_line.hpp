@@ -10,6 +10,7 @@
 #include "../components/color.hpp"
 #include "../components/name.hpp"
 #include "../components/stroke_width.hpp"
+#include "../components/text.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -74,6 +75,9 @@ namespace rerun::archetypes {
         /// Used in the legend.
         std::optional<ComponentBatch> name;
 
+        /// TODO: Hack!
+        std::optional<ComponentBatch> component_name;
+
         /// Configures the zoom-dependent scalar aggregation.
         ///
         /// This is done only if steps on the X axis go below a single pixel,
@@ -102,6 +106,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
             ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `component_name` field.
+        static constexpr auto Descriptor_component_name = ComponentDescriptor(
+            ArchetypeName, "component_name",
+            Loggable<rerun::components::Text>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
@@ -168,6 +177,27 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         SeriesLine with_many_name(const Collection<rerun::components::Name>& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// TODO: Hack!
+        SeriesLine with_component_name(const rerun::components::Text& _component_name) && {
+            component_name =
+                ComponentBatch::from_loggable(_component_name, Descriptor_component_name)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `component_name` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_component_name` should
+        /// be used when logging a single row's worth of data.
+        SeriesLine with_many_component_name(
+            const Collection<rerun::components::Text>& _component_name
+        ) && {
+            component_name =
+                ComponentBatch::from_loggable(_component_name, Descriptor_component_name)
+                    .value_or_throw();
             return std::move(*this);
         }
 

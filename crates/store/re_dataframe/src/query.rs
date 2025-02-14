@@ -415,10 +415,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         component_name: selected_component_name,
                     } = selected_column;
 
-                    debug_assert!(
-                        !selected_component_name.starts_with("rerun.components.rerun.components."),
-                        "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
-                    );
+                    // TODO: WEIRD NAMES HERE WE COME
+                    // debug_assert!(
+                    //     !selected_component_name.starts_with("rerun.components.rerun.components."),
+                    //     "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
+                    // );
 
                     view_contents
                         .iter()

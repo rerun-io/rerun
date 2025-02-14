@@ -3,14 +3,16 @@ use itertools::Itertools;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive, Translation3D};
+use re_types::components::{AggregationPolicy, ClearIsRecursive, Text, Translation3D};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
     Archetype as _, Component, Loggable,
 };
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_view::{
+    clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+};
 use re_viewer_context::{
     auto_color_egui, auto_color_for_entity_path, IdentifiedViewSystem, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
@@ -44,7 +46,7 @@ impl VisualizerSystem for SeriesLineSystem {
                 .map(|descr| descr.component_name),
         );
 
-        // TODO: Hack without redemption.
+        // TODO: Doesn't look like it but this is the worst hack in this whole experiment.
         query_info.required.clear();
 
         query_info.indicators =
@@ -107,7 +109,13 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
+impl TypedComponentFallbackProvider<Text> for SeriesLineSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Text {
+        Scalar::name().to_string().into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name, Text]);
 
 impl SeriesLineSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -196,16 +204,32 @@ impl SeriesLineSystem {
                 // cut-off the data early at the edge of the view.
                 .include_extended_bounds(true);
 
-            // If we have no scalars, we can't do anything.
-
+            // ----------------------------------------
             // HACK-O-TOPIA
             const FIXED_ARRAY_SIZE: usize = 3;
-            let (data_component_name, is_f64_scalar) = if false {
-                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                (Scalar::name(), true)
-            } else {
-                (Translation3D::name(), false)
-            };
+            let data_component_name_query_result = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &ctx.current_query(),
+                data_result,
+                [re_types::components::Text::name()],
+                false,
+            );
+            let mut data_component_name = data_component_name_query_result
+                .get_mono::<re_types::components::Text>()
+                .unwrap_or_else(|| self.fallback_for(&query_ctx))
+                .to_string();
+            if data_component_name.is_empty() {
+                return;
+            }
+
+            if !data_component_name.starts_with("rerun.components.") {
+                data_component_name = format!("rerun.components.{data_component_name}");
+            }
+            let data_component_name = re_types::ComponentName::from(data_component_name); // Subtle hack in a hack: this generates lots of interned strings?
+            let is_f64_scalar = data_component_name == Scalar::name();
+
+            // ----------------------------------------
 
             let results = range_with_blueprint_resolved_data(
                 ctx,
@@ -276,7 +300,6 @@ impl SeriesLineSystem {
                         ..default_point.clone()
                     })
                     .collect_vec();
-                dbg!(entity_path, points.len());
                 points_per_series = vec![points; num_series];
             }
 
