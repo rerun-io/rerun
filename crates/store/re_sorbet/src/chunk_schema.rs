@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
 use re_log_types::EntityPath;
@@ -24,8 +26,18 @@ pub struct ChunkSchema {
 }
 
 impl From<ChunkSchema> for SorbetSchema {
+    #[inline]
     fn from(value: ChunkSchema) -> Self {
         value.sorbet
+    }
+}
+
+impl Deref for ChunkSchema {
+    type Target = SorbetSchema;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.sorbet
     }
 }
 

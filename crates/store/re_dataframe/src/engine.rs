@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 
 use re_chunk::EntityPath;
-use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, QueryExpression,
-};
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression};
 use re_log_types::{EntityPathFilter, StoreId};
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
+use re_sorbet::SorbetColumnDescriptors;
 
 use crate::QueryHandle;
 
@@ -71,7 +70,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    pub fn schema(&self) -> Vec<ColumnDescriptor> {
+    pub fn schema(&self) -> SorbetColumnDescriptors {
         self.engine.with(|store, _cache| store.schema())
     }
 
@@ -81,7 +80,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
+    pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
         self.engine
             .with(|store, _cache| store.schema_for_query(query))
     }
