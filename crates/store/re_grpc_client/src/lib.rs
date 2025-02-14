@@ -2,6 +2,7 @@
 
 pub mod message_proxy;
 pub use message_proxy::MessageProxyUrl;
+use redap::ConnectionError;
 
 #[cfg(feature = "redap")]
 pub mod redap;
@@ -40,6 +41,9 @@ pub enum StreamError {
     #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
     Transport(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    ConnectionError(#[from] ConnectionError),
 
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
