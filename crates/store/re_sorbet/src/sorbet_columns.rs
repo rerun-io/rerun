@@ -51,6 +51,9 @@ impl SorbetColumnDescriptors {
             .collect()
     }
 
+    /// Returns all columns, including the `row_id` column.
+    ///
+    /// See also [`Self::indices_and_components`].
     pub fn descriptors(&self) -> impl Iterator<Item = ColumnDescriptorRef<'_>> + '_ {
         self.row_id
             .iter()
