@@ -15,7 +15,6 @@ use re_log_types::{
 };
 
 use re_log_encoding::EncodingOptions;
-const MSGPACK_COMPRESSED: EncodingOptions = EncodingOptions::MSGPACK_COMPRESSED;
 const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -112,19 +111,8 @@ fn mono_points_arrow(c: &mut Criterion) {
             b.iter(|| generate_messages(&store_id, &chunks));
         });
         let messages = generate_messages(&store_id, &chunks);
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
-        });
         group.bench_function("encode_log_msg(protobuf)", |b| {
             b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
-        });
-        group.bench_function("encode_total", |b| {
-            b.iter(|| {
-                encode_log_msgs(
-                    &generate_messages(&store_id, &generate_chunks()),
-                    MSGPACK_COMPRESSED,
-                )
-            });
         });
         group.bench_function("encode_total(protobuf)", |b| {
             b.iter(|| {
@@ -136,25 +124,6 @@ fn mono_points_arrow(c: &mut Criterion) {
         });
 
         {
-            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
-            group.bench_function("decode_log_msg", |b| {
-                b.iter(|| {
-                    let decoded = decode_log_msgs(&encoded);
-                    assert_eq!(decoded.len(), messages.len());
-                    decoded
-                });
-            });
-            group.bench_function("decode_message_bundles", |b| {
-                b.iter(|| {
-                    let chunks = decode_chunks(&messages);
-                    assert_eq!(chunks.len(), messages.len());
-                    chunks
-                });
-            });
-            group.bench_function("decode_total", |b| {
-                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-            });
-
             let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
             group.bench_function("decode_log_msg(protobuf)", |b| {
                 b.iter(|| {
@@ -205,19 +174,8 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
             b.iter(|| generate_messages(&store_id, &chunks));
         });
         let messages = generate_messages(&store_id, &chunks);
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
-        });
         group.bench_function("encode_log_msg(protobuf)", |b| {
             b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
-        });
-        group.bench_function("encode_total", |b| {
-            b.iter(|| {
-                encode_log_msgs(
-                    &generate_messages(&store_id, &[generate_chunk()]),
-                    MSGPACK_COMPRESSED,
-                )
-            });
         });
         group.bench_function("encode_total(protobuf)", |b| {
             b.iter(|| {
@@ -229,25 +187,6 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
         });
 
         {
-            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
-            group.bench_function("decode_log_msg", |b| {
-                b.iter(|| {
-                    let decoded = decode_log_msgs(&encoded);
-                    assert_eq!(decoded.len(), messages.len());
-                    decoded
-                });
-            });
-            group.bench_function("decode_message_bundles", |b| {
-                b.iter(|| {
-                    let bundles = decode_chunks(&messages);
-                    assert_eq!(bundles.len(), messages.len());
-                    bundles
-                });
-            });
-            group.bench_function("decode_total", |b| {
-                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-            });
-
             let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
             group.bench_function("decode_log_msg(protobuf)", |b| {
                 b.iter(|| {
@@ -297,19 +236,8 @@ fn batch_points_arrow(c: &mut Criterion) {
             b.iter(|| generate_messages(&store_id, &chunks));
         });
         let messages = generate_messages(&store_id, &chunks);
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
-        });
         group.bench_function("encode_log_msg(protobuf)", |b| {
             b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
-        });
-        group.bench_function("encode_total", |b| {
-            b.iter(|| {
-                encode_log_msgs(
-                    &generate_messages(&store_id, &generate_chunks()),
-                    MSGPACK_COMPRESSED,
-                )
-            });
         });
         group.bench_function("encode_total(protobuf)", |b| {
             b.iter(|| {
@@ -321,25 +249,6 @@ fn batch_points_arrow(c: &mut Criterion) {
         });
 
         {
-            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
-            group.bench_function("decode_log_msg", |b| {
-                b.iter(|| {
-                    let decoded = decode_log_msgs(&encoded);
-                    assert_eq!(decoded.len(), messages.len());
-                    decoded
-                });
-            });
-            group.bench_function("decode_message_bundles", |b| {
-                b.iter(|| {
-                    let chunks = decode_chunks(&messages);
-                    assert_eq!(chunks.len(), messages.len());
-                    chunks
-                });
-            });
-            group.bench_function("decode_total", |b| {
-                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-            });
-
             let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
             group.bench_function("decode_log_msg(protobuf)", |b| {
                 b.iter(|| {

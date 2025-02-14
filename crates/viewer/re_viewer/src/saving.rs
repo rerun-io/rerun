@@ -67,7 +67,7 @@ pub fn encode_to_file(
     let mut file = std::fs::File::create(path)
         .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
         .map(|_| ())
         .context("Message encode")

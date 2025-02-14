@@ -341,7 +341,7 @@ mod tests {
 
         let mut encoder = DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
-            re_log_encoding::EncodingOptions::MSGPACK_UNCOMPRESSED,
+            re_log_encoding::EncodingOptions::PROTOBUF_UNCOMPRESSED,
             rrd_file,
         )
         .unwrap();
