@@ -79,6 +79,7 @@ once_cell.workspace = true
 ply-rs.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+tiff = { version = "0.9.1" }
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 
 # External (optional)

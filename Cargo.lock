@@ -6699,6 +6699,7 @@ dependencies = [
  "similar-asserts",
  "smallvec",
  "thiserror 1.0.65",
+ "tiff",
  "uuid",
 ]
 

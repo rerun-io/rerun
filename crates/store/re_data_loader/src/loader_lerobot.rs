@@ -15,7 +15,9 @@ use re_chunk::{
 };
 
 use re_log_types::{ApplicationId, StoreId};
-use re_types::archetypes::{AssetVideo, EncodedImage, TextDocument, VideoFrameReference};
+use re_types::archetypes::{
+    AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
+};
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
@@ -276,6 +278,39 @@ fn load_episode_images(
 
     for idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(idx);
+        let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
+        let mut timepoint = TimePoint::default();
+        timepoint.insert(*timeline, time_int);
+        chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
+
+        row_id = row_id.next();
+        time_int = time_int.inc();
+    }
+
+    Ok(std::iter::once(chunk.build().with_context(|| {
+        format!("Failed to build image chunk for image: {observation}")
+    })?))
+}
+
+fn load_episode_depth_images(
+    observation: &str,
+    timeline: &Timeline,
+    data: &RecordBatch,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    let image_bytes = data
+        .column_by_name(observation)
+        .and_then(|c| c.downcast_array_ref::<StructArray>())
+        .and_then(|a| a.column_by_name("bytes"))
+        .and_then(|a| a.downcast_array_ref::<BinaryArray>())
+        .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
+
+    let mut chunk = Chunk::builder(observation.into());
+    let mut row_id = RowId::new();
+    let mut time_int = TimeInt::ZERO;
+
+    for idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(idx);
+        let depth_image = DepthImage::from_file_contents(img_buffer.to_owned());
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
         let mut timepoint = TimePoint::default();
         timepoint.insert(*timeline, time_int);

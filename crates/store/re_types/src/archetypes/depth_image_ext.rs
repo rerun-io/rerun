@@ -1,6 +1,6 @@
 use crate::{
-    components::{ImageBuffer, ImageFormat},
-    datatypes::{ChannelDatatype, ColorModel, TensorData},
+    components::{ImageBuffer, ImageFormat, MediaType},
+    datatypes::{Blob, ChannelDatatype, ColorModel, TensorData},
     image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
@@ -60,5 +60,45 @@ impl DepthImage {
     /// From an 16-bit grayscale image.
     pub fn from_gray16(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_data_type_and_bytes(bytes, resolution, ChannelDatatype::U16)
+    }
+
+    /// Construct a depth image given the encoded content of some image file, e.g. a TIFF or PNG
+    ///
+    /// [`Self::media_type`] will be guessed from the bytes.
+    pub fn from_file_contents(bytes: Vec<u8>) -> Self {
+        #[cfg(feature = "image")]
+        {
+            if let Some(image_format) = image::guess_format(&bytes).ok() {
+                return match image_format {
+                    image::ImageFormat::Tiff => {
+                        let cursor = std::io::Cursor::new(bytes);
+
+                        re_log::info!("tiff!!!!");
+                        let mut decoder = tiff::decoder::Decoder::new(cursor).expect("eh");
+
+                        let dimensions = decoder.dimensions().expect("failed to get dimensions");
+                        let img = decoder.read_image().expect("failed to read");
+
+                        let channel_type = match img {
+                            tiff::decoder::DecodingResult::U8(_) => ChannelDatatype::U8,
+                            tiff::decoder::DecodingResult::U16(_) => ChannelDatatype::U16,
+                            tiff::decoder::DecodingResult::U32(_) => ChannelDatatype::U32,
+                            tiff::decoder::DecodingResult::U64(_) => ChannelDatatype::U64,
+                            tiff::decoder::DecodingResult::F32(_) => ChannelDatatype::F32,
+                            tiff::decoder::DecodingResult::F64(_) => ChannelDatatype::F64,
+                            tiff::decoder::DecodingResult::I8(_) => ChannelDatatype::I8,
+                            tiff::decoder::DecodingResult::I16(_) => ChannelDatatype::I16,
+                            tiff::decoder::DecodingResult::I32(_) => ChannelDatatype::I32,
+                            tiff::decoder::DecodingResult::I64(_) => ChannelDatatype::I64,
+                        };
+
+                        Self::from_data_type_and_bytes(img, dimensions.into(), channel_type)
+                    }
+                    _ => panic!("eh"),
+                };
+            }
+        }
+
+        panic!("shouldn't happen")
     }
 }
