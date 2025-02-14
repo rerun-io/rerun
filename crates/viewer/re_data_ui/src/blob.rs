@@ -159,7 +159,7 @@ pub fn blob_preview_and_save_ui(
                     file_name.push_str(file_extension);
                 }
 
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender().save_file_dialog(
                     re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save blob".to_owned(),

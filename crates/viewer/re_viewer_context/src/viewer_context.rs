@@ -56,6 +56,11 @@ impl ViewerContext<'_> {
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
         self.global_context.render_ctx
     }
+
+    /// Interface for sending commands back to the app
+    pub fn command_sender(&self) -> &CommandSender {
+        self.global_context.command_sender
+    }
 }
 
 // TODO: move this to correct place
@@ -85,8 +90,9 @@ pub struct GlobalContext<'a> {
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub render_ctx: &'a re_renderer::RenderContext,
-    // /// Interface for sending commands back to the app
-    // pub command_sender: &'a CommandSender,
+
+    /// Interface for sending commands back to the app
+    pub command_sender: &'a CommandSender,
 }
 
 /// Common things needed by many parts of the viewer.
@@ -122,9 +128,6 @@ pub struct ViewerContext<'a> {
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
-
-    /// Interface for sending commands back to the app
-    pub command_sender: &'a CommandSender,
 
     /// Item that got focused on the last frame if any.
     ///
@@ -251,7 +254,8 @@ impl ViewerContext<'_> {
         } else if response.clicked() {
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
-                    self.command_sender
+                    self.global_context
+                        .command_sender
                         .send_system(crate::SystemCommand::SetFocus(item.clone()));
                 }
             }

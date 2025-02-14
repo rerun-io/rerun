@@ -1193,7 +1193,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
 
     if response.clicked() {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
 }
@@ -1215,7 +1215,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
         .clicked()
     {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }
 }

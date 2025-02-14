@@ -787,7 +787,7 @@ pub fn entity_db_button_ui(
                     }
                 });
             if resp.clicked() {
-                ctx.command_sender
+                ctx.command_sender()
                     .send_system(SystemCommand::CloseStore(store_id.clone()));
             }
             resp
@@ -829,11 +829,11 @@ pub fn entity_db_button_ui(
         // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
-            ctx.command_sender
+            ctx.command_sender()
                 .send_system(SystemCommand::ActivateRecording(store_id.clone()));
         }
 
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
     }
 }

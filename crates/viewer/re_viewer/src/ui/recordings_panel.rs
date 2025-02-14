@@ -195,7 +195,7 @@ fn app_and_its_recordings_ui(
                 "Close this application and all its recordings. This cannot be undone.",
             );
             if resp.clicked() {
-                ctx.command_sender
+                ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
             }
             resp
@@ -231,7 +231,7 @@ fn app_and_its_recordings_ui(
 
     if item_response.clicked() {
         // Switch to this application:
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ActivateApp(
                 app_id.clone(),
             ));
@@ -246,6 +246,6 @@ fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         .on_hover_text(re_ui::UICommand::Open.tooltip_with_shortcut(ui.ctx()))
         .clicked()
     {
-        ctx.command_sender.send_ui(re_ui::UICommand::Open);
+        ctx.command_sender().send_ui(re_ui::UICommand::Open);
     }
 }
