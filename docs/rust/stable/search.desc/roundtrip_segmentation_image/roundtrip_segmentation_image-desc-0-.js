@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_segmentation_image", 0, "Logs a <code>SegmentationImage</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["make_all_data_columns_list_arrays"],"struct":["SorbetBatch"]};
