@@ -17,7 +17,7 @@ use re_chunk_store::LatestAtQuery;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_sorbet::{AnyColumnDescriptor, ComponentColumnDescriptor};
+use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
 use re_types_core::{ComponentName, DeserializationError, Loggable};
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
@@ -188,15 +188,15 @@ pub enum DisplayColumn {
 
 impl DisplayColumn {
     fn try_new(
-        column_descriptor: &AnyColumnDescriptor,
+        column_descriptor: &ColumnDescriptorRef<'_>,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
-            AnyColumnDescriptor::RowId(_desc) => Ok(Self::RowId {
+            ColumnDescriptorRef::RowId(_desc) => Ok(Self::RowId {
                 row_ids: Tuid::from_arrow(column_data)?,
             }),
 
-            AnyColumnDescriptor::Time(desc) => {
+            ColumnDescriptorRef::Time(desc) => {
                 let timeline = desc.timeline();
 
                 let (time_data, time_nulls) = TimeColumn::read_nullable_array(column_data)
@@ -211,7 +211,7 @@ impl DisplayColumn {
                     time_nulls,
                 })
             }
-            AnyColumnDescriptor::Component(desc) => Ok(Self::Component {
+            ColumnDescriptorRef::Component(desc) => Ok(Self::Component {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
@@ -327,8 +327,8 @@ impl DisplayRecordBatch {
     ///
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
-    pub fn try_new(
-        data: impl Iterator<Item = (AnyColumnDescriptor, ArrowArrayRef)>,
+    pub fn try_new<'a>(
+        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
         let mut num_rows = None;
 
