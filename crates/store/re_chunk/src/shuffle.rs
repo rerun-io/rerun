@@ -1,13 +1,9 @@
-use std::sync::Arc;
-
 use arrow::{
-    array::{
-        Array as ArrowArray, ListArray as ArrowListArray, StructArray as ArrowStructArray,
-        UInt64Array as ArrowUInt64Array,
-    },
+    array::{Array as ArrowArray, ListArray as ArrowListArray},
     buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
 };
 use itertools::Itertools as _;
+
 use re_log_types::Timeline;
 
 use crate::{Chunk, TimeColumn};
@@ -87,7 +83,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = self.row_ids().collect_vec();
+            let row_ids = self.row_ids_slice();
             let mut swaps = (0..row_ids.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| row_ids[i]);
             swaps
@@ -134,7 +130,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = chunk.row_ids().collect_vec();
+            let row_ids = chunk.row_ids_slice();
             let times = time_column.times_raw().to_vec();
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| (times[i], row_ids[i]));
@@ -204,21 +200,13 @@ impl Chunk {
         {
             re_tracing::profile_scope!("row ids");
 
-            let (times, counters) = self.row_ids_raw();
-            let (times, counters) = (times.values(), counters.values());
+            let row_ids = self.row_ids_slice();
 
-            let mut sorted_times = times.to_vec();
-            let mut sorted_counters = counters.to_vec();
+            let mut sorted_row_ids = row_ids.to_vec();
             for (to, from) in swaps.iter().copied().enumerate() {
-                sorted_times[to] = times[from];
-                sorted_counters[to] = counters[from];
+                sorted_row_ids[to] = row_ids[from];
             }
-
-            let times = Arc::new(ArrowUInt64Array::from(sorted_times));
-            let counters = Arc::new(ArrowUInt64Array::from(sorted_counters));
-
-            self.row_ids =
-                ArrowStructArray::new(self.row_ids.fields().clone(), vec![times, counters], None);
+            self.row_ids = re_types_core::RowId::arrow_from_slice(&sorted_row_ids);
         }
 
         let Self {

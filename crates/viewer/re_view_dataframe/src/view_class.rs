@@ -152,7 +152,9 @@ Configure in the selection panel:
             include_tombstone_columns: false,
         };
 
-        let view_columns = query_engine.schema_for_query(&dataframe_query);
+        let view_columns = query_engine
+            .schema_for_query(&dataframe_query)
+            .indices_and_components();
         dataframe_query.selection =
             view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
 

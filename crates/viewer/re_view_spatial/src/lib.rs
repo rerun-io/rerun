@@ -84,7 +84,8 @@ fn resolution_of_image_at(
             .map(|(_, c)| c);
 
         let image = ctx
-            .cache
+            .store_context
+            .caches
             .entry(|c: &mut ImageDecodeCache| c.entry(row_id, &blob, media_type.as_ref()));
 
         if let Ok(image) = image {

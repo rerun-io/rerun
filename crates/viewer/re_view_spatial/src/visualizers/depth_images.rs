@@ -85,7 +85,8 @@ impl DepthImageVisualizer {
                     // Don't use fallback provider since it has to query information we already have.
                     let image_stats = ctx
                         .viewer_ctx
-                        .cache
+                        .store_context
+                        .caches
                         .entry(|c: &mut ImageStatsCache| c.entry(&image));
                     ColormapWithRange::default_range_for_depth_images(&image_stats)
                 });
@@ -381,7 +382,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                     format: format.0,
                     kind: ImageKind::Depth,
                 };
-                let cache = ctx.viewer_ctx.cache;
+                let cache = ctx.viewer_ctx.store_context.caches;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                 let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();

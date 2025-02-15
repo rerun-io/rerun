@@ -12,7 +12,7 @@ README = """\
 This will load an entire LeRobot dataset -- simply make sure that it does 🙃
 
 The LeRobot dataset loader works by creating a new _recording_ (⚠)️ for each episode in the dataset.
-I.e., you should see a bunch of recordings below this readme (10, to be exact).
+I.e., you should see a bunch of recordings below this readme (3, to be exact).
 """
 
 

@@ -702,16 +702,7 @@ impl Iterator for ChunkIndicesIter {
         let i = self.index;
         self.index += 1;
 
-        let row_id = {
-            let (times, incs) = self.chunk.row_ids_raw();
-            let times = times.values();
-            let incs = incs.values();
-
-            let time = *times.get(i)?;
-            let inc = *incs.get(i)?;
-
-            RowId::from_u128(((time as u128) << 64) | (inc as u128))
-        };
+        let row_id = *self.chunk.row_ids_slice().get(i)?;
 
         if let Some(time_column) = &self.time_column {
             let time = *time_column.times_raw().get(i)?;

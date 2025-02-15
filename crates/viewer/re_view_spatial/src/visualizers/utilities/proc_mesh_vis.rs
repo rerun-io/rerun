@@ -173,7 +173,7 @@ where
 
             match fill_mode {
                 FillMode::MajorWireframe | FillMode::DenseWireframe => {
-                    let Some(wireframe_mesh) = query_context.viewer_ctx.cache.entry(
+                    let Some(wireframe_mesh) = query_context.viewer_ctx.store_context.caches.entry(
                         |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
                     ) else {
                         return Err(ViewSystemExecutionError::DrawDataCreationError(
@@ -206,14 +206,9 @@ where
                     }
                 }
                 FillMode::Solid => {
-                    let Some(solid_mesh) =
-                        query_context
-                            .viewer_ctx
-                            .cache
-                            .entry(|c: &mut proc_mesh::SolidCache| {
-                                c.entry(proc_mesh_key, self.render_ctx)
-                            })
-                    else {
+                    let Some(solid_mesh) = query_context.viewer_ctx.store_context.caches.entry(
+                        |c: &mut proc_mesh::SolidCache| c.entry(proc_mesh_key, self.render_ctx),
+                    ) else {
                         return Err(ViewSystemExecutionError::DrawDataCreationError(
                             "Failed to allocate solid mesh".into(),
                         ));

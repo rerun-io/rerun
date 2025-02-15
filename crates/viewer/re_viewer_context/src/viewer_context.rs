@@ -8,7 +8,7 @@ use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
@@ -18,11 +18,6 @@ use crate::{
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
     pub app_options: &'a AppOptions,
-
-    /// Things that need caching and are shared across the whole viewer.
-    ///
-    /// Use this only for things that you expected be shared across different panels and/or views.
-    pub cache: &'a Caches,
 
     /// Runtime info about components and archetypes.
     ///

@@ -319,7 +319,10 @@ fn preview_if_image_ui(
         format: image_format.0,
         kind,
     };
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+    let image_stats = ctx
+        .store_context
+        .caches
+        .entry(|c: &mut ImageStatsCache| c.entry(&image));
 
     let colormap = component_map
         .get(&components::Colormap::name())

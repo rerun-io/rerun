@@ -50,6 +50,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot = { workspace = true, features = ["arc_lock"] }
+tap.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

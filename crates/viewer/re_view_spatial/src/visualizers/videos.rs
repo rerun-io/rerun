@@ -401,7 +401,7 @@ fn latest_at_query_video_from_datastore(
     let blob = results.component_instance::<Blob>(0)?;
     let media_type = results.component_instance::<MediaType>(0);
 
-    let video = ctx.cache.entry(|c: &mut VideoCache| {
+    let video = ctx.store_context.caches.entry(|c: &mut VideoCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,

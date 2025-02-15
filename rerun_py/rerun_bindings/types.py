@@ -79,7 +79,7 @@ VectorDistanceMetricLike: TypeAlias = Union["VectorDistanceMetric", Literal["L2"
 A type alias for vector distance metrics.
 """
 
-VectorLike = Union[npt.NDArray[np.float_], list[float]]
+VectorLike = Union[npt.NDArray[np.float64], list[float]]
 """
 A type alias for vector-like objects.
 """
