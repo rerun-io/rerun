@@ -1,9 +1,16 @@
-use egui_table::{CellInfo, HeaderCellInfo};
+use arrow::array::{Array, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray};
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
+use egui_table::{CellInfo, Column, HeaderCellInfo};
+use std::sync::Arc;
 
-use re_sorbet::ColumnDescriptorRef;
-use re_ui::UiExt;
-use re_view_dataframe::display_record_batch::DisplayRecordBatch;
-use re_viewer_context::external::re_log_types::Timeline;
+use re_arrow_util::ArrowArrayDowncastRef;
+use re_grpc_client::redap;
+use re_log_types::{EntityPath, Timeline};
+use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
+use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
+use re_types_core::arrow_helpers::as_array_ref;
+use re_ui::UiExt as _;
+use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
 use super::hub::{Command, RecordingCollection};
@@ -11,6 +18,7 @@ use super::hub::{Command, RecordingCollection};
 pub fn collection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    origin: &redap::Origin,
     collection: &RecordingCollection,
 ) -> Vec<Command> {
     let mut commands = vec![];
@@ -33,18 +41,29 @@ pub fn collection_ui(
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
 
-    let columns = sorbet_schema.columns.descriptors().collect::<Vec<_>>();
+    //TODO: clean that up!
+    let extra_desc = ComponentColumnDescriptor {
+        store_datatype: ArrowDataType::Utf8,
+        component_name: "rerun.components.RecordingUri".into(),
+        entity_path: EntityPath::root(),
+        archetype_name: None,
+        archetype_field_name: None,
+        is_static: false,
+        is_indicator: false,
+        is_tombstone: false,
+        is_semantically_empty: false,
+    };
+
+    let columns = sorbet_schema
+        .columns
+        .descriptors()
+        .chain(std::iter::once(ColumnDescriptorRef::from(&extra_desc)))
+        .collect::<Vec<_>>();
 
     let display_record_batches: Result<Vec<_>, _> = collection
         .collection
         .iter()
-        .map(|sorbet_batch| {
-            DisplayRecordBatch::try_new(
-                sorbet_batch
-                    .all_columns()
-                    .map(|(desc, array)| (desc, array.clone())),
-            )
-        })
+        .map(|sorbet_batch| catalog_sorbet_batch_to_display_record_batch(origin, sorbet_batch))
         .collect();
 
     let display_record_batches = match display_record_batches {
@@ -87,6 +106,95 @@ pub fn collection_ui(
     });
 
     commands
+}
+
+//TODO: clean this mess
+fn catalog_sorbet_batch_to_display_record_batch(
+    origin: &redap::Origin,
+    sorbet_batch: &SorbetBatch,
+) -> Result<DisplayRecordBatch, DisplayRecordBatchError> {
+    let rec_ids_descriptor = ComponentColumnDescriptor {
+        store_datatype: ArrowDataType::Utf8,
+        component_name: "rerun.components.RecordingUri".into(),
+        entity_path: EntityPath::root(),
+        archetype_name: None,
+        archetype_field_name: None,
+        is_static: false,
+        is_indicator: false,
+        is_tombstone: false,
+        is_semantically_empty: false,
+    };
+
+    let rec_ids: Option<(ColumnDescriptorRef<'_>, ArrayRef)> = sorbet_batch
+        .column_by_name(CATALOG_ID_FIELD_NAME)
+        .map(|rec_ids| {
+            let list_array = rec_ids.downcast_array_ref::<ArrowListArray>().unwrap();
+
+            let recording_uri_arrays: Vec<ArrayRef> = (0..list_array.len())
+                .map(|idx| {
+                    let list = list_array.value(idx);
+
+                    let string_array = list.downcast_array_ref::<ArrowStringArray>().unwrap();
+                    let rec_id = string_array.value(0);
+
+                    let recording_uri = format!("{origin}/recording/{rec_id}");
+                    as_array_ref(ArrowStringArray::from(vec![recording_uri]))
+                })
+                .collect();
+
+            let recording_id_arrays = recording_uri_arrays
+                .iter()
+                .map(|e| Some(e.as_ref()))
+                .collect::<Vec<_>>();
+
+            let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
+            #[allow(clippy::unwrap_used)] // we know we've given the right field type
+            let uris = re_arrow_util::arrays_to_list_array(
+                rec_id_field.data_type().clone(),
+                &recording_id_arrays,
+            )
+            .unwrap();
+
+            (
+                ColumnDescriptorRef::from(&rec_ids_descriptor),
+                Arc::new(uris) as ArrayRef,
+            )
+        });
+
+    dbg!(&rec_ids);
+
+    DisplayRecordBatch::try_new(
+        sorbet_batch
+            .all_columns()
+            .map(|(desc, array)| (desc, array.clone()))
+            .chain(rec_ids),
+    )
+
+    // let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
+    //     .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())
+    //     .map(|id| {
+    //         let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
+    //
+    //         let recording_uri = format!("{origin}/recording/{rec_id}");
+    //
+    //         as_array_ref(ArrowStringArray::from(vec![recording_uri]))
+    //     })
+    //     .collect();
+    //
+    // let recording_id_arrays = recording_uri_arrays
+    //     .iter()
+    //     .map(|e| Some(e.as_ref()))
+    //     .collect::<Vec<_>>();
+    //
+    // let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
+    // #[allow(clippy::unwrap_used)] // we know we've given the right field type
+    // let uris = re_arrow_util::arrays_to_list_array(
+    //     rec_id_field.data_type().clone(),
+    //     &recording_id_arrays,
+    // )
+    //     .unwrap();
+    //
+    // chunk.add_component(ComponentDescriptor::new(RecordingUri::name()), uris)?;
 }
 
 struct CollectionTableDelegate<'a> {
