@@ -34,10 +34,11 @@ impl RowIdColumnDescriptor {
         Self {}
     }
 
+    /// Human-readable name for this column.
     #[inline]
     #[expect(clippy::unused_self)]
     pub fn name(&self) -> &'static str {
-        "row id"
+        "Row ID"
     }
 
     #[inline]
