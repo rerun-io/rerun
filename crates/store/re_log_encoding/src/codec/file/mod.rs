@@ -31,11 +31,7 @@ pub(crate) struct MessageHeader {
 
 impl MessageHeader {
     /// Size of an encoded message header, in bytes.
-    // NOTE: This is `size_of` on a `repr(Rust)` struct,
-    //       which is fine because we control the layout
-    //       in the definition above, and tests would quickly
-    //       catch any sort of regression.
-    pub const SIZE_BYTES: usize = std::mem::size_of::<Self>();
+    pub const SIZE_BYTES: usize = 16;
 
     // NOTE: We use little-endian encoding, because we live in
     //       the 21st century.
