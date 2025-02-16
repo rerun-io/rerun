@@ -1,6 +1,6 @@
 use arrow::array::{Array, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray};
 use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
-use egui_table::{CellInfo, Column, HeaderCellInfo};
+use egui_table::{CellInfo, HeaderCellInfo};
 use std::sync::Arc;
 
 use re_arrow_util::ArrowArrayDowncastRef;
@@ -207,7 +207,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         ui.set_truncate_style();
 
-        let name = self.selected_columns[cell.group_index].short_name();
+        let name = self.selected_columns[cell.group_index].name();
         let name = name
             .strip_prefix("rerun_")
             .unwrap_or(name.as_str())
