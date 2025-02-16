@@ -202,7 +202,19 @@ fn load_episode(
                 )?);
             }
 
-            DType::Image => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
+            DType::Image => {
+                let num_channels = feature.shape.last().with_context(|| {
+                    format!(
+                    "Image feature '{feature_key}' in LeRobot dataset is missing channel dimension",
+                )
+                })?;
+
+                match *num_channels {
+                    1 => chunks.extend(load_episode_depth_images(feature_key, &timeline, &data)?),
+                    3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
+                    _ => re_log::warn_once!("Unsupported channel count {num_channels} for LeRobot dataset; Only 1- and 3-channel images are supported")
+                };
+            }
             DType::Int64 if feature_key == "task_index" => {
                 // special case int64 task_index columns
                 // this always refers to the task description in the dataset metadata.
@@ -210,8 +222,7 @@ fn load_episode(
             }
             DType::Int64 | DType::Bool | DType::String => {
                 re_log::warn_once!(
-                    "Loading LeRobot feature ({}) of dtype `{:?}` into Rerun is not yet implemented",
-                    feature_key,
+                    "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                     feature.dtype
                 );
             }
@@ -310,7 +321,9 @@ fn load_episode_depth_images(
 
     for idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(idx);
-        let depth_image = DepthImage::from_file_contents(img_buffer.to_owned());
+        let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
+            .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
+
         let mut timepoint = TimePoint::default();
         timepoint.insert(*timeline, time_int);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
@@ -344,9 +357,11 @@ fn load_episode_video(
 
             let video_timestamps = frame_timestamps_ns
                 .iter()
+                .take(time_column.num_rows())
                 .copied()
                 .map(VideoTimestamp::from_nanoseconds)
                 .collect::<Vec<_>>();
+
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
             let video_timestamp_list_array = video_timestamp_batch
                 .to_arrow_list_array()

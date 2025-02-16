@@ -5,6 +5,7 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     datatypes::ChannelDatatype,
+    datatypes::ImageFormat,
     datatypes::{Blob, TensorBuffer, TensorData},
 };
 
@@ -49,6 +50,10 @@ pub enum ImageLoadError {
     #[error(transparent)]
     Image(std::sync::Arc<image::ImageError>),
 
+    /// e.g. failed to decode tiff image.
+    #[error(transparent)]
+    Tiff(std::sync::Arc<tiff::TiffError>),
+
     /// e.g. failed to find a file on disk.
     #[error("Failed to load file: {0}")]
     ReadError(std::sync::Arc<std::io::Error>),
@@ -71,6 +76,14 @@ impl From<image::ImageError> for ImageLoadError {
     #[inline]
     fn from(err: image::ImageError) -> Self {
         Self::Image(std::sync::Arc::new(err))
+    }
+}
+
+#[cfg(feature = "image")]
+impl From<tiff::TiffError> for ImageLoadError {
+    #[inline]
+    fn from(err: tiff::TiffError) -> Self {
+        Self::Tiff(std::sync::Arc::new(err))
     }
 }
 
@@ -353,4 +366,40 @@ pub fn rgb_from_yuv(
     }
 
     [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
+}
+
+// ----------------------------------------------------------------------------
+
+/// Decode a TIFF byte slice into a [`Blob`] and an [`ImageFormat`].
+#[cfg(feature = "image")]
+pub fn blob_and_format_from_tiff(bytes: &[u8]) -> Result<(Blob, ImageFormat), ImageLoadError> {
+    use tiff::decoder::DecodingResult;
+
+    let cursor = std::io::Cursor::new(bytes);
+    let mut decoder = tiff::decoder::Decoder::new(cursor)?;
+    let img = decoder.read_image()?;
+
+    let (bytes, data_type): (&[u8], ChannelDatatype) = match &img {
+        DecodingResult::U8(data) => (bytemuck::cast_slice(data), ChannelDatatype::U8),
+        DecodingResult::U16(data) => (bytemuck::cast_slice(data), ChannelDatatype::U16),
+        DecodingResult::U32(data) => (bytemuck::cast_slice(data), ChannelDatatype::U32),
+        DecodingResult::U64(data) => (bytemuck::cast_slice(data), ChannelDatatype::U64),
+        DecodingResult::F32(data) => (bytemuck::cast_slice(data), ChannelDatatype::F32),
+        DecodingResult::F64(data) => (bytemuck::cast_slice(data), ChannelDatatype::F64),
+        DecodingResult::I8(data) => (bytemuck::cast_slice(data), ChannelDatatype::I8),
+        DecodingResult::I16(data) => (bytemuck::cast_slice(data), ChannelDatatype::I16),
+        DecodingResult::I32(data) => (bytemuck::cast_slice(data), ChannelDatatype::I32),
+        DecodingResult::I64(data) => (bytemuck::cast_slice(data), ChannelDatatype::I64),
+    };
+
+    let (width, height) = decoder.dimensions()?;
+    let image_format = ImageFormat {
+        width,
+        height,
+        channel_datatype: Some(data_type),
+        pixel_format: None,
+        color_model: None,
+    };
+
+    Ok((Blob::from(bytes), image_format))
 }

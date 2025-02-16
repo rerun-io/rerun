@@ -1,6 +1,6 @@
 use crate::{
-    components::{ImageBuffer, ImageFormat, MediaType},
-    datatypes::{Blob, ChannelDatatype, ColorModel, TensorData},
+    components::{ImageBuffer, ImageFormat},
+    datatypes::{ChannelDatatype, ColorModel, TensorData},
     image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
@@ -65,150 +65,26 @@ impl DepthImage {
     /// Construct a depth image given the encoded content of some image file, e.g. a TIFF or PNG
     ///
     /// [`Self::media_type`] will be guessed from the bytes.
-    pub fn from_file_contents(bytes: Vec<u8>) -> Self {
-        #[cfg(feature = "image")]
+    #[cfg(feature = "image")]
+    pub fn from_file_contents(bytes: Vec<u8>) -> Result<Self, crate::image::ImageLoadError> {
         {
-            if let Some(image_format) = image::guess_format(&bytes).ok() {
-                return match image_format {
-                    image::ImageFormat::Tiff => {
-                        let cursor = std::io::Cursor::new(bytes);
+            let image_format = image::guess_format(&bytes)?;
+            if image_format == image::ImageFormat::Tiff {
+                let (blob, format) = crate::image::blob_and_format_from_tiff(&bytes)?;
 
-                        re_log::info!("tiff!!!!");
-                        let mut decoder = tiff::decoder::Decoder::new(cursor).expect("eh");
+                Ok(Self::from_data_type_and_bytes(
+                    blob,
+                    [format.width, format.height],
+                    format.datatype(),
+                ))
+            } else {
+                re_log::warn_once!("Unsupported image format encountered while processing file contents. Only TIFF files with valid dimensions and supported data types are currently supported.");
 
-                        let dimensions = decoder.dimensions().expect("failed to get dimensions");
-                        let img = decoder.read_image().expect("failed to read");
-
-                        let img_buffer = match img {
-                            tiff::decoder::DecodingResult::U8(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::U8,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::U16(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::U16,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::U32(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::U32,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::U64(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::U64,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::F32(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::F32,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::F64(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::F64,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::I8(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::I8,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::I16(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::I16,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::I32(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::I32,
-                                )
-                            }
-                            tiff::decoder::DecodingResult::I64(data) => {
-                                Self::from_data_type_and_bytes(
-                                    ImageBuffer::from_elements(
-                                        &data,
-                                        dimensions.into(),
-                                        ColorModel::L,
-                                    )
-                                    .0,
-                                    dimensions.into(),
-                                    ChannelDatatype::I64,
-                                )
-                            }
-                        };
-
-                        img_buffer
-                    }
-                    _ => panic!("eh"),
-                };
+                Ok(Self::new(
+                    ImageBuffer(bytes.into()),
+                    ImageFormat::depth([0, 0], ChannelDatatype::F32),
+                ))
             }
         }
-
-        panic!("shouldn't happen")
     }
 }
