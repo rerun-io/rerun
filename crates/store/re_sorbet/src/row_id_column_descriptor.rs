@@ -1,6 +1,8 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_types_core::{Component as _, Loggable as _, RowId};
 
+use crate::MetadataExt as _;
+
 #[derive(thiserror::Error, Debug)]
 #[error("Wrong datatype. Expected {expected:?}, got {actual:?}")]
 pub struct WrongDatatypeError {
@@ -25,13 +27,18 @@ impl WrongDatatypeError {
 }
 
 /// Describes the schema of the primary [`RowId`] column.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RowIdColumnDescriptor {}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RowIdColumnDescriptor {
+    /// Are the values in this column sorted?
+    ///
+    /// `false` means either "unsorted" or "unknown".
+    pub is_sorted: bool,
+}
 
 impl RowIdColumnDescriptor {
     #[inline]
-    pub fn new() -> Self {
-        Self {}
+    pub fn from_sorted(is_sorted: bool) -> Self {
+        Self { is_sorted }
     }
 
     /// Human-readable name for this column.
@@ -43,19 +50,18 @@ impl RowIdColumnDescriptor {
 
     #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
-        let Self {} = self;
+        let Self { is_sorted } = self;
 
-        let metadata = [
-            Some(("rerun.kind".to_owned(), "control".to_owned())),
-            // This ensures the RowId/Tuid is formatted correctly:
-            Some((
+        let mut metadata = std::collections::HashMap::from([
+            ("rerun.kind".to_owned(), "control".to_owned()),
+            (
                 "ARROW:extension:name".to_owned(),
                 re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
-            )),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+            ),
+        ]);
+        if *is_sorted {
+            metadata.insert("rerun.is_sorted".to_owned(), "true".to_owned());
+        }
 
         let nullable = false; // All rows has an id
         ArrowField::new(
@@ -76,24 +82,9 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        Self::try_from(field.data_type())
-    }
-}
-
-impl TryFrom<&ArrowDatatype> for RowIdColumnDescriptor {
-    type Error = WrongDatatypeError;
-
-    fn try_from(data_type: &ArrowDatatype) -> Result<Self, Self::Error> {
-        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), data_type)?;
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<ArrowDatatype> for RowIdColumnDescriptor {
-    type Error = WrongDatatypeError;
-
-    fn try_from(data_type: ArrowDatatype) -> Result<Self, Self::Error> {
-        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), &data_type)?;
-        Ok(Self {})
+        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), field.data_type())?;
+        Ok(Self {
+            is_sorted: field.metadata().get_bool("rerun.is_sorted"),
+        })
     }
 }
