@@ -7,11 +7,11 @@ use tokio_stream::StreamExt as _;
 use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::remote_store::v0::QueryCatalogRequest;
-use re_sorbet::SorbetBatch;
+use re_sorbet::{BatchType, SorbetBatch};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-//TODO(ab): remove this in favour of an id
+//TODO(ab): remove this in favor of an id
 pub struct CollectionHandle {
     server_origin: redap::Origin,
     collection_index: usize,
@@ -231,8 +231,10 @@ async fn stream_catalog_async(
                 .map_err(StreamError::from)
         })
         .map(|record_batch| {
-            record_batch
-                .and_then(|record_batch| SorbetBatch::try_from(&record_batch).map_err(Into::into))
+            record_batch.and_then(|record_batch| {
+                SorbetBatch::try_from_record_batch(&record_batch, BatchType::Dataframe)
+                    .map_err(Into::into)
+            })
         })
         .collect::<Result<Vec<_>, _>>()
         .await?;

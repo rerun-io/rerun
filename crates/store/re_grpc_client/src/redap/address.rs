@@ -32,8 +32,8 @@ pub enum ConnectionError {
     #[error("unexpected base URL: {0}")]
     UnexpectedBaseUrl(String),
 
-    #[error("Catalog URL {origin:?} cannot be loaded as a recording")]
-    CannotLoadCatalogAsRecording { url: String },
+    #[error("URL {url:?} cannot be loaded as a recording")]
+    CannotLoadURLAsRecording { url: String },
 }
 
 /// The different schemes supported by Rerun.
