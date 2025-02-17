@@ -314,7 +314,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::ConnectionError::InvalidScheme { .. }
         ));
     }
 
@@ -325,7 +325,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::InvalidRedapAddress { .. }
+            super::ConnectionError::UnexpectedEndpoint { .. }
         ));
     }
 }
