@@ -64,7 +64,7 @@ impl DepthImage {
 
     /// Construct a depth image given the encoded content of some image file, e.g. a TIFF or PNG
     ///
-    /// [`Self::media_type`] will be guessed from the bytes.
+    /// [`Self::format`] will be guessed from the bytes.
     #[cfg(feature = "image")]
     pub fn from_file_contents(bytes: Vec<u8>) -> Result<Self, crate::image::ImageLoadError> {
         {

@@ -36,8 +36,8 @@ egui_plot = ["dep:egui_plot"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/) and [`re_math`](https://crates.io/crates/re_math/).
 glam = ["dep:glam", "dep:re_math"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
-image = ["dep:ecolor", "dep:image"]
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG and TIFF support.
+image = ["dep:ecolor", "dep:image", "dep:tiff"]
 
 ## Inspecting video data.
 video = ["dep:re_video"]
@@ -79,7 +79,7 @@ once_cell.workspace = true
 ply-rs.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
-tiff = { version = "0.9.1" }
+tiff = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 
 # External (optional)
