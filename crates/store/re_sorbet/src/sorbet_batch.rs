@@ -25,6 +25,7 @@ pub struct SorbetBatch {
 
 impl SorbetBatch {
     pub fn try_new(
+        batch_type: crate::BatchType,
         schema: SorbetSchema,
         row_ids: Option<ArrowArrayRef>,
         index_arrays: Vec<ArrowArrayRef>,
@@ -33,7 +34,7 @@ impl SorbetBatch {
         let arrow_columns = itertools::chain!(row_ids, index_arrays, data_arrays).collect();
 
         let batch = ArrowRecordBatch::try_new(
-            std::sync::Arc::new(ArrowSchema::from(&schema)),
+            std::sync::Arc::new(schema.to_arrow(batch_type)),
             arrow_columns,
         )?;
 
@@ -143,20 +144,22 @@ impl From<&SorbetBatch> for ArrowRecordBatch {
     }
 }
 
-impl TryFrom<&ArrowRecordBatch> for SorbetBatch {
-    type Error = SorbetError;
-
+impl SorbetBatch {
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
-    fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
+    pub fn try_from_record_batch(
+        batch: &ArrowRecordBatch,
+        batch_type: crate::BatchType,
+    ) -> Result<Self, SorbetError> {
         re_tracing::profile_function!();
 
         let batch = make_all_data_columns_list_arrays(batch);
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
-        for (field, column) in
-            itertools::izip!(sorbet_schema.columns.arrow_fields(), batch.columns())
-        {
+        for (field, column) in itertools::izip!(
+            sorbet_schema.columns.arrow_fields(batch_type),
+            batch.columns()
+        ) {
             debug_assert_eq!(field.data_type(), column.data_type());
         }
 

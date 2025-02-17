@@ -121,7 +121,7 @@ impl ChunkSchema {
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
-        self.sorbet.columns.arrow_fields()
+        self.sorbet.columns.arrow_fields(crate::BatchType::Chunk)
     }
 }
 
