@@ -227,7 +227,7 @@ fn run_view_ui_and_save_snapshot(
             egui::CentralPanel::default().show(ctx, |ui| {
                 test_context.run(ctx, |ctx| {
                     let view_class = ctx
-                        .view_class_registry
+                        .view_class_registry()
                         .get_class_or_log_error(TimeSeriesView::identifier());
 
                     let view_blueprint = ViewBlueprint::try_from_db(
