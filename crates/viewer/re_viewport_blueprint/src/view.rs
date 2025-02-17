@@ -12,9 +12,9 @@ use re_log_types::{EntityPathSubs, Timeline};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
-        components::{self as blueprint_components, ViewOrigin, Visible},
+        components::{self as blueprint_components, ViewOrigin},
     },
-    components::Name,
+    components::{Name, Visible},
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{

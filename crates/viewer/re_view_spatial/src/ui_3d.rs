@@ -11,9 +11,9 @@ use re_renderer::{
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{GridSpacing, Visible},
+        components::GridSpacing,
     },
-    components::ViewCoordinates,
+    components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
 use re_ui::{icon_text, icons, ContextExt, Help, ModifiersText, MouseButtonText};

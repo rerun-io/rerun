@@ -1,12 +1,16 @@
 use egui::ahash::HashMap;
 use re_log_types::EntityPath;
-use re_types::blueprint::archetypes::PlotLegend;
-use re_types::blueprint::components::{Corner2D, Visible};
-use re_types::View;
-use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
+use re_types::{
+    blueprint::{archetypes::PlotLegend, components::Corner2D},
+    components::Visible,
+    datatypes::TensorBuffer,
+    View, ViewClassIdentifier,
+};
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText};
-use re_view::controls::{ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER};
-use re_view::{controls, suggest_view_for_each_entity, view_property_ui};
+use re_view::{
+    controls::{self, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
+    suggest_view_for_each_entity, view_property_ui,
+};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
