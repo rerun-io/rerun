@@ -42,7 +42,6 @@ remote = [
   "dep:tokio-stream",
   "dep:tonic",
   "dep:url",
-  "re_grpc_client/redap",
   "re_sdk/grpc",
 ]
 
