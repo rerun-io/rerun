@@ -37,6 +37,14 @@ pub enum DataSource {
     MessageProxy { url: String },
 }
 
+// TODO(#9058): Temporary hack, see issue for how to fix this.
+pub enum StreamSource {
+    LogMessages(Receiver<LogMsg>),
+    CatalogData {
+        origin: re_grpc_client::redap::Origin,
+    },
+}
+
 impl DataSource {
     /// Tried to classify a URI into a [`DataSource`].
     ///
@@ -156,14 +164,15 @@ impl DataSource {
     pub fn stream(
         self,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<LogMsg>> {
+    ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
+
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(
+            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
-            ),
+            )),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
@@ -190,7 +199,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(StreamSource::LogMessages(rx))
             }
 
             // When loading a file on Web, or when using drag-n-drop.
@@ -224,7 +233,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(StreamSource::LogMessages(rx))
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -240,17 +249,54 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(StreamSource::LogMessages(rx))
             }
 
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
-                re_grpc_client::redap::stream_from_redap(url, on_msg).map_err(|err| err.into())
+                use re_grpc_client::redap::RedapAddress;
+
+                re_log::debug!("Loading {url}…");
+
+                let address = url.as_str().try_into()?;
+
+                match address {
+                    RedapAddress::Recording {
+                        origin,
+                        recording_id,
+                    } => {
+                        let (tx, rx) = re_smart_channel::smart_channel(
+                            re_smart_channel::SmartMessageSource::RerunGrpcStream {
+                                url: url.clone(),
+                            },
+                            re_smart_channel::SmartChannelSource::RerunGrpcStream {
+                                url: url.clone(),
+                            },
+                        );
+                        spawn_future(async move {
+                            if let Err(err) = re_grpc_client::redap::stream_recording_async(
+                                tx,
+                                origin,
+                                recording_id,
+                                on_msg,
+                            )
+                            .await
+                            {
+                                re_log::warn!(
+                                    "Error while streaming {url}: {}",
+                                    re_error::format_ref(&err)
+                                );
+                            }
+                        });
+                        Ok(StreamSource::LogMessages(rx))
+                    }
+                    RedapAddress::Catalog { origin } => Ok(StreamSource::CatalogData { origin }),
+                }
             }
 
-            Self::MessageProxy { url } => {
-                re_grpc_client::message_proxy::stream(&url, on_msg).map_err(|err| err.into())
-            }
+            Self::MessageProxy { url } => re_grpc_client::message_proxy::stream(&url, on_msg)
+                .map_err(|err| err.into())
+                .map(StreamSource::LogMessages),
         }
     }
 }
@@ -318,4 +364,26 @@ fn test_data_source_from_uri() {
     }
 
     assert!(!failed, "one or more test cases failed");
+}
+
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
+#[cfg(target_arch = "wasm32")]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static + Send,
+{
+    tokio::spawn(future);
 }

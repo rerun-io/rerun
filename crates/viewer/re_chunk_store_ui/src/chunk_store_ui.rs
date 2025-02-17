@@ -67,13 +67,12 @@ impl Default for DatastoreUi {
 
 impl DatastoreUi {
     /// Show the ui.
-    pub fn ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        datastore_ui_active: &mut bool,
-        time_zone: TimeZone,
-    ) {
+    ///
+    /// Returns `false` if the datastore UI should be closed (e.g., the close button was clicked),
+    /// or `true` if the datastore UI should remain open.
+    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_zone: TimeZone) -> bool {
+        let mut datastore_ui_active = true;
+
         egui::Frame {
             inner_margin: egui::Margin::same(5),
             ..Default::default()
@@ -89,7 +88,7 @@ impl DatastoreUi {
                         StoreKind::Blueprint => ctx.blueprint_engine(),
                     }
                     .store(),
-                    datastore_ui_active,
+                    &mut datastore_ui_active,
                     time_zone,
                 );
 
@@ -100,6 +99,8 @@ impl DatastoreUi {
                 self.focused_chunk = None;
             }
         });
+
+        datastore_ui_active
     }
 
     fn chunk_store_ui(

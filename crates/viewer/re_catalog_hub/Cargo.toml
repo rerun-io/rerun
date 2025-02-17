@@ -1,16 +1,16 @@
 [package]
-name = "re_grpc_client"
 authors.workspace = true
-description = "gRCP client for the Rerun Data Platform gRPC protocol"
+description = "The UI and communication for the in-viewer catalog browser."
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
 license.workspace = true
+name = "re_catalog_hub"
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include.workspace = true
 
 [lints]
 workspace = true
@@ -19,39 +19,37 @@ workspace = true
 all-features = true
 
 
-[features]
-default = ["redap"]
-
-redap = []
-
 [dependencies]
 re_arrow_util.workspace = true
-re_chunk.workspace = true
-re_error.workspace = true
+re_grpc_client.workspace = true
 re_log.workspace = true
-re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
+re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
-re_smart_channel.workspace = true
 re_sorbet.workspace = true
+re_types_core.workspace = true
+re_types.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+#TODO(ab): for `DisplayRecordBatch`, should be moved elsewhere.
+re_view_dataframe.workspace = true
 
+ahash.workspace = true
 arrow.workspace = true
-async-stream.workspace = true
+egui.workspace = true
+egui_table.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
-url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio.workspace = true
-tonic = { workspace = true, default-features = false, features = [
-  "transport",
-  "tls",
-  "tls-native-roots",
-] }
+
+tonic = { workspace = true, default-features = false, features = ["transport"] }
+
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
-wasm-bindgen-futures.workspace = true
 tonic = { workspace = true, default-features = false }

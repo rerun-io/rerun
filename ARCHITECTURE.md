@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/1200w.png">
+  <img src="https://static.rerun.io/crates/4ebb81d4dc640dfb2634d37fec5c53e80fb25f51/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4ebb81d4dc640dfb2634d37fec5c53e80fb25f51/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4ebb81d4dc640dfb2634d37fec5c53e80fb25f51/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4ebb81d4dc640dfb2634d37fec5c53e80fb25f51/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4ebb81d4dc640dfb2634d37fec5c53e80fb25f51/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -134,8 +134,9 @@ Update instructions:
 ##### UI crates
 
 | Crate                 | Description                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+|-----------------------|------------------------------------------------------------------------------------------------------------|
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
+| re_catalog_hub        | The UI and communication to implement the in-viewer catalog browser                                        |
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
 | re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_selection_panel    | The UI for the selection panel.                                                                            |

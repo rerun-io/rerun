@@ -573,8 +573,8 @@ where
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
-    let rt = Runtime::new()?;
-    let _guard = rt.enter();
+    let tokio_runtime = Runtime::new()?;
+    let _tokio_guard = tokio_runtime.enter();
 
     let res = if let Some(command) = &args.command {
         match command {
@@ -601,7 +601,13 @@ where
             }
         }
     } else {
-        run_impl(main_thread_token, build_info, call_source, args)
+        run_impl(
+            main_thread_token,
+            build_info,
+            call_source,
+            args,
+            tokio_runtime.handle(),
+        )
     };
 
     match res {
@@ -628,6 +634,7 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
+    tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
@@ -680,6 +687,7 @@ fn run_impl(
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
     // Where do we get the data from?
+    let mut catalog_origins: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
@@ -712,7 +720,14 @@ fn run_impl(
         // We may need to spawn tasks from this point on:
         let mut rxs = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(None))
+            .filter_map(|data_source| match data_source.stream(None) {
+                Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
+                    catalog_origins.push(url);
+                    None
+                }
+                Err(err) => Some(Err(err)),
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -750,12 +765,24 @@ fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
+        if !catalog_origins.is_empty() {
+            anyhow::bail!("`--test-receive` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
+        if !catalog_origins.is_empty() {
+            anyhow::bail!("`--save` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve || args.serve_web {
+        if !catalog_origins.is_empty() {
+            anyhow::bail!("`--serve` does not support catalogs");
+        }
+
         #[cfg(not(feature = "server"))]
         {
             _ = (call_source, rxs);
@@ -834,6 +861,10 @@ fn run_impl(
             }
         }
 
+        if !catalog_origins.is_empty() {
+            re_log::warn!("Catalogs can't be passed to already open viewers yet.");
+        }
+
         // TODO(cmc): This is what I would have normally done, but this never terminates for some
         // reason.
         // let rx = ReceiveSet::new(rxs);
@@ -850,29 +881,36 @@ fn run_impl(
         Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
-        return re_viewer::run_native_app(
-            _main_thread_token,
-            Box::new(move |cc| {
-                let mut app = re_viewer::App::new(
-                    _main_thread_token,
-                    _build_info,
-                    &call_source.app_env(),
-                    startup_options,
-                    cc,
-                );
-                for rx in rxs {
-                    app.add_receiver(rx);
-                }
-                app.set_profiler(profiler);
-                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                    app.set_examples_manifest_url(url);
-                }
-                Box::new(app)
-            }),
-            args.renderer.as_deref(),
-        )
-        .map_err(|err| err.into());
+        {
+            let tokio_runtime_handle = tokio_runtime_handle.clone();
 
+            return re_viewer::run_native_app(
+                _main_thread_token,
+                Box::new(move |cc| {
+                    let mut app = re_viewer::App::new(
+                        _main_thread_token,
+                        _build_info,
+                        &call_source.app_env(),
+                        startup_options,
+                        cc,
+                        re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                    );
+                    for rx in rxs {
+                        app.add_receiver(rx);
+                    }
+                    app.set_profiler(profiler);
+                    if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                        app.set_examples_manifest_url(url);
+                    }
+                    for catalog in catalog_origins {
+                        app.fetch_catalog(catalog);
+                    }
+                    Box::new(app)
+                }),
+                args.renderer.as_deref(),
+            )
+            .map_err(|err| err.into());
+        }
         #[cfg(not(feature = "native_viewer"))]
         {
             _ = (call_source, rxs);

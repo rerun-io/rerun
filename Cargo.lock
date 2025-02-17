@@ -5817,6 +5817,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_catalog_hub"
+version = "0.23.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "egui",
+ "egui_table",
+ "once_cell",
+ "parking_lot",
+ "re_arrow_util",
+ "re_grpc_client",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_protos",
+ "re_sorbet",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_view_dataframe",
+ "re_viewer_context",
+ "thiserror 1.0.65",
+ "tokio-stream",
+ "tonic",
+ "tonic-web-wasm-client",
+]
+
+[[package]]
 name = "re_chunk"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
@@ -6000,12 +6028,15 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_data_loader",
+ "re_error",
  "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "tokio",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -6169,7 +6200,6 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
- "re_types",
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
@@ -6889,6 +6919,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -7101,6 +7132,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_capabilities",
+ "re_catalog_hub",
  "re_chunk",
  "re_chunk_store",
  "re_chunk_store_ui",
@@ -7207,6 +7239,7 @@ dependencies = [
  "smallvec",
  "strum_macros",
  "thiserror 1.0.65",
+ "tokio",
  "uuid",
  "wasm-bindgen-futures",
  "web-sys",

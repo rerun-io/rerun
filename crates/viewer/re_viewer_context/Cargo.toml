@@ -80,6 +80,7 @@ pollster = { workspace = true, optional = true }
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home.workspace = true
+tokio.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

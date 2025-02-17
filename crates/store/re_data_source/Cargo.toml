@@ -28,6 +28,7 @@ grpc = ["re_grpc_client/redap"]
 
 [dependencies]
 re_data_loader.workspace = true
+re_error.workspace = true
 re_grpc_client.workspace = true
 re_log_encoding = { workspace = true, features = [
   "decoder",
@@ -42,7 +43,13 @@ anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 
-# Optional dependencies:
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio.workspace = true
+
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

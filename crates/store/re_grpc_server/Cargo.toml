@@ -35,12 +35,15 @@ re_types.workspace = true
 
 # External
 parking_lot.workspace = true
-tokio.workspace = true
-tokio-stream = { workspace = true, features = ["sync"] }
-tokio-util.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio.workspace = true
+tokio-stream = { workspace = true, features = ["sync"] }
+tokio-util.workspace = true
 
 [dev-dependencies]
 similar-asserts.workspace = true

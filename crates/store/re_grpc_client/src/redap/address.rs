@@ -32,15 +32,14 @@ pub enum ConnectionError {
     #[error("unexpected base URL: {0}")]
     UnexpectedBaseUrl(String),
 
-    /// The given url is not a valid Rerun storage node URL.
-    #[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-    InvalidAddress { url: String, msg: String },
+    #[error("URL {url:?} cannot be loaded as a recording")]
+    CannotLoadUrlAsRecording { url: String },
 }
 
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Scheme {
     Rerun,
     RerunHttp,
@@ -59,7 +58,7 @@ impl std::fmt::Display for Scheme {
 
 impl Scheme {
     /// Converts a [`Scheme`] to either `http` or `https`.
-    fn to_http_scheme(&self) -> &str {
+    fn as_http_scheme(&self) -> &str {
         match self {
             Self::Rerun | Self::RerunHttps => "https",
             Self::RerunHttp => "http",
@@ -67,7 +66,7 @@ impl Scheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Origin {
     scheme: Scheme,
     host: url::Host<String>,
@@ -82,7 +81,7 @@ impl Origin {
     fn to_http_scheme(&self) -> String {
         format!(
             "{}://{}:{}",
-            self.scheme.to_http_scheme(),
+            self.scheme.as_http_scheme(),
             self.host,
             self.port
         )
@@ -242,9 +241,9 @@ mod tests {
 
     #[test]
     fn scheme_conversion() {
-        assert_eq!(Scheme::Rerun.to_http_scheme(), "https");
-        assert_eq!(Scheme::RerunHttp.to_http_scheme(), "http");
-        assert_eq!(Scheme::RerunHttps.to_http_scheme(), "https");
+        assert_eq!(Scheme::Rerun.as_http_scheme(), "https");
+        assert_eq!(Scheme::RerunHttp.as_http_scheme(), "http");
+        assert_eq!(Scheme::RerunHttps.as_http_scheme(), "https");
     }
 
     #[test]
