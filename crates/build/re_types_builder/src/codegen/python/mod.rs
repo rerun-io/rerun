@@ -2633,7 +2633,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         }
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
-    let partion_size = indent::indent_by(12, quote_columnar_partition_size(obj));
+    let partition_size = indent::indent_by(12, quote_columnar_partition_size(obj));
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
@@ -2656,7 +2656,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             if len(batches) == 0:
                 return ComponentColumnList([])
 
-            {partion_size}
+            {partition_size}
             columns = [batch.partition(lengths) for batch in batches]
 
             indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
