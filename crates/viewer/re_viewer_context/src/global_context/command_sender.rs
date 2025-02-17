@@ -27,7 +27,7 @@ pub enum SystemCommand {
         /// The receiver.
         rx: re_smart_channel::Receiver<re_log_types::LogMsg>,
 
-        /// Should the viewer swtich back to viewer mode?
+        /// Should the viewer switch back to viewer mode?
         ///
         /// Typically, adding a receiver means the user is loading a new recording and expects to
         /// see it, so this should generally be `true`. It may be that the user cmd/ctrl-click to
