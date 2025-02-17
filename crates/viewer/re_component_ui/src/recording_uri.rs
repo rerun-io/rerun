@@ -26,7 +26,10 @@ pub fn singleline_view_recording_uri(
             })
             .inner;
 
-        if response.clicked() {
+        if response.clicked() || response.middle_clicked() {
+            let do_no_switch_to_viewer =
+                response.middle_clicked() || ui.input(|i| i.modifiers.command);
+
             let data_source = re_data_source::DataSource::from_uri(
                 re_log_types::FileSource::Uri,
                 value.uri().to_owned(),
@@ -35,7 +38,10 @@ pub fn singleline_view_recording_uri(
             match data_source.stream(None) {
                 Ok(re_data_source::StreamSource::LogMessages(rx)) => _ctx
                     .command_sender()
-                    .send_system(SystemCommand::AddReceiver(rx)),
+                    .send_system(SystemCommand::AddReceiver {
+                        rx,
+                        switch_to_viewer: !do_no_switch_to_viewer,
+                    }),
                 Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                     // TODO(antoine, andreas): This branch might become relevant in the future.
                     re_log::warn!("Recording URI was formatted like a catalog URI: {url}");

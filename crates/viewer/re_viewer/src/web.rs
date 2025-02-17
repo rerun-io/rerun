@@ -725,8 +725,10 @@ fn create_app(
             if let Some(receiver) =
                 url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
             {
-                app.command_sender
-                    .send_system(SystemCommand::AddReceiver(receiver));
+                app.command_sender.send_system(SystemCommand::AddReceiver {
+                    rx: receiver,
+                    switch_to_viewer: true,
+                });
             }
         }
     }

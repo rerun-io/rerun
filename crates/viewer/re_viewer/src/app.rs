@@ -19,10 +19,9 @@ use re_viewer_context::{
     ViewClassRegistry, ViewClassRegistryError,
 };
 
-use crate::app_state::DisplayMode;
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
-    app_state::WelcomeScreenState,
+    app_state::{DisplayMode, WelcomeScreenState},
     background_tasks::BackgroundTasks,
     AppState,
 };
@@ -571,9 +570,15 @@ impl App {
                 store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
             }
 
-            SystemCommand::AddReceiver(rx) => {
+            SystemCommand::AddReceiver {
+                rx,
+                switch_to_viewer,
+            } => {
                 re_log::debug!("Received AddReceiver");
                 self.add_receiver(rx);
+                if switch_to_viewer {
+                    self.state.display_mode = DisplayMode::Viewer;
+                }
             }
 
             SystemCommand::LoadDataSource(data_source) => {
