@@ -9,6 +9,8 @@ use std::net::Ipv4Addr;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConnectionError {
+    /// Native connection error
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("Connection error: {0}")]
     Tonic(#[from] tonic::transport::Error),
 
