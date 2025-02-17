@@ -18,7 +18,7 @@ use re_protos::{
 
 mod address;
 
-pub use address::{AddressError, Origin, RedapAddress};
+pub use address::{ConnectionError, Origin, RedapAddress};
 
 use crate::spawn_future;
 use crate::StreamError;
@@ -32,7 +32,7 @@ use crate::TonicStatusError;
 pub fn stream_from_redap(
     url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, AddressError> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, ConnectionError> {
     re_log::debug!("Loading {url}…");
 
     let address = url.as_str().try_into()?;
@@ -58,7 +58,7 @@ pub fn stream_from_redap(
         }
         // TODO(#9058): This should be fix by introducing a `RedapRecordingAddress`.
         RedapAddress::Catalog { origin } => {
-            return Err(AddressError::CannotLoadCatalogAsRecording { origin });
+            return Err(ConnectionError::CannotLoadCatalogAsRecording { origin });
         }
     }
 
@@ -71,25 +71,8 @@ pub async fn stream_recording_async(
     recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        // TODO(#8411): figure out the right size for this
-        StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching catalog data for {recording_id}…");
 

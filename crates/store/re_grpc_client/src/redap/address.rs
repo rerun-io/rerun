@@ -4,13 +4,37 @@
 //! `rerun://`, which is an alias for `rerun+https://`. These schemes are then
 //! converted on the fly to either `http://` or `https://`.
 
+use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
 use std::net::Ipv4Addr;
 
-/// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-pub enum AddressError {
+pub enum ConnectionError {
+    /// Native connection error
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Connection error: {0}")]
+    Tonic(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    ParseError(#[from] url::ParseError),
+
+    #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
+    UnencryptedServer,
+
+    #[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
+    InvalidScheme,
+
+    #[error("unexpected endpoint: {0}")]
+    UnexpectedEndpoint(String),
+
+    #[error("unexpected opaque origin: {0}")]
+    UnexpectedOpaqueOrigin(String),
+
+    #[error("unexpected base URL: {0}")]
+    UnexpectedBaseUrl(String),
+
+    /// The given url is not a valid Rerun storage node URL.
     #[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-    InvalidRedapAddress { url: String, msg: String },
+    InvalidAddress { url: String, msg: String },
 
     #[error("Catalog URL {origin:?} cannot be loaded as a recording")]
     CannotLoadCatalogAsRecording { origin: Origin },
@@ -54,14 +78,65 @@ pub struct Origin {
 }
 
 impl Origin {
+    // TODO(#8411): figure out the right size for this
+    const MAX_DECODING_MESSAGE_SIZE: usize = usize::MAX;
+
     // Converts an entire [`Origin`] to a `http` or `https` URL.
-    pub fn to_http_scheme(&self) -> String {
+    fn to_http_scheme(&self) -> String {
         format!(
             "{}://{}:{}",
             self.scheme.as_http_scheme(),
             self.host,
             self.port
         )
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn coerce_http_scheme(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn client(
+        &self,
+    ) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
+        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
+            self.to_http_scheme(),
+            tonic_web_wasm_client::options::FetchOptions::new(),
+        );
+
+        Ok(StorageNodeClient::new(tonic_client)
+            .max_decoding_message_size(Self::MAX_DECODING_MESSAGE_SIZE))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn client(
+        &self,
+    ) -> Result<StorageNodeClient<tonic::transport::Channel>, ConnectionError> {
+        use tonic::transport::Endpoint;
+
+        match Endpoint::new(self.to_http_scheme())?
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+            .connect()
+            .await
+        {
+            Ok(client) => Ok(StorageNodeClient::new(client)
+                .max_decoding_message_size(Self::MAX_DECODING_MESSAGE_SIZE)),
+            Err(original_error) => {
+                // If we can't establish a connection, we probe if the server is
+                // expecting unencrypted traffic. If that is the case, we return
+                // a more meaningful error message.
+                let Ok(endpoint) = Endpoint::new(self.coerce_http_scheme()) else {
+                    return Err(ConnectionError::Tonic(original_error));
+                };
+
+                if endpoint.connect().await.is_ok() {
+                    Err(ConnectionError::UnencryptedServer)
+                } else {
+                    Err(ConnectionError::Tonic(original_error))
+                }
+            }
+        }
     }
 }
 
@@ -96,7 +171,7 @@ impl std::fmt::Display for RedapAddress {
 }
 
 impl TryFrom<&str> for RedapAddress {
-    type Error = AddressError;
+    type Error = ConnectionError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let (scheme, rewritten) = if value.starts_with("rerun://") {
@@ -109,27 +184,16 @@ impl TryFrom<&str> for RedapAddress {
                 value.replace("rerun+https://", "https://"),
             ))
         } else {
-            Err(AddressError::InvalidRedapAddress {
-                url: value.to_owned(),
-                msg: "Invalid scheme, expected `rerun://`,`rerun+http://`, or `rerun+https://`"
-                    .to_owned(),
-            })
+            Err(ConnectionError::InvalidScheme)
         }?;
 
         // We have to first rewrite the endpoint, because `Url` does not allow
         // `.set_scheme()` for non-opaque origins, nor does it return a proper
         // `Origin` in that case.
-        let redap_endpoint =
-            url::Url::parse(&rewritten).map_err(|err| AddressError::InvalidRedapAddress {
-                url: value.to_owned(),
-                msg: err.to_string(),
-            })?;
+        let redap_endpoint = url::Url::parse(&rewritten)?;
 
         let url::Origin::Tuple(_, host, port) = redap_endpoint.origin() else {
-            return Err(AddressError::InvalidRedapAddress {
-                url: value.to_owned(),
-                msg: "Opaque origin".to_owned(),
-            });
+            return Err(ConnectionError::UnexpectedOpaqueOrigin(value.to_owned()));
         };
 
         if host == url::Host::<String>::Ipv4(Ipv4Addr::UNSPECIFIED) {
@@ -142,10 +206,7 @@ impl TryFrom<&str> for RedapAddress {
         // adjusted when adding additional resources.
         let segments = redap_endpoint
             .path_segments()
-            .ok_or_else(|| AddressError::InvalidRedapAddress {
-                url: value.to_owned(),
-                msg: "Cannot be a base URL".to_owned(),
-            })?
+            .ok_or_else(|| ConnectionError::UnexpectedBaseUrl(value.to_owned()))?
             .take(2)
             .collect::<Vec<_>>();
 
@@ -154,12 +215,8 @@ impl TryFrom<&str> for RedapAddress {
                 origin,
                 recording_id: (*recording_id).to_owned(),
             }),
-            ["catalog"] => Ok(Self::Catalog { origin }),
-
-            _ => Err(AddressError::InvalidRedapAddress {
-                url: value.to_owned(),
-                msg: "Missing path'".to_owned(),
-            }),
+            ["catalog"] | [] => Ok(Self::Catalog { origin }),
+            [unknown, ..] => Err(ConnectionError::UnexpectedEndpoint(format!("{unknown}/"))),
         }
     }
 }
@@ -260,7 +317,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::AddressError::InvalidRedapAddress { .. }
+            super::ConnectionError::InvalidScheme { .. }
         ));
     }
 
@@ -271,7 +328,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::AddressError::InvalidRedapAddress { .. }
+            super::ConnectionError::UnexpectedEndpoint { .. }
         ));
     }
 }

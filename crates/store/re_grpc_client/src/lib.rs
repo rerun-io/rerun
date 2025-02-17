@@ -41,6 +41,10 @@ pub enum StreamError {
     #[error(transparent)]
     Transport(#[from] tonic::transport::Error),
 
+    #[cfg(feature = "redap")]
+    #[error(transparent)]
+    ConnectionError(#[from] redap::ConnectionError),
+
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
 
