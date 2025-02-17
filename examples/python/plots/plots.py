@@ -80,6 +80,24 @@ def log_trig() -> None:
         rr.log("trig/cos", rr.Scalar(cos_of_t))
 
 
+def log_spiral() -> None:
+    times = np.arange(int(tau * 2 * 100.0))
+    theta = times / 100.
+
+    x = theta * np.cos(theta)
+    y = theta * np.sin(theta)
+
+    # want this in column major, and numpy is row-major by default
+    scalars = np.array((x, y)).T
+
+    rr.send_columns(
+        "spiral",
+         indexes=[rr.TimeSequenceColumn("frame_nr", times)],
+         columns=[
+             *rr.Scalar.columns(scalar=scalars)
+         ]
+    )
+
 def log_classification() -> None:
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)
@@ -114,29 +132,39 @@ def main() -> None:
 
     blueprint = rrb.Blueprint(
         rrb.Horizontal(
-            rrb.Grid(
-                rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
-                rrb.TimeSeriesView(
-                    name="Curves",
-                    origin="/curves",
+            rrb.Vertical(
+                rrb.Grid(
+                    rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
+                    rrb.TimeSeriesView(
+                        name="Curves",
+                        origin="/curves",
+                    ),
+                    rrb.TimeSeriesView(
+                        name="Trig",
+                        origin="/trig",
+                        overrides={
+                            "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+                            "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+                        },
+                    ),
+                    rrb.TimeSeriesView(
+                        name="Classification",
+                        origin="/classification",
+                        overrides={
+                            "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+                            # This ensures that the `SeriesPoint` visualizers is used for this entity.
+                            "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
+                        },
+                    ),
                 ),
                 rrb.TimeSeriesView(
-                    name="Trig",
-                    origin="/trig",
+                    name="Spiral",
+                    origin="/spiral",
                     overrides={
-                        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
-                        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
-                    },
+                        "spiral": [rr.components.NameBatch(["0.01t cos(0.01t)", "0.01t sin(0.01t)"])]
+                    }
                 ),
-                rrb.TimeSeriesView(
-                    name="Classification",
-                    origin="/classification",
-                    overrides={
-                        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-                        # This ensures that the `SeriesPoint` visualizers is used for this entity.
-                        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
-                    },
-                ),
+                row_shares=[2, 1]
             ),
             rrb.TextDocumentView(name="Description", origin="/description"),
             column_shares=[3, 1],
@@ -151,6 +179,7 @@ def main() -> None:
     log_bar_chart()
     log_parabola()
     log_trig()
+    log_spiral()
     log_classification()
 
     rr.script_teardown(args)
