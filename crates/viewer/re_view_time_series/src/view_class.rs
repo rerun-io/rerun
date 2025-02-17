@@ -439,6 +439,7 @@ impl ViewClass for TimeSeriesView {
             response,
             transform,
             hovered_plot_item,
+            hidden_items,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
@@ -526,6 +527,25 @@ impl ViewClass for TimeSeriesView {
                 })
             {
                 ctx.handle_select_hover_drag_interactions(&response, hovered, false);
+            }
+        }
+
+        // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
+        // TODO: only store upon diff - query in visualizer, know here.
+        for item in hidden_items {
+            if let Some(instance_path) = plot_item_id_to_instance_path.get(&item) {
+                // TODO(#8602): Needs either point or line series tagging (-> need to propagate this information)
+
+                let override_path = ??;
+
+                if instance_path.is_all() {
+                    ctx.save_blueprint_component(
+                        &instance_path.entity_path,
+                        &Visible::from(false),
+                    );
+                } else {
+                    // TODO(andreas): implement multi plot visibility sync.
+                }
             }
         }
 
