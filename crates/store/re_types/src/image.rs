@@ -5,9 +5,11 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     datatypes::ChannelDatatype,
-    datatypes::ImageFormat,
     datatypes::{Blob, TensorBuffer, TensorData},
 };
+
+#[cfg(feature = "image")]
+use crate::datatypes::ImageFormat;
 
 // ----------------------------------------------------------------------------
 
