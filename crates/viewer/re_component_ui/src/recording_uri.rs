@@ -2,7 +2,7 @@ use re_types::components::RecordingUri;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn singleline_view_recording_uri(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, RecordingUri>,
 ) -> egui::Response {

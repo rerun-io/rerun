@@ -527,7 +527,7 @@ mod tests {
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
         let resolver = view.contents.build_resolver(
-            &test_ctx.view_class_registry(),
+            &test_ctx.view_class_registry,
             &view,
             &maybe_visualizable_entities,
             &visualizable_entities,
@@ -775,7 +775,7 @@ mod tests {
 
         let mut query_result = view.contents.execute_query(
             &store_ctx,
-            &test_ctx.view_class_registry(),
+            &test_ctx.view_class_registry,
             &test_ctx.blueprint_query,
             view.id,
             visualizable_entities,
