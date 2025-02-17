@@ -1,4 +1,3 @@
-#[cfg(feature = "image")]
 use crate::{datatypes::ColorModel, image::ImageChannelType};
 
 use super::{ImageBuffer, ImageFormat};
