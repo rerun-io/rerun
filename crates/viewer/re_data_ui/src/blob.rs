@@ -132,7 +132,7 @@ pub fn blob_preview_and_save_ui(
                             blob_row_id,
                             blob,
                             media_type,
-                            ctx.app_options.video_decoder_settings(),
+                            ctx.app_options().video_decoder_settings(),
                         )
                     });
             video_result_ui(ui, ui_layout, &video_result);
@@ -159,7 +159,7 @@ pub fn blob_preview_and_save_ui(
                     file_name.push_str(file_extension);
                 }
 
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender().save_file_dialog(
                     re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save blob".to_owned(),
@@ -186,7 +186,7 @@ pub fn blob_preview_and_save_ui(
                 ui.separator();
 
                 show_decoded_frame_info(
-                    ctx.render_ctx,
+                    ctx.render_ctx(),
                     ui,
                     ui_layout,
                     video,

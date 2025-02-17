@@ -2,7 +2,7 @@ use ahash::HashMap;
 use indexmap::IndexMap;
 use parking_lot::Mutex;
 
-use crate::{item::resolve_mono_instance_path_item, ViewerContext};
+use crate::{global_context::resolve_mono_instance_path_item, ViewerContext};
 use re_entity_db::EntityPath;
 use re_log_types::StoreKind;
 

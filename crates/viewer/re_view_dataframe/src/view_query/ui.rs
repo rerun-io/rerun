@@ -75,7 +75,7 @@ impl Query {
                                 time_drag_value,
                                 None,
                                 *timeline_type,
-                                ctx.app_options.time_zone,
+                                ctx.app_options().time_zone,
                                 &mut start,
                             );
 
@@ -110,7 +110,7 @@ impl Query {
                                 time_drag_value,
                                 Some(start),
                                 *timeline_type,
-                                ctx.app_options.time_zone,
+                                ctx.app_options().time_zone,
                                 &mut end,
                             );
 
@@ -237,7 +237,7 @@ impl Query {
                 .filter_map(|c| {
                     c.indicator_component_archetype()
                         .and_then(|archetype_short_name| {
-                            ctx.reflection
+                            ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)
                         })
                 })

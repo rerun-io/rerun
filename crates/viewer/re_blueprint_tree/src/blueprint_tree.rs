@@ -364,7 +364,7 @@ impl BlueprintTree {
         let item = Item::View(view_data.id);
 
         let class = ctx
-            .view_class_registry
+            .view_class_registry()
             .get_class_or_log_error(view_data.class_identifier);
 
         let is_item_hovered =
@@ -485,7 +485,7 @@ impl BlueprintTree {
                 );
 
                 let item_content = list_item::LabelContent::new(format_matching_text(
-                    ctx.egui_ctx,
+                    ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
                     is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
@@ -665,7 +665,7 @@ impl BlueprintTree {
             return;
         }
 
-        let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
+        let modifiers = ctx.egui_ctx().input(|i| i.modifiers);
 
         if modifiers.shift {
             if let Some(anchor_item) = &self.range_selection_anchor_item {
@@ -739,7 +739,7 @@ impl BlueprintTree {
             }
 
             let is_expanded = blueprint_tree_item
-                .is_open(ctx.egui_ctx, collapse_scope)
+                .is_open(ctx.egui_ctx(), collapse_scope)
                 .unwrap_or(false);
 
             if is_expanded {
@@ -1193,7 +1193,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
 
     if response.clicked() {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
 }
@@ -1215,7 +1215,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
         .clicked()
     {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }
 }

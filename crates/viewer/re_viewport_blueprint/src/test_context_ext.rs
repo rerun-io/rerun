@@ -75,31 +75,31 @@ impl TestContextExt for TestContext {
                             let class_identifier = view_blueprint.class_identifier();
 
                             let visualizable_entities = ctx
-                                .view_class_registry
+                                .view_class_registry()
                                 .class(class_identifier)
                                 .unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"))
                                 .determine_visualizable_entities(
                                     &maybe_visualizable_entities_per_visualizer,
                                     ctx.recording(),
-                                    &ctx.view_class_registry
+                                    &ctx.view_class_registry()
                                         .new_visualizer_collection(class_identifier),
                                     &view_blueprint.space_origin,
                                 );
 
                             let indicated_entities_per_visualizer = ctx
-                                .view_class_registry
+                                .view_class_registry()
                                 .indicated_entities_per_visualizer(&ctx.recording().store_id());
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,
-                                ctx.view_class_registry,
+                                ctx.view_class_registry(),
                                 ctx.blueprint_query,
                                 *view_id,
                                 &visualizable_entities,
                             );
 
                             let resolver = view_blueprint.contents.build_resolver(
-                                ctx.view_class_registry,
+                                ctx.view_class_registry(),
                                 view_blueprint,
                                 &maybe_visualizable_entities_per_visualizer,
                                 &visualizable_entities,
@@ -110,7 +110,7 @@ impl TestContextExt for TestContext {
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
                                 ctx.rec_cfg.time_ctrl.read().timeline(),
-                                ctx.view_class_registry,
+                                ctx.view_class_registry(),
                                 &mut data_query_result,
                                 &mut self.view_states.lock(),
                             );

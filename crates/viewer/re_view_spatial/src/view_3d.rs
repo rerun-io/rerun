@@ -459,7 +459,7 @@ fn view_property_ui_grid3d(
         ctx.blueprint_query,
         view_id,
     );
-    let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
+    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
             "Missing reflection data for archetype {:?}.",
             property.archetype_name

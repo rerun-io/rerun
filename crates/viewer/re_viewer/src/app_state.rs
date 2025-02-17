@@ -9,7 +9,7 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, PlayState, RecordingConfig, StoreContext, StoreHub,
+    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
     SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
@@ -263,10 +263,15 @@ impl AppState {
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
-            app_options,
-            view_class_registry,
-            reflection,
-            component_ui_registry,
+            global_context: GlobalContext {
+                app_options,
+                reflection,
+                component_ui_registry,
+                view_class_registry,
+                egui_ctx: &egui_ctx,
+                render_ctx,
+                command_sender,
+            },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -275,9 +280,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            egui_ctx: &egui_ctx,
-            render_ctx,
-            command_sender,
             focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
@@ -341,10 +343,15 @@ impl AppState {
         // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
         // it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
-            app_options,
-            view_class_registry,
-            reflection,
-            component_ui_registry,
+            global_context: GlobalContext {
+                app_options,
+                reflection,
+                component_ui_registry,
+                view_class_registry,
+                egui_ctx: &egui_ctx,
+                render_ctx,
+                command_sender,
+            },
             store_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -353,9 +360,6 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            egui_ctx: &egui_ctx,
-            render_ctx,
-            command_sender,
             focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
@@ -524,7 +528,7 @@ impl AppState {
         //
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx);
+        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
 
         // Process deferred layout operations and apply updates back to blueprint:
         viewport_ui.save_to_blueprint_store(&ctx);
@@ -594,7 +598,7 @@ fn move_time(
     rx: &ReceiveSet<LogMsg>,
     timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
 ) {
-    let dt = ctx.egui_ctx.input(|i| i.stable_dt);
+    let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
     // Are we still connected to the data source for the current store?
     let more_data_is_coming = if let Some(store_source) = &recording.data_source {
@@ -610,7 +614,7 @@ fn move_time(
         timeline_callbacks,
     );
 
-    let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+    let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
         ctx.blueprint_cfg.time_ctrl.write().update(
             ctx.store_context.blueprint.times_per_timeline(),
             dt,
@@ -624,7 +628,7 @@ fn move_time(
     if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
         || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
     {
-        ctx.egui_ctx.request_repaint();
+        ctx.egui_ctx().request_repaint();
     }
 }
 

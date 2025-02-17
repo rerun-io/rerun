@@ -122,7 +122,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         )?;
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?])
     }
@@ -189,7 +189,7 @@ impl VideoFrameReferenceVisualizer {
                     video_resolution = glam::vec2(video.width() as _, video.height() as _);
 
                     match video.frame_at(
-                        ctx.viewer_ctx.render_ctx,
+                        ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_seconds(),
                         video_data.as_slice(),
@@ -212,7 +212,7 @@ impl VideoFrameReferenceVisualizer {
 
                             if is_pending {
                                 // Keep polling for a fresh texture
-                                ctx.viewer_ctx.egui_ctx.request_repaint();
+                                ctx.viewer_ctx.egui_ctx().request_repaint();
                             }
 
                             if show_spinner {
@@ -287,7 +287,7 @@ impl VideoFrameReferenceVisualizer {
         video_size: glam::Vec2,
         entity_path: &EntityPath,
     ) {
-        let render_ctx = ctx.viewer_ctx.render_ctx;
+        let render_ctx = ctx.viewer_ctx.render_ctx();
         let video_error_texture_result = render_ctx
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
@@ -408,7 +408,7 @@ fn latest_at_query_video_from_datastore(
             blob_row_id,
             &blob,
             media_type.as_ref(),
-            ctx.app_options.video_decoder_settings(),
+            ctx.app_options().video_decoder_settings(),
         )
     });
     Some((video, blob))

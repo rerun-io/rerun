@@ -15,7 +15,7 @@ pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,
     plot_mem: Option<&egui_plot::PlotMemory>,
 ) -> f64 {
-    let egui_ctx = ctx.egui_ctx;
+    let egui_ctx = ctx.egui_ctx();
 
     // How many ui points per time unit?
     let points_per_time = plot_mem

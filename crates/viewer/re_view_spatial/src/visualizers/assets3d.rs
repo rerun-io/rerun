@@ -80,7 +80,7 @@ impl Asset3DVisualizer {
                                 albedo_factor: data.albedo_factor.map(|a| a.0.into()),
                             },
                         },
-                        ctx.viewer_ctx.render_ctx,
+                        ctx.viewer_ctx.render_ctx(),
                     )
                 });
 
@@ -187,7 +187,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
