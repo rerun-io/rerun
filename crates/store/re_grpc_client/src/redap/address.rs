@@ -32,12 +32,8 @@ pub enum ConnectionError {
     #[error("unexpected base URL: {0}")]
     UnexpectedBaseUrl(String),
 
-    /// The given url is not a valid Rerun storage node URL.
-    #[error("URL {url:?} should follow rerun://host:port/recording/12345 for recording or rerun://host:port/catalog for catalog")]
-    InvalidAddress { url: String, msg: String },
-
     #[error("Catalog URL {origin:?} cannot be loaded as a recording")]
-    CannotLoadCatalogAsRecording { origin: Origin },
+    CannotLoadCatalogAsRecording { url: String },
 }
 
 /// The different schemes supported by Rerun.

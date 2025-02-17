@@ -383,8 +383,9 @@ impl AppState {
         if *show_settings_ui {
             // nothing: this is already handled above
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
-            let datastore_view_active = datastore_ui.ui(&ctx, ui, app_options.time_zone);
-            if !datastore_view_active {
+            let should_datastore_ui_remain_active =
+                datastore_ui.ui(&ctx, ui, app_options.time_zone);
+            if !should_datastore_ui_remain_active {
                 *display_mode = DisplayMode::Viewer;
             }
         } else {

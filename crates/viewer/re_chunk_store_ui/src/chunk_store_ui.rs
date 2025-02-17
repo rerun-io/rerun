@@ -67,6 +67,9 @@ impl Default for DatastoreUi {
 
 impl DatastoreUi {
     /// Show the ui.
+    ///
+    /// Returns `false` if the datastore UI should be closed (e.g., the close button was clicked),
+    /// or `true` if the datastore UI should remain open.
     pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_zone: TimeZone) -> bool {
         let mut datastore_ui_active = true;
 
