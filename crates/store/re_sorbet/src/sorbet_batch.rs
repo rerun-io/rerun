@@ -160,9 +160,12 @@ impl TryFrom<&ArrowRecordBatch> for SorbetBatch {
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
-        for (field, column) in
-            itertools::izip!(sorbet_schema.columns.arrow_fields(), batch.columns())
-        {
+        for (field, column) in itertools::izip!(
+            sorbet_schema
+                .columns
+                .arrow_fields(crate::BatchType::Dataframe),
+            batch.columns()
+        ) {
             debug_assert_eq!(field.data_type(), column.data_type());
         }
 

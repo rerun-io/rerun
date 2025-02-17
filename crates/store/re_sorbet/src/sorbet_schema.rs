@@ -100,7 +100,10 @@ impl From<&SorbetSchema> for ArrowSchema {
     fn from(sorbet_schema: &SorbetSchema) -> Self {
         Self {
             metadata: sorbet_schema.arrow_batch_metadata(),
-            fields: sorbet_schema.columns.arrow_fields().into(),
+            fields: sorbet_schema
+                .columns
+                .arrow_fields(crate::BatchType::Dataframe)
+                .into(),
         }
     }
 }
