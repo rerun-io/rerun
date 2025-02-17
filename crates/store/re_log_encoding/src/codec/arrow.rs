@@ -3,7 +3,7 @@ use super::CodecError;
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
 /// TODO(#3741): switch to arrow1 once <https://github.com/apache/arrow-rs/issues/6803> is released
-const SERIALIZE_WITH_ARROW_1: bool = true; // I _think_ we can use arrow1 here, because we don't encounter the above bug in this context
+const SERIALIZE_WITH_ARROW_1: bool = false; // Enabling this will break cross-language roundtrips.
 const DESERIALIZE_WITH_ARROW_1: bool = true; // Both arrow1 and arrow2 should be working fine
 
 /// Helper function that serializes given arrow schema and record batch into bytes
