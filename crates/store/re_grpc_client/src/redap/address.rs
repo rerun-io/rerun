@@ -353,7 +353,7 @@ mod tests {
         let expected = RedapAddress::Catalog {
             origin: Origin {
                 scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_string()),
+                host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
         };
