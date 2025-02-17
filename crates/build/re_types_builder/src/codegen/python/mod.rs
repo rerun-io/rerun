@@ -2562,6 +2562,29 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     ))
 }
 
+fn quote_columnar_partition_size(obj: &Object) -> String {
+    // If the obj is a Scalar, we can infer partition size from the array-like shape.
+    if obj.snake_case_name() == "scalar"
+        && obj.kind == ObjectKind::Archetype
+        && obj.fields.len() == 1
+        && !obj.fields[0].is_nullable
+    {
+        unindent(&format!(
+            r#"
+        shape = np.shape({}) # type: ignore[arg-type]
+        batch_length = shape[1] if len(shape) > 1 else 1
+        num_rows = shape[0] if len(shape) >= 1 else 1
+        lengths = num_rows * np.ones(batch_length)
+        "#,
+            obj.fields[0].snake_case_name()
+        ))
+    } else {
+        unindent(&format!(
+            "lengths = np.ones(len(batches[0]._batch.as_arrow_array()))"
+        ))
+    }
+}
+
 fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let parameters = obj
         .fields
@@ -2610,6 +2633,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         }
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
+    let partion_size = indent::indent_by(12, quote_columnar_partition_size(obj));
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
@@ -2632,7 +2656,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             if len(batches) == 0:
                 return ComponentColumnList([])
 
-            lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+            {partion_size}
             columns = [batch.partition(lengths) for batch in batches]
 
             indicator_column = cls.indicator().partition(np.zeros(len(lengths)))

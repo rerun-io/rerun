@@ -189,11 +189,11 @@ class Scalar(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        shape = np.shape(scalar) # type: ignore[arg-type]
+        shape = np.shape(scalar)  # type: ignore[arg-type]
         batch_length = shape[1] if len(shape) > 1 else 1
         num_rows = shape[0] if len(shape) >= 1 else 1
+        lengths = num_rows * np.ones(batch_length)
 
-        lengths = batch_length * np.ones(num_rows)
         columns = [batch.partition(lengths) for batch in batches]
 
         indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
