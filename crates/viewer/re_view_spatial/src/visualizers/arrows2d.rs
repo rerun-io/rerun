@@ -82,6 +82,7 @@ impl Arrows2DVisualizer {
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
+                .depth_offset(ent_context.depth_offset)
                 .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));

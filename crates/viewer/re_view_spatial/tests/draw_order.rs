@@ -132,6 +132,19 @@ pub fn test_draw_order() {
                 .with_draw_order(2.0),
             )
         });
+
+        // 2D arrow sandwitched across
+        test_context.log_entity("2d_layering/arrow2_between".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::Arrows2D::from_vectors([(200.0, 200.0)])
+                    .with_origins([(10.0, 10.0)])
+                    .with_radii([5.0])
+                    .with_colors([0xFF00FFFF])
+                    .with_draw_order(1.12),
+            )
+        });
     }
 
     let view_id = setup_blueprint(&mut test_context);
