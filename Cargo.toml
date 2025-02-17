@@ -283,6 +283,7 @@ sysinfo = { version = "0.30.1", default-features = false }
 tap = "1.0.1"
 tempfile = "3.0"
 thiserror = "1.0"
+tiff = "0.9.1"
 time = { version = "0.3.36", default-features = false, features = [
   "wasm-bindgen",
 ] }

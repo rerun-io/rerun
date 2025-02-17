@@ -60,7 +60,6 @@ impl ChunkSchema {
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,
-                is_sorted: false, // assume the worst
             },
             row_id,
             chunk_id,
@@ -71,12 +70,6 @@ impl ChunkSchema {
     #[inline]
     pub fn with_heap_size_bytes(mut self, heap_size_bytes: u64) -> Self {
         self.sorbet.heap_size_bytes = Some(heap_size_bytes);
-        self
-    }
-
-    #[inline]
-    pub fn with_sorted(mut self, sorted: bool) -> Self {
-        self.sorbet.is_sorted = sorted;
         self
     }
 }
@@ -99,12 +92,6 @@ impl ChunkSchema {
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
         self.sorbet.heap_size_bytes
-    }
-
-    /// Are we sorted by the row id column?
-    #[inline]
-    pub fn is_sorted(&self) -> bool {
-        self.sorbet.is_sorted
     }
 
     /// Total number of columns in this chunk,
@@ -134,7 +121,7 @@ impl ChunkSchema {
     }
 
     pub fn arrow_fields(&self) -> Vec<ArrowField> {
-        self.sorbet.columns.arrow_fields()
+        self.sorbet.columns.arrow_fields(crate::BatchType::Chunk)
     }
 }
 

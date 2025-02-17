@@ -45,6 +45,7 @@ impl ChunkBatch {
         data_arrays: Vec<ArrowArrayRef>,
     ) -> Result<Self, SorbetError> {
         Self::try_from(SorbetBatch::try_new(
+            crate::BatchType::Chunk,
             schema.into(),
             Some(row_ids),
             index_arrays,
@@ -131,7 +132,10 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        Self::try_from(SorbetBatch::try_from(batch)?)
+        Self::try_from(SorbetBatch::try_from_record_batch(
+            batch,
+            crate::BatchType::Chunk,
+        )?)
     }
 }
 

@@ -433,7 +433,7 @@ impl ChunkStore {
             .tap_mut(|components| components.sort());
 
         SorbetColumnDescriptors {
-            row_id: Some(re_sorbet::RowIdColumnDescriptor::new()),
+            row_id: Some(re_sorbet::RowIdColumnDescriptor { is_sorted: false }),
             indices,
             components,
         }

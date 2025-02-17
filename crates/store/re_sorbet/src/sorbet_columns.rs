@@ -96,7 +96,7 @@ impl SorbetColumnDescriptors {
         }
     }
 
-    pub fn arrow_fields(&self) -> Vec<ArrowField> {
+    pub fn arrow_fields(&self, batch_type: crate::BatchType) -> Vec<ArrowField> {
         let Self {
             row_id,
             indices,
@@ -110,7 +110,7 @@ impl SorbetColumnDescriptors {
         fields.extend(
             components
                 .iter()
-                .map(|column| column.to_arrow_field(crate::BatchType::Chunk)),
+                .map(|column| column.to_arrow_field(batch_type)),
         );
         fields
     }

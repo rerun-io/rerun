@@ -20,6 +20,8 @@ pub struct IndexColumnDescriptor {
     pub datatype: ArrowDatatype,
 
     /// Are the indices in this column sorted?
+    ///
+    /// `false` means either "unsorted" or "unknown".
     pub is_sorted: bool,
 }
 

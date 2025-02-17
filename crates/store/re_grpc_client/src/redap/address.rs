@@ -140,6 +140,48 @@ impl Origin {
     }
 }
 
+/// Parses a URL and returns the [`Origin`] and the canonical URL (i.e. one that
+///  starts with `http://` or `https://`).
+fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), ConnectionError> {
+    let (scheme, rewritten) = if value.starts_with("rerun://") {
+        Ok((Scheme::Rerun, value.replace("rerun://", "https://")))
+    } else if value.starts_with("rerun+http://") {
+        Ok((Scheme::RerunHttp, value.replace("rerun+http://", "http://")))
+    } else if value.starts_with("rerun+https://") {
+        Ok((
+            Scheme::RerunHttps,
+            value.replace("rerun+https://", "https://"),
+        ))
+    } else {
+        Err(ConnectionError::InvalidScheme)
+    }?;
+
+    // We have to first rewrite the endpoint, because `Url` does not allow
+    // `.set_scheme()` for non-opaque origins, nor does it return a proper
+    // `Origin` in that case.
+    let canonic_url = url::Url::parse(&rewritten)?;
+
+    let url::Origin::Tuple(_, host, port) = canonic_url.origin() else {
+        return Err(ConnectionError::UnexpectedOpaqueOrigin(value.to_owned()));
+    };
+
+    if host == url::Host::<String>::Ipv4(Ipv4Addr::UNSPECIFIED) {
+        re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
+    }
+
+    let origin = Origin { scheme, host, port };
+
+    Ok((origin, canonic_url))
+}
+
+impl TryFrom<&str> for Origin {
+    type Error = ConnectionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        replace_and_parse(value).map(|(origin, _)| origin)
+    }
+}
+
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
@@ -174,37 +216,11 @@ impl TryFrom<&str> for RedapAddress {
     type Error = ConnectionError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let (scheme, rewritten) = if value.starts_with("rerun://") {
-            Ok((Scheme::Rerun, value.replace("rerun://", "https://")))
-        } else if value.starts_with("rerun+http://") {
-            Ok((Scheme::RerunHttp, value.replace("rerun+http://", "http://")))
-        } else if value.starts_with("rerun+https://") {
-            Ok((
-                Scheme::RerunHttps,
-                value.replace("rerun+https://", "https://"),
-            ))
-        } else {
-            Err(ConnectionError::InvalidScheme)
-        }?;
-
-        // We have to first rewrite the endpoint, because `Url` does not allow
-        // `.set_scheme()` for non-opaque origins, nor does it return a proper
-        // `Origin` in that case.
-        let redap_endpoint = url::Url::parse(&rewritten)?;
-
-        let url::Origin::Tuple(_, host, port) = redap_endpoint.origin() else {
-            return Err(ConnectionError::UnexpectedOpaqueOrigin(value.to_owned()));
-        };
-
-        if host == url::Host::<String>::Ipv4(Ipv4Addr::UNSPECIFIED) {
-            re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
-        }
-
-        let origin = Origin { scheme, host, port };
+        let (origin, canonical_url) = replace_and_parse(value)?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
-        let segments = redap_endpoint
+        let segments = canonical_url
             .path_segments()
             .ok_or_else(|| ConnectionError::UnexpectedBaseUrl(value.to_owned()))?
             .take(2)
