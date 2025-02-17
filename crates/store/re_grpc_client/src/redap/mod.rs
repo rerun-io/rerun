@@ -5,10 +5,9 @@ use arrow::{
     },
     datatypes::{DataType as ArrowDataType, Field as ArrowField},
 };
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline};
-use re_log_encoding::codec::wire::decoder::Decode;
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     external::re_types_core::ComponentDescriptor, ApplicationId, BlueprintActivationCommand,
     EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
@@ -16,9 +15,8 @@ use re_log_types::{
 use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
-        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_ID_FIELD_NAME,
-        CATALOG_START_TIME_FIELD_NAME,
+        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
+        CATALOG_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
     },
 };
 use re_types::{
@@ -31,12 +29,13 @@ use re_types::{
     external::uuid,
     Archetype, Component,
 };
+use tokio_stream::StreamExt as _;
 
 // ----------------------------------------------------------------------------
 
 mod address;
 
-pub use address::{InvalidRedapAddress, RedapAddress};
+pub use address::{ConnectionError, RedapAddress};
 
 use crate::spawn_future;
 use crate::StreamError;
@@ -54,7 +53,7 @@ const CATALOG_APPLICATION_ID: &str = "redap_catalog";
 pub fn stream_from_redap(
     url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, ConnectionError> {
     re_log::debug!("Loading {url}…");
 
     let address = url.as_str().try_into()?;
@@ -97,25 +96,8 @@ async fn stream_recording_async(
     recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        // TODO(#8411): figure out the right size for this
-        StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching catalog data for {recording_id}…");
 
@@ -258,24 +240,8 @@ async fn stream_catalog_async(
     origin: Origin,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        StorageNodeClient::new(tonic_client)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching catalog…");
 
