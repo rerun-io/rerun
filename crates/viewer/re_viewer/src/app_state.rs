@@ -482,6 +482,7 @@ impl AppState {
                     ui.ctx().screen_rect().width(),
                 ));
 
+            //TODO(ab): this should better be handled as a specific `DisplayMode`
             let show_welcome =
                 store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 

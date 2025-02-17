@@ -37,7 +37,7 @@ pub enum DataSource {
     MessageProxy { url: String },
 }
 
-// TODO(antoine, andreas): Temporary hack.
+// TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
     CatalogData {
@@ -366,6 +366,7 @@ fn test_data_source_from_uri() {
     assert!(!failed, "one or more test cases failed");
 }
 
+//TODO: can we clean that up?
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

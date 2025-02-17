@@ -11,6 +11,7 @@ use re_sorbet::SorbetBatch;
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
+//TODO(ab): remove this in favour of an id
 pub struct CollectionHandle {
     server_origin: redap::Origin,
     collection_index: usize,
@@ -33,7 +34,6 @@ pub struct RecordingCollection {
 
     pub name: String,
 
-    //TODO(ab): in the future, this will be `SorbetBatch` instead
     pub collection: Vec<SorbetBatch>,
 }
 
@@ -43,6 +43,7 @@ pub struct RecordingCollection {
 pub struct CatalogHub {
     // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
     catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
+
     // TODO(andreas,antoine): Keep track of in-flight requests.
     //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
     selected_collection: Option<CollectionHandle>,
@@ -59,10 +60,10 @@ impl CatalogHub {
     /// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
-    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, redap_endpoint: redap::Origin) {
+    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, origin: redap::Origin) {
         let catalogs = self.catalogs.clone();
         runtime.spawn_future(async move {
-            let result = stream_catalog_async(redap_endpoint, catalogs).await;
+            let result = stream_catalog_async(origin, catalogs).await;
             if let Err(err) = result {
                 // TODO(andreas,ab): Surface this in the UI in a better way.
                 re_log::error!("Failed to fetch catalog: {err}");
@@ -202,18 +203,18 @@ impl CatalogHub {
 }
 
 async fn stream_catalog_async(
-    redap_endpoint: redap::Origin,
+    origin: redap::Origin,
     catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
 ) -> Result<(), StreamError> {
     let mut client = {
         #[cfg(target_arch = "wasm32")]
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            redap_endpoint.to_string(),
+            origin.to_string(),
             tonic_web_wasm_client::options::FetchOptions::new(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_http_scheme())?
+        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
             .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
             .connect()
             .await?;
@@ -251,7 +252,7 @@ async fn stream_catalog_async(
         .await?;
 
     //TODO(ab): ideally this is provided by the server
-    let collection_id = egui::Id::new(redap_endpoint.clone()).with("__top_level_collection__");
+    let collection_id = egui::Id::new(origin.clone()).with("__top_level_collection__");
     let catalog = Catalog {
         collections: vec![RecordingCollection {
             collection_id,
@@ -261,11 +262,11 @@ async fn stream_catalog_async(
         }],
     };
 
-    let previous_catalog = catalogs.lock().insert(redap_endpoint.clone(), catalog);
+    let previous_catalog = catalogs.lock().insert(origin.clone(), catalog);
     if previous_catalog.is_some() {
-        re_log::debug!("Updated catalog for {}.", redap_endpoint.to_string());
+        re_log::debug!("Updated catalog for {}.", origin.to_string());
     } else {
-        re_log::debug!("Fetched new catalog for {}.", redap_endpoint.to_string());
+        re_log::debug!("Fetched new catalog for {}.", origin.to_string());
     }
 
     Ok(())
