@@ -18,12 +18,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [features]
 default = ["grpc"]
 
 ## Enable the gRPC Rerun Data Platform data source.
-grpc = ["re_grpc_client/redap"]
+grpc = []
 
 
 [dependencies]
