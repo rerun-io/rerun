@@ -32,6 +32,7 @@ pub trait MetadataExt {
         self.get_opt(key).ok_or_else(|| self.missing_key_error(key))
     }
 
+    /// If the key exists and is NOT `false`.
     fn get_bool(&self, key: &str) -> bool {
         self.get_opt(key)
             .map(|value| !matches!(value.to_lowercase().as_str(), "false" | "no"))
