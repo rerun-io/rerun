@@ -96,14 +96,11 @@ impl From<SorbetSchema> for SorbetColumnDescriptors {
     }
 }
 
-impl From<&SorbetSchema> for ArrowSchema {
-    fn from(sorbet_schema: &SorbetSchema) -> Self {
-        Self {
-            metadata: sorbet_schema.arrow_batch_metadata(),
-            fields: sorbet_schema
-                .columns
-                .arrow_fields(crate::BatchType::Dataframe)
-                .into(),
+impl SorbetSchema {
+    pub fn to_arrow(&self, batch_type: crate::BatchType) -> ArrowSchema {
+        ArrowSchema {
+            metadata: self.arrow_batch_metadata(),
+            fields: self.columns.arrow_fields(batch_type).into(),
         }
     }
 }
