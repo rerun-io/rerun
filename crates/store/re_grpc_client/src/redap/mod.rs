@@ -7,6 +7,7 @@ use arrow::{
 };
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline};
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     external::re_types_core::ComponentDescriptor, ApplicationId, BlueprintActivationCommand,
     EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
@@ -28,6 +29,7 @@ use re_types::{
     external::uuid,
     Archetype, Component,
 };
+use tokio_stream::StreamExt as _;
 
 // ----------------------------------------------------------------------------
 
@@ -94,11 +96,6 @@ async fn stream_recording_async(
     recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    #[cfg(not(target_arch = "wasm32"))]
-    use re_log_encoding::codec::wire::decoder::Decode as _;
-    #[cfg(not(target_arch = "wasm32"))]
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
     let mut client = origin.client().await?;
 
@@ -243,11 +240,6 @@ async fn stream_catalog_async(
     origin: Origin,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    #[cfg(not(target_arch = "wasm32"))]
-    use re_log_encoding::codec::wire::decoder::Decode as _;
-    #[cfg(not(target_arch = "wasm32"))]
-    use tokio_stream::StreamExt as _;
-
     re_log::debug!("Connecting to {origin}…");
     let mut client = origin.client().await?;
 
