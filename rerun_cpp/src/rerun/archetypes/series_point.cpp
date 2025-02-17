@@ -14,6 +14,9 @@ namespace rerun::archetypes {
                                .value_or_throw();
         archetype.name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
+        archetype.visible_series =
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible_series)
+                .value_or_throw();
         archetype.marker_size =
             ComponentBatch::empty<rerun::components::MarkerSize>(Descriptor_marker_size)
                 .value_or_throw();
@@ -22,7 +25,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> SeriesPoint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (color.has_value()) {
             columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
@@ -31,6 +34,9 @@ namespace rerun::archetypes {
         }
         if (name.has_value()) {
             columns.push_back(name.value().partitioned(lengths_).value_or_throw());
+        }
+        if (visible_series.has_value()) {
+            columns.push_back(visible_series.value().partitioned(lengths_).value_or_throw());
         }
         if (marker_size.has_value()) {
             columns.push_back(marker_size.value().partitioned(lengths_).value_or_throw());
@@ -52,6 +58,9 @@ namespace rerun::archetypes {
         if (name.has_value()) {
             return columns(std::vector<uint32_t>(name.value().length(), 1));
         }
+        if (visible_series.has_value()) {
+            return columns(std::vector<uint32_t>(visible_series.value().length(), 1));
+        }
         if (marker_size.has_value()) {
             return columns(std::vector<uint32_t>(marker_size.value().length(), 1));
         }
@@ -66,7 +75,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(6);
 
         if (archetype.color.has_value()) {
             cells.push_back(archetype.color.value());
@@ -76,6 +85,9 @@ namespace rerun {
         }
         if (archetype.name.has_value()) {
             cells.push_back(archetype.name.value());
+        }
+        if (archetype.visible_series.has_value()) {
+            cells.push_back(archetype.visible_series.value());
         }
         if (archetype.marker_size.has_value()) {
             cells.push_back(archetype.marker_size.value());

@@ -84,6 +84,13 @@ pub struct SeriesPoint {
     /// Used in the legend.
     pub name: Option<SerializedComponentBatch>,
 
+    /// Which point series are visible.
+    ///
+    /// If not set, all point series on this entity are visible.
+    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
+    /// via this property will still be visible in the legend.
+    pub visible_series: Option<SerializedComponentBatch>,
+
     /// Size of the marker.
     pub marker_size: Option<SerializedComponentBatch>,
 }
@@ -119,6 +126,16 @@ impl SeriesPoint {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
+    #[inline]
+    pub fn descriptor_visible_series() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.Visible".into(),
+            archetype_field_name: Some("visible_series".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::marker_size`].
     #[inline]
     pub fn descriptor_marker_size() -> ComponentDescriptor {
@@ -146,30 +163,32 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [SeriesPoint::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesPoint::descriptor_color(),
             SeriesPoint::descriptor_marker(),
             SeriesPoint::descriptor_name(),
+            SeriesPoint::descriptor_visible_series(),
             SeriesPoint::descriptor_marker_size(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesPoint::descriptor_indicator(),
             SeriesPoint::descriptor_color(),
             SeriesPoint::descriptor_marker(),
             SeriesPoint::descriptor_name(),
+            SeriesPoint::descriptor_visible_series(),
             SeriesPoint::descriptor_marker_size(),
         ]
     });
 
 impl SeriesPoint {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`SeriesPoint`] [`::re_types_core::Archetype`]
@@ -230,6 +249,11 @@ impl ::re_types_core::Archetype for SeriesPoint {
         let name = arrays_by_descr
             .get(&Self::descriptor_name())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_name()));
+        let visible_series = arrays_by_descr
+            .get(&Self::descriptor_visible_series())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_visible_series())
+            });
         let marker_size = arrays_by_descr
             .get(&Self::descriptor_marker_size())
             .map(|array| {
@@ -239,6 +263,7 @@ impl ::re_types_core::Archetype for SeriesPoint {
             color,
             marker,
             name,
+            visible_series,
             marker_size,
         })
     }
@@ -253,6 +278,7 @@ impl ::re_types_core::AsComponents for SeriesPoint {
             self.color.clone(),
             self.marker.clone(),
             self.name.clone(),
+            self.visible_series.clone(),
             self.marker_size.clone(),
         ]
         .into_iter()
@@ -271,6 +297,7 @@ impl SeriesPoint {
             color: None,
             marker: None,
             name: None,
+            visible_series: None,
             marker_size: None,
         }
     }
@@ -297,6 +324,10 @@ impl SeriesPoint {
             name: Some(SerializedComponentBatch::new(
                 crate::components::Name::arrow_empty(),
                 Self::descriptor_name(),
+            )),
+            visible_series: Some(SerializedComponentBatch::new(
+                crate::components::Visible::arrow_empty(),
+                Self::descriptor_visible_series(),
             )),
             marker_size: Some(SerializedComponentBatch::new(
                 crate::components::MarkerSize::arrow_empty(),
@@ -333,6 +364,9 @@ impl SeriesPoint {
             self.name
                 .map(|name| name.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.visible_series
+                .map(|visible_series| visible_series.partitioned(_lengths.clone()))
+                .transpose()?,
             self.marker_size
                 .map(|marker_size| marker_size.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -356,11 +390,13 @@ impl SeriesPoint {
         let len_color = self.color.as_ref().map(|b| b.array.len());
         let len_marker = self.marker.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
+        let len_visible_series = self.visible_series.as_ref().map(|b| b.array.len());
         let len_marker_size = self.marker_size.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_color)
             .or(len_marker)
             .or(len_name)
+            .or(len_visible_series)
             .or(len_marker_size)
             .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
@@ -428,6 +464,21 @@ impl SeriesPoint {
         self
     }
 
+    /// Which point series are visible.
+    ///
+    /// If not set, all point series on this entity are visible.
+    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
+    /// via this property will still be visible in the legend.
+    #[inline]
+    pub fn with_visible_series(
+        mut self,
+        visible_series: impl IntoIterator<Item = impl Into<crate::components::Visible>>,
+    ) -> Self {
+        self.visible_series =
+            try_serialize_field(Self::descriptor_visible_series(), visible_series);
+        self
+    }
+
     /// Size of the marker.
     #[inline]
     pub fn with_marker_size(
@@ -458,6 +509,7 @@ impl ::re_byte_size::SizeBytes for SeriesPoint {
         self.color.heap_size_bytes()
             + self.marker.heap_size_bytes()
             + self.name.heap_size_bytes()
+            + self.visible_series.heap_size_bytes()
             + self.marker_size.heap_size_bytes()
     }
 }
