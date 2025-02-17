@@ -1,4 +1,3 @@
-use address::Origin;
 use arrow::{
     array::{
         ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StringArray as ArrowStringArray,
@@ -35,7 +34,7 @@ use tokio_stream::StreamExt as _;
 
 mod address;
 
-pub use address::{ConnectionError, RedapAddress};
+pub use address::{ConnectionError, Origin, RedapAddress};
 
 use crate::spawn_future;
 use crate::StreamError;
