@@ -247,9 +247,6 @@ pub fn format_record_batch_opts(
 }
 
 /// Nicely format this record batch, either with the given fixed width, or with the terminal width (`None`).
-///
-/// If `transposed` is `true`, the dataframe will be printed transposed on its diagonal axis.
-/// This is very useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
 pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
