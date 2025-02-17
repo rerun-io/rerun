@@ -59,7 +59,7 @@ pub fn stream_from_redap(
         }
         // TODO(#9058): This should be fix by introducing a `RedapRecordingAddress`.
         RedapAddress::Catalog { origin } => {
-            return Err(ConnectionError::CannotLoadURLAsRecording {
+            return Err(ConnectionError::CannotLoadUrlAsRecording {
                 url: origin.to_string(),
             });
         }
