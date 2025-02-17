@@ -592,7 +592,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "legend-reporting-hover" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }

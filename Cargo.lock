@@ -2166,8 +2166,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1794c66fb727dac28dffed2e4b548e5118d1cccc331d368a35411d68725dde71"
+source = "git+https://github.com/emilk/egui_plot.git?branch=legend-reporting-hover#d47bb2a63882768d32c5d77237d50fc147ae065f"
 dependencies = [
  "ahash",
  "egui",
