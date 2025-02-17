@@ -9,8 +9,7 @@ namespace rerun::blueprint::archetypes {
     LineGrid3D LineGrid3D::clear_fields() {
         auto archetype = LineGrid3D();
         archetype.visible =
-            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
-                .value_or_throw();
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
         archetype.spacing =
             ComponentBatch::empty<rerun::blueprint::components::GridSpacing>(Descriptor_spacing)
                 .value_or_throw();

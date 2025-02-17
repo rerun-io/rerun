@@ -72,3 +72,4 @@
 #include "components/vector3d.hpp"
 #include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"
+#include "components/visible.hpp"

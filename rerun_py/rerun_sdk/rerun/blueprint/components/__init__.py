@@ -36,7 +36,6 @@ from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .view_maximized import ViewMaximized, ViewMaximizedBatch
 from .view_origin import ViewOrigin, ViewOriginBatch
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
-from .visible import Visible, VisibleBatch
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch
 from .visualizer_overrides import VisualizerOverrides, VisualizerOverridesBatch
@@ -123,8 +122,6 @@ __all__ = [
     "ViewOriginBatch",
     "ViewerRecommendationHash",
     "ViewerRecommendationHashBatch",
-    "Visible",
-    "VisibleBatch",
     "VisibleTimeRange",
     "VisibleTimeRangeBatch",
     "VisualBounds2D",

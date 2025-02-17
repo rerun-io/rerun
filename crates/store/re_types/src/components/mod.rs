@@ -127,6 +127,8 @@ mod video_timestamp;
 mod video_timestamp_ext;
 mod view_coordinates;
 mod view_coordinates_ext;
+mod visible;
+mod visible_ext;
 
 pub use self::aggregation_policy::AggregationPolicy;
 pub use self::albedo_factor::AlbedoFactor;
@@ -197,3 +199,4 @@ pub use self::vector2d::Vector2D;
 pub use self::vector3d::Vector3D;
 pub use self::video_timestamp::VideoTimestamp;
 pub use self::view_coordinates::ViewCoordinates;
+pub use self::visible::Visible;

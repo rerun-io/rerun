@@ -10,7 +10,7 @@ from rerun.blueprint.components.container_kind import ContainerKind, ContainerKi
 from rerun.blueprint.components.grid_columns import GridColumns, GridColumnsBatch
 from rerun.blueprint.components.included_content import IncludedContentBatch
 from rerun.blueprint.components.row_share import RowShare, RowShareBatch
-from rerun.blueprint.components.visible import Visible, VisibleBatch
+from rerun.components.Visible import Visible, VisibleBatch
 from rerun.components.name import Name, NameBatch
 from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike

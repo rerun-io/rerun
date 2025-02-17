@@ -257,10 +257,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: blueprint_components.VisibleBatch | None = field(
+    visible: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether this container is visible.
     #

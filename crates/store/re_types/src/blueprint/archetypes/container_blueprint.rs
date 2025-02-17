@@ -128,7 +128,7 @@ impl ContainerBlueprint {
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.Visible".into(),
+            component_name: "rerun.components.Visible".into(),
             archetype_field_name: Some("visible".into()),
         }
     }
@@ -370,7 +370,7 @@ impl ContainerBlueprint {
                 Self::descriptor_active_tab(),
             )),
             visible: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::Visible::arrow_empty(),
+                crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
             )),
             grid_columns: Some(SerializedComponentBatch::new(
@@ -452,10 +452,7 @@ impl ContainerBlueprint {
     ///
     /// Defaults to true if not specified.
     #[inline]
-    pub fn with_visible(
-        mut self,
-        visible: impl Into<crate::blueprint::components::Visible>,
-    ) -> Self {
+    pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
     }
