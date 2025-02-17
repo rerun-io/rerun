@@ -30,6 +30,7 @@ pub(crate) struct MessageHeader {
 }
 
 impl MessageHeader {
+    #[allow(dead_code)] // used behind feature flag
     /// Size of an encoded message header, in bytes.
     pub const SIZE_BYTES: usize = 16;
 

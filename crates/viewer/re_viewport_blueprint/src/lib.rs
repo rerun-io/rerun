@@ -67,7 +67,7 @@ pub fn container_kind_from_egui(
 pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
     re_tracing::profile_function!();
 
-    ctx.view_class_registry
+    ctx.view_class_registry()
         .iter_registry()
         .flat_map(|entry| {
             let spawn_heuristics = entry.class.spawn_heuristics(ctx);

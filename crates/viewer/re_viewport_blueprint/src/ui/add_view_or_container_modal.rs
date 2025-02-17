@@ -107,12 +107,12 @@ fn modal_ui(
 
     // view of any kind
     for view in ctx
-        .view_class_registry
+        .view_class_registry()
         .iter_registry()
         .map(|entry| ViewBlueprint::new(entry.identifier, RecommendedView::root()))
     {
-        let icon = view.class(ctx.view_class_registry).icon();
-        let title = view.class(ctx.view_class_registry).display_name();
+        let icon = view.class(ctx.view_class_registry()).icon();
+        let title = view.class(ctx.view_class_registry()).display_name();
         let subtitle = format!("Create a new view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {

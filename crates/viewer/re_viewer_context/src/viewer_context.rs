@@ -7,6 +7,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::GlobalContext;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
@@ -16,23 +17,8 @@ use crate::{
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
-    /// Global options for the whole viewer.
-    pub app_options: &'a AppOptions,
-
-    /// Runtime info about components and archetypes.
-    ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    /// is not able to provide a value.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    pub reflection: &'a re_types_core::reflection::Reflection,
-
-    /// How to display components.
-    pub component_ui_registry: &'a ComponentUiRegistry,
-
-    /// Registry of all known classes of views.
-    pub view_class_registry: &'a ViewClassRegistry,
+    /// Global context shared across all parts of the viewer.
+    pub global_context: GlobalContext<'a>,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -57,20 +43,11 @@ pub struct ViewerContext<'a> {
     /// UI config for the current blueprint.
     pub blueprint_cfg: &'a RecordingConfig,
 
-    /// Selection & hovering state.
-    pub selection_state: &'a ApplicationSelectionState,
-
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
-    /// The [`egui::Context`].
-    pub egui_ctx: &'a egui::Context,
-
-    /// The global `re_renderer` context, holds on to all GPU resources.
-    pub render_ctx: &'a re_renderer::RenderContext,
-
-    /// Interface for sending commands back to the app
-    pub command_sender: &'a CommandSender,
+    /// Selection & hovering state.
+    pub selection_state: &'a ApplicationSelectionState,
 
     /// Item that got focused on the last frame if any.
     ///
@@ -80,6 +57,51 @@ pub struct ViewerContext<'a> {
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
+}
+
+// Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a
+// separate block for easier refactoring (i.e. macros) in the future.
+impl ViewerContext<'_> {
+    /// Global options for the whole viewer.
+    pub fn app_options(&self) -> &AppOptions {
+        self.global_context.app_options
+    }
+
+    /// Runtime info about components and archetypes.
+    ///
+    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// is not able to provide a value.
+    ///
+    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
+    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
+    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
+        self.global_context.reflection
+    }
+
+    /// How to display components.
+    pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
+        self.global_context.component_ui_registry
+    }
+
+    /// Registry of all known classes of views.
+    pub fn view_class_registry(&self) -> &ViewClassRegistry {
+        self.global_context.view_class_registry
+    }
+
+    /// The [`egui::Context`].
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.global_context.egui_ctx
+    }
+
+    /// The global `re_renderer` context, holds on to all GPU resources.
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.global_context.render_ctx
+    }
+
+    /// Interface for sending commands back to the app
+    pub fn command_sender(&self) -> &CommandSender {
+        self.global_context.command_sender
+    }
 }
 
 impl ViewerContext<'_> {
@@ -197,7 +219,8 @@ impl ViewerContext<'_> {
         } else if response.clicked() {
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
-                    self.command_sender
+                    self.global_context
+                        .command_sender
                         .send_system(crate::SystemCommand::SetFocus(item.clone()));
                 }
             }
@@ -228,7 +251,7 @@ impl ViewerContext<'_> {
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
     pub fn placeholder_for(&self, component: re_chunk::ComponentName) -> ArrayRef {
-        let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
+        let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
                 return placeholder.clone();

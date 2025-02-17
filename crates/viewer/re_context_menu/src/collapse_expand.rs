@@ -20,7 +20,7 @@ pub fn collapse_expand_container(
         match contents {
             Contents::Container(container_id) => scope
                 .container(*container_id)
-                .set_open(ctx.egui_ctx, expand),
+                .set_open(ctx.egui_ctx(), expand),
 
             Contents::View(view_id) => collapse_expand_view(ctx, view_id, scope, expand),
         }
@@ -35,7 +35,7 @@ pub fn collapse_expand_view(
     scope: CollapseScope,
     expand: bool,
 ) {
-    scope.view(*view_id).set_open(ctx.egui_ctx, expand);
+    scope.view(*view_id).set_open(ctx.egui_ctx(), expand);
 
     let query_result = ctx.lookup_query_result(*view_id);
     let result_tree = &query_result.tree;
@@ -66,7 +66,7 @@ pub fn collapse_expand_data_result(
     subtree.visit_children_recursively(|entity_path| {
         scope
             .data_result(*view_id, entity_path.clone())
-            .set_open(ctx.egui_ctx, expand);
+            .set_open(ctx.egui_ctx(), expand);
     });
 }
 
@@ -84,6 +84,6 @@ pub fn collapse_expand_instance_path(
     subtree.visit_children_recursively(|entity_path| {
         scope
             .entity(entity_path.clone())
-            .set_open(ctx.egui_ctx, expand);
+            .set_open(ctx.egui_ctx(), expand);
     });
 }

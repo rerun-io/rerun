@@ -78,7 +78,7 @@ impl DataUi for InstancePath {
                     query
                         .timeline()
                         .typ()
-                        .format(query.at(), ctx.app_options.time_zone),
+                        .format(query.at(), ctx.app_options().time_zone),
                 ),
             );
             return;
@@ -235,7 +235,7 @@ fn component_list_ui(
                                 db,
                             );
                         } else {
-                            ctx.component_ui_registry.ui(
+                            ctx.component_ui_registry().ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,
@@ -405,7 +405,7 @@ fn image_download_button_ui(
                         .map_or("image", |name| name.unescaped_str())
                         .to_owned()
                 );
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender().save_file_dialog(
                     re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save image".to_owned(),

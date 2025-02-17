@@ -19,7 +19,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
     let property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query, view_id);
 
-    let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
+    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -65,7 +65,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
         let row_id = property.component_row_id(field.component_name);
 
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-            ctx.component_ui_registry.singleline_edit_ui(
+            ctx.component_ui_registry().singleline_edit_ui(
                 &query_ctx,
                 ui,
                 ctx.blueprint_db(),

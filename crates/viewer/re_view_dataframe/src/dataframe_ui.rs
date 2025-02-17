@@ -318,7 +318,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         match column {
                             ColumnDescriptor::Time(descr) => {
                                 if response.clicked() {
-                                    self.ctx.command_sender.send_system(
+                                    self.ctx.command_sender().send_system(
                                         re_viewer_context::SystemCommand::SetActiveTimeline {
                                             rec_id: self.ctx.recording_id().clone(),
                                             timeline: descr.timeline(),

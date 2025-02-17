@@ -34,7 +34,7 @@ pub fn singleline_view_recording_uri(
 
             match data_source.stream(None) {
                 Ok(re_data_source::StreamSource::LogMessages(rx)) => _ctx
-                    .command_sender
+                    .command_sender()
                     .send_system(SystemCommand::AddReceiver(rx)),
                 Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                     // TODO(antoine, andreas): This branch might become relevant in the future.
