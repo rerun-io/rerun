@@ -88,12 +88,13 @@ impl Origin {
         )
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn coerce_http_scheme(&self) -> String {
         format!("http://{}:{}", self.host, self.port)
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn client(
+    pub async fn client(
         &self,
     ) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
