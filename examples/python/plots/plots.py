@@ -82,7 +82,7 @@ def log_trig() -> None:
 
 def log_spiral() -> None:
     times = np.arange(int(tau * 2 * 100.0))
-    theta = times / 100.
+    theta = times / 100.0
 
     x = theta * np.cos(theta)
     y = theta * np.sin(theta)
@@ -91,12 +91,9 @@ def log_spiral() -> None:
     scalars = np.array((x, y)).T
 
     rr.send_columns(
-        "spiral",
-         indexes=[rr.TimeSequenceColumn("frame_nr", times)],
-         columns=[
-             *rr.Scalar.columns(scalar=scalars)
-         ]
+        "spiral", indexes=[rr.TimeSequenceColumn("frame_nr", times)], columns=[*rr.Scalar.columns(scalar=scalars)]
     )
+
 
 def log_classification() -> None:
     for t in range(0, 1000, 2):
@@ -160,11 +157,9 @@ def main() -> None:
                 rrb.TimeSeriesView(
                     name="Spiral",
                     origin="/spiral",
-                    overrides={
-                        "spiral": [rr.components.NameBatch(["0.01t cos(0.01t)", "0.01t sin(0.01t)"])]
-                    }
+                    overrides={"spiral": [rr.components.NameBatch(["0.01t cos(0.01t)", "0.01t sin(0.01t)"])]},
                 ),
-                row_shares=[2, 1]
+                row_shares=[2, 1],
             ),
             rrb.TextDocumentView(name="Description", origin="/description"),
             column_shares=[3, 1],
