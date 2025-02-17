@@ -94,6 +94,11 @@ impl InteractionHighlight {
             hover: self.hover.max(other.hover),
         }
     }
+
+    /// Returns true if either selection or hover is active.
+    pub fn any(&self) -> bool {
+        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    }
 }
 
 /// An ordered collection of [`Item`] and optional associated context objects.

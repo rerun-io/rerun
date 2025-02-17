@@ -424,7 +424,7 @@ impl ViewClass for TimeSeriesView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
-        let mut plot_item_id_to_entity_path = HashMap::default();
+        let mut plot_item_id_to_instance_path = HashMap::default();
 
         let mut is_resetting = false;
 
@@ -465,7 +465,7 @@ impl ViewClass for TimeSeriesView {
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
                 all_plot_series
                     .iter()
-                    .map(|series| series.entity_path.clone()),
+                    .map(|series| series.instance_path.entity_path.clone()),
             );
 
             for series in all_plot_series {
@@ -485,8 +485,14 @@ impl ViewClass for TimeSeriesView {
                     .collect::<Vec<_>>();
 
                 let color = series.color;
-                let id = egui::Id::new(series.entity_path.hash());
-                plot_item_id_to_entity_path.insert(id, series.entity_path.clone());
+                let id = egui::Id::new(series.instance_path.hash());
+                plot_item_id_to_instance_path.insert(id, series.instance_path.clone());
+
+                let interaction_highlight = query
+                    .highlights
+                    .entity_highlight(series.instance_path.entity_path.hash())
+                    .index_highlight(series.instance_path.instance);
+                let highlight = interaction_highlight.any();
 
                 match series.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
@@ -494,6 +500,7 @@ impl ViewClass for TimeSeriesView {
                             .name(&series.label)
                             .color(color)
                             .width(2.0 * series.radius_ui)
+                            .highlight(highlight)
                             .id(id),
                     ),
                     PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
@@ -502,6 +509,7 @@ impl ViewClass for TimeSeriesView {
                             .color(color)
                             .radius(series.radius_ui)
                             .shape(scatter_attrs.marker.into())
+                            .highlight(highlight)
                             .id(id),
                     ),
                     // Break up the chart. At some point we might want something fancier.
@@ -543,9 +551,9 @@ impl ViewClass for TimeSeriesView {
         // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
         if !is_resetting {
             if let Some(hovered) = hovered_plot_item
-                .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
                 .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone())
                 })
                 .or_else(|| {
                     if response.hovered() {
