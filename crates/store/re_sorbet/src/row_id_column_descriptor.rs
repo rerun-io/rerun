@@ -75,28 +75,9 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        // Self::try_from(field.data_type())
         WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), field.data_type())?;
         Ok(Self {
             is_sorted: field.metadata().get_bool("rerun.is_sorted"),
         })
     }
 }
-
-// impl TryFrom<&ArrowDatatype> for RowIdColumnDescriptor {
-//     type Error = WrongDatatypeError;
-
-//     fn try_from(data_type: &ArrowDatatype) -> Result<Self, Self::Error> {
-//         WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), data_type)?;
-//         Ok(Self {})
-//     }
-// }
-
-// impl TryFrom<ArrowDatatype> for RowIdColumnDescriptor {
-//     type Error = WrongDatatypeError;
-
-//     fn try_from(data_type: ArrowDatatype) -> Result<Self, Self::Error> {
-//         WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), &data_type)?;
-//         Ok(Self {})
-//     }
-// }
