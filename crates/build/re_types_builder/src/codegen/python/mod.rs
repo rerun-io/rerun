@@ -2579,9 +2579,7 @@ fn quote_columnar_partition_size(obj: &Object) -> String {
             obj.fields[0].snake_case_name()
         ))
     } else {
-        unindent(&format!(
-            "lengths = np.ones(len(batches[0]._batch.as_arrow_array()))"
-        ))
+        unindent("lengths = np.ones(len(batches[0]._batch.as_arrow_array()))")
     }
 }
 
