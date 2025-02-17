@@ -29,8 +29,7 @@ rr.send_columns(
     indexes=[rr.TimeSequenceColumn("step", times)],
     # Reshape the images so `Image` can tell that this is several blobs.
     #
-    # Note that the `Image` consumes arrays of bytes, so if you have a different channel
-    # datatype than `U8`, you need to make sure that the data is converted to arrays of bytes
-    # before passing it to `Image`.
-    columns=rr.Image.columns(buffer=images.reshape(len(times), -1)),
+    # Note that the `Image` consumes arrays of bytes, so we should ensure that we take a
+    # uint8 view of it. This way, this also works when working with datatypes other than `U8`.
+    columns=rr.Image.columns(buffer=images.view(np.uint8).reshape(len(times), -1)),
 )
