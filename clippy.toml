@@ -74,7 +74,6 @@ disallowed-names = []
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
-  { path = "arrow::ipc::writer::StreamWriter", reason = "Wait until https://github.com/apache/arrow-rs/pull/6805 has been released" },
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
