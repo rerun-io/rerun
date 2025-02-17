@@ -232,6 +232,8 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     row_index,
                     None,
                 );
+
+                break;
             } else {
                 row_index -= row_count;
             }

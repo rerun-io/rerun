@@ -244,11 +244,8 @@ async fn stream_catalog_async(
                 .map_err(StreamError::from)
         })
         .map(|record_batch| {
-            record_batch.and_then(|mut record_batch| {
-                //TODO: ugly workaround because of the row id with old Tuid serialization
-                record_batch.remove_column(0);
-                SorbetBatch::try_from(&record_batch).map_err(Into::into)
-            })
+            record_batch
+                .and_then(|record_batch| SorbetBatch::try_from(&record_batch).map_err(Into::into))
         })
         .collect::<Result<Vec<_>, _>>()
         .await?;
