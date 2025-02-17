@@ -33,7 +33,7 @@ pub fn singleline_view_recording_uri(
             );
 
             match data_source.stream(None) {
-                Ok(rx) => ctx
+                Ok(rx) => _ctx
                     .command_sender()
                     .send_system(SystemCommand::AddReceiver(rx)),
                 Err(err) => re_log::warn!("Could not open recording URI: {err}"),
