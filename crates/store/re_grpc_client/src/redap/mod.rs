@@ -1,16 +1,17 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
+use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
-use re_log_encoding::codec::wire::decoder::Decode;
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
-        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
+        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
+        CATALOG_START_TIME_FIELD_NAME,
     },
 };
 

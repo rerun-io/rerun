@@ -6,7 +6,7 @@ use tokio_stream::StreamExt as _;
 
 use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, QueryCatalogRequest};
+use re_protos::remote_store::v0::QueryCatalogRequest;
 use re_sorbet::SorbetBatch;
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -126,7 +126,7 @@ impl CatalogHub {
 
     pub fn server_list_ui(&self, ui: &mut egui::Ui) {
         for (origin, catalog) in self.catalogs.lock().iter() {
-            let content = list_item::LabelContent::new(origin.to_http_scheme());
+            let content = list_item::LabelContent::new(origin.to_string());
             ui.list_item()
                 .interactive(false)
                 .show_hierarchical_with_children(
@@ -206,21 +206,7 @@ async fn stream_catalog_async(
     origin: redap::Origin,
     catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
 ) -> Result<(), StreamError> {
-    let mut client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            origin.to_string(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(origin.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await?;
-
-        StorageNodeClient::new(tonic_client)
-    };
+    let mut client = origin.client().await?;
 
     re_log::debug!("Fetching collection…");
 
