@@ -66,7 +66,7 @@ fn log_messages() {
 
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
-        let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
+        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
         re_log_encoding::encoder::encode_ref(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,

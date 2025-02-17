@@ -315,8 +315,6 @@ impl RangeCache {
 
     #[inline]
     pub fn handle_pending_invalidation(&mut self) {
-        re_tracing::profile_function!();
-
         let Self {
             cache_key: _,
             chunks,

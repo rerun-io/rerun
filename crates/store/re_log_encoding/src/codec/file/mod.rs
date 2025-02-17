@@ -30,6 +30,12 @@ pub(crate) struct MessageHeader {
 }
 
 impl MessageHeader {
+    #[allow(dead_code)] // used behind feature flag
+    /// Size of an encoded message header, in bytes.
+    pub const SIZE_BYTES: usize = 16;
+
+    // NOTE: We use little-endian encoding, because we live in
+    //       the 21st century.
     #[cfg(feature = "encoder")]
     pub(crate) fn encode(
         &self,
@@ -45,7 +51,7 @@ impl MessageHeader {
     pub(crate) fn decode(
         data: &mut impl std::io::Read,
     ) -> Result<Self, crate::decoder::DecodeError> {
-        let mut buf = [0; std::mem::size_of::<Self>()];
+        let mut buf = [0; Self::SIZE_BYTES];
         data.read_exact(&mut buf)?;
 
         Self::from_bytes(&buf)
@@ -55,7 +61,7 @@ impl MessageHeader {
     /// TODO(zehiko) this should be public, we need to shuffle things around to ensure that #8726
     #[cfg(feature = "decoder")]
     pub fn from_bytes(buf: &[u8]) -> Result<Self, crate::decoder::DecodeError> {
-        if buf.len() != 16 {
+        if buf.len() != Self::SIZE_BYTES {
             return Err(crate::decoder::DecodeError::Codec(
                 crate::codec::CodecError::HeaderDecoding(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
