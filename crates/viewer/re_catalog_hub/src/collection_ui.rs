@@ -15,6 +15,15 @@ use re_viewer_context::ViewerContext;
 
 use super::hub::{Command, RecordingCollection};
 
+#[derive(thiserror::Error, Debug)]
+enum CollectionUiError {
+    #[error(transparent)]
+    DisplayRecordBatchError(#[from] DisplayRecordBatchError),
+
+    #[error("Unexpected data error: {0}")]
+    UnexpectedDataError(String),
+}
+
 pub fn collection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -41,24 +50,13 @@ pub fn collection_ui(
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
 
-    //TODO: clean that up!
-    let extra_desc = ComponentColumnDescriptor {
-        store_datatype: ArrowDataType::Utf8,
-        component_name: "rerun.components.RecordingUri".into(),
-        entity_path: EntityPath::root(),
-        archetype_name: None,
-        archetype_field_name: None,
-        is_static: false,
-        is_indicator: false,
-        is_tombstone: false,
-        is_semantically_empty: false,
-    };
-
     let columns = sorbet_schema
         .columns
         .descriptors()
-        .chain(std::iter::once(ColumnDescriptorRef::from(&extra_desc)))
+        .chain(std::iter::once(component_uri_descriptor()))
         .collect::<Vec<_>>();
+
+    //TODO(ab): better column order?
 
     let display_record_batches: Result<Vec<_>, _> = collection
         .collection
@@ -69,7 +67,7 @@ pub fn collection_ui(
     let display_record_batches = match display_record_batches {
         Ok(display_record_batches) => display_record_batches,
         Err(err) => {
-            //TODO: better error handling?
+            //TODO(ab): better error handling?
             ui.error_label(err.to_string());
             return commands;
         }
@@ -108,39 +106,60 @@ pub fn collection_ui(
     commands
 }
 
-//TODO: clean this mess
+/// Descriptor for the generated `RecordingUri` component.
+fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
+    static COMPONENT_URI_DESCRIPTOR: once_cell::sync::Lazy<ComponentColumnDescriptor> =
+        once_cell::sync::Lazy::new(|| ComponentColumnDescriptor {
+            store_datatype: ArrowDataType::Utf8,
+            component_name: "rerun.components.RecordingUri".into(),
+            entity_path: EntityPath::root(),
+            archetype_name: None,
+            archetype_field_name: None,
+            is_static: false,
+            is_indicator: false,
+            is_tombstone: false,
+            is_semantically_empty: false,
+        });
+
+    (&*COMPONENT_URI_DESCRIPTOR).into()
+}
+
+/// Convert a `SorbetBatch` to a `DisplayRecordBatch` and generate a `RecordingUri` column on the
+/// fly.
 fn catalog_sorbet_batch_to_display_record_batch(
     origin: &redap::Origin,
     sorbet_batch: &SorbetBatch,
-) -> Result<DisplayRecordBatch, DisplayRecordBatchError> {
-    let rec_ids_descriptor = ComponentColumnDescriptor {
-        store_datatype: ArrowDataType::Utf8,
-        component_name: "rerun.components.RecordingUri".into(),
-        entity_path: EntityPath::root(),
-        archetype_name: None,
-        archetype_field_name: None,
-        is_static: false,
-        is_indicator: false,
-        is_tombstone: false,
-        is_semantically_empty: false,
-    };
-
-    let rec_ids: Option<(ColumnDescriptorRef<'_>, ArrayRef)> = sorbet_batch
+) -> Result<DisplayRecordBatch, CollectionUiError> {
+    let rec_ids = sorbet_batch
         .column_by_name(CATALOG_ID_FIELD_NAME)
         .map(|rec_ids| {
-            let list_array = rec_ids.downcast_array_ref::<ArrowListArray>().unwrap();
+            let list_array = rec_ids
+                .downcast_array_ref::<ArrowListArray>()
+                .ok_or_else(|| {
+                    CollectionUiError::UnexpectedDataError(format!(
+                        "{CATALOG_ID_FIELD_NAME} column is not a list array as expected"
+                    ))
+                })?;
 
-            let recording_uri_arrays: Vec<ArrayRef> = (0..list_array.len())
+            let recording_uri_arrays = (0..list_array.len())
                 .map(|idx| {
                     let list = list_array.value(idx);
 
-                    let string_array = list.downcast_array_ref::<ArrowStringArray>().unwrap();
+                    let string_array =
+                        list.downcast_array_ref::<ArrowStringArray>()
+                            .ok_or_else(|| {
+                                CollectionUiError::UnexpectedDataError(format!(
+                                    "{CATALOG_ID_FIELD_NAME} column inner item is not a string \
+                                     array as expected"
+                                ))
+                            })?;
                     let rec_id = string_array.value(0);
 
                     let recording_uri = format!("{origin}/recording/{rec_id}");
-                    as_array_ref(ArrowStringArray::from(vec![recording_uri]))
+
+                    Ok(as_array_ref(ArrowStringArray::from(vec![recording_uri])))
                 })
-                .collect();
+                .collect::<Result<Vec<_>, CollectionUiError>>()?;
 
             let recording_id_arrays = recording_uri_arrays
                 .iter()
@@ -153,15 +172,14 @@ fn catalog_sorbet_batch_to_display_record_batch(
                 rec_id_field.data_type().clone(),
                 &recording_id_arrays,
             )
-            .unwrap();
+            .expect("We know the datatype is correct");
 
-            (
-                ColumnDescriptorRef::from(&rec_ids_descriptor),
+            Result::<_, CollectionUiError>::Ok((
+                component_uri_descriptor(),
                 Arc::new(uris) as ArrayRef,
-            )
-        });
-
-    dbg!(&rec_ids);
+            ))
+        })
+        .transpose()?;
 
     DisplayRecordBatch::try_new(
         sorbet_batch
@@ -169,32 +187,7 @@ fn catalog_sorbet_batch_to_display_record_batch(
             .map(|(desc, array)| (desc, array.clone()))
             .chain(rec_ids),
     )
-
-    // let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
-    //     .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())
-    //     .map(|id| {
-    //         let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
-    //
-    //         let recording_uri = format!("{origin}/recording/{rec_id}");
-    //
-    //         as_array_ref(ArrowStringArray::from(vec![recording_uri]))
-    //     })
-    //     .collect();
-    //
-    // let recording_id_arrays = recording_uri_arrays
-    //     .iter()
-    //     .map(|e| Some(e.as_ref()))
-    //     .collect::<Vec<_>>();
-    //
-    // let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
-    // #[allow(clippy::unwrap_used)] // we know we've given the right field type
-    // let uris = re_arrow_util::arrays_to_list_array(
-    //     rec_id_field.data_type().clone(),
-    //     &recording_id_arrays,
-    // )
-    //     .unwrap();
-    //
-    // chunk.add_component(ComponentDescriptor::new(RecordingUri::name()), uris)?;
+    .map_err(Into::into)
 }
 
 struct CollectionTableDelegate<'a> {
@@ -228,10 +221,11 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                 // this is the one
                 let column = &display_record_batch.columns()[cell.col_nr];
 
+                // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+                // avoiding doing so needs significant refactoring work.
                 column.data_ui(
                     self.ctx,
                     ui,
-                    //TODO: oh god
                     &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
                         Timeline::new_sequence("unknown"),
                     ),

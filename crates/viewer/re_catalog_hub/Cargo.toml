@@ -37,7 +37,9 @@ ahash.workspace = true
 arrow.workspace = true
 egui.workspace = true
 egui_table.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
+thiserror.workspace = true
 tokio-stream.workspace = true
 
 # Native dependencies:
