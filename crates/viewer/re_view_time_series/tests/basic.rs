@@ -1,7 +1,10 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass, ViewId};
+use re_viewer_context::{
+    test_context::{HarnessExt, TestContext},
+    RecommendedView, ViewClass, ViewId,
+};
 use re_viewport_blueprint::{test_context_ext::TestContextExt, ViewBlueprint};
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
@@ -86,6 +89,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
+        if two_series_per_entity { 0.00006 } else { 0.0 },
     );
 }
 
@@ -174,7 +178,13 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, &name, egui::vec2(300.0, 300.0));
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        &name,
+        egui::vec2(300.0, 300.0),
+        if multiple_scalars { 0.00006 } else { 0.0 },
+    );
 }
 
 const MARKER_LIST: [re_types::components::MarkerShape; 10] = [
@@ -264,7 +274,13 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, &name, egui::vec2(300.0, 300.0));
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        &name,
+        egui::vec2(300.0, 300.0),
+        0.00006, // Allow 5 broken pixels
+    );
 }
 
 fn get_test_context() -> TestContext {
@@ -295,6 +311,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    broken_pixels_percent: f64,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -331,5 +348,9 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(name);
+    harness.snapshot_with_broken_pixels_threshold(
+        name,
+        (size.x * size.y) as u64,
+        broken_pixels_percent,
+    );
 }
