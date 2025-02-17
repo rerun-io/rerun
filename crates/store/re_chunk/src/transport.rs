@@ -218,11 +218,16 @@ impl Chunk {
             components
         };
 
-        let is_sorted_by_row_id = batch.chunk_schema().row_id_column().is_sorted;
+        let is_sorted_by_row_id = if batch.chunk_schema().row_id_column().is_sorted {
+            Some(true) // trust the chunk schema
+        } else {
+            None // Check whether or not it is sorted
+        };
+
         let mut res = Self::new(
             batch.chunk_id(),
             batch.entity_path().clone(),
-            is_sorted_by_row_id.then_some(true),
+            is_sorted_by_row_id,
             row_ids,
             timelines,
             components,
