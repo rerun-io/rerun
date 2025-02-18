@@ -90,10 +90,10 @@ impl DataQueryResult {
     }
 
     #[inline]
-    pub fn contains_entity(&self, path: &EntityPath) -> bool {
+    pub fn result_for_entity(&self, path: &EntityPath) -> Option<&DataResult> {
         self.tree
             .lookup_result_by_path(path)
-            .is_some_and(|result| !result.tree_prefix_only)
+            .filter(|result| !result.tree_prefix_only)
     }
 }
 
