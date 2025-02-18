@@ -55,8 +55,8 @@ pub struct GlobalContext<'a> {
 /// Which display mode are we currently in?
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayMode {
-    /// Regular viewer, including the view port.
-    Viewer,
+    /// Regular view of the local recordings, including the current recording's viewport.
+    LocalRecordings,
 
     /// The Redap server/catalog/collection browser.
     RedapBrowser,

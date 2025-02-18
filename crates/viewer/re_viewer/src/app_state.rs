@@ -778,7 +778,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             if !open_url.new_tab {
                                 ctx.command_sender()
                                     .send_system(SystemCommand::ChangeDisplayMode(
-                                        DisplayMode::Viewer,
+                                        DisplayMode::LocalRecordings,
                                     ));
                             }
                         }
