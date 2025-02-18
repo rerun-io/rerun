@@ -11,6 +11,7 @@ use re_types::{
     Archetype as _, Component, Loggable,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     auto_color_egui, auto_color_for_entity_path, IdentifiedViewSystem, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
@@ -534,9 +535,22 @@ impl SeriesLineSystem {
             }
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
-            for (points, label) in points_per_series.into_iter().zip(series_names.into_iter()) {
+            for (instance, (points, label)) in points_per_series
+                .into_iter()
+                .zip(series_names.into_iter())
+                .enumerate()
+            {
+                let instance_path = if num_series == 1 {
+                    InstancePath::entity_all(data_result.entity_path.clone())
+                } else {
+                    InstancePath::instance(
+                        data_result.entity_path.clone(),
+                        (instance as u64).into(),
+                    )
+                };
+
                 points_to_series(
-                    &data_result.entity_path,
+                    instance_path,
                     time_per_pixel,
                     points,
                     ctx.recording_engine().store(),

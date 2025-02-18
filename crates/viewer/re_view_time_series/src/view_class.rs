@@ -15,11 +15,12 @@ use re_view::controls::{
     ZOOM_SCROLL_MODIFIER,
 };
 use re_view::{controls, view_property_ui};
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange,
     RecommendedView, SmallVisualizerSet, SystemExecutionOutput, TypedComponentFallbackProvider,
-    ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    ViewClass, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -424,7 +425,7 @@ impl ViewClass for TimeSeriesView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
-        let mut plot_item_id_to_entity_path = HashMap::default();
+        let mut plot_item_id_to_instance_path = HashMap::default();
 
         let mut is_resetting = false;
 
@@ -458,56 +459,12 @@ impl ViewClass for TimeSeriesView {
                 is_resetting && !y_zoom_lock,
             ]);
 
-            *state.scalar_range.start_mut() = f64::INFINITY;
-            *state.scalar_range.end_mut() = f64::NEG_INFINITY;
-
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
                 all_plot_series
                     .iter()
-                    .map(|series| series.entity_path.clone()),
+                    .map(|series| series.instance_path.entity_path.clone()),
             );
-
-            for series in all_plot_series {
-                let points = series
-                    .points
-                    .iter()
-                    .map(|p| {
-                        if p.1 < state.scalar_range.start() {
-                            *state.scalar_range.start_mut() = p.1;
-                        }
-                        if p.1 > state.scalar_range.end() {
-                            *state.scalar_range.end_mut() = p.1;
-                        }
-
-                        [(p.0 - time_offset) as _, p.1]
-                    })
-                    .collect::<Vec<_>>();
-
-                let color = series.color;
-                let id = egui::Id::new(series.entity_path.hash());
-                plot_item_id_to_entity_path.insert(id, series.entity_path.clone());
-
-                match series.kind {
-                    PlotSeriesKind::Continuous => plot_ui.line(
-                        Line::new(points)
-                            .name(&series.label)
-                            .color(color)
-                            .width(2.0 * series.radius_ui)
-                            .id(id),
-                    ),
-                    PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
-                        Points::new(points)
-                            .name(&series.label)
-                            .color(color)
-                            .radius(series.radius_ui)
-                            .shape(scatter_attrs.marker.into())
-                            .id(id),
-                    ),
-                    // Break up the chart. At some point we might want something fancier.
-                    PlotSeriesKind::Clear => {}
-                }
-            }
 
             if state.is_dragging_time_cursor {
                 if !state.was_dragging_time_cursor {
@@ -519,8 +476,16 @@ impl ViewClass for TimeSeriesView {
             } else if state.was_dragging_time_cursor {
                 plot_ui.set_auto_bounds(state.saved_auto_bounds);
             }
-
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
+
+            add_series_to_plot(
+                plot_ui,
+                &query.highlights,
+                all_plot_series,
+                time_offset,
+                &mut state.scalar_range,
+                &mut plot_item_id_to_instance_path,
+            );
         });
 
         // Write new y_range if it has changed.
@@ -543,9 +508,9 @@ impl ViewClass for TimeSeriesView {
         // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
         if !is_resetting {
             if let Some(hovered) = hovered_plot_item
-                .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
                 .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone())
                 })
                 .or_else(|| {
                     if response.hovered() {
@@ -590,6 +555,68 @@ impl ViewClass for TimeSeriesView {
         }
 
         Ok(())
+    }
+}
+
+fn add_series_to_plot(
+    plot_ui: &mut egui_plot::PlotUi<'_>,
+    highlights: &ViewHighlights,
+    all_plot_series: Vec<&crate::PlotSeries>,
+    time_offset: i64,
+    scalar_range: &mut Range1D,
+    plot_item_id_to_instance_path: &mut HashMap<egui::Id, InstancePath>,
+) {
+    re_tracing::profile_function!();
+
+    *scalar_range.start_mut() = f64::INFINITY;
+    *scalar_range.end_mut() = f64::NEG_INFINITY;
+
+    for series in all_plot_series {
+        let points = series
+            .points
+            .iter()
+            .map(|p| {
+                if p.1 < scalar_range.start() {
+                    *scalar_range.start_mut() = p.1;
+                }
+                if p.1 > scalar_range.end() {
+                    *scalar_range.end_mut() = p.1;
+                }
+
+                [(p.0 - time_offset) as _, p.1]
+            })
+            .collect::<Vec<_>>();
+
+        let color = series.color;
+        let id = egui::Id::new(series.instance_path.hash());
+        plot_item_id_to_instance_path.insert(id, series.instance_path.clone());
+
+        let interaction_highlight = highlights
+            .entity_highlight(series.instance_path.entity_path.hash())
+            .index_highlight(series.instance_path.instance);
+        let highlight = interaction_highlight.any();
+
+        match series.kind {
+            PlotSeriesKind::Continuous => plot_ui.line(
+                Line::new(points)
+                    .name(&series.label)
+                    .color(color)
+                    .width(2.0 * series.radius_ui)
+                    .highlight(highlight)
+                    .id(id),
+            ),
+            PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
+                Points::new(points)
+                    .name(&series.label)
+                    .color(color)
+                    .radius(series.radius_ui)
+                    .shape(scatter_attrs.marker.into())
+                    .highlight(highlight)
+                    .id(id),
+            ),
+            // Break up the chart. At some point we might want something fancier.
+            PlotSeriesKind::Clear => {}
+        }
     }
 }
 

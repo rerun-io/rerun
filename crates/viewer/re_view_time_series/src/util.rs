@@ -1,9 +1,9 @@
-use re_log_types::{EntityPath, ResolvedTimeRange};
+use re_log_types::ResolvedTimeRange;
 use re_types::{
     components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary},
 };
-use re_viewer_context::{ViewQuery, ViewerContext};
+use re_viewer_context::{external::re_entity_db::InstancePath, ViewQuery, ViewerContext};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
@@ -82,7 +82,7 @@ pub fn determine_time_range(
 // we notice a change in attributes, we need a new series.
 #[allow(clippy::too_many_arguments)]
 pub fn points_to_series(
-    entity_path: &EntityPath,
+    instance_path: InstancePath,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
@@ -91,14 +91,14 @@ pub fn points_to_series(
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
-    re_tracing::profile_scope!("secondary", &entity_path.to_string());
+    re_tracing::profile_scope!("secondary", &instance_path.to_string());
     if points.is_empty() {
         return;
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
-        .entity_min_time(&query.timeline, entity_path)
+        .entity_min_time(&query.timeline, &instance_path.entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
     if points.len() == 1 {
@@ -114,7 +114,7 @@ pub fn points_to_series(
             radius_ui: points[0].attrs.radius_ui,
             kind,
             points: vec![(points[0].time, points[0].value)],
-            entity_path: entity_path.clone(),
+            instance_path,
             aggregator,
             aggregation_factor,
             min_time,
@@ -123,7 +123,7 @@ pub fn points_to_series(
         add_series_runs(
             series_label,
             points,
-            entity_path,
+            instance_path,
             aggregator,
             aggregation_factor,
             min_time,
@@ -203,7 +203,7 @@ pub fn apply_aggregation(
 fn add_series_runs(
     series_label: String,
     points: Vec<PlotPoint>,
-    entity_path: &EntityPath,
+    instance_path: InstancePath,
     aggregator: AggregationPolicy,
     aggregation_factor: f64,
     min_time: i64,
@@ -219,7 +219,7 @@ fn add_series_runs(
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
         kind: attrs.kind,
-        entity_path: entity_path.clone(),
+        instance_path: instance_path.clone(),
         aggregator,
         aggregation_factor,
         min_time,
@@ -243,7 +243,7 @@ fn add_series_runs(
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
-                    entity_path: entity_path.clone(),
+                    instance_path: instance_path.clone(),
                     aggregator,
                     aggregation_factor,
                     min_time,

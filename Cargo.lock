@@ -2166,8 +2166,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1794c66fb727dac28dffed2e4b548e5118d1cccc331d368a35411d68725dde71"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#99303b45554581163f022a8cf0b1a40e6fd3d333"
 dependencies = [
  "ahash",
  "egui",
@@ -3931,7 +3930,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
