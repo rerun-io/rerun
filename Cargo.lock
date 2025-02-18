@@ -6034,6 +6034,7 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "re_uri",
  "tokio",
  "wasm-bindgen-futures",
 ]
@@ -6199,6 +6200,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_uri",
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
@@ -6827,6 +6829,14 @@ dependencies = [
  "strum_macros",
  "sublime_fuzzy",
  "time",
+ "url",
+]
+
+[[package]]
+name = "re_uri"
+version = "0.23.0-alpha.1+dev"
+dependencies = [
+ "thiserror 1.0.65",
  "url",
 ]
 

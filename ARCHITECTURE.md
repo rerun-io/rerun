@@ -134,7 +134,7 @@ Update instructions:
 ##### UI crates
 
 | Crate                 | Description                                                                                                |
-|-----------------------|------------------------------------------------------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
 | re_catalog_hub        | The UI and communication to implement the in-viewer catalog browser                                        |
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
@@ -189,13 +189,13 @@ Update instructions:
 
 ### Data flow
 
-| Crate                | Description                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------ |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
-| re_data_source       | Handles loading of Rerun data from different sources                                                   |
-| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                                                     |
-| re_grpc_server       | Host an in-memory Storage Node                                                                         |
-| re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
+| Crate                | Description                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+| re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
+| re_data_source       | Handles loading of Rerun data from different sources              |
+| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                |
+| re_grpc_server       | Host an in-memory Storage Node                                    |
+| re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP             |
 
 ### Build support
 
@@ -227,6 +227,7 @@ Update instructions:
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_uri             | Parsing and constructing of Rerun URIs                                               |
 | re_video           | Video decoding library                                                               |
 
 ### Dependencies and docs

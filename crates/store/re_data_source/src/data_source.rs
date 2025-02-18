@@ -39,9 +39,7 @@ pub enum DataSource {
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData {
-        origin: re_grpc_client::redap::Origin,
-    },
+    CatalogData { endpoint: re_uri::Origin },
 }
 
 impl DataSource {
