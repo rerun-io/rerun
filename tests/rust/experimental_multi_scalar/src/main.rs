@@ -13,7 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 rerun::Color::from_rgb(0, 0, 255),
             ])
             .with_many_width([2.0, 4.0])
-            .with_many_name(["sin", "cos"]),
+            .with_many_name(["sin", "cos"])
+            .with_visible_series([false, true]),
     )?;
 
     for step in 0..64 {
