@@ -70,7 +70,7 @@ impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
-            timeline: *desc.timeline.name(),
+            timeline: *desc.name(),
         }
     }
 }
