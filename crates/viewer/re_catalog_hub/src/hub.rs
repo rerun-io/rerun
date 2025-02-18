@@ -60,6 +60,7 @@ impl CatalogHub {
     /// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
+    //TODO(ab): this will soon become "add_server"
     pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, origin: redap::Origin) {
         let catalogs = self.catalogs.clone();
         runtime.spawn_future(async move {

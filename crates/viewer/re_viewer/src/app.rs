@@ -581,6 +581,10 @@ impl App {
                 }
             }
 
+            SystemCommand::AddRedapServer { origin } => {
+                self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread

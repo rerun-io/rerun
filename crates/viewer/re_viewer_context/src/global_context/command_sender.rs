@@ -1,6 +1,7 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
+use re_grpc_client::redap;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
@@ -33,6 +34,11 @@ pub enum SystemCommand {
         /// see it, so this should generally be `true`. It may be that the user cmd/ctrl-click to
         /// load the recording in the background, in which case this should be `false`.
         switch_to_viewer: bool,
+    },
+
+    /// Add a new server to the redap browser.
+    AddRedapServer {
+        origin: redap::Origin,
     },
 
     /// Reset the `Viewer` to the default state

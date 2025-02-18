@@ -20,8 +20,8 @@ pub enum ConnectionError {
     #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
     UnencryptedServer,
 
-    #[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
-    InvalidScheme,
+    #[error(transparent)]
+    InvalidScheme(#[from] InvalidScheme),
 
     #[error("unexpected endpoint: {0}")]
     UnexpectedEndpoint(String),
@@ -35,6 +35,10 @@ pub enum ConnectionError {
     #[error("URL {url:?} cannot be loaded as a recording")]
     CannotLoadUrlAsRecording { url: String },
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
+pub struct InvalidScheme;
 
 /// The different schemes supported by Rerun.
 ///
@@ -62,6 +66,22 @@ impl Scheme {
         match self {
             Self::Rerun | Self::RerunHttps => "https",
             Self::RerunHttp => "http",
+        }
+    }
+}
+
+impl TryFrom<&str> for Scheme {
+    type Error = InvalidScheme;
+
+    fn try_from(url: &str) -> Result<Self, Self::Error> {
+        if url.starts_with("rerun://") {
+            Ok(Self::Rerun)
+        } else if url.starts_with("rerun+http://") {
+            Ok(Self::RerunHttp)
+        } else if url.starts_with("rerun+https://") {
+            Ok(Self::RerunHttps)
+        } else {
+            Err(InvalidScheme)
         }
     }
 }
@@ -149,7 +169,7 @@ fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), ConnectionError>
             value.replace("rerun+https://", "https://"),
         ))
     } else {
-        Err(ConnectionError::InvalidScheme)
+        Err(InvalidScheme)
     }?;
 
     // We have to first rewrite the endpoint, because `Url` does not allow

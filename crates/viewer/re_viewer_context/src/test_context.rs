@@ -460,6 +460,7 @@ impl TestContext {
                 | SystemCommand::ResetViewer
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }

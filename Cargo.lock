@@ -7221,6 +7221,7 @@ dependencies = [
  "re_data_source",
  "re_entity_db",
  "re_format",
+ "re_grpc_client",
  "re_log",
  "re_log_types",
  "re_math",
