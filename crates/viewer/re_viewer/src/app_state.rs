@@ -2,10 +2,10 @@ use ahash::HashMap;
 use egui::{NumExt as _, Ui};
 use std::cmp::PartialEq;
 
-use re_catalog_hub::CatalogHub;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
+use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
@@ -28,8 +28,8 @@ const WATERMARK: bool = false; // Nice for recording media material
 /// Which display mode are we currently in?
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayMode {
-    /// Regular viewer, including the view port.
-    Viewer,
+    /// Regular view of the local recordings, including the current recording's viewport.
+    LocalRecordings,
 
     /// The Redap server/catalog/collection browser.
     RedapBrowser,
@@ -105,7 +105,7 @@ impl Default for AppState {
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
-            display_mode: DisplayMode::Viewer,
+            display_mode: DisplayMode::LocalRecordings,
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -159,7 +159,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        catalog_hub: &CatalogHub,
+        redap_servers: &RedapServers,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -386,14 +386,16 @@ impl AppState {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.time_zone);
             if !should_datastore_ui_remain_active {
-                *display_mode = DisplayMode::Viewer;
+                *display_mode = DisplayMode::LocalRecordings;
             }
         } else {
             //
             // Blueprint time panel
             //
 
-            if app_options.inspect_blueprint_timeline && *display_mode == DisplayMode::Viewer {
+            if app_options.inspect_blueprint_timeline
+                && *display_mode == DisplayMode::LocalRecordings
+            {
                 let blueprint_db = ctx.store_context.blueprint;
 
                 let undo_state = self
@@ -442,7 +444,7 @@ impl AppState {
             // Time panel
             //
 
-            if *display_mode == DisplayMode::Viewer {
+            if *display_mode == DisplayMode::LocalRecordings {
                 time_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
@@ -458,7 +460,7 @@ impl AppState {
             // Selection Panel
             //
 
-            if *display_mode == DisplayMode::Viewer {
+            if *display_mode == DisplayMode::LocalRecordings {
                 selection_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
@@ -498,7 +500,7 @@ impl AppState {
                     display_mode_toggle_ui(ui, display_mode);
 
                     match display_mode {
-                        DisplayMode::Viewer => {
+                        DisplayMode::LocalRecordings => {
                             let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
                             if resizable {
@@ -527,7 +529,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            catalog_hub.server_panel_ui(ui);
+                            redap_servers.server_panel_ui(ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above
@@ -548,7 +550,7 @@ impl AppState {
                 .frame(viewport_frame)
                 .show_inside(ui, |ui| {
                     match display_mode {
-                        DisplayMode::Viewer => {
+                        DisplayMode::LocalRecordings => {
                             if show_welcome {
                                 welcome_screen.ui(
                                     ui,
@@ -562,7 +564,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            catalog_hub.ui(&ctx, ui);
+                            redap_servers.ui(&ctx, ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -708,8 +710,8 @@ fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
                     ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
                     ui.spacing_mut().item_spacing.x = 3.0;
 
-                    ui.selectable_value(display_mode, DisplayMode::Viewer, "Viewer");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Redap Browser");
+                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
+                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
                 });
         },
     );

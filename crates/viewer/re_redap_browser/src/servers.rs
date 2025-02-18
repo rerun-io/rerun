@@ -40,7 +40,7 @@ pub struct RecordingCollection {
 /// All catalogs known to the viewer.
 // TODO(andreas,antoine): Eventually, collections are part of a catalog, meaning there is going to be multiple ones.
 #[derive(Default)]
-pub struct CatalogHub {
+pub struct RedapServers {
     // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
     catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
 
@@ -56,7 +56,7 @@ pub enum Command {
     DeselectCollection,
 }
 
-impl CatalogHub {
+impl RedapServers {
     /// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
