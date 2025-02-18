@@ -48,4 +48,4 @@ def test_scalar_axis() -> None:
         assert arch.corner == blueprint_components.Corner2DBatch._converter(
             none_empty_or_value(corner, rrb.Corner2D.LeftTop)
         )
-        assert arch.visible == blueprint_components.VisibleBatch._converter(none_empty_or_value(visible, True))
+        assert arch.visible == rr.components.VisibleBatch._converter(none_empty_or_value(visible, True))

@@ -152,10 +152,10 @@ class LineGrid3D(Archetype):
         """Clear all the fields of a `LineGrid3D`."""
         return cls.from_fields(clear_unset=True)
 
-    visible: blueprint_components.VisibleBatch | None = field(
+    visible: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the grid is visible.
     #

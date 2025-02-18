@@ -21,3 +21,4 @@ boolean
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`ShowLabels`](../components/show_labels.md)
+* [`Visible`](../components/visible.md?speculative-link)

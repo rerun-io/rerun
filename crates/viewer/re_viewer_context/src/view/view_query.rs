@@ -222,7 +222,7 @@ impl DataResult {
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
         *self
-            .lookup_override::<re_types::blueprint::components::Visible>(ctx)
+            .lookup_override::<re_types::components::Visible>(ctx)
             .unwrap_or_default()
             .0
     }

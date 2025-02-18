@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from ... import datatypes
+from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
@@ -96,10 +96,10 @@ class PlotLegend(PlotLegendExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: blueprint_components.VisibleBatch | None = field(
+    visible: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the legend is shown at all.
     #

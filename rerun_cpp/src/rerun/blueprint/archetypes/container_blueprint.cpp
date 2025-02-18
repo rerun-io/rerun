@@ -30,8 +30,7 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::blueprint::components::ActiveTab>(Descriptor_active_tab)
                 .value_or_throw();
         archetype.visible =
-            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
-                .value_or_throw();
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
         archetype.grid_columns =
             ComponentBatch::empty<rerun::blueprint::components::GridColumns>(Descriptor_grid_columns
             )

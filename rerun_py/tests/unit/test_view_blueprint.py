@@ -6,8 +6,8 @@ from typing import Optional, cast
 from rerun.blueprint.archetypes.view_blueprint import ViewBlueprint
 from rerun.blueprint.components.view_class import ViewClass, ViewClassBatch
 from rerun.blueprint.components.view_origin import ViewOrigin, ViewOriginBatch
-from rerun.blueprint.components.visible import Visible, VisibleBatch
 from rerun.components.name import Name, NameBatch
+from rerun.components.visible import Visible, VisibleBatch
 from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPathLike
 from rerun.datatypes.utf8 import Utf8Like

@@ -10,7 +10,7 @@ use re_types::blueprint::components::{
 };
 use re_types::components::Name;
 use re_types::Loggable as _;
-use re_types::{blueprint::components::Visible, Archetype as _};
+use re_types::{components::Visible, Archetype as _};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].

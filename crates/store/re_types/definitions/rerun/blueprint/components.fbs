@@ -34,7 +34,6 @@ include "./components/view_fit.fbs";
 include "./components/view_maximized.fbs";
 include "./components/view_origin.fbs";
 include "./components/viewer_recommendation_hash.fbs";
-include "./components/visible.fbs";
 include "./components/visible_time_range.fbs";
 include "./components/visual_bounds2d.fbs";
 include "./components/visualizer_overrides.fbs";

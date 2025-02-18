@@ -37,13 +37,13 @@ use re_types::blueprint::components::{RootContainer, ViewMaximized};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
-        GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane, ViewFit, Visible,
+        GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane, ViewFit,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
         Name, Opacity, Position2D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-        TransformRelation, Translation3D, ValueRange,
+        TransformRelation, Translation3D, ValueRange, Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;

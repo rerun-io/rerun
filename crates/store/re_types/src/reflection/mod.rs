@@ -310,14 +310,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Visible as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether the container, view, entity or instance is currently visible.",
-                custom_placeholder: Some(Visible::default().to_arrow()?),
-                datatype: Visible::arrow_datatype(),
-            },
-        ),
-        (
             <VisibleTimeRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
@@ -909,6 +901,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
                 datatype: ViewCoordinates::arrow_datatype(),
+            },
+        ),
+        (
+            <Visible as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the container, view, entity or instance is currently visible.",
+                custom_placeholder: Some(Visible::default().to_arrow()?),
+                datatype: Visible::arrow_datatype(),
             },
         ),
     ];
@@ -1958,8 +1958,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ActiveTab".into(), docstring_md :
                     "Which tab is active.\n\nOnly applies to `Tabs` containers.",
                     is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name :
-                    "rerun.blueprint.components.Visible".into(), docstring_md :
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
                     "Whether this container is visible.\n\nDefaults to true if not specified.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "grid_columns", display_name : "Grid columns", component_name :
@@ -2115,12 +2115,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { name : "visible", display_name :
-                    "Visible", component_name : "rerun.blueprint.components.Visible"
-                    .into(), docstring_md :
-                    "Whether the grid is visible.\n\nDefaults to true.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "spacing", display_name :
-                    "Spacing", component_name : "rerun.blueprint.components.GridSpacing"
-                    .into(), docstring_md :
+                    "Visible", component_name : "rerun.components.Visible".into(),
+                    docstring_md : "Whether the grid is visible.\n\nDefaults to true.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "spacing",
+                    display_name : "Spacing", component_name :
+                    "rerun.blueprint.components.GridSpacing".into(), docstring_md :
                     "Space between grid lines spacing of one line to the next in scene units.\n\nAs you zoom out, successively only every tenth line is shown.\nThis controls the closest zoom level.",
                     is_required : false, }, ArchetypeFieldReflection { name : "plane",
                     display_name : "Plane", component_name : "rerun.components.Plane3D"
@@ -2209,8 +2208,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
                     is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name :
-                    "rerun.blueprint.components.Visible".into(), docstring_md :
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.",
                     is_required : false, },
                 ],
@@ -2320,8 +2319,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewOrigin".into(), docstring_md :
                     "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
                     is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name :
-                    "rerun.blueprint.components.Visible".into(), docstring_md :
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
                     "Whether this view is visible.\n\nDefaults to true if not specified.",
                     is_required : false, },
                 ],

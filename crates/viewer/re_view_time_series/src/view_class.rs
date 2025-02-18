@@ -5,10 +5,15 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
-use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
-use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
-use re_types::components::AggregationPolicy;
-use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
+use re_types::{
+    blueprint::{
+        archetypes::{PlotLegend, ScalarAxis},
+        components::{Corner2D, LockRangeDuringZoom},
+    },
+    components::{AggregationPolicy, Range1D, Visible},
+    datatypes::TimeRange,
+    View, ViewClassIdentifier,
+};
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,

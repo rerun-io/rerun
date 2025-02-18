@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_log_types::EntityPath;
-use re_types::blueprint::components::Visible;
+use re_types::components::Visible;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
