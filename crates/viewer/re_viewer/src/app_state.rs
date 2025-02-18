@@ -785,7 +785,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             .command_sender()
                             .send_system(SystemCommand::AddRedapServer { origin }),
                         Err(err) => {
-                            re_log::warn!("Could not handle url \"{}\": {err}", open_url.url);
+                            re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
                         }
                     }
                     return false;
