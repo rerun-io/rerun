@@ -2,7 +2,9 @@ use arrow::array::ArrayRef;
 use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
+use re_types::{
+    AsComponents, ComponentBatch, ComponentDescriptor, ComponentName, SerializedComponentBatch,
+};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -63,10 +65,23 @@ impl ViewerContext<'_> {
         entity_path: &EntityPath,
         component_batch: &dyn ComponentBatch,
     ) {
+        match component_batch.try_serialized() {
+            Ok(serialized) => self.save_serialized_blueprint_component(entity_path, serialized),
+            Err(err) => {
+                re_log::error_once!("Failed to serialize component batch: {}", err);
+            }
+        }
+    }
+
+    pub fn save_serialized_blueprint_component(
+        &self,
+        entity_path: &EntityPath,
+        component_batch: SerializedComponentBatch,
+    ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_component_batches(RowId::new(), timepoint.clone(), [component_batch])
+            .with_serialized_batch(RowId::new(), timepoint.clone(), component_batch)
             .build()
         {
             Ok(chunk) => chunk,

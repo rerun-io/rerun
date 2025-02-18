@@ -32,10 +32,11 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
-egui.workspace = true
 egui_plot.workspace = true
+egui.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+smallvec.workspace = true
 
 [dev-dependencies]
 re_chunk_store.workspace = true

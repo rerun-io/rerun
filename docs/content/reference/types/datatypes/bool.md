@@ -20,5 +20,6 @@ boolean
 ## Used by
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
+* [`SeriesVisible`](../components/series_visible.md?speculative-link)
 * [`ShowLabels`](../components/show_labels.md)
 * [`Visible`](../components/visible.md?speculative-link)

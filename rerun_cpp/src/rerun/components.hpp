@@ -53,6 +53,7 @@
 #include "components/rotation_quat.hpp"
 #include "components/scalar.hpp"
 #include "components/scale3d.hpp"
+#include "components/series_visible.hpp"
 #include "components/show_labels.hpp"
 #include "components/stroke_width.hpp"
 #include "components/tensor_data.hpp"

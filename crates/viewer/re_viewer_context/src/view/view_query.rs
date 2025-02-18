@@ -46,11 +46,14 @@ pub struct PropertyOverrides {
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
-    pub recursive_path: EntityPath,
+    ///
+    /// Recursive overrides are currently only used for visibility.
+    // TODO(#8557): Plus some confusion around time ranges.
+    pub recursive_override_path: EntityPath,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply to the individual entity only.
-    pub individual_path: EntityPath,
+    pub override_path: EntityPath,
 
     /// What range is queried on the chunk store.
     pub query_range: QueryRange,
@@ -88,12 +91,12 @@ impl DataResult {
 
     #[inline]
     pub fn recursive_override_path(&self) -> &EntityPath {
-        &self.property_overrides.recursive_path
+        &self.property_overrides.recursive_override_path
     }
 
     #[inline]
-    pub fn individual_override_path(&self) -> &EntityPath {
-        &self.property_overrides.individual_path
+    pub fn override_path(&self) -> &EntityPath {
+        &self.property_overrides.override_path
     }
 
     /// Saves a recursive override OR clears both (!) individual & recursive overrides if the override is due to a parent recursive override or a default value.
@@ -129,17 +132,22 @@ impl DataResult {
                 || (parent_recursive_override.is_none() && desired_override == &C::default())
             {
                 // TODO(andreas): It might be that only either of these two are necessary, in that case we shouldn't clear both.
-                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.recursive_path);
-                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.individual_path);
+                ctx.save_empty_blueprint_component::<C>(
+                    &self.property_overrides.recursive_override_path,
+                );
+                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.override_path);
             } else {
                 ctx.save_blueprint_component(
-                    &self.property_overrides.recursive_path,
+                    &self.property_overrides.recursive_override_path,
                     desired_override,
                 );
             }
         } else {
             // No override at all so far, simply set it.
-            ctx.save_blueprint_component(&self.property_overrides.recursive_path, desired_override);
+            ctx.save_blueprint_component(
+                &self.property_overrides.recursive_override_path,
+                desired_override,
+            );
         }
     }
 

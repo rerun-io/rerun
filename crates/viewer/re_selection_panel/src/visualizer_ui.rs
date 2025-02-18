@@ -83,7 +83,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
 ) {
-    let override_path = data_result.individual_override_path();
+    let override_path = data_result.override_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE);
@@ -222,7 +222,7 @@ fn visualizer_components(
                 ),
             };
 
-        let override_path = data_result.individual_override_path();
+        let override_path = data_result.override_path();
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -516,7 +516,7 @@ fn menu_add_new_visualizer(
     active_visualizers: &[ViewSystemIdentifier],
     inactive_visualizers: &[ViewSystemIdentifier],
 ) {
-    let override_path = data_result.individual_override_path();
+    let override_path = data_result.override_path();
 
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 

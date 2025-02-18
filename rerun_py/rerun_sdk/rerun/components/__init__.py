@@ -68,6 +68,7 @@ from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
+from .series_visible import SeriesVisible, SeriesVisibleBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
@@ -216,6 +217,8 @@ __all__ = [
     "ScalarBatch",
     "Scale3D",
     "Scale3DBatch",
+    "SeriesVisible",
+    "SeriesVisibleBatch",
     "ShowLabels",
     "ShowLabelsBatch",
     "StrokeWidth",
