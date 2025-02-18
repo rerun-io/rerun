@@ -1,10 +1,10 @@
 [package]
 authors.workspace = true
-description = "The UI and communication for the in-viewer catalog browser."
+description = "The UI and communication to implement the in-viewer redap server browser."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-name = "re_catalog_hub"
+name = "re_redap_browser"
 publish = true
 readme = "README.md"
 repository.workspace = true

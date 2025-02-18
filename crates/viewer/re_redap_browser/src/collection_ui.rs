@@ -15,7 +15,7 @@ use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
-use super::hub::{Command, RecordingCollection};
+use super::servers::{Command, RecordingCollection};
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
