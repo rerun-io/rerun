@@ -12,7 +12,7 @@ use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, Timeline};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, RecordingUri, Text},
+    components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
 use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
@@ -62,10 +62,6 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             "nv12",
         ),
         TestCase::from_component(QueryExpression::from("+ /world/**"), "simple"),
-        TestCase::from_component(
-            RecordingUri::from("rerun://0.0.0.0:1234/recordings/XYZ"),
-            "simple",
-        ),
         TestCase::from_component(Text::from("Hello World!"), "simple"),
         TestCase::from_arrow(
             ComponentName::from("any_value"),
