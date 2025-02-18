@@ -1,6 +1,5 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Ui};
-use std::cmp::PartialEq;
 
 use re_catalog_hub::CatalogHub;
 use re_chunk_store::LatestAtQuery;
@@ -12,9 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
-    SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates,
-    ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
+    ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -26,19 +25,6 @@ use crate::{
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
-
-/// Which display mode are we currently in?
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DisplayMode {
-    /// Regular viewer, including the view port.
-    Viewer,
-
-    /// The Redap server/catalog/collection browser.
-    RedapBrowser,
-
-    /// The current recording's data store browser.
-    ChunkStoreBrowser,
-}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -783,16 +769,24 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                     );
 
                     match data_source.stream(None) {
-                        Ok(re_data_source::StreamSource::LogMessages(rx)) => ctx
-                            .command_sender()
-                            .send_system(SystemCommand::AddReceiver {
-                                rx,
-                                switch_to_viewer: !open_url.new_tab,
-                            }),
+                        Ok(re_data_source::StreamSource::LogMessages(rx)) => {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::AddReceiver(rx));
+
+                            if !open_url.new_tab {
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::ChangeDisplayMode(
+                                        DisplayMode::Viewer,
+                                    ));
+                            }
+                        }
+
                         Ok(re_data_source::StreamSource::CatalogData { origin }) => ctx
                             .command_sender()
                             .send_system(SystemCommand::AddRedapServer { origin }),
-                        Err(err) => re_log::warn!("Could not handle URI: {err}"),
+                        Err(err) => {
+                            re_log::warn!("Could not handle url \"{}\": {err}", open_url.url);
+                        }
                     }
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {

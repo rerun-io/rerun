@@ -51,3 +51,16 @@ pub struct GlobalContext<'a> {
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
 }
+
+/// Which display mode are we currently in?
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayMode {
+    /// Regular viewer, including the view port.
+    Viewer,
+
+    /// The Redap server/catalog/collection browser.
+    RedapBrowser,
+
+    /// The current recording's data store browser.
+    ChunkStoreBrowser,
+}

@@ -458,6 +458,7 @@ impl TestContext {
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
+                | SystemCommand::ChangeDisplayMode(_)
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }

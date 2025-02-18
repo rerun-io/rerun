@@ -24,22 +24,14 @@ pub enum SystemCommand {
     ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
     /// Add a new receiver for log messages.
-    AddReceiver {
-        /// The receiver.
-        rx: re_smart_channel::Receiver<re_log_types::LogMsg>,
-
-        /// Should the viewer switch back to viewer mode?
-        ///
-        /// Typically, adding a receiver means the user is loading a new recording and expects to
-        /// see it, so this should generally be `true`. It may be that the user cmd/ctrl-click to
-        /// load the recording in the background, in which case this should be `false`.
-        switch_to_viewer: bool,
-    },
+    AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Add a new server to the redap browser.
     AddRedapServer {
         origin: redap::Origin,
     },
+
+    ChangeDisplayMode(crate::DisplayMode),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,

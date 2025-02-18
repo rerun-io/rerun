@@ -15,13 +15,13 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, PlayState, StoreContext, SystemCommand, SystemCommandSender, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
-    app_state::{DisplayMode, WelcomeScreenState},
+    app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     AppState,
 };
@@ -570,17 +570,14 @@ impl App {
                 store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
             }
 
-            SystemCommand::AddReceiver {
-                rx,
-                switch_to_viewer,
-            } => {
+            SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
                 self.add_receiver(rx);
-                if switch_to_viewer {
-                    self.state.display_mode = DisplayMode::Viewer;
-                }
             }
 
+            SystemCommand::ChangeDisplayMode(display_mode) => {
+                self.state.display_mode = display_mode;
+            }
             SystemCommand::AddRedapServer { origin } => {
                 self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
             }
