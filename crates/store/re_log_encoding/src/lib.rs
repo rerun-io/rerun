@@ -89,6 +89,7 @@ impl EncodingOptions {
                     _ => return Err(OptionsError::UnknownCompression(compression)),
                 };
                 let serializer = match serializer {
+                    1 => return Err(OptionsError::RemovedMsgPackSerializer),
                     2 => Serializer::Protobuf,
                     _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
@@ -120,6 +121,9 @@ pub enum OptionsError {
 
     #[error("Unknown compression: {0}")]
     UnknownCompression(u8),
+
+    #[error("Attempted to use the removed MsgPack serializer, which is no longer supported")]
+    RemovedMsgPackSerializer,
 
     #[error("Unknown serializer: {0}")]
     UnknownSerializer(u8),
