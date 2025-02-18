@@ -40,9 +40,6 @@ analytics = ["dep:re_analytics"]
 ## Enable the map view
 map_view = ["dep:re_view_map"]
 
-## Enable the gRPC Rerun Data Platform data source.
-grpc = ["re_data_source/grpc"]
-
 
 [dependencies]
 # Internal:

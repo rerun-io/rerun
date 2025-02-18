@@ -30,7 +30,6 @@ pub enum DataSource {
 
     /// A file or a metadata catalog on a Rerun Data Platform server,
     /// over `rerun://` gRPC interface.
-    #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
 
     /// A stream of messages over gRPC, relayed from the SDK.
@@ -98,7 +97,6 @@ impl DataSource {
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
-        #[cfg(feature = "grpc")]
         if uri.starts_with("rerun://")
             || uri.starts_with("rerun+http://")
             || uri.starts_with("rerun+https://")
@@ -145,7 +143,6 @@ impl DataSource {
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
             Self::MessageProxy { .. } => None,
         }
@@ -252,7 +249,6 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
                 use re_grpc_client::redap::RedapAddress;
 

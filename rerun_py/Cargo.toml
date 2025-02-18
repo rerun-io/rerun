@@ -42,7 +42,6 @@ remote = [
   "dep:tokio-stream",
   "dep:tonic",
   "dep:url",
-  "re_sdk/grpc",
 ]
 
 ## Support serving a web viewer over HTTP with `serve()`.

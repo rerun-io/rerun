@@ -19,10 +19,7 @@ workspace = true
 all-features = true
 
 [features]
-default = ["grpc"]
-
-## Enable the gRPC Rerun Data Platform data source.
-grpc = []
+default = []
 
 
 [dependencies]
