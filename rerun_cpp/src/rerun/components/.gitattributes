@@ -81,3 +81,4 @@ vector2d.hpp linguist-generated=true
 vector3d.hpp linguist-generated=true
 video_timestamp.hpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
+visible.hpp linguist-generated=true

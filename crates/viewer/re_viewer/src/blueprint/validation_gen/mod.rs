@@ -35,7 +35,6 @@ pub use re_types::blueprint::components::ViewFit;
 pub use re_types::blueprint::components::ViewMaximized;
 pub use re_types::blueprint::components::ViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
-pub use re_types::blueprint::components::Visible;
 pub use re_types::blueprint::components::VisibleTimeRange;
 pub use re_types::blueprint::components::VisualBounds2D;
 pub use re_types::blueprint::components::VisualizerOverrides;
@@ -79,7 +78,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ViewMaximized>(blueprint)
         && validate_component::<ViewOrigin>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
-        && validate_component::<Visible>(blueprint)
         && validate_component::<VisibleTimeRange>(blueprint)
         && validate_component::<VisualBounds2D>(blueprint)
         && validate_component::<VisualizerOverrides>(blueprint)

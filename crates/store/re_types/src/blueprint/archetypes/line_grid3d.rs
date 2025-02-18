@@ -55,7 +55,7 @@ impl LineGrid3D {
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.blueprint.components.Visible".into(),
+            component_name: "rerun.components.Visible".into(),
             archetype_field_name: Some("visible".into()),
         }
     }
@@ -266,7 +266,7 @@ impl LineGrid3D {
         use ::re_types_core::Loggable as _;
         Self {
             visible: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::Visible::arrow_empty(),
+                crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
             )),
             spacing: Some(SerializedComponentBatch::new(
@@ -292,10 +292,7 @@ impl LineGrid3D {
     ///
     /// Defaults to true.
     #[inline]
-    pub fn with_visible(
-        mut self,
-        visible: impl Into<crate::blueprint::components::Visible>,
-    ) -> Self {
+    pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
     }

@@ -7,7 +7,7 @@ table LineGrid3D (
     /// Whether the grid is visible.
     ///
     /// Defaults to true.
-    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 1000);
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 1000);
 
     /// Space between grid lines spacing of one line to the next in scene units.
     ///

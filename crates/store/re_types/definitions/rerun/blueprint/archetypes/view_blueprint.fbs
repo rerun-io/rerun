@@ -1,7 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-// ---
-
 /// The description of a single view.
 table ViewBlueprint (
     "attr.rerun.scope": "blueprint"
@@ -28,5 +26,5 @@ table ViewBlueprint (
     /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
-    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 600);
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 600);
 }

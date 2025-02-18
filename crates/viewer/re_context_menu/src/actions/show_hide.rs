@@ -143,7 +143,7 @@ fn set_data_result_visible(
             data_result.save_recursive_override_or_clear_if_redundant(
                 ctx.viewer_context,
                 &query_result.tree,
-                &re_types::blueprint::components::Visible::from(visible),
+                &re_types::components::Visible::from(visible),
             );
         }
     } else {

@@ -8,9 +8,9 @@ use re_types::{
 };
 use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    auto_color_for_entity_path, external::re_entity_db::InstancePath, IdentifiedViewSystem,
+    QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -472,7 +472,7 @@ impl SeriesPointSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
-                &data_result.entity_path,
+                InstancePath::entity_all(data_result.entity_path.clone()),
                 time_per_pixel,
                 points,
                 ctx.recording_engine().store(),

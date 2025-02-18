@@ -943,7 +943,7 @@ fn visible_interactive_toggle_ui(
     query_result: &DataQueryResult,
     data_result: &DataResult,
 ) {
-    use re_types::blueprint::components::Visible;
+    use re_types::components::Visible;
     use re_types::Component as _;
 
     {

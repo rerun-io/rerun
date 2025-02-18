@@ -91,6 +91,7 @@ from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
+from .visible import Visible, VisibleBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -253,4 +254,6 @@ __all__ = [
     "VideoTimestampBatch",
     "ViewCoordinates",
     "ViewCoordinatesBatch",
+    "Visible",
+    "VisibleBatch",
 ]
