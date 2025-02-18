@@ -227,7 +227,7 @@ impl TryFrom<&str> for RedapAddress {
                 origin,
                 recording_id: (*recording_id).to_owned(),
             }),
-            ["catalog"] | [] => Ok(Self::Catalog { origin }),
+            ["catalog" | ""] | [] => Ok(Self::Catalog { origin }),
             [unknown, ..] => Err(ConnectionError::UnexpectedEndpoint(format!("{unknown}/"))),
         }
     }
@@ -340,7 +340,28 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::ConnectionError::UnexpectedEndpoint { .. }
+            super::ConnectionError::UnexpectedEndpoint(unknown) if &unknown == "redap/"
         ));
+    }
+
+    #[test]
+    fn test_catalog_default() {
+        let url = "rerun://localhost:51234";
+        let address: Result<RedapAddress, _> = url.try_into();
+
+        let expected = RedapAddress::Catalog {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
+        };
+
+        assert_eq!(address.unwrap(), expected);
+
+        let url = "rerun://localhost:51234/";
+        let address: Result<RedapAddress, _> = url.try_into();
+
+        assert_eq!(address.unwrap(), expected);
     }
 }
