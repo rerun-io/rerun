@@ -142,14 +142,10 @@ pub fn url_to_receiver(
             ),
         ),
 
-        #[cfg(feature = "grpc")]
         EndpointCategory::RerunGrpc(url) => {
             re_grpc_client::redap::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
         }
-        #[cfg(not(feature = "grpc"))]
-        EndpointCategory::RerunGrpc(_url) => {
-            anyhow::bail!("Missing 'grpc' feature flag");
-        }
+
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
