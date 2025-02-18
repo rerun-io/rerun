@@ -1,6 +1,7 @@
 //! Decoding [`LogMsg`]:es from `.rrd` files/streams.
 
 pub mod stream;
+
 #[cfg(feature = "decoder")]
 pub mod streaming;
 

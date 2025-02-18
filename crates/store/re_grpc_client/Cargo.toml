@@ -18,12 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
-[features]
-default = ["redap"]
-
-redap = []
-
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk.workspace = true

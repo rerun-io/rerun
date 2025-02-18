@@ -46,8 +46,6 @@ web_viewer = [
   "dep:webbrowser",
 ]
 
-grpc = ["re_grpc_client/redap"]
-
 
 [dependencies]
 re_build_info.workspace = true

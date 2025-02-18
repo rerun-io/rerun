@@ -2,8 +2,15 @@ use super::CodecError;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
-/// TODO(#3741): switch to arrow1 once <https://github.com/apache/arrow-rs/issues/6803> is released
-const SERIALIZE_WITH_ARROW_1: bool = false; // I _think_ we can use arrow1 here, because we don't encounter the above bug in this context
+// TODO(#3741): switch to arrow1 once <https://github.com/apache/arrow-rs/issues/6803> is released
+//
+// TODO(#8733): <https://github.com/apache/arrow-rs/issues/6803> shipped in a patch release and was supposed
+// to fix the encoding issue with list-arrays, but apparently didn't.
+// We have to wait for a major Arrow update (which requires Lance/Datafusion/etc to follow first)
+// before we can try to enable this again.
+// This is becoming problematic, as the arrow2 serializer loses some arbitrary amount of schema
+// metadata during transit.
+const SERIALIZE_WITH_ARROW_1: bool = false;
 const DESERIALIZE_WITH_ARROW_1: bool = true; // Both arrow1 and arrow2 should be working fine
 
 /// Helper function that serializes given arrow schema and record batch into bytes

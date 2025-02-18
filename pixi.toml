@@ -136,18 +136,18 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features grpc,map_view,nasm,native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
@@ -173,13 +173,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,grpc,map_view --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,grpc,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -187,7 +187,7 @@ rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run --q
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer,map_view,grpc --release -- --web-viewer", depends-on = [
+rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features map_view,web_viewer --release -- --web-viewer", depends-on = [
   "rerun-build-web-release",
 ] }
 
@@ -195,7 +195,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,grpc,map_view --release -g"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release -g"
 
 rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends-on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.

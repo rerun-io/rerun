@@ -3,7 +3,6 @@
 pub mod message_proxy;
 pub use message_proxy::MessageProxyUrl;
 
-#[cfg(feature = "redap")]
 pub mod redap;
 
 /// Wrapper with a nicer error message
@@ -41,7 +40,6 @@ pub enum StreamError {
     #[error(transparent)]
     Transport(#[from] tonic::transport::Error),
 
-    #[cfg(feature = "redap")]
     #[error(transparent)]
     ConnectionError(#[from] redap::ConnectionError),
 

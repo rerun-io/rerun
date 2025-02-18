@@ -58,7 +58,7 @@ default = ["native_viewer", "web_viewer", "map_view"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## This may enable features that require extra build tools that not everyone has.
-release = ["default", "grpc", "nasm"]
+release = ["default", "nasm"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -71,9 +71,6 @@ native_viewer = ["rerun/native_viewer"]
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 map_view = ["rerun/map_view"]
-
-## Enable the gRPC Rerun Data Platform data source.
-grpc = ["rerun/grpc"]
 
 ## Support serving a web viewer over HTTP.
 ##
