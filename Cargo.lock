@@ -7106,6 +7106,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
+ "smallvec",
 ]
 
 [[package]]

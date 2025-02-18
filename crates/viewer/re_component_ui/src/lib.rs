@@ -34,6 +34,7 @@ use datatype_uis::{
 };
 
 use re_types::blueprint::components::{RootContainer, ViewMaximized};
+use re_types::components::SeriesVisible;
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
@@ -96,6 +97,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
+    registry.add_singleline_edit_or_view::<SeriesVisible>(edit_bool);
 
     // Text components:
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);

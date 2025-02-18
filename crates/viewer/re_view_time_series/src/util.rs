@@ -84,6 +84,7 @@ pub fn determine_time_range(
 pub fn points_to_series(
     instance_path: InstancePath,
     time_per_pixel: f64,
+    visible: bool,
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
@@ -109,6 +110,8 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
+            visible,
+            id: egui::Id::new(&instance_path),
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
@@ -121,6 +124,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
+            visible,
             series_label,
             points,
             instance_path,
@@ -201,6 +205,7 @@ pub fn apply_aggregation(
 #[allow(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
+    visible: bool,
     series_label: String,
     points: Vec<PlotPoint>,
     instance_path: InstancePath,
@@ -211,9 +216,13 @@ fn add_series_runs(
 ) {
     re_tracing::profile_function!();
 
+    let id = egui::Id::new(&instance_path);
+
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
+        visible,
+        id,
         label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
@@ -238,6 +247,8 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
+                    visible,
+                    id,
                     label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
