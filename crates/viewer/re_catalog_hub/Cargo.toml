@@ -28,7 +28,6 @@ re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
 re_types_core.workspace = true
-re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 #TODO(ab): for `DisplayRecordBatch`, should be moved elsewhere.
