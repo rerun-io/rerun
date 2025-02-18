@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CanAddToView"],"fn":["create_entity_add_info"],"struct":["EntityAddInfo"]};

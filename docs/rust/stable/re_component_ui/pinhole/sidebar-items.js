@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["multiline_view_pinhole","singleline_view_pinhole"]};

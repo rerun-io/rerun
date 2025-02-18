@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["app_options","command_sender","component_ui_registry","item"],"struct":["GlobalContext"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ConnectionError","RedapAddress","Scheme"],"fn":["replace_and_parse"],"struct":["Origin"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["arrow","dataframe","python_bridge","remote","video"],"static":["GLOBAL"]};

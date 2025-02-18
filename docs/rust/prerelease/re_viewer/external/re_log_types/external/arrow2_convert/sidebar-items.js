@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"derive":["ArrowDeserialize","ArrowField","ArrowSerialize"],"macro":["arrow_enable_vec_for_type"],"mod":["deserialize","field","serialize"]};

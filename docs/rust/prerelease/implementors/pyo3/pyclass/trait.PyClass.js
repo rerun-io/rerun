@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"rerun_bindings":[["impl PyClass for <a class=\"struct\" href=\"rerun_bindings/python_bridge/struct.PyRecordingStream.html\" title=\"struct rerun_bindings::python_bridge::PyRecordingStream\">PyRecordingStream</a>"],["impl PyClass for <a class=\"struct\" href=\"rerun_bindings/python_bridge/struct.PyMemorySinkStorage.html\" title=\"struct rerun_bindings::python_bridge::PyMemorySinkStorage\">PyMemorySinkStorage</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

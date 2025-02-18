@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DisplayMode","Level","NotificationLevel"],"fn":["base_ttl","is_relevant","log_level_icon","notification_age_label","notification_panel_popup_id","notification_toggle_button","now","show_notification"],"struct":["Notification","NotificationPanel","NotificationUi","Toasts"]};

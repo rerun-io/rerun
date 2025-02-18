@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_rgba32","edit_rgba32_impl"]};

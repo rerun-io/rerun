@@ -1,0 +1,1 @@
+searchState.loadedDescShard("custom_callback_app", 0, "The external application that will be controlled by the …")

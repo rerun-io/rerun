@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["check_tags","example","main"],"struct":["CustomPoints3D"]};

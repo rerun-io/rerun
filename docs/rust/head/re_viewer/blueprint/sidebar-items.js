@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_valid_blueprint"],"mod":["validation","validation_gen"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_to_registry","annotations","register_component_uis","sorted_component_list_for_ui","tensor_summary_ui_grid_contents"],"mod":["item_ui"],"struct":["ComponentPathLatestAtResults"],"trait":["DataUi","EntityDataUi"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["register_contexts"],"mod":["annotation_context","depth_offsets","non_interactive_entities","shared_render_builders","transform_context"],"struct":["PrimitiveCounter","SpatialSceneEntityContext"]};

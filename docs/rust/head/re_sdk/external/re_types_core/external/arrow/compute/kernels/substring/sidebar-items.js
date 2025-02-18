@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["substring","substring_by_char"]};

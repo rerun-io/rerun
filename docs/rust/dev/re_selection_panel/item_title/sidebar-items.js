@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_component_static"],"struct":["ItemTitle"]};
