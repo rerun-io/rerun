@@ -63,7 +63,6 @@ from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
 from .range1d import Range1D, Range1DBatch
-from .recording_uri import RecordingUri, RecordingUriBatch
 from .resolution import Resolution, ResolutionBatch
 from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
@@ -207,8 +206,6 @@ __all__ = [
     "RadiusBatch",
     "Range1D",
     "Range1DBatch",
-    "RecordingUri",
-    "RecordingUriBatch",
     "Resolution",
     "ResolutionBatch",
     "RotationAxisAngle",

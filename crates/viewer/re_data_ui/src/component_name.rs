@@ -38,7 +38,8 @@ impl DataUi for ComponentName {
                 }
 
                 if let Some(url) = self.doc_url() {
-                    ui.re_hyperlink("Full documentation", url);
+                    // Always open in a new tab
+                    ui.re_hyperlink("Full documentation", url, true);
                 }
             });
         }

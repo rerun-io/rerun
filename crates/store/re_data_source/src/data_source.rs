@@ -4,6 +4,7 @@ use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
+use re_grpc_client::redap;
 
 /// Somewhere we can get Rerun data from.
 #[derive(Debug, Clone)]
@@ -49,63 +50,67 @@ impl DataSource {
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> Self {
-        use itertools::Itertools as _;
-
-        fn looks_like_windows_abs_path(path: &str) -> bool {
-            let path = path.as_bytes();
-            // "C:/" etc
-            path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
-        }
-
-        fn looks_like_a_file_path(uri: &str) -> bool {
-            // How do we distinguish a file path from a web url? "example.zip" could be either.
-
-            if uri.starts_with('/') {
-                return true; // Unix absolute path
-            }
-            if looks_like_windows_abs_path(uri) {
-                return true;
-            }
-
-            // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-            // like "example.com/foo.zip".
-            // If there is only one dot, we treat it as an extension and look it up in a list of common
-            // file extensions:
-
-            let parts = uri.split('.').collect_vec();
-            if parts.len() <= 1 {
-                true // No dots. Weird. Let's assume it is a file path.
-            } else if parts.len() == 2 {
-                // Extension or `.com` etc?
-                re_data_loader::is_supported_file_extension(parts[1])
-            } else {
-                false // Too many dots; assume an url
-            }
-        }
-
-        // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
-        // come up with more convoluted than that…) can lead to many unexpected,
-        // platform-specific problems that aren't even necessarily consistent across runs.
-        //
-        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
-        // throwing errors when we shouldn't), we just make reading from standard input explicit.
-        if uri == "-" {
-            return Self::Stdin;
-        }
-
-        let path = std::path::Path::new(&uri).to_path_buf();
-
-        if uri.starts_with("rerun://")
-            || uri.starts_with("rerun+http://")
-            || uri.starts_with("rerun+https://")
+    #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
+    pub fn from_uri(_file_source: re_log_types::FileSource, mut uri: String) -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
         {
-            return Self::RerunGrpcUrl { url: uri };
+            use itertools::Itertools as _;
+
+            fn looks_like_windows_abs_path(path: &str) -> bool {
+                let path = path.as_bytes();
+                // "C:/" etc
+                path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
+            }
+
+            fn looks_like_a_file_path(uri: &str) -> bool {
+                // How do we distinguish a file path from a web url? "example.zip" could be either.
+
+                if uri.starts_with('/') {
+                    return true; // Unix absolute path
+                }
+                if looks_like_windows_abs_path(uri) {
+                    return true;
+                }
+
+                // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+                // like "example.com/foo.zip".
+                // If there is only one dot, we treat it as an extension and look it up in a list of common
+                // file extensions:
+
+                let parts = uri.split('.').collect_vec();
+                if parts.len() <= 1 {
+                    true // No dots. Weird. Let's assume it is a file path.
+                } else if parts.len() == 2 {
+                    // Extension or `.com` etc?
+                    re_data_loader::is_supported_file_extension(parts[1])
+                } else {
+                    false // Too many dots; assume an url
+                }
+            }
+
+            // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+            // come up with more convoluted than that…) can lead to many unexpected,
+            // platform-specific problems that aren't even necessarily consistent across runs.
+            //
+            // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+            // throwing errors when we shouldn't), we just make reading from standard input explicit.
+            if uri == "-" {
+                return Self::Stdin;
+            }
+
+            let path = std::path::Path::new(&uri).to_path_buf();
+
+            if uri.starts_with("file://") || path.exists() {
+                return Self::FilePath(_file_source, path);
+            }
+
+            if looks_like_a_file_path(&uri) {
+                return Self::FilePath(_file_source, path);
+            }
         }
 
-        if uri.starts_with("file://") || path.exists() {
-            Self::FilePath(file_source, path)
+        if redap::Scheme::try_from(uri.as_ref()).is_ok() {
+            Self::RerunGrpcUrl { url: uri }
         } else if (uri.starts_with("http://") || uri.starts_with("https://"))
             && (uri.ends_with(".rrd") || uri.ends_with(".rbl"))
         {
@@ -115,8 +120,6 @@ impl DataSource {
             }
         } else if uri.starts_with("http://") || uri.starts_with("https://") {
             Self::MessageProxy { url: uri }
-        } else if looks_like_a_file_path(&uri) {
-            Self::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::RrdHttpUrl {
                 url: uri,

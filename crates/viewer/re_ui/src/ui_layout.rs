@@ -101,7 +101,8 @@ impl UiLayout {
 
     fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
         if url::Url::parse(text).is_ok() {
-            ui.re_hyperlink(text, text)
+            // This is a general link and should not open a new tab unless desired by the user.
+            ui.re_hyperlink(text, text, false)
         } else {
             ui.label(galley)
         }
