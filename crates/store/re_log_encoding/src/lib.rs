@@ -122,7 +122,7 @@ pub enum OptionsError {
     #[error("Unknown compression: {0}")]
     UnknownCompression(u8),
 
-    // TODO(jan): Remove this at some point, realistically 1-2 releases from now
+    // TODO(jan): Remove this at some point, realistically 1-2 releases after 0.23
     #[error("Attempted to use the removed MsgPack serializer, which is no longer supported")]
     RemovedMsgPackSerializer,
 
