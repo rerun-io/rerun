@@ -146,7 +146,6 @@ exclude = [
   'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
 
   # Temporarily down or not accessible.
-  'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
 
