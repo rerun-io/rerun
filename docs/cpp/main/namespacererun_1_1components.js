@@ -41,7 +41,6 @@ var namespacererun_1_1components =
     [ "Position3D", "structrerun_1_1components_1_1Position3D.html", "structrerun_1_1components_1_1Position3D" ],
     [ "Radius", "structrerun_1_1components_1_1Radius.html", "structrerun_1_1components_1_1Radius" ],
     [ "Range1D", "structrerun_1_1components_1_1Range1D.html", "structrerun_1_1components_1_1Range1D" ],
-    [ "RecordingUri", "structrerun_1_1components_1_1RecordingUri.html", "structrerun_1_1components_1_1RecordingUri" ],
     [ "Resolution", "structrerun_1_1components_1_1Resolution.html", "structrerun_1_1components_1_1Resolution" ],
     [ "RotationAxisAngle", "structrerun_1_1components_1_1RotationAxisAngle.html", "structrerun_1_1components_1_1RotationAxisAngle" ],
     [ "RotationQuat", "structrerun_1_1components_1_1RotationQuat.html", "structrerun_1_1components_1_1RotationQuat" ],

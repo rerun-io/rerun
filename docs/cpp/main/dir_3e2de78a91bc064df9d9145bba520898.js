@@ -46,7 +46,6 @@ var dir_3e2de78a91bc064df9d9145bba520898 =
     [ "position3d.hpp", "position3d_8hpp_source.html", null ],
     [ "radius.hpp", "radius_8hpp_source.html", null ],
     [ "range1d.hpp", "components_2range1d_8hpp_source.html", null ],
-    [ "recording_uri.hpp", "recording__uri_8hpp_source.html", null ],
     [ "resolution.hpp", "resolution_8hpp_source.html", null ],
     [ "rotation_axis_angle.hpp", "components_2rotation__axis__angle_8hpp_source.html", null ],
     [ "rotation_quat.hpp", "rotation__quat_8hpp_source.html", null ],

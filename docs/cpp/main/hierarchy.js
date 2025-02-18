@@ -196,7 +196,6 @@ var hierarchy =
     [ "rerun::datatypes::Range1D", "structrerun_1_1datatypes_1_1Range1D.html", null ],
     [ "rerun::datatypes::Range2D", "structrerun_1_1datatypes_1_1Range2D.html", null ],
     [ "rerun::RecordingStream", "classrerun_1_1RecordingStream.html", null ],
-    [ "rerun::components::RecordingUri", "structrerun_1_1components_1_1RecordingUri.html", null ],
     [ "rerun::RerunGlobalConfig", "structrerun_1_1RerunGlobalConfig.html", null ],
     [ "rerun::components::Resolution", "structrerun_1_1components_1_1Resolution.html", null ],
     [ "rerun::Result< T >", "classrerun_1_1Result.html", null ],
