@@ -68,6 +68,24 @@ impl Scheme {
             Self::RerunHttp => "http",
         }
     }
+
+    /// Converts a rerun url into a canonical http or https url.
+    fn canonical_url(&self, url: &str) -> String {
+        match self {
+            Self::Rerun => {
+                debug_assert!(url.starts_with("rerun://"));
+                url.replace("rerun://", "https://")
+            }
+            Self::RerunHttp => {
+                debug_assert!(url.starts_with("rerun+http://"));
+                url.replace("rerun+http://", "http://")
+            }
+            Self::RerunHttps => {
+                debug_assert!(url.starts_with("rerun+https://"));
+                url.replace("rerun+https://", "https://")
+            }
+        }
+    }
 }
 
 impl TryFrom<&str> for Scheme {
@@ -159,18 +177,8 @@ impl Origin {
 /// Parses a URL and returns the [`Origin`] and the canonical URL (i.e. one that
 ///  starts with `http://` or `https://`).
 fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), ConnectionError> {
-    let (scheme, rewritten) = if value.starts_with("rerun://") {
-        Ok((Scheme::Rerun, value.replace("rerun://", "https://")))
-    } else if value.starts_with("rerun+http://") {
-        Ok((Scheme::RerunHttp, value.replace("rerun+http://", "http://")))
-    } else if value.starts_with("rerun+https://") {
-        Ok((
-            Scheme::RerunHttps,
-            value.replace("rerun+https://", "https://"),
-        ))
-    } else {
-        Err(InvalidScheme)
-    }?;
+    let scheme = Scheme::try_from(value)?;
+    let rewritten = scheme.canonical_url(value);
 
     // We have to first rewrite the endpoint, because `Url` does not allow
     // `.set_scheme()` for non-opaque origins, nor does it return a proper

@@ -4,6 +4,7 @@ use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
+use re_grpc_client::redap;
 
 /// Somewhere we can get Rerun data from.
 #[derive(Debug, Clone)]
@@ -97,10 +98,7 @@ impl DataSource {
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
-        if uri.starts_with("rerun://")
-            || uri.starts_with("rerun+http://")
-            || uri.starts_with("rerun+https://")
-        {
+        if redap::Scheme::try_from(uri.as_ref()).is_ok() {
             return Self::RerunGrpcUrl { url: uri };
         }
 
