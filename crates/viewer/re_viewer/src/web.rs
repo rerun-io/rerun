@@ -2,11 +2,13 @@
 
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use serde::Deserialize;
-use std::str::FromStr as _;
 use wasm_bindgen::prelude::*;
 
+use re_grpc_client::redap::RedapAddress;
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
@@ -722,7 +724,21 @@ fn create_app(
     if let Some(urls) = url {
         let follow_if_http = false;
         for url in urls.into_inner() {
-            if let Some(receiver) =
+            // Special case catalog urls.
+            let catalog_origin =
+                RedapAddress::try_from(url.as_ref())
+                    .ok()
+                    .and_then(|addr| match addr {
+                        RedapAddress::Recording { .. } => None,
+                        RedapAddress::Catalog { origin } => Some(origin.clone()),
+                    });
+
+            if let Some(catalog_origin) = catalog_origin {
+                app.command_sender
+                    .send_system(SystemCommand::AddRedapServer {
+                        origin: catalog_origin,
+                    });
+            } else if let Some(receiver) =
                 url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
             {
                 app.command_sender
