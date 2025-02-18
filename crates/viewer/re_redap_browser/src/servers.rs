@@ -39,15 +39,19 @@ pub struct RecordingCollection {
 
 /// All catalogs known to the viewer.
 // TODO(andreas,antoine): Eventually, collections are part of a catalog, meaning there is going to be multiple ones.
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct RedapServers {
+    //TODO: server
+    //servers: Vec<redap::Origin>,
+
     // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
+    #[serde(skip)]
     catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
 
-    // TODO(andreas,antoine): Keep track of in-flight requests.
-    //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
+    #[serde(skip)]
     selected_collection: Option<CollectionHandle>,
 
+    #[serde(skip)]
     command_queue: Arc<Mutex<Vec<Command>>>,
 }
 

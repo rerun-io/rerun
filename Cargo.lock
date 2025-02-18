@@ -6452,6 +6452,7 @@ dependencies = [
  "re_ui",
  "re_view_dataframe",
  "re_viewer_context",
+ "serde",
  "thiserror 1.0.65",
  "tokio-stream",
  "tonic",

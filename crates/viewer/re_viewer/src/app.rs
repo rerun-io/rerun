@@ -7,7 +7,6 @@ use re_capabilities::MainThreadToken;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
-use re_redap_browser::RedapServers;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
@@ -204,9 +203,6 @@ pub struct App {
 
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
-
-    /// Redap server catalogs and browser UI
-    redap_servers: RedapServers,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -422,7 +418,6 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            redap_servers: RedapServers::default(),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -590,7 +585,9 @@ impl App {
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.redap_servers.fetch_catalog(&self.async_runtime, url);
+                        self.state
+                            .redap_servers
+                            .fetch_catalog(&self.async_runtime, url);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1200,7 +1197,7 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.redap_servers.on_frame_start();
+                        self.state.redap_servers.on_frame_start();
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1209,7 +1206,6 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_context,
-                            &self.redap_servers,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1736,7 +1732,8 @@ impl App {
     }
 
     pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
-        self.redap_servers
+        self.state
+            .redap_servers
             .fetch_catalog(&self.async_runtime, origin);
     }
 }

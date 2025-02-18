@@ -63,6 +63,9 @@ pub struct AppState {
     #[serde(skip)]
     datastore_ui: re_chunk_store_ui::DatastoreUi,
 
+    /// Redap server catalogs and browser UI
+    pub(crate) redap_servers: RedapServers,
+
     /// The current display mode.
     #[serde(skip)]
     pub(crate) display_mode: DisplayMode,
@@ -105,6 +108,7 @@ impl Default for AppState {
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
+            redap_servers: Default::default(),
             display_mode: DisplayMode::LocalRecordings,
             show_settings_ui: false,
             view_states: Default::default(),
@@ -159,7 +163,6 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        redap_servers: &RedapServers,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -184,6 +187,7 @@ impl AppState {
             blueprint_tree,
             welcome_screen,
             datastore_ui,
+            redap_servers,
             display_mode,
             show_settings_ui,
             view_states,
