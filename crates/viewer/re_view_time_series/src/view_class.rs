@@ -399,8 +399,13 @@ impl ViewClass for TimeSeriesView {
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let time_zone_for_timestamps = ctx.app_options().time_zone;
+
+        let plot_id = crate::plot_id(query.view_id);
+
+        set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
+
         let mut plot = Plot::new(plot_id_src)
-            .id(crate::plot_id(query.view_id))
+            .id(plot_id)
             .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
@@ -446,7 +451,6 @@ impl ViewClass for TimeSeriesView {
             response,
             transform,
             hovered_plot_item,
-            hidden_items,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
@@ -537,7 +541,13 @@ impl ViewClass for TimeSeriesView {
         }
 
         // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
-        update_series_visibility(ctx, query, &all_plot_series, &hidden_items);
+        update_series_visibility_overrides_from_plot(
+            ctx,
+            query,
+            &all_plot_series,
+            ui.ctx(),
+            plot_id,
+        );
 
         if let Some(mut time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
@@ -573,15 +583,37 @@ impl ViewClass for TimeSeriesView {
     }
 }
 
-fn update_series_visibility(
+fn set_plot_visibility_from_store(
+    egui_ctx: &egui::Context,
+    plot_series_from_store: &[&crate::PlotSeries],
+    plot_id: egui::Id,
+) {
+    // egui_plot has its own memory about which plots are visible.
+    // We want to store that state in blueprint, so overwrite it (we sync with any changes that ui interaction may do later on, see `update_series_visibility`)
+    if let Some(mut plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) {
+        plot_memory.hidden_items = plot_series_from_store
+            .iter()
+            .filter(|&series| !series.visible)
+            .map(|series| series.id)
+            .collect();
+        plot_memory.store(egui_ctx, plot_id);
+    }
+}
+
+fn update_series_visibility_overrides_from_plot(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     all_plot_series: &[&crate::PlotSeries],
-    hidden_items: &[egui::Id],
+    egui_ctx: &egui::Context,
+    plot_id: egui::Id,
 ) {
     let Some(query_results) = ctx.query_results.get(&query.view_id) else {
         return;
     };
+    let Some(plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) else {
+        return;
+    };
+    let hidden_items = plot_memory.hidden_items;
 
     // Determine which series have changed visibility state.
     let mut per_entity_series_new_visibility_state: HashMap<EntityPath, SmallVec<[bool; 1]>> =
@@ -641,7 +673,6 @@ fn update_series_visibility(
                 .serialized()
                 .map(|serialized| serialized.with_descriptor_override(descriptor))
         }) {
-            dbg!(&serialized_component_batch);
             ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
         }
     }
@@ -684,16 +715,14 @@ fn add_series_to_plot(
 
         match series.kind {
             PlotSeriesKind::Continuous => plot_ui.line(
-                Line::new(points)
-                    .name(&series.label)
+                Line::new(&series.label, points)
                     .color(color)
                     .width(2.0 * series.radius_ui)
                     .highlight(highlight)
                     .id(series.id),
             ),
             PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
-                Points::new(points)
-                    .name(&series.label)
+                Points::new(&series.label, points)
                     .color(color)
                     .radius(series.radius_ui)
                     .shape(scatter_attrs.marker.into())
