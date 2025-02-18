@@ -671,11 +671,7 @@ impl ChunkStore {
         let chunks = static_chunks
             .values()
             .cloned()
-            .chain(
-                temporal_chunks
-                    .into_iter()
-                    .filter(|chunk| !static_chunks.contains_key(&chunk.id())),
-            )
+            .chain(temporal_chunks.into_iter())
             .collect_vec();
 
         debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
@@ -901,11 +897,7 @@ impl ChunkStore {
         let chunks = static_chunks
             .values()
             .cloned()
-            .chain(
-                temporal_chunks
-                    .into_iter()
-                    .filter(|chunk| !static_chunks.contains_key(&chunk.id())),
-            )
+            .chain(temporal_chunks.into_iter())
             .collect_vec();
 
         debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
