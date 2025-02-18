@@ -290,10 +290,10 @@ class SeriesPoint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible_series: components.VisibleBatch | None = field(
+    visible_series: components.SeriesVisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.VisibleBatch._converter,  # type: ignore[misc]
+        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
     )
     # Which point series are visible.
     #

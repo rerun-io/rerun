@@ -35,7 +35,7 @@ table SeriesLine (
     /// If not set, all line series on this entity are visible.
     /// Unlike with the regular visibility property of the entire entity, any series that is hidden
     /// via this property will still be visible in the legend.
-    visible_series: [rerun.components.Visible] ("attr.rerun.component_optional", nullable, order: 3100);
+    visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
 
     /// Configures the zoom-dependent scalar aggregation.
     ///

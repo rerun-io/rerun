@@ -53,6 +53,7 @@ rotation_axis_angle.rs linguist-generated=true
 rotation_quat.rs linguist-generated=true
 scalar.rs linguist-generated=true
 scale3d.rs linguist-generated=true
+series_visible.rs linguist-generated=true
 show_labels.rs linguist-generated=true
 stroke_width.rs linguist-generated=true
 tensor_data.rs linguist-generated=true

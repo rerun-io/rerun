@@ -15,7 +15,7 @@ namespace rerun::archetypes {
         archetype.name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
         archetype.visible_series =
-            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible_series)
+            ComponentBatch::empty<rerun::components::SeriesVisible>(Descriptor_visible_series)
                 .value_or_throw();
         archetype.aggregation_policy = ComponentBatch::empty<rerun::components::AggregationPolicy>(
                                            Descriptor_aggregation_policy

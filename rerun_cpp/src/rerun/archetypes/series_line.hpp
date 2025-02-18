@@ -9,8 +9,8 @@
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
+#include "../components/series_visible.hpp"
 #include "../components/stroke_width.hpp"
-#include "../components/visible.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -114,7 +114,7 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
             ArchetypeName, "visible_series",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
@@ -189,7 +189,8 @@ namespace rerun::archetypes {
         /// If not set, all line series on this entity are visible.
         /// Unlike with the regular visibility property of the entire entity, any series that is hidden
         /// via this property will still be visible in the legend.
-        SeriesLine with_visible_series(const Collection<rerun::components::Visible>& _visible_series
+        SeriesLine with_visible_series(
+            const Collection<rerun::components::SeriesVisible>& _visible_series
         ) && {
             visible_series =
                 ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)

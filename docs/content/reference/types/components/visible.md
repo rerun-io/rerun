@@ -20,7 +20,3 @@ boolean
  * 🦀 [Rust API docs for `Visible`](https://docs.rs/rerun/latest/rerun/components/struct.Visible.html?speculative-link)
 
 
-## Used by
-
-* [`SeriesLine`](../archetypes/series_line.md)
-* [`SeriesPoint`](../archetypes/series_point.md)

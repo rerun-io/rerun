@@ -133,7 +133,7 @@ impl SeriesLine {
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLine".into()),
-            component_name: "rerun.components.Visible".into(),
+            component_name: "rerun.components.SeriesVisible".into(),
             archetype_field_name: Some("visible_series".into()),
         }
     }
@@ -328,7 +328,7 @@ impl SeriesLine {
                 Self::descriptor_name(),
             )),
             visible_series: Some(SerializedComponentBatch::new(
-                crate::components::Visible::arrow_empty(),
+                crate::components::SeriesVisible::arrow_empty(),
                 Self::descriptor_visible_series(),
             )),
             aggregation_policy: Some(SerializedComponentBatch::new(
@@ -474,7 +474,7 @@ impl SeriesLine {
     #[inline]
     pub fn with_visible_series(
         mut self,
-        visible_series: impl IntoIterator<Item = impl Into<crate::components::Visible>>,
+        visible_series: impl IntoIterator<Item = impl Into<crate::components::SeriesVisible>>,
     ) -> Self {
         self.visible_series =
             try_serialize_field(Self::descriptor_visible_series(), visible_series);

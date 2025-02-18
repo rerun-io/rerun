@@ -10,7 +10,7 @@
 #include "../components/marker_shape.hpp"
 #include "../components/marker_size.hpp"
 #include "../components/name.hpp"
-#include "../components/visible.hpp"
+#include "../components/series_visible.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -118,7 +118,7 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
             ArchetypeName, "visible_series",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `marker_size` field.
         static constexpr auto Descriptor_marker_size = ComponentDescriptor(
@@ -194,7 +194,7 @@ namespace rerun::archetypes {
         /// Unlike with the regular visibility property of the entire entity, any series that is hidden
         /// via this property will still be visible in the legend.
         SeriesPoint with_visible_series(
-            const Collection<rerun::components::Visible>& _visible_series
+            const Collection<rerun::components::SeriesVisible>& _visible_series
         ) && {
             visible_series =
                 ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)
