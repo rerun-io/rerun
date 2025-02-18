@@ -84,6 +84,13 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             arrow::array::StringArray::from(vec!["https://rerun.io"]),
             "any_value_url_string",
         ),
+        //TODO(ab): this will look like the previous test case, but we eventually would like to have
+        // a specific icon for it, so we already have a test case for it :)
+        TestCase::from_arrow(
+            ComponentName::from("custom_catalog_string"),
+            arrow::array::StringArray::from(vec!["rerun://rerun.io:1234/catalog"]),
+            "any_value_url_string",
+        ),
         TestCase::from_arrow(
             ComponentName::from("custom_empty_array"),
             arrow::array::UInt8Array::from(vec![] as Vec<u8>),

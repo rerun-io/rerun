@@ -968,6 +968,10 @@ pub trait UiExt {
     /// By default, the url is open in the same tab or a new tab based on the mouse button and
     /// modifiers, as per usual in browsers. If `always_new_tab` is `true`, then the url is opened
     /// in a new tab regardless.
+    ///
+    /// NOTE: for most kinds of URL, the `always_new_tab` is indirectly overridden to `true` by
+    /// `re_viewer::app_state::check_for_clicked_hyperlinks()`, unless the URL is special-cased by
+    /// that function (e.g. `rerun://` URLs).
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,

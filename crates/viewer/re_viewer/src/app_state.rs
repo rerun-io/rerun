@@ -764,6 +764,8 @@ pub(crate) fn recording_config_entry<'cfgs>(
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
+///
+/// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
