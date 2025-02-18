@@ -506,6 +506,8 @@
 <a href="#506" id="506">506</a>
 <a href="#507" id="507">507</a>
 <a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::atomic::AtomicBool;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -964,10 +966,12 @@
                 | SystemCommand::CloseApp(<span class="kw">_</span>)
                 | SystemCommand::LoadDataSource(<span class="kw">_</span>)
                 | SystemCommand::ClearSourceAndItsStores(<span class="kw">_</span>)
-                | SystemCommand::AddReceiver(<span class="kw">_</span>)
+                | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
+                | SystemCommand::ChangeDisplayMode(<span class="kw">_</span>)
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ActivateRecording(<span class="kw">_</span>)
                 | SystemCommand::CloseStore(<span class="kw">_</span>)
                 | SystemCommand::UndoBlueprint { .. }

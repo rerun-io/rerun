@@ -2370,6 +2370,13 @@
 <a href="#2370" id="2370">2370</a>
 <a href="#2371" id="2371">2371</a>
 <a href="#2372" id="2372">2372</a>
+<a href="#2373" id="2373">2373</a>
+<a href="#2374" id="2374">2374</a>
+<a href="#2375" id="2375">2375</a>
+<a href="#2376" id="2376">2376</a>
+<a href="#2377" id="2377">2377</a>
+<a href="#2378" id="2378">2378</a>
+<a href="#2379" id="2379">2379</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
@@ -2387,11 +2394,10 @@
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, PlayState, StoreContext, SystemCommand, SystemCommandSender, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::app_state::DisplayMode;
 <span class="kw">use crate</span>::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
@@ -2946,6 +2952,14 @@
             SystemCommand::AddReceiver(rx) =&gt; {
                 <span class="macro">re_log::debug!</span>(<span class="string">"Received AddReceiver"</span>);
                 <span class="self">self</span>.add_receiver(rx);
+            }
+
+            SystemCommand::ChangeDisplayMode(display_mode) =&gt; {
+                <span class="self">self</span>.state.display_mode = display_mode;
+            }
+            SystemCommand::AddRedapServer { origin } =&gt; {
+                <span class="self">self</span>.redap_servers
+                    .fetch_catalog(<span class="kw-2">&amp;</span><span class="self">self</span>.async_runtime, origin);
             }
 
             SystemCommand::LoadDataSource(data_source) =&gt; {

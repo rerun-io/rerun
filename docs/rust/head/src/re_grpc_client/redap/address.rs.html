@@ -365,6 +365,34 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Rerun uses its own URL scheme to access information across the network.
 //!
 //! The following schemes are supported: `rerun+http://`, `rerun+https://` and
@@ -387,8 +415,8 @@
     <span class="attr">#[error(<span class="string">"server is expecting an unencrypted connection (try `rerun+http://` if you are sure)"</span>)]
     </span>UnencryptedServer,
 
-    <span class="attr">#[error(<span class="string">"invalid or missing scheme (expected `rerun(+http|+https)://`)"</span>)]
-    </span>InvalidScheme,
+    <span class="attr">#[error(transparent)]
+    </span>InvalidScheme(<span class="attr">#[from] </span>InvalidScheme),
 
     <span class="attr">#[error(<span class="string">"unexpected endpoint: {0}"</span>)]
     </span>UnexpectedEndpoint(String),
@@ -402,6 +430,10 @@
     <span class="attr">#[error(<span class="string">"URL {url:?} cannot be loaded as a recording"</span>)]
     </span>CannotLoadUrlAsRecording { url: String },
 }
+
+<span class="attr">#[derive(thiserror::Error, Debug)]
+#[error(<span class="string">"invalid or missing scheme (expected `rerun(+http|+https)://`)"</span>)]
+</span><span class="kw">pub struct </span>InvalidScheme;
 
 <span class="doccomment">/// The different schemes supported by Rerun.
 ///
@@ -429,6 +461,40 @@
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Rerun | <span class="self">Self</span>::RerunHttps =&gt; <span class="string">"https"</span>,
             <span class="self">Self</span>::RerunHttp =&gt; <span class="string">"http"</span>,
+        }
+    }
+
+    <span class="doccomment">/// Converts a rerun url into a canonical http or https url.
+    </span><span class="kw">fn </span>canonical_url(<span class="kw-2">&amp;</span><span class="self">self</span>, url: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Rerun =&gt; {
+                <span class="macro">debug_assert!</span>(url.starts_with(<span class="string">"rerun://"</span>));
+                url.replace(<span class="string">"rerun://"</span>, <span class="string">"https://"</span>)
+            }
+            <span class="self">Self</span>::RerunHttp =&gt; {
+                <span class="macro">debug_assert!</span>(url.starts_with(<span class="string">"rerun+http://"</span>));
+                url.replace(<span class="string">"rerun+http://"</span>, <span class="string">"http://"</span>)
+            }
+            <span class="self">Self</span>::RerunHttps =&gt; {
+                <span class="macro">debug_assert!</span>(url.starts_with(<span class="string">"rerun+https://"</span>));
+                url.replace(<span class="string">"rerun+https://"</span>, <span class="string">"https://"</span>)
+            }
+        }
+    }
+}
+
+<span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>Scheme {
+    <span class="kw">type </span>Error = InvalidScheme;
+
+    <span class="kw">fn </span>try_from(url: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">if </span>url.starts_with(<span class="string">"rerun://"</span>) {
+            <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Rerun)
+        } <span class="kw">else if </span>url.starts_with(<span class="string">"rerun+http://"</span>) {
+            <span class="prelude-val">Ok</span>(<span class="self">Self</span>::RerunHttp)
+        } <span class="kw">else if </span>url.starts_with(<span class="string">"rerun+https://"</span>) {
+            <span class="prelude-val">Ok</span>(<span class="self">Self</span>::RerunHttps)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(InvalidScheme)
         }
     }
 }
@@ -506,18 +572,8 @@
 <span class="doccomment">/// Parses a URL and returns the [`Origin`] and the canonical URL (i.e. one that
 ///  starts with `http://` or `https://`).
 </span><span class="kw">fn </span>replace_and_parse(value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(Origin, url::Url), ConnectionError&gt; {
-    <span class="kw">let </span>(scheme, rewritten) = <span class="kw">if </span>value.starts_with(<span class="string">"rerun://"</span>) {
-        <span class="prelude-val">Ok</span>((Scheme::Rerun, value.replace(<span class="string">"rerun://"</span>, <span class="string">"https://"</span>)))
-    } <span class="kw">else if </span>value.starts_with(<span class="string">"rerun+http://"</span>) {
-        <span class="prelude-val">Ok</span>((Scheme::RerunHttp, value.replace(<span class="string">"rerun+http://"</span>, <span class="string">"http://"</span>)))
-    } <span class="kw">else if </span>value.starts_with(<span class="string">"rerun+https://"</span>) {
-        <span class="prelude-val">Ok</span>((
-            Scheme::RerunHttps,
-            value.replace(<span class="string">"rerun+https://"</span>, <span class="string">"https://"</span>),
-        ))
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Err</span>(ConnectionError::InvalidScheme)
-    }<span class="question-mark">?</span>;
+    <span class="kw">let </span>scheme = Scheme::try_from(value)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rewritten = scheme.canonical_url(value);
 
     <span class="comment">// We have to first rewrite the endpoint, because `Url` does not allow
     // `.set_scheme()` for non-opaque origins, nor does it return a proper

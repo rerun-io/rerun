@@ -383,12 +383,16 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::FileContents;
 <span class="kw">use </span>re_log_types::LogMsg;
 <span class="kw">use </span>re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
 </span><span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
+<span class="kw">use </span>re_grpc_client::redap;
 
 <span class="doccomment">/// Somewhere we can get Rerun data from.
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -434,63 +438,67 @@
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
-    </span><span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-    </span><span class="kw">pub fn </span>from_uri(file_source: re_log_types::FileSource, <span class="kw-2">mut </span>uri: String) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
+    </span><span class="attr">#[cfg_attr(target_arch = <span class="string">"wasm32"</span>, expect(clippy::needless_pass_by_value))]
+    </span><span class="kw">pub fn </span>from_uri(_file_source: re_log_types::FileSource, <span class="kw-2">mut </span>uri: String) -&gt; <span class="self">Self </span>{
+        <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+        </span>{
+            <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
-        <span class="kw">fn </span>looks_like_windows_abs_path(path: <span class="kw-2">&amp;</span>str) -&gt; bool {
-            <span class="kw">let </span>path = path.as_bytes();
-            <span class="comment">// "C:/" etc
-            </span>path.get(<span class="number">1</span>).copied() == <span class="prelude-val">Some</span>(<span class="string">b':'</span>) &amp;&amp; path.get(<span class="number">2</span>).copied() == <span class="prelude-val">Some</span>(<span class="string">b'/'</span>)
-        }
-
-        <span class="kw">fn </span>looks_like_a_file_path(uri: <span class="kw-2">&amp;</span>str) -&gt; bool {
-            <span class="comment">// How do we distinguish a file path from a web url? "example.zip" could be either.
-
-            </span><span class="kw">if </span>uri.starts_with(<span class="string">'/'</span>) {
-                <span class="kw">return </span><span class="bool-val">true</span>; <span class="comment">// Unix absolute path
-            </span>}
-            <span class="kw">if </span>looks_like_windows_abs_path(uri) {
-                <span class="kw">return </span><span class="bool-val">true</span>;
+            <span class="kw">fn </span>looks_like_windows_abs_path(path: <span class="kw-2">&amp;</span>str) -&gt; bool {
+                <span class="kw">let </span>path = path.as_bytes();
+                <span class="comment">// "C:/" etc
+                </span>path.get(<span class="number">1</span>).copied() == <span class="prelude-val">Some</span>(<span class="string">b':'</span>) &amp;&amp; path.get(<span class="number">2</span>).copied() == <span class="prelude-val">Some</span>(<span class="string">b'/'</span>)
             }
 
-            <span class="comment">// We use a simple heuristic here: if there are multiple dots, it is likely an url,
-            // like "example.com/foo.zip".
-            // If there is only one dot, we treat it as an extension and look it up in a list of common
-            // file extensions:
+            <span class="kw">fn </span>looks_like_a_file_path(uri: <span class="kw-2">&amp;</span>str) -&gt; bool {
+                <span class="comment">// How do we distinguish a file path from a web url? "example.zip" could be either.
 
-            </span><span class="kw">let </span>parts = uri.split(<span class="string">'.'</span>).collect_vec();
-            <span class="kw">if </span>parts.len() &lt;= <span class="number">1 </span>{
-                <span class="bool-val">true </span><span class="comment">// No dots. Weird. Let's assume it is a file path.
-            </span>} <span class="kw">else if </span>parts.len() == <span class="number">2 </span>{
-                <span class="comment">// Extension or `.com` etc?
-                </span>re_data_loader::is_supported_file_extension(parts[<span class="number">1</span>])
-            } <span class="kw">else </span>{
-                <span class="bool-val">false </span><span class="comment">// Too many dots; assume an url
-            </span>}
+                </span><span class="kw">if </span>uri.starts_with(<span class="string">'/'</span>) {
+                    <span class="kw">return </span><span class="bool-val">true</span>; <span class="comment">// Unix absolute path
+                </span>}
+                <span class="kw">if </span>looks_like_windows_abs_path(uri) {
+                    <span class="kw">return </span><span class="bool-val">true</span>;
+                }
+
+                <span class="comment">// We use a simple heuristic here: if there are multiple dots, it is likely an url,
+                // like "example.com/foo.zip".
+                // If there is only one dot, we treat it as an extension and look it up in a list of common
+                // file extensions:
+
+                </span><span class="kw">let </span>parts = uri.split(<span class="string">'.'</span>).collect_vec();
+                <span class="kw">if </span>parts.len() &lt;= <span class="number">1 </span>{
+                    <span class="bool-val">true </span><span class="comment">// No dots. Weird. Let's assume it is a file path.
+                </span>} <span class="kw">else if </span>parts.len() == <span class="number">2 </span>{
+                    <span class="comment">// Extension or `.com` etc?
+                    </span>re_data_loader::is_supported_file_extension(parts[<span class="number">1</span>])
+                } <span class="kw">else </span>{
+                    <span class="bool-val">false </span><span class="comment">// Too many dots; assume an url
+                </span>}
+            }
+
+            <span class="comment">// Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+            // come up with more convoluted than that…) can lead to many unexpected,
+            // platform-specific problems that aren't even necessarily consistent across runs.
+            //
+            // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+            // throwing errors when we shouldn't), we just make reading from standard input explicit.
+            </span><span class="kw">if </span>uri == <span class="string">"-" </span>{
+                <span class="kw">return </span><span class="self">Self</span>::Stdin;
+            }
+
+            <span class="kw">let </span>path = std::path::Path::new(<span class="kw-2">&amp;</span>uri).to_path_buf();
+
+            <span class="kw">if </span>uri.starts_with(<span class="string">"file://"</span>) || path.exists() {
+                <span class="kw">return </span><span class="self">Self</span>::FilePath(_file_source, path);
+            }
+
+            <span class="kw">if </span>looks_like_a_file_path(<span class="kw-2">&amp;</span>uri) {
+                <span class="kw">return </span><span class="self">Self</span>::FilePath(_file_source, path);
+            }
         }
 
-        <span class="comment">// Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
-        // come up with more convoluted than that…) can lead to many unexpected,
-        // platform-specific problems that aren't even necessarily consistent across runs.
-        //
-        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
-        // throwing errors when we shouldn't), we just make reading from standard input explicit.
-        </span><span class="kw">if </span>uri == <span class="string">"-" </span>{
-            <span class="kw">return </span><span class="self">Self</span>::Stdin;
-        }
-
-        <span class="kw">let </span>path = std::path::Path::new(<span class="kw-2">&amp;</span>uri).to_path_buf();
-
-        <span class="kw">if </span>uri.starts_with(<span class="string">"rerun://"</span>)
-            || uri.starts_with(<span class="string">"rerun+http://"</span>)
-            || uri.starts_with(<span class="string">"rerun+https://"</span>)
-        {
-            <span class="kw">return </span><span class="self">Self</span>::RerunGrpcUrl { url: uri };
-        }
-
-        <span class="kw">if </span>uri.starts_with(<span class="string">"file://"</span>) || path.exists() {
-            <span class="self">Self</span>::FilePath(file_source, path)
+        <span class="kw">if </span>redap::Scheme::try_from(uri.as_ref()).is_ok() {
+            <span class="self">Self</span>::RerunGrpcUrl { url: uri }
         } <span class="kw">else if </span>(uri.starts_with(<span class="string">"http://"</span>) || uri.starts_with(<span class="string">"https://"</span>))
             &amp;&amp; (uri.ends_with(<span class="string">".rrd"</span>) || uri.ends_with(<span class="string">".rbl"</span>))
         {
@@ -500,8 +508,6 @@
             }
         } <span class="kw">else if </span>uri.starts_with(<span class="string">"http://"</span>) || uri.starts_with(<span class="string">"https://"</span>) {
             <span class="self">Self</span>::MessageProxy { url: uri }
-        } <span class="kw">else if </span>looks_like_a_file_path(<span class="kw-2">&amp;</span>uri) {
-            <span class="self">Self</span>::FilePath(file_source, path)
         } <span class="kw">else if </span>uri.ends_with(<span class="string">".rrd"</span>) || uri.ends_with(<span class="string">".rbl"</span>) {
             <span class="self">Self</span>::RrdHttpUrl {
                 url: uri,

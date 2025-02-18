@@ -1192,6 +1192,22 @@
 <a href="#1192" id="1192">1192</a>
 <a href="#1193" id="1193">1193</a>
 <a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::hash::Hash;
 
 <span class="kw">use </span>egui::{
@@ -2158,12 +2174,22 @@
     }
 
     <span class="doccomment">/// Helper for adding a list-item hyperlink.
+    ///
+    /// By default, the url is open in the same tab or a new tab based on the mouse button and
+    /// modifiers, as per usual in browsers. If `always_new_tab` is `true`, then the url is opened
+    /// in a new tab regardless.
+    ///
+    /// NOTE: for most kinds of URL, the `always_new_tab` is indirectly overridden to `true` by
+    /// `re_viewer::app_state::check_for_clicked_hyperlinks()`, unless the URL is special-cased by
+    /// that function (e.g. `rerun://` URLs).
     </span><span class="kw">fn </span>re_hyperlink(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         text: <span class="kw">impl </span>Into&lt;egui::WidgetText&gt;,
         url: <span class="kw">impl </span>ToString,
+        always_new_tab: bool,
     ) -&gt; egui::Response {
         <span class="kw">let </span>ui = <span class="self">self</span>.ui_mut();
+
         ui.scope(|ui| {
             <span class="kw">let </span>style = ui.style_mut();
             style.visuals.button_frame = <span class="bool-val">false</span>;
@@ -2174,7 +2200,13 @@
                 .add(Button::image_and_text(image, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
-            <span class="kw">if </span>response.clicked() {
+            <span class="comment">// Inspired from `egui::Ui::Hyperlink::ui()`
+            </span><span class="kw">if </span>response.clicked() {
+                ui.ctx().open_url(egui::OpenUrl {
+                    url: url.to_string(),
+                    new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+                });
+            } <span class="kw">else if </span>response.middle_clicked() {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(url));
             }
 

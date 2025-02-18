@@ -188,9 +188,19 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>re_chunk::EntityPath;
 <span class="kw">use </span>re_chunk_store::external::re_chunk::Chunk;
 <span class="kw">use </span>re_data_source::DataSource;
+<span class="kw">use </span>re_grpc_client::redap;
 <span class="kw">use </span>re_log_types::StoreId;
 <span class="kw">use </span>re_ui::{UICommand, UICommandSender};
 
@@ -212,7 +222,15 @@
     <span class="doccomment">/// Clear everything that came from this source, and close the source.
     </span>ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
-    AddReceiver(re_smart_channel::Receiver&lt;re_log_types::LogMsg&gt;),
+    <span class="doccomment">/// Add a new receiver for log messages.
+    </span>AddReceiver(re_smart_channel::Receiver&lt;re_log_types::LogMsg&gt;),
+
+    <span class="doccomment">/// Add a new server to the redap browser.
+    </span>AddRedapServer {
+        origin: redap::Origin,
+    },
+
+    ChangeDisplayMode(<span class="kw">crate</span>::DisplayMode),
 
     <span class="doccomment">/// Reset the `Viewer` to the default state
     </span>ResetViewer,

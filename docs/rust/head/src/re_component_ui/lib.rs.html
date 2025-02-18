@@ -176,9 +176,6 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This crate implements various component editors.
 //!
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
@@ -197,7 +194,6 @@
 <span class="kw">mod </span>pinhole;
 <span class="kw">mod </span>plane3d;
 <span class="kw">mod </span>radius;
-<span class="kw">mod </span>recording_uri;
 <span class="kw">mod </span>resolution;
 <span class="kw">mod </span>response_utils;
 <span class="kw">mod </span>timeline;
@@ -341,8 +337,6 @@
 
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
-
-    registry.add_singleline_edit_or_view(recording_uri::singleline_view_recording_uri);
 
     line_strip::register_linestrip_component_ui(<span class="kw-2">&amp;mut </span>registry);
     geo_line_string::register_geo_line_string_component_ui(<span class="kw-2">&amp;mut </span>registry);

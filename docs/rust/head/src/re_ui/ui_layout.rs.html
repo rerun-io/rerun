@@ -136,6 +136,7 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span><span class="kw">crate</span>::UiExt <span class="kw">as _</span>;
@@ -239,7 +240,8 @@
 
     <span class="kw">fn </span>decorate_url(ui: <span class="kw-2">&amp;mut </span>egui::Ui, text: <span class="kw-2">&amp;</span>str, galley: Arc&lt;egui::Galley&gt;) -&gt; egui::Response {
         <span class="kw">if </span>url::Url::parse(text).is_ok() {
-            ui.re_hyperlink(text, text)
+            <span class="comment">// This is a general link and should not open a new tab unless desired by the user.
+            </span>ui.re_hyperlink(text, text, <span class="bool-val">false</span>)
         } <span class="kw">else </span>{
             ui.label(galley)
         }

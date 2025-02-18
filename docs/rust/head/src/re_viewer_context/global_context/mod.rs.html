@@ -51,6 +51,19 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Ultimately the goal is to have hierarchy of contexts from general to
 //! increasingly specific. Each part of the viewer should only have access a
 //! narrow context. Unfortunately, right now everything is still very
@@ -103,5 +116,18 @@
 
     <span class="doccomment">/// Interface for sending commands back to the app
     </span><span class="kw">pub </span>command_sender: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CommandSender,
+}
+
+<span class="doccomment">/// Which display mode are we currently in?
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>DisplayMode {
+    <span class="doccomment">/// Regular view of the local recordings, including the current recording's viewport.
+    </span>LocalRecordings,
+
+    <span class="doccomment">/// The Redap server/catalog/collection browser.
+    </span>RedapBrowser,
+
+    <span class="doccomment">/// The current recording's data store browser.
+    </span>ChunkStoreBrowser,
 }
 </code></pre></div></section></main></body></html>

@@ -245,7 +245,6 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>arrow::array::{Array, ArrayRef, ListArray <span class="kw">as </span>ArrowListArray, StringArray <span class="kw">as </span>ArrowStringArray};
@@ -257,8 +256,7 @@
 <span class="kw">use </span>re_log_types::{EntityPath, Timeline};
 <span class="kw">use </span>re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 <span class="kw">use </span>re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
-<span class="kw">use </span>re_types::components::RecordingUri;
-<span class="kw">use </span>re_types_core::{arrow_helpers::as_array_ref, Component <span class="kw">as _</span>};
+<span class="kw">use </span>re_types_core::arrow_helpers::as_array_ref;
 <span class="kw">use </span>re_ui::UiExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span>re_viewer_context::ViewerContext;
@@ -361,7 +359,7 @@
     <span class="kw">static </span>COMPONENT_URI_DESCRIPTOR: once_cell::sync::Lazy&lt;ComponentColumnDescriptor&gt; =
         once_cell::sync::Lazy::new(|| ComponentColumnDescriptor {
             store_datatype: ArrowDataType::Utf8,
-            component_name: RecordingUri::name(),
+            component_name: <span class="string">"recording_uri"</span>.into(),
             entity_path: EntityPath::root(),
             archetype_name: <span class="prelude-val">None</span>,
             archetype_field_name: <span class="prelude-val">None</span>,

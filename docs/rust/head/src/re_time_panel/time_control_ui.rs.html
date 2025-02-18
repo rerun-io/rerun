@@ -245,6 +245,8 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 
 <span class="kw">use </span>re_entity_db::TimesPerTimeline;
@@ -308,6 +310,8 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         ui.re_hyperlink(
                             <span class="string">"Full documentation"</span>,
                             <span class="string">"https://rerun.io/docs/concepts/timelines"</span>,
+                            <span class="comment">// Always open in a new tab
+                            </span><span class="bool-val">true</span>,
                         );
                     });
                 })

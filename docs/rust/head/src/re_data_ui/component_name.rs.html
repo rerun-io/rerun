@@ -44,6 +44,7 @@
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
 <a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>re_types_core::ComponentName;
 <span class="kw">use </span>re_ui::UiExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_viewer_context::{UiLayout, ViewerContext};
@@ -84,7 +85,8 @@
                 }
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(url) = <span class="self">self</span>.doc_url() {
-                    ui.re_hyperlink(<span class="string">"Full documentation"</span>, url);
+                    <span class="comment">// Always open in a new tab
+                    </span>ui.re_hyperlink(<span class="string">"Full documentation"</span>, url, <span class="bool-val">true</span>);
                 }
             });
         }

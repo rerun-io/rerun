@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["singleline_view_recording_uri"]};

@@ -259,6 +259,7 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>ahash::HashMap;
@@ -321,6 +322,7 @@
     <span class="doccomment">/// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
+    </span><span class="comment">//TODO(ab): this will soon become "add_server"
     </span><span class="kw">pub fn </span>fetch_catalog(<span class="kw-2">&amp;</span><span class="self">self</span>, runtime: <span class="kw-2">&amp;</span>AsyncRuntimeHandle, origin: redap::Origin) {
         <span class="kw">let </span>catalogs = <span class="self">self</span>.catalogs.clone();
         runtime.spawn_future(<span class="kw">async move </span>{

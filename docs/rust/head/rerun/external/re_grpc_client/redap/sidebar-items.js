@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ConnectionError","RedapAddress"],"fn":["store_info_from_catalog_chunk","stream_from_redap","stream_recording_async"],"struct":["Origin"]};
+window.SIDEBAR_ITEMS = {"enum":["ConnectionError","RedapAddress","Scheme"],"fn":["store_info_from_catalog_chunk","stream_from_redap","stream_recording_async"],"struct":["InvalidScheme","Origin"]};

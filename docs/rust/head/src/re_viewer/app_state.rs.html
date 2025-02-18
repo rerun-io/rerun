@@ -802,12 +802,28 @@
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>egui::{NumExt <span class="kw">as _</span>, Ui};
-<span class="kw">use </span>std::cmp::PartialEq;
 
 <span class="kw">use </span>re_chunk_store::LatestAtQuery;
 <span class="kw">use </span>re_entity_db::EntityDb;
+<span class="kw">use </span>re_grpc_client::redap;
 <span class="kw">use </span>re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 <span class="kw">use </span>re_redap_browser::RedapServers;
 <span class="kw">use </span>re_smart_channel::ReceiveSet;
@@ -815,8 +831,9 @@
 <span class="kw">use </span>re_ui::{ContextExt <span class="kw">as _</span>, DesignTokens};
 <span class="kw">use </span>re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
-    SystemCommandSender <span class="kw">as _</span>, ViewClassExt <span class="kw">as _</span>, ViewClassRegistry, ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender <span class="kw">as _</span>, ViewClassExt <span class="kw">as _</span>, ViewClassRegistry,
+    ViewStates, ViewerContext,
 };
 <span class="kw">use </span>re_viewport::ViewportUi;
 <span class="kw">use </span>re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -829,20 +846,7 @@
 
 <span class="kw">const </span>WATERMARK: bool = <span class="bool-val">false</span>; <span class="comment">// Nice for recording media material
 
-</span><span class="doccomment">/// Which display mode are we currently in?
-</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>DisplayMode {
-    <span class="doccomment">/// Regular view of the local recordings, including the current recording's viewport.
-    </span>LocalRecordings,
-
-    <span class="doccomment">/// The Redap server/catalog/collection browser.
-    </span>RedapBrowser,
-
-    <span class="doccomment">/// The current recording's data store browser.
-    </span>ChunkStoreBrowser,
-}
-
-<span class="attr">#[derive(serde::Deserialize, serde::Serialize)]
+</span><span class="attr">#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 </span><span class="kw">pub struct </span>AppState {
     <span class="doccomment">/// Global options for the whole viewer.
@@ -1391,7 +1395,7 @@
         }
 
         <span class="comment">// This must run after any ui code, or other code that tells egui to open an url:
-        </span>check_for_clicked_hyperlinks(<span class="kw-2">&amp;</span>egui_ctx, ctx.selection_state);
+        </span>check_for_clicked_hyperlinks(<span class="kw-2">&amp;</span>ctx);
 
         <span class="comment">// Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         </span><span class="kw">if </span>ui.input(|i| i.key_pressed(egui::Key::Escape)) &amp;&amp; !is_any_popup_open {
@@ -1563,24 +1567,52 @@
 }
 
 <span class="doccomment">/// We allow linking to entities and components via hyperlinks,
-/// e.g. in embedded markdown.
+/// e.g. in embedded markdown. We also have a custom `rerun://` scheme to be handled by the viewer.
 ///
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-</span><span class="kw">fn </span>check_for_clicked_hyperlinks(
-    egui_ctx: <span class="kw-2">&amp;</span>egui::Context,
-    selection_state: <span class="kw-2">&amp;</span>ApplicationSelectionState,
-) {
+///
+/// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
+</span><span class="kw">fn </span>check_for_clicked_hyperlinks(ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;) {
     <span class="kw">let </span>recording_scheme = <span class="string">"recording://"</span>;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>path = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>recording_path = <span class="prelude-val">None</span>;
 
-    egui_ctx.output_mut(|o| {
+    ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             <span class="kw">if let </span>egui::OutputCommand::OpenUrl(open_url) = command {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(path_str) = open_url.url.strip_prefix(recording_scheme) {
-                    path = <span class="prelude-val">Some</span>(path_str.to_owned());
+                <span class="kw">let </span>is_rerun_url = redap::Scheme::try_from(open_url.url.as_ref()).is_ok();
+
+                <span class="kw">if </span>is_rerun_url {
+                    <span class="kw">let </span>data_source = re_data_source::DataSource::from_uri(
+                        re_log_types::FileSource::Uri,
+                        open_url.url.clone(),
+                    );
+
+                    <span class="kw">match </span>data_source.stream(<span class="prelude-val">None</span>) {
+                        <span class="prelude-val">Ok</span>(re_data_source::StreamSource::LogMessages(rx)) =&gt; {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::AddReceiver(rx));
+
+                            <span class="kw">if </span>!open_url.new_tab {
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::ChangeDisplayMode(
+                                        DisplayMode::LocalRecordings,
+                                    ));
+                            }
+                        }
+
+                        <span class="prelude-val">Ok</span>(re_data_source::StreamSource::CatalogData { origin }) =&gt; ctx
+                            .command_sender()
+                            .send_system(SystemCommand::AddRedapServer { origin }),
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="macro">re_log::warn!</span>(<span class="string">"Could not handle url {:?}: {err}"</span>, open_url.url);
+                        }
+                    }
+                    <span class="kw">return </span><span class="bool-val">false</span>;
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(path_str) = open_url.url.strip_prefix(recording_scheme) {
+                    recording_path = <span class="prelude-val">Some</span>(path_str.to_owned());
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 } <span class="kw">else </span>{
                     <span class="comment">// Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
@@ -1591,10 +1623,10 @@
         </span>});
     });
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = path {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = recording_path {
         <span class="kw">match </span>path.parse::&lt;re_viewer_context::Item&gt;() {
             <span class="prelude-val">Ok</span>(item) =&gt; {
-                selection_state.set_selection(item);
+                ctx.selection_state.set_selection(item);
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">re_log::warn!</span>(<span class="string">"Failed to parse entity path {path:?}: {err}"</span>);
