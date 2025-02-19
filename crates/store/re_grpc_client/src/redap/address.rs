@@ -73,6 +73,7 @@ impl TryFrom<&str> for TimeRange {
 
         // TODO: don't assume type
 
+        #[allow(clippy::match_same_arms)]
         let timeline = match timeline {
             "log_time" => re_log_types::Timeline::new_temporal(timeline),
             "log_tick" => re_log_types::Timeline::new_sequence(timeline),
@@ -87,14 +88,14 @@ impl TryFrom<&str> for TimeRange {
             re_log_types::ResolvedTimeRange::new(
                 re_log_types::TimeInt::from_seconds(
                     min.parse::<i64>()
-                        .map_err(|_| InvalidTimeRange)?
+                        .map_err(|_err| InvalidTimeRange)?
                         .try_into()
                         .ok()
                         .unwrap_or_default(),
                 ),
                 re_log_types::TimeInt::from_seconds(
                     max.parse::<i64>()
-                        .map_err(|_| InvalidTimeRange)?
+                        .map_err(|_err| InvalidTimeRange)?
                         .try_into()
                         .ok()
                         .unwrap_or_default(),
