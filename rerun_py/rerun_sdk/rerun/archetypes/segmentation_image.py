@@ -191,19 +191,19 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
             # For primitive arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[arg-type]
-                shape = np.shape(param)
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
 
                 batch_length = shape[1] if len(shape) > 1 else 1
                 num_rows = shape[0] if len(shape) >= 1 else 1
-                lengths = batch_length * np.ones(num_rows)
+                sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
-                lengths = np.ones(len(arrow_array))
+                sizes = np.ones(len(arrow_array))
 
-            columns.append(batch.partition(lengths))
+            columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     buffer: components.ImageBufferBatch | None = field(
