@@ -38,7 +38,7 @@ pub async fn client(
     origin: Origin,
 ) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-        self.to_http_scheme(),
+        origin.as_url(),
         tonic_web_wasm_client::options::FetchOptions::new(),
     );
 
