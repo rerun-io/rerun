@@ -102,7 +102,7 @@ impl EndpointCategory {
         match re_uri::RedapUri::try_from(uri.as_ref()) {
             Ok(re_uri::RedapUri::Recording(endpoint)) => return Self::RedapRecording(endpoint),
             Ok(re_uri::RedapUri::Catalog(endpoint)) => return Self::RedapCatalog(endpoint),
-            Ok(re_uri::RedapUri::Proxy(endpoint)) => return Self::MessageProxy(uri),
+            Ok(re_uri::RedapUri::Proxy(_origin)) => return Self::MessageProxy(uri),
             Err(_) => {} // Not a Rerun URI,
         }
 
@@ -152,7 +152,7 @@ pub fn url_to_receiver(
             Some(ui_waker),
         )),
 
-        EndpointCategory::RedapCatalog(endpoint) => {
+        EndpointCategory::RedapCatalog(_endpoint) => {
             // TODO: Implement catalog support
             anyhow::bail!("Catalogs are not supported yet")
         }
