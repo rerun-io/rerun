@@ -6,7 +6,7 @@
 
 A small release addressing bugs and polishing rough edges.
 
-### 🛠️ Note on 0.20.0 Release
+### 🛠️ Note on 0.20.0 release
 
 An issue with the 0.20.0 release led to incorrect artifacts being published, causing a few minor changes to be missing from those artifacts. The correct version has always been available on crates.io, PyPI, Conda, and other distribution channels, so no action is needed if you installed from these sources.
 
