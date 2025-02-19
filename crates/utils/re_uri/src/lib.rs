@@ -12,10 +12,6 @@ pub use self::{
     error::Error,
 };
 
-#[derive(thiserror::Error, Debug)]
-#[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
-pub struct InvalidScheme;
-
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
