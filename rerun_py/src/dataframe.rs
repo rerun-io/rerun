@@ -121,9 +121,7 @@ impl PyIndexColumnSelector {
     #[new]
     #[pyo3(text_signature = "(self, index)")]
     fn new(index: &str) -> Self {
-        Self(TimeColumnSelector {
-            timeline: index.into(),
-        })
+        Self(TimeColumnSelector::from(index))
     }
 
     fn __repr__(&self) -> String {
@@ -284,9 +282,7 @@ impl AnyColumn {
         match self {
             Self::Name(name) => {
                 if !name.contains(':') && !name.contains('/') {
-                    Ok(ColumnSelector::Time(TimeColumnSelector {
-                        timeline: name.into(),
-                    }))
+                    Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
                     let component_path =
                         re_log_types::ComponentPath::from_str(&name).map_err(|err| {
@@ -1340,9 +1336,7 @@ impl PyRecording {
         let borrowed_self = slf.borrow();
 
         // Look up the type of the timeline
-        let selector = TimeColumnSelector {
-            timeline: index.into(),
-        };
+        let selector = TimeColumnSelector::from(index);
 
         let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
 

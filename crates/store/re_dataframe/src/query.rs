@@ -1831,15 +1831,9 @@ mod tests {
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: "ATimeColumnThatDoesntExist".into(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from("ATimeColumnThatDoesntExist")),
                 ]),
                 ..Default::default()
             };
@@ -1906,36 +1900,16 @@ mod tests {
                 selection: Some(vec![
                     // NOTE: This will force a crash if the selected indexes vs. view indexes are
                     // improperly handled.
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -1988,15 +1962,9 @@ mod tests {
                     .collect(),
                 ),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_time().name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_tick().name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_time().name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_tick().name())),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
