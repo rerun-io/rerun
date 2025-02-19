@@ -5936,7 +5936,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
-      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
       - pypi: https://files.pythonhosted.org/packages/71/26/4d39d52ea2219604053a4d05b98e90d6a335511cc01806436ec4886b1028/mkdocs_autorefs-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/0f/1e55b3fd490ad2cecb6e7b31892d27cb9fc4218ec1dab780440ba8579e74/mkdocs_gen_files-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl
@@ -6175,7 +6175,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
-      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
       - pypi: https://files.pythonhosted.org/packages/71/26/4d39d52ea2219604053a4d05b98e90d6a335511cc01806436ec4886b1028/mkdocs_autorefs-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/0f/1e55b3fd490ad2cecb6e7b31892d27cb9fc4218ec1dab780440ba8579e74/mkdocs_gen_files-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl
@@ -6402,7 +6402,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
-      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
       - pypi: https://files.pythonhosted.org/packages/71/26/4d39d52ea2219604053a4d05b98e90d6a335511cc01806436ec4886b1028/mkdocs_autorefs-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/0f/1e55b3fd490ad2cecb6e7b31892d27cb9fc4218ec1dab780440ba8579e74/mkdocs_gen_files-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl
@@ -6629,7 +6629,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
-      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
       - pypi: https://files.pythonhosted.org/packages/71/26/4d39d52ea2219604053a4d05b98e90d6a335511cc01806436ec4886b1028/mkdocs_autorefs-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/0f/1e55b3fd490ad2cecb6e7b31892d27cb9fc4218ec1dab780440ba8579e74/mkdocs_gen_files-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl
@@ -6846,7 +6846,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
-      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+      - pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
       - pypi: https://files.pythonhosted.org/packages/71/26/4d39d52ea2219604053a4d05b98e90d6a335511cc01806436ec4886b1028/mkdocs_autorefs-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/0f/1e55b3fd490ad2cecb6e7b31892d27cb9fc4218ec1dab780440ba8579e74/mkdocs_gen_files-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl
@@ -10001,7 +10001,7 @@ packages:
   - pytest>=7.0 ; extra == 'test'
   - pytest-mock>=3.6.1 ; extra == 'test'
   - trustme ; extra == 'test'
-  - uvloop>=0.21.0b1 ; platform_python_implementation == 'CPython' and platform_system != 'Windows' and extra == 'test'
+  - uvloop>=0.21.0b1 ; platform_python_implementation == 'CPython' and sys_platform != 'win32' and extra == 'test'
   - truststore>=0.9.1 ; python_full_version >= '3.10' and extra == 'test'
   - trio>=0.26.1 ; extra == 'trio'
   requires_python: '>=3.9'
@@ -10026,7 +10026,7 @@ packages:
   - pytest>=7.0 ; extra == 'test'
   - pytest-mock>=3.6.1 ; extra == 'test'
   - trustme ; extra == 'test'
-  - uvloop>=0.21.0b1 ; platform_python_implementation == 'CPython' and sys_platform != 'win32' and extra == 'test'
+  - uvloop>=0.21.0b1 ; platform_python_implementation == 'CPython' and platform_system != 'Windows' and extra == 'test'
   - truststore>=0.9.1 ; python_full_version >= '3.10' and extra == 'test'
   - trio>=0.26.1 ; extra == 'trio'
   requires_python: '>=3.9'
@@ -12631,7 +12631,7 @@ packages:
   version: 8.1.7
   sha256: ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28
   requires_dist:
-  - colorama ; platform_system == 'Windows'
+  - colorama ; sys_platform == 'win32'
   - importlib-metadata ; python_full_version < '3.8'
   requires_python: '>=3.7'
 - pypi: https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl
@@ -12639,7 +12639,7 @@ packages:
   version: 8.1.7
   sha256: ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28
   requires_dist:
-  - colorama ; sys_platform == 'win32'
+  - colorama ; platform_system == 'Windows'
   - importlib-metadata ; python_full_version < '3.8'
   requires_python: '>=3.7'
 - pypi: examples/python/clock
@@ -22059,7 +22059,7 @@ packages:
   sha256: db91759624d1647f3f34aa0c3f327dd2601beae39a366d6e064c03468d35c20e
   requires_dist:
   - click>=7.0
-  - colorama>=0.4 ; sys_platform == 'win32'
+  - colorama>=0.4 ; platform_system == 'Windows'
   - ghp-import>=1.0
   - importlib-metadata>=4.4 ; python_full_version < '3.10'
   - jinja2>=2.11.1
@@ -22075,7 +22075,7 @@ packages:
   - babel>=2.9.0 ; extra == 'i18n'
   - babel==2.9.0 ; extra == 'min-versions'
   - click==7.0 ; extra == 'min-versions'
-  - colorama==0.4 ; sys_platform == 'win32' and extra == 'min-versions'
+  - colorama==0.4 ; platform_system == 'Windows' and extra == 'min-versions'
   - ghp-import==1.0 ; extra == 'min-versions'
   - importlib-metadata==4.4 ; python_full_version < '3.10' and extra == 'min-versions'
   - jinja2==2.11.1 ; extra == 'min-versions'
@@ -22151,7 +22151,7 @@ packages:
   version: '1.3'
   sha256: 0297cc48ba68a9fdd1ef3780a3b41b534b0d0df1d1181a44676fda5f464eeadc
   requires_python: '>=3.8'
-- pypi: git+https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003#fb6b074554975ba7729d68d04957ce7c7dfd5003
+- pypi: git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003
   name: mkdocs-redirects
   version: 1.3.1
   requires_dist:
@@ -27779,33 +27779,6 @@ packages:
   - networkx
   - jinja2
   - fsspec
-  - nvidia-cuda-nvrtc-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-runtime-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-cupti-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cudnn-cu12==8.9.2.26 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cublas-cu12==12.1.3.1 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cufft-cu12==11.0.2.54 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-curand-cu12==10.3.2.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusolver-cu12==11.4.5.107 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusparse-cu12==12.1.0.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nccl-cu12==2.20.5 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - triton==2.3.1 ; python_full_version < '3.12' and platform_machine == 'x86_64' and platform_system == 'Linux'
-  - mkl>=2021.1.1,<=2021.4.0 ; platform_system == 'Windows'
-  - opt-einsum>=3.3 ; extra == 'opt-einsum'
-  - optree>=0.9.1 ; extra == 'optree'
-  requires_python: '>=3.8.0'
-- pypi: https://files.pythonhosted.org/packages/07/9a/4c5e74264439837814656201da13a898056a5201c976ef042544bceb840f/torch-2.3.1-cp311-cp311-manylinux1_x86_64.whl
-  name: torch
-  version: 2.3.1
-  sha256: b2ec81b61bb094ea4a9dee1cd3f7b76a44555375719ad29f05c0ca8ef596ad39
-  requires_dist:
-  - filelock
-  - typing-extensions>=4.8.0
-  - sympy
-  - networkx
-  - jinja2
-  - fsspec
   - nvidia-cuda-nvrtc-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - nvidia-cuda-runtime-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - nvidia-cuda-cupti-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
@@ -27860,33 +27833,6 @@ packages:
   - networkx
   - jinja2
   - fsspec
-  - nvidia-cuda-nvrtc-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-runtime-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-cupti-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cudnn-cu12==8.9.2.26 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cublas-cu12==12.1.3.1 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cufft-cu12==11.0.2.54 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-curand-cu12==10.3.2.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusolver-cu12==11.4.5.107 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusparse-cu12==12.1.0.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nccl-cu12==2.20.5 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - triton==2.3.1 ; python_full_version < '3.12' and platform_machine == 'x86_64' and platform_system == 'Linux'
-  - mkl>=2021.1.1,<=2021.4.0 ; platform_system == 'Windows'
-  - opt-einsum>=3.3 ; extra == 'opt-einsum'
-  - optree>=0.9.1 ; extra == 'optree'
-  requires_python: '>=3.8.0'
-- pypi: https://files.pythonhosted.org/packages/d0/5f/f41b14a398d484bf218d5167ec9061c1e76f500d9e25166117818c8bacda/torch-2.3.1-cp311-none-macosx_11_0_arm64.whl
-  name: torch
-  version: 2.3.1
-  sha256: a7dd4ed388ad1f3d502bf09453d5fe596c7b121de7e0cfaca1e2017782e9bbac
-  requires_dist:
-  - filelock
-  - typing-extensions>=4.8.0
-  - sympy
-  - networkx
-  - jinja2
-  - fsspec
   - nvidia-cuda-nvrtc-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - nvidia-cuda-runtime-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - nvidia-cuda-cupti-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
@@ -27900,33 +27846,6 @@ packages:
   - nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - triton==2.3.1 ; python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'
   - mkl>=2021.1.1,<=2021.4.0 ; sys_platform == 'win32'
-  - opt-einsum>=3.3 ; extra == 'opt-einsum'
-  - optree>=0.9.1 ; extra == 'optree'
-  requires_python: '>=3.8.0'
-- pypi: https://files.pythonhosted.org/packages/d3/1d/a257913c89572de61316461db91867f87519146e58132cdeace3d9ffbe1f/torch-2.3.1-cp311-cp311-win_amd64.whl
-  name: torch
-  version: 2.3.1
-  sha256: 5802530783bd465fe66c2df99123c9a54be06da118fbd785a25ab0a88123758a
-  requires_dist:
-  - filelock
-  - typing-extensions>=4.8.0
-  - sympy
-  - networkx
-  - jinja2
-  - fsspec
-  - nvidia-cuda-nvrtc-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-runtime-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-cupti-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cudnn-cu12==8.9.2.26 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cublas-cu12==12.1.3.1 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cufft-cu12==11.0.2.54 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-curand-cu12==10.3.2.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusolver-cu12==11.4.5.107 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusparse-cu12==12.1.0.106 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nccl-cu12==2.20.5 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - triton==2.3.1 ; python_full_version < '3.12' and platform_machine == 'x86_64' and platform_system == 'Linux'
-  - mkl>=2021.1.1,<=2021.4.0 ; platform_system == 'Windows'
   - opt-einsum>=3.3 ; extra == 'opt-einsum'
   - optree>=0.9.1 ; extra == 'optree'
   requires_python: '>=3.8.0'
