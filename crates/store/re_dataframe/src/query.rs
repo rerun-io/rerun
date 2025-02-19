@@ -1085,7 +1085,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // * return the minimum value instead of the max
         // * return the exact value for each component (that would be a _lot_ of columns!)
         // * etc
-        let mut max_value_per_index: IntMap<Timeline, (TimeInt, ArrowScalarBuffer<i64>)> =
+        let mut max_value_per_index: IntMap<TimelineName, (TimeInt, ArrowScalarBuffer<i64>)> =
             IntMap::default();
         {
             view_streaming_state

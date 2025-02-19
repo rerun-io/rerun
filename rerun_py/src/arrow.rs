@@ -124,7 +124,7 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let timelines: IntMap<Timeline, TimeColumn> = timelines
+    let timelines: IntMap<TimelineName, TimeColumn> = timelines
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
         .map(|(timeline, value)| (timeline, TimeColumn::new(None, timeline, value)))

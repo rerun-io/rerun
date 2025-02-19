@@ -39,7 +39,7 @@ impl QueryCache {
             let component_descr = component_descr.into();
             store
                 .entity_has_component_on_timeline(
-                    &query.timeline(),
+                    query.timeline_name(),
                     entity_path,
                     &component_descr.component_name,
                 )
@@ -303,7 +303,7 @@ impl RangeCache {
             .map(|cached_sorted_chunk| {
                 debug_assert!(cached_sorted_chunk
                     .chunk
-                    .is_timeline_sorted(&query.timeline()));
+                    .is_timeline_sorted(query.timeline_name()));
 
                 let chunk = &cached_sorted_chunk.chunk;
 

@@ -5,8 +5,8 @@ use std::sync::Arc;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId};
-use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, Timeline};
+use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
+use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
@@ -225,7 +225,7 @@ fn chunk_store_config() {
 
 pub type ChunkIdSet = BTreeSet<ChunkId>;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ChunkIdSetPerTime {
     /// Keeps track of the longest interval being currently stored in the two maps below.
     ///
@@ -261,7 +261,7 @@ pub struct ChunkIdSetPerTime {
 pub type ChunkIdSetPerTimePerComponentName = IntMap<ComponentName, ChunkIdSetPerTime>;
 
 pub type ChunkIdSetPerTimePerComponentNamePerTimeline =
-    IntMap<Timeline, ChunkIdSetPerTimePerComponentName>;
+    IntMap<TimelineName, ChunkIdSetPerTimePerComponentName>;
 
 pub type ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity =
     IntMap<EntityPath, ChunkIdSetPerTimePerComponentNamePerTimeline>;
@@ -270,7 +270,7 @@ pub type ChunkIdPerComponentName = IntMap<ComponentName, ChunkId>;
 
 pub type ChunkIdPerComponentNamePerEntity = IntMap<EntityPath, ChunkIdPerComponentName>;
 
-pub type ChunkIdSetPerTimePerTimeline = IntMap<Timeline, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerTimeline = IntMap<TimelineName, ChunkIdSetPerTime>;
 
 pub type ChunkIdSetPerTimePerTimelinePerEntity = IntMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
 
@@ -400,6 +400,9 @@ pub struct ChunkStore {
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
 
+    /// Keeps track of the _latest_ datatype for each time column.
+    pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
+
     /// Keeps track of the _latest_ datatype information for all component types that have been written
     /// to the store so far.
     ///
@@ -481,10 +484,12 @@ impl Drop for ChunkStore {
 impl Clone for ChunkStore {
     #[inline]
     fn clone(&self) -> Self {
+        re_tracing::profile_function!();
         Self {
             id: self.id.clone(),
             info: self.info.clone(),
             config: self.config.clone(),
+            time_type_registry: self.time_type_registry.clone(),
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
@@ -509,6 +514,7 @@ impl std::fmt::Display for ChunkStore {
             id,
             info: _,
             config,
+            time_type_registry: _,
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
@@ -570,6 +576,7 @@ impl ChunkStore {
             id,
             info: None,
             config,
+            time_type_registry: Default::default(),
             type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),

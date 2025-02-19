@@ -56,7 +56,7 @@ pub struct CompactedStoreEvents {
     pub row_ids: HashSet<RowId>,
 
     /// What time points were deleted for each entity+timeline+component?
-    pub temporal: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
+    pub temporal: IntMap<EntityPathHash, IntMap<TimelineName, IntMap<ComponentName, Vec<TimeInt>>>>,
 
     /// For each entity+component, how many static entries were deleted?
     pub static_: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,

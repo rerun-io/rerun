@@ -13,7 +13,7 @@ use arrow::{
 use itertools::{izip, Either, Itertools};
 
 use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
-use re_log_types::{TimeInt, TimePoint, Timeline};
+use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types_core::{ArrowString, Component, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
@@ -36,7 +36,10 @@ impl Chunk {
     /// * [`Self::iter_component_indices`].
     /// * [`Self::iter_indices_owned`].
     #[inline]
-    pub fn iter_indices(&self, timeline: &Timeline) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+    pub fn iter_indices(
+        &self,
+        timeline: &TimelineName,
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         if self.is_static() {
             Either::Right(Either::Left(izip!(
                 std::iter::repeat(TimeInt::STATIC),
@@ -62,7 +65,7 @@ impl Chunk {
     /// See also [`Self::iter_indices`].
     pub fn iter_component_indices(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         let Some(list_array) = self.get_first_component(component_name) else {
@@ -726,7 +729,7 @@ impl Chunk {
     #[inline]
     pub fn iter_indices_owned(
         self: Arc<Self>,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> {
         if self.is_static() {
             Either::Left(ChunkIndicesIter {

@@ -34,7 +34,7 @@ impl ChunkListMode {
         chunk_store: &ChunkStore,
         time_zone: TimeZone,
     ) -> Option<()> {
-        let all_timelines = chunk_store.all_timelines_sorted();
+        let all_timelines = chunk_store.timelines();
         let all_entities = chunk_store.all_entities_sorted();
         let all_components = chunk_store.all_components_sorted();
 

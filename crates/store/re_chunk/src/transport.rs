@@ -53,10 +53,10 @@ impl Chunk {
             re_tracing::profile_scope!("timelines");
 
             let mut timelines = timelines
-                .iter()
-                .map(|(timeline, info)| {
+                .values()
+                .map(|info| {
                     let TimeColumn {
-                        timeline: _,
+                        timeline,
                         times: _,
                         is_sorted,
                         time_range: _,
@@ -171,7 +171,7 @@ impl Chunk {
 
                 let time_column =
                     TimeColumn::new(schema.is_sorted().then_some(true), timeline, times);
-                if timelines.insert(timeline, time_column).is_some() {
+                if timelines.insert(*timeline.name(), time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "time column '{}' was specified more than once",

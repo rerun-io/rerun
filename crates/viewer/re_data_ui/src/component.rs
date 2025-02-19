@@ -53,7 +53,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         if !ui_layout.is_single_line() {
             let time = self
                 .unit
-                .index(&query.timeline())
+                .index(query.timeline_name())
                 .map_or(TimeInt::STATIC, |(time, _)| time);
 
             // if the component is static, we display extra diagnostic information

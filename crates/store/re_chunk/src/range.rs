@@ -1,4 +1,4 @@
-use re_log_types::{ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ResolvedTimeRange, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 
 use crate::Chunk;
@@ -162,6 +162,11 @@ impl RangeQuery {
     }
 
     #[inline]
+    pub fn timeline_name(&self) -> &TimelineName {
+        self.timeline.name()
+    }
+
+    #[inline]
     pub fn range(&self) -> ResolvedTimeRange {
         self.range
     }
@@ -210,7 +215,7 @@ impl Chunk {
         // (e.g. the range query itself) much cheaper to compute.
         use std::borrow::Cow;
         let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(query.timeline()))
+            Cow::Owned(self.timeline_sliced(*query.timeline_name()))
         } else {
             Cow::Borrowed(self)
         };
@@ -231,7 +236,7 @@ impl Chunk {
         } else {
             let Some(is_sorted_by_time) = chunk
                 .timelines
-                .get(&query.timeline())
+                .get(query.timeline_name())
                 .map(|time_column| time_column.is_sorted())
             else {
                 return chunk.emptied();
@@ -244,12 +249,12 @@ impl Chunk {
                 chunk
             } else {
                 // Temporal, unsorted chunk
-                chunk.sorted_by_timeline_if_unsorted(&query.timeline())
+                chunk.sorted_by_timeline_if_unsorted(query.timeline_name())
             };
 
             let Some(times) = chunk
                 .timelines
-                .get(&query.timeline())
+                .get(query.timeline_name())
                 .map(|time_column| time_column.times_raw())
             else {
                 return chunk.emptied();

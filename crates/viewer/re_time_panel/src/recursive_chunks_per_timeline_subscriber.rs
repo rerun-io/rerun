@@ -42,7 +42,8 @@ pub struct EntityTimelineChunks {
 /// For each entity & timeline, keeps track of all its chunks and chunks of its children.
 #[derive(Default)]
 pub struct PathRecursiveChunksPerTimelineStoreSubscriber {
-    chunks_per_timeline_per_entity: IntMap<Timeline, IntMap<EntityPathHash, EntityTimelineChunks>>,
+    chunks_per_timeline_per_entity:
+        IntMap<TimelineName, IntMap<EntityPathHash, EntityTimelineChunks>>,
 }
 
 impl PathRecursiveChunksPerTimelineStoreSubscriber {

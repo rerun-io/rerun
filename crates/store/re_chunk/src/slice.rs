@@ -5,7 +5,7 @@ use arrow::array::{
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_log_types::Timeline;
+use re_log_types::{Timeline, TimelineName};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
@@ -139,7 +139,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timeline_sliced(&self, timeline: Timeline) -> Self {
+    pub fn timeline_sliced(&self, timeline: TimelineName) -> Self {
         let Self {
             id,
             entity_path,
@@ -227,7 +227,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<Timeline>) -> Self {
+    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<TimelineName>) -> Self {
         let Self {
             id,
             entity_path,
@@ -487,7 +487,7 @@ impl Chunk {
     //
     // TODO(cmc): `Timeline` should really be `Index`.
     #[inline]
-    pub fn deduped_latest_on_index(&self, index: &Timeline) -> Self {
+    pub fn deduped_latest_on_index(&self, index: &TimelineName) -> Self {
         re_tracing::profile_function!();
 
         if self.is_empty() {

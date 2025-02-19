@@ -996,7 +996,7 @@ fn rr_recording_stream_send_columns_impl(
     let stream = recording_stream(stream)?;
     let entity_path = entity_path.as_str("entity_path")?;
 
-    let time_columns: IntMap<Timeline, TimeColumn> = time_columns
+    let time_columns: IntMap<TimelineName, TimeColumn> = time_columns
         .iter()
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;

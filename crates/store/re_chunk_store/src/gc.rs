@@ -8,8 +8,8 @@ use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
 use web_time::Instant;
 
-use re_chunk::{Chunk, ChunkId};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_chunk::{Chunk, ChunkId, TimelineName};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt};
 use re_types_core::ComponentName;
 
 use crate::{
@@ -54,7 +54,7 @@ pub struct GarbageCollectionOptions {
     pub protect_latest: usize,
 
     /// Do not remove any data within these time ranges.
-    pub protected_time_ranges: HashMap<Timeline, ResolvedTimeRange>,
+    pub protected_time_ranges: IntMap<TimelineName, ResolvedTimeRange>,
 }
 
 impl GarbageCollectionOptions {
@@ -92,7 +92,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
 }
 
 pub type RemovableChunkIdPerTimePerComponentPerTimelinePerEntity =
-    IntMap<EntityPath, IntMap<Timeline, IntMap<ComponentName, HashMap<TimeInt, Vec<ChunkId>>>>>;
+    IntMap<EntityPath, IntMap<TimelineName, IntMap<ComponentName, HashMap<TimeInt, Vec<ChunkId>>>>>;
 
 impl ChunkStore {
     /// Triggers a garbage collection according to the desired `target`.
@@ -340,6 +340,7 @@ impl ChunkStore {
                 id: _,
                 info: _,
                 config: _,
+                time_type_registry: _,
                 type_registry: _,
                 per_column_metadata: _, // column metadata is additive only
                 chunks_per_chunk_id,

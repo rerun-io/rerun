@@ -1,6 +1,6 @@
 use arrow::array::Array as ArrowArray;
 
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 
 use crate::{Chunk, RowId};
@@ -45,6 +45,11 @@ impl LatestAtQuery {
     #[inline]
     pub fn timeline(&self) -> Timeline {
         self.timeline
+    }
+
+    #[inline]
+    pub fn timeline_name(&self) -> &TimelineName {
+        self.timeline.name()
     }
 
     #[inline]
@@ -117,7 +122,7 @@ impl Chunk {
                 }
             }
         } else {
-            let Some(time_column) = self.timelines.get(&query.timeline()) else {
+            let Some(time_column) = self.timelines.get(query.timeline_name()) else {
                 return self.emptied();
             };
 

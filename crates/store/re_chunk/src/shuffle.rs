@@ -4,7 +4,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-use re_log_types::Timeline;
+use re_log_types::TimelineName;
 
 use crate::{Chunk, TimeColumn};
 
@@ -48,7 +48,7 @@ impl Chunk {
     ///
     /// See also [`Self::is_timeline_sorted_uncached`].
     #[inline]
-    pub fn is_timeline_sorted(&self, timeline: &Timeline) -> bool {
+    pub fn is_timeline_sorted(&self, timeline: &TimelineName) -> bool {
         self.is_static()
             || self
                 .timelines
@@ -59,7 +59,7 @@ impl Chunk {
     /// For debugging purposes.
     #[doc(hidden)]
     #[inline]
-    pub fn is_timeline_sorted_uncached(&self, timeline: &Timeline) -> bool {
+    pub fn is_timeline_sorted_uncached(&self, timeline: &TimelineName) -> bool {
         self.is_static()
             || self
                 .timelines
@@ -112,7 +112,7 @@ impl Chunk {
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
-    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
+    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &TimelineName) -> Self {
         let mut chunk = self.clone();
 
         let Some(time_column) = chunk.timelines.get(timeline) else {

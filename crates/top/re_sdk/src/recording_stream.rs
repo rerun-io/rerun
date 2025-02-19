@@ -1052,8 +1052,8 @@ impl RecordingStream {
 
         let indexes = indexes
             .into_iter()
-            .map(|timeline| (*timeline.timeline(), timeline))
-            .collect::<IntMap<_, _>>();
+            .map(|col| (*col.timeline().name(), col))
+            .collect();
 
         let components: ChunkComponents = columns
             .into_iter()

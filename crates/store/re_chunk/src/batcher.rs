@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
@@ -743,7 +743,7 @@ impl PendingRow {
             .map(|(timeline, time)| {
                 let times = ArrowScalarBuffer::from(vec![time.as_i64()]);
                 let time_column = TimeColumn::new(Some(true), timeline, times);
-                (timeline, time_column)
+                (*timeline.name(), time_column)
             })
             .collect();
 
@@ -851,7 +851,7 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: IntMap<Timeline, PendingTimeColumn> = IntMap::default();
+                let mut timelines: IntMap<TimelineName, PendingTimeColumn> = IntMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
@@ -878,7 +878,7 @@ impl PendingRow {
                     // further!
                     for (&timeline, _) in row_timepoint {
                         let time_column = timelines
-                            .entry(timeline)
+                            .entry(*timeline.name())
                             .or_insert_with(|| PendingTimeColumn::new(timeline));
 
                         if !row_ids.is_empty() // just being extra cautious
@@ -892,7 +892,7 @@ impl PendingRow {
                                 &std::mem::take(&mut row_ids),
                                 std::mem::take(&mut timelines)
                                     .into_iter()
-                                    .map(|(timeline, time_column)| (timeline, time_column.finish()))
+                                    .map(|(name, time_column)| (name, time_column.finish()))
                                     .collect(),
                                 {
                                     let mut per_name = ChunkComponents::default();
@@ -915,7 +915,7 @@ impl PendingRow {
 
                     for (&timeline, &time) in row_timepoint {
                         let time_column = timelines
-                            .entry(timeline)
+                            .entry(*timeline.name())
                             .or_insert_with(|| PendingTimeColumn::new(timeline));
                         time_column.push(time);
                     }

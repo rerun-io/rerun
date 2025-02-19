@@ -63,7 +63,7 @@ impl QueryCache {
             let component_descr = component_descr.into();
             store
                 .entity_has_component_on_timeline(
-                    &query.timeline(),
+                    query.timeline_name(),
                     entity_path,
                     &component_descr.component_name,
                 )
@@ -134,7 +134,7 @@ impl QueryCache {
                     // recursive flag is set.
                     #[allow(clippy::collapsible_if)] // readability
                     if clear_entity_path == *entity_path || found_recursive_clear {
-                        if let Some(index) = cached.index(&query.timeline()) {
+                        if let Some(index) = cached.index(query.timeline_name()) {
                             if compare_indices(index, max_clear_index)
                                 == std::cmp::Ordering::Greater
                             {
@@ -168,7 +168,7 @@ impl QueryCache {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(&query.timeline()) {
+                if let Some(index) = cached.index(query.timeline_name()) {
                     if component_name == ClearIsRecursive::name()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
@@ -674,7 +674,11 @@ impl LatestAtCache {
                 chunk
                     .latest_at(query, component_name)
                     .into_unit()
-                    .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
+                    .and_then(|chunk| {
+                        chunk
+                            .index(query.timeline_name())
+                            .map(|index| (index, chunk))
+                    })
             })
             .max_by_key(|(index, _chunk)| *index)?;
 

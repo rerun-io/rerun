@@ -415,9 +415,9 @@ impl ChunkStore {
         re_tracing::profile_function!();
 
         let indices = self
-            .all_timelines_sorted()
+            .timelines()
             .into_iter()
-            .map(IndexColumnDescriptor::from)
+            .map(|(_name, timeline)| IndexColumnDescriptor::from(timeline))
             .collect();
 
         let components = self
@@ -476,11 +476,10 @@ impl ChunkStore {
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
     pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
-        let timelines = self.all_timelines();
+        let timelines = self.timelines();
 
         let timeline = timelines
-            .iter()
-            .find(|timeline| timeline.name() == &selector.timeline)
+            .get(&selector.timeline)
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
