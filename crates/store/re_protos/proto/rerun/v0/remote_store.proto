@@ -341,28 +341,28 @@ message QueryManifestRangeRelevantChunks {
 message ScanParameters {
     // An arbitrary filter expression that will be passed to the Lance scanner as-is.
     //
-    // ```
+    // ```text
     // scanner.filter(filter)
     // ```
     string filter = 100;
 
     // An arbitrary offset that will be passed to the Lance scanner as-is.
     //
-    // ```
+    // ```text
     // scanner.limit(_, limit_offset)
     // ```
     int64 limit_offset = 200;
 
     // An arbitrary limit that will be passed to the Lance scanner as-is.
     //
-    // ```
+    // ```text
     // scanner.limit(limit_len, _)
     // ```
     int64 limit_len = 201;
 
     // An arbitrary order clause that will be passed to the Lance scanner as-is.
     //
-    // ```
+    // ```text
     // scanner.order_by(…)
     // ```
     ScanParametersOrderClause order_by = 300;

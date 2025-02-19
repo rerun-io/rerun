@@ -495,7 +495,7 @@ impl ::prost::Name for QueryManifestRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestLatestAtRelevantChunks {
-    /// Which index column should we perform the query on?
+    /// Which index column should we perform the query on? E.g. `log_time`.
     #[prost(message, optional, tag = "1")]
     pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
     /// What index value are we looking for?
@@ -525,7 +525,7 @@ impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestRangeRelevantChunks {
-    /// Which index column should we perform the query on?
+    /// Which index column should we perform the query on? E.g. `log_time`.
     #[prost(message, optional, tag = "1")]
     pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
     /// What index range are we looking for?
@@ -561,28 +561,28 @@ impl ::prost::Name for QueryManifestRangeRelevantChunks {
 pub struct ScanParameters {
     /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
     ///
-    /// ```
+    /// ```text
     /// scanner.filter(filter)
     /// ```
     #[prost(string, tag = "100")]
     pub filter: ::prost::alloc::string::String,
     /// An arbitrary offset that will be passed to the Lance scanner as-is.
     ///
-    /// ```
+    /// ```text
     /// scanner.limit(_, limit_offset)
     /// ```
     #[prost(int64, tag = "200")]
     pub limit_offset: i64,
     /// An arbitrary limit that will be passed to the Lance scanner as-is.
     ///
-    /// ```
+    /// ```text
     /// scanner.limit(limit_len, _)
     /// ```
     #[prost(int64, tag = "201")]
     pub limit_len: i64,
     /// An arbitrary order clause that will be passed to the Lance scanner as-is.
     ///
-    /// ```
+    /// ```text
     /// scanner.order_by(…)
     /// ```
     #[prost(message, optional, tag = "300")]
