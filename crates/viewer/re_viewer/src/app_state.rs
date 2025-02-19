@@ -1,18 +1,19 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Ui};
-use std::cmp::PartialEq;
 
-use re_catalog_hub::CatalogHub;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_grpc_client::redap;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
+use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
-    SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
+    ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -24,19 +25,6 @@ use crate::{
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
-
-/// Which display mode are we currently in?
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DisplayMode {
-    /// Regular viewer, including the view port.
-    Viewer,
-
-    /// The Redap server/catalog/collection browser.
-    RedapBrowser,
-
-    /// The current recording's data store browser.
-    ChunkStoreBrowser,
-}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -105,7 +93,7 @@ impl Default for AppState {
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
-            display_mode: DisplayMode::Viewer,
+            display_mode: DisplayMode::LocalRecordings,
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -159,7 +147,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        catalog_hub: &CatalogHub,
+        redap_servers: &RedapServers,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -386,14 +374,16 @@ impl AppState {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.time_zone);
             if !should_datastore_ui_remain_active {
-                *display_mode = DisplayMode::Viewer;
+                *display_mode = DisplayMode::LocalRecordings;
             }
         } else {
             //
             // Blueprint time panel
             //
 
-            if app_options.inspect_blueprint_timeline && *display_mode == DisplayMode::Viewer {
+            if app_options.inspect_blueprint_timeline
+                && *display_mode == DisplayMode::LocalRecordings
+            {
                 let blueprint_db = ctx.store_context.blueprint;
 
                 let undo_state = self
@@ -442,7 +432,7 @@ impl AppState {
             // Time panel
             //
 
-            if *display_mode == DisplayMode::Viewer {
+            if *display_mode == DisplayMode::LocalRecordings {
                 time_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
@@ -458,7 +448,7 @@ impl AppState {
             // Selection Panel
             //
 
-            if *display_mode == DisplayMode::Viewer {
+            if *display_mode == DisplayMode::LocalRecordings {
                 selection_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
@@ -498,7 +488,7 @@ impl AppState {
                     display_mode_toggle_ui(ui, display_mode);
 
                     match display_mode {
-                        DisplayMode::Viewer => {
+                        DisplayMode::LocalRecordings => {
                             let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
                             if resizable {
@@ -527,7 +517,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            catalog_hub.server_panel_ui(ui);
+                            redap_servers.server_panel_ui(ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above
@@ -548,7 +538,7 @@ impl AppState {
                 .frame(viewport_frame)
                 .show_inside(ui, |ui| {
                     match display_mode {
-                        DisplayMode::Viewer => {
+                        DisplayMode::LocalRecordings => {
                             if show_welcome {
                                 welcome_screen.ui(
                                     ui,
@@ -562,7 +552,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            catalog_hub.ui(&ctx, ui);
+                            redap_servers.ui(&ctx, ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -585,7 +575,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
+        check_for_clicked_hyperlinks(&ctx);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -708,8 +698,8 @@ fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
                     ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
                     ui.spacing_mut().item_spacing.x = 3.0;
 
-                    ui.selectable_value(display_mode, DisplayMode::Viewer, "Viewer");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Redap Browser");
+                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
+                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
                 });
         },
     );
@@ -757,24 +747,52 @@ pub(crate) fn recording_config_entry<'cfgs>(
 }
 
 /// We allow linking to entities and components via hyperlinks,
-/// e.g. in embedded markdown.
+/// e.g. in embedded markdown. We also have a custom `rerun://` scheme to be handled by the viewer.
 ///
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-fn check_for_clicked_hyperlinks(
-    egui_ctx: &egui::Context,
-    selection_state: &ApplicationSelectionState,
-) {
+///
+/// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
+fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
-    let mut path = None;
+    let mut recording_path = None;
 
-    egui_ctx.output_mut(|o| {
+    ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
-                    path = Some(path_str.to_owned());
+                let is_rerun_url = redap::Scheme::try_from(open_url.url.as_ref()).is_ok();
+
+                if is_rerun_url {
+                    let data_source = re_data_source::DataSource::from_uri(
+                        re_log_types::FileSource::Uri,
+                        open_url.url.clone(),
+                    );
+
+                    match data_source.stream(None) {
+                        Ok(re_data_source::StreamSource::LogMessages(rx)) => {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::AddReceiver(rx));
+
+                            if !open_url.new_tab {
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::ChangeDisplayMode(
+                                        DisplayMode::LocalRecordings,
+                                    ));
+                            }
+                        }
+
+                        Ok(re_data_source::StreamSource::CatalogData { origin }) => ctx
+                            .command_sender()
+                            .send_system(SystemCommand::AddRedapServer { origin }),
+                        Err(err) => {
+                            re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
+                        }
+                    }
+                    return false;
+                } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
+                    recording_path = Some(path_str.to_owned());
                     return false;
                 } else {
                     // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
@@ -785,10 +803,10 @@ fn check_for_clicked_hyperlinks(
         });
     });
 
-    if let Some(path) = path {
+    if let Some(path) = recording_path {
         match path.parse::<re_viewer_context::Item>() {
             Ok(item) => {
-                selection_state.set_selection(item);
+                ctx.selection_state.set_selection(item);
             }
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");

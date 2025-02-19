@@ -5816,35 +5816,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_catalog_hub"
-version = "0.23.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "arrow",
- "egui",
- "egui_table",
- "once_cell",
- "parking_lot",
- "re_arrow_util",
- "re_grpc_client",
- "re_log",
- "re_log_encoding",
- "re_log_types",
- "re_protos",
- "re_sorbet",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_uri",
- "re_view_dataframe",
- "re_viewer_context",
- "thiserror 1.0.65",
- "tokio-stream",
- "tonic",
- "tonic-web-wasm-client",
-]
-
-[[package]]
 name = "re_chunk"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
@@ -5939,10 +5910,8 @@ dependencies = [
  "egui_plot",
  "itertools 0.13.0",
  "nohash-hasher",
- "re_data_source",
  "re_data_ui",
  "re_format",
- "re_log",
  "re_log_types",
  "re_tracing",
  "re_types",
@@ -6459,6 +6428,33 @@ dependencies = [
  "strum",
  "to_method",
  "zerocopy",
+]
+
+[[package]]
+name = "re_redap_browser"
+version = "0.23.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "egui",
+ "egui_table",
+ "once_cell",
+ "parking_lot",
+ "re_arrow_util",
+ "re_grpc_client",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_protos",
+ "re_sorbet",
+ "re_types_core",
+ "re_ui",
+ "re_view_dataframe",
+ "re_viewer_context",
+ "thiserror 1.0.65",
+ "tokio-stream",
+ "tonic",
+ "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -7143,7 +7139,6 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_capabilities",
- "re_catalog_hub",
  "re_chunk",
  "re_chunk_store",
  "re_chunk_store_ui",
@@ -7160,6 +7155,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_query",
+ "re_redap_browser",
  "re_renderer",
  "re_selection_panel",
  "re_smart_channel",
@@ -7233,6 +7229,7 @@ dependencies = [
  "re_data_source",
  "re_entity_db",
  "re_format",
+ "re_grpc_client",
  "re_log",
  "re_log_types",
  "re_math",

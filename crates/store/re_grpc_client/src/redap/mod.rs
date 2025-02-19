@@ -17,12 +17,8 @@ use re_protos::{
     },
 };
 
-// ----------------------------------------------------------------------------
-
 use crate::StreamError;
 use crate::TonicStatusError;
-
-// ----------------------------------------------------------------------------
 
 // /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 // ///

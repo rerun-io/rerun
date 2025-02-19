@@ -2,7 +2,7 @@
 """
 Example using an example depth dataset from NYU.
 
-https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
+https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ The full source code for this example is available [on GitHub](https://github.co
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://static.rerun.io/rgbd_dataset"
-DATASET_URL_BASE_ALTERNATE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
+DATASET_URL_BASE_ALTERNATE: Final = "https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html"
 AVAILABLE_RECORDINGS: Final = ["cafe", "basements", "studies", "office_kitchens", "playroooms"]
 
 

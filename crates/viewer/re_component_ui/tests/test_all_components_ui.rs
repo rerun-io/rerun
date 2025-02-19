@@ -12,7 +12,7 @@ use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, Timeline};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, RecordingUri, Text},
+    components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
 use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
@@ -62,10 +62,6 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             "nv12",
         ),
         TestCase::from_component(QueryExpression::from("+ /world/**"), "simple"),
-        TestCase::from_component(
-            RecordingUri::from("rerun://0.0.0.0:1234/recordings/XYZ"),
-            "simple",
-        ),
         TestCase::from_component(Text::from("Hello World!"), "simple"),
         TestCase::from_arrow(
             ComponentName::from("any_value"),
@@ -86,6 +82,13 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         TestCase::from_arrow(
             ComponentName::from("custom_url_string"),
             arrow::array::StringArray::from(vec!["https://rerun.io"]),
+            "any_value_url_string",
+        ),
+        //TODO(ab): this will look like the previous test case, but we eventually would like to have
+        // a specific icon for it, so we already have a test case for it :)
+        TestCase::from_arrow(
+            ComponentName::from("custom_catalog_string"),
+            arrow::array::StringArray::from(vec!["rerun://rerun.io:1234/catalog"]),
             "any_value_url_string",
         ),
         TestCase::from_arrow(

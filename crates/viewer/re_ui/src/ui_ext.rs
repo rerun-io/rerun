@@ -964,12 +964,22 @@ pub trait UiExt {
     }
 
     /// Helper for adding a list-item hyperlink.
+    ///
+    /// By default, the url is open in the same tab or a new tab based on the mouse button and
+    /// modifiers, as per usual in browsers. If `always_new_tab` is `true`, then the url is opened
+    /// in a new tab regardless.
+    ///
+    /// NOTE: for most kinds of URL, the `always_new_tab` is indirectly overridden to `true` by
+    /// `re_viewer::app_state::check_for_clicked_hyperlinks()`, unless the URL is special-cased by
+    /// that function (e.g. `rerun://` URLs).
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
         url: impl ToString,
+        always_new_tab: bool,
     ) -> egui::Response {
         let ui = self.ui_mut();
+
         ui.scope(|ui| {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
@@ -980,7 +990,13 @@ pub trait UiExt {
                 .add(Button::image_and_text(image, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
+            // Inspired from `egui::Ui::Hyperlink::ui()`
             if response.clicked() {
+                ui.ctx().open_url(egui::OpenUrl {
+                    url: url.to_string(),
+                    new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+                });
+            } else if response.middle_clicked() {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(url));
             }
 
