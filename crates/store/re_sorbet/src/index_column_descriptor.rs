@@ -77,11 +77,6 @@ impl IndexColumnDescriptor {
     }
 
     #[inline]
-    pub fn typ(&self) -> re_log_types::TimeType {
-        self.timeline.typ()
-    }
-
-    #[inline]
     pub fn datatype(&self) -> &ArrowDatatype {
         &self.datatype
     }

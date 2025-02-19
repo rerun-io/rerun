@@ -1204,7 +1204,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline()).map_or_else(
                         || arrow::array::new_null_array(&column.arrow_datatype(), 1),
-                        |(_time, time_sliced)| descr.typ().make_arrow_array(time_sliced.clone()),
+                        |(_time, time_sliced)| {
+                            descr.timeline().typ().make_arrow_array(time_sliced.clone())
+                        },
                     )
                 }
 
