@@ -78,9 +78,7 @@ impl DataSource {
                 // file extensions:
 
                 let parts = uri.split('.').collect_vec();
-                if parts.len() <= 1 {
-                    true // No dots. Weird. Let's assume it is a file path.
-                } else if parts.len() == 2 {
+                if parts.len() == 2 {
                     // Extension or `.com` etc?
                     re_data_loader::is_supported_file_extension(parts[1])
                 } else {
