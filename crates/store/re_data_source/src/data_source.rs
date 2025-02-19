@@ -1,10 +1,10 @@
 use crate::FileContents;
+use re_log::debug;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
-use re_grpc_client::redap;
 
 /// Somewhere we can get Rerun data from.
 #[derive(Clone, Debug)]
@@ -111,9 +111,11 @@ impl DataSource {
 
         match re_uri::RedapUri::try_from(uri.as_str()) {
             Ok(re_uri::RedapUri::Recording(endpoint)) => {
+                debug!("Recognized recording endpoint: {:?}", endpoint);
                 return Self::RedapRecordingEndpoint(endpoint);
             }
             Ok(re_uri::RedapUri::Catalog(endpoint)) => {
+                debug!("Recognized catalog endpoint: {:?}", endpoint);
                 return Self::RedapCatalogEndpoint(endpoint);
             }
             Ok(re_uri::RedapUri::Proxy(proxy)) => {
