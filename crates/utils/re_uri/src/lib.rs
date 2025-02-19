@@ -273,6 +273,23 @@ mod tests {
     }
 
     #[test]
+    fn test_localhost_url() {
+        let url = "rerun+http://localhost:51234/catalog";
+        let address = RedapUri::try_from(url).unwrap();
+
+        assert_eq!(
+            address,
+            RedapUri::Catalog(CatalogEndpoint {
+                origin: Origin {
+                    scheme: Scheme::RerunHttp,
+                    host: url::Host::<String>::Domain("localhost".to_owned()),
+                    port: 51234
+                }
+            })
+        );
+    }
+
+    #[test]
     fn test_invalid_url() {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.try_into();
