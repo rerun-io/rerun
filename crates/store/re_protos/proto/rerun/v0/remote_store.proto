@@ -275,14 +275,17 @@ message QueryManifestRequest {
     // If true, `columns` always includes `byte_offset` and `byte_size`.
     bool columns_always_include_byte_offsets = 230;
 
+    // If true, `columns` always includes `entity_path`.
+    bool columns_always_include_entity_paths = 240;
+
     // If true, `columns` always includes all static component-level indexes.
-    bool columns_always_include_static_indexes = 240;
+    bool columns_always_include_static_indexes = 250;
 
     // If true, `columns` always includes all temporal chunk-level indexes.
-    bool columns_always_include_global_indexes = 250;
+    bool columns_always_include_global_indexes = 260;
 
     // If true, `columns` always includes all component-level indexes.
-    bool columns_always_include_component_indexes = 260;
+    bool columns_always_include_component_indexes = 270;
 
     // If specified, will perform a latest-at query with the given parameters.
     //
@@ -299,11 +302,14 @@ message QueryManifestRequest {
 }
 
 message QueryManifestLatestAtRelevantChunks {
+    // Which entity paths are we interested in?
+    repeated rerun.common.v0.EntityPath entity_paths = 10;
+
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 1;
+    rerun.common.v0.IndexColumnSelector index = 20;
 
     // What index value are we looking for?
-    int64 at = 2;
+    int64 at = 30;
 
     // Which components are we interested in?
     //
@@ -314,15 +320,18 @@ message QueryManifestLatestAtRelevantChunks {
     // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 3;
+    repeated string fuzzy_descriptors = 40;
 }
 
 message QueryManifestRangeRelevantChunks {
+    // Which entity paths are we interested in?
+    repeated rerun.common.v0.EntityPath entity_paths = 10;
+
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 1;
+    rerun.common.v0.IndexColumnSelector index = 20;
 
     // What index range are we looking for?
-    rerun.common.v0.TimeRange index_range = 2;
+    rerun.common.v0.TimeRange index_range = 30;
 
     // Which components are we interested in?
     //
@@ -333,7 +342,7 @@ message QueryManifestRangeRelevantChunks {
     // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 3;
+    repeated string fuzzy_descriptors = 40;
 }
 
 // Generic parameters that will influence the behavior of the Lance scanner.
@@ -370,7 +379,10 @@ message ScanParameters {
     ScanParametersOrderClause order_by = 300;
 
     // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-    bool explain = 400;
+    bool explain_plan = 400;
+
+    // If set, the final `scanner.filter` will be dumped to the server's log.
+    bool explain_filter = 401;
 }
 
 message ScanParametersOrderClause {

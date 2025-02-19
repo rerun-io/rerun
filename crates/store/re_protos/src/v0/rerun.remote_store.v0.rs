@@ -463,14 +463,17 @@ pub struct QueryManifestRequest {
     /// If true, `columns` always includes `byte_offset` and `byte_size`.
     #[prost(bool, tag = "230")]
     pub columns_always_include_byte_offsets: bool,
-    /// If true, `columns` always includes all static component-level indexes.
+    /// If true, `columns` always includes `entity_path`.
     #[prost(bool, tag = "240")]
+    pub columns_always_include_entity_paths: bool,
+    /// If true, `columns` always includes all static component-level indexes.
+    #[prost(bool, tag = "250")]
     pub columns_always_include_static_indexes: bool,
     /// If true, `columns` always includes all temporal chunk-level indexes.
-    #[prost(bool, tag = "250")]
+    #[prost(bool, tag = "260")]
     pub columns_always_include_global_indexes: bool,
     /// If true, `columns` always includes all component-level indexes.
-    #[prost(bool, tag = "260")]
+    #[prost(bool, tag = "270")]
     pub columns_always_include_component_indexes: bool,
     /// If specified, will perform a latest-at query with the given parameters.
     ///
@@ -498,11 +501,14 @@ impl ::prost::Name for QueryManifestRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestLatestAtRelevantChunks {
+    /// Which entity paths are we interested in?
+    #[prost(message, repeated, tag = "10")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v0::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "20")]
     pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
     /// What index value are we looking for?
-    #[prost(int64, tag = "2")]
+    #[prost(int64, tag = "30")]
     pub at: i64,
     /// Which components are we interested in?
     ///
@@ -513,7 +519,7 @@ pub struct QueryManifestLatestAtRelevantChunks {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(string, repeated, tag = "3")]
+    #[prost(string, repeated, tag = "40")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
@@ -528,11 +534,14 @@ impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestRangeRelevantChunks {
+    /// Which entity paths are we interested in?
+    #[prost(message, repeated, tag = "10")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v0::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "20")]
     pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
     /// What index range are we looking for?
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "30")]
     pub index_range: ::core::option::Option<super::super::common::v0::TimeRange>,
     /// Which components are we interested in?
     ///
@@ -543,7 +552,7 @@ pub struct QueryManifestRangeRelevantChunks {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(string, repeated, tag = "3")]
+    #[prost(string, repeated, tag = "40")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryManifestRangeRelevantChunks {
@@ -592,7 +601,10 @@ pub struct ScanParameters {
     pub order_by: ::core::option::Option<ScanParametersOrderClause>,
     /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
     #[prost(bool, tag = "400")]
-    pub explain: bool,
+    pub explain_plan: bool,
+    /// If set, the final `scanner.filter` will be dumped to the server's log.
+    #[prost(bool, tag = "401")]
+    pub explain_filter: bool,
 }
 impl ::prost::Name for ScanParameters {
     const NAME: &'static str = "ScanParameters";
