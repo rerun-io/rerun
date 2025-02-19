@@ -608,7 +608,7 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        if include_static {
+        let chunks = if include_static {
             let empty = Default::default();
             let static_chunks_per_component = self
                 .static_chunk_ids_per_entity
@@ -658,7 +658,11 @@ impl ChunkStore {
                     self.latest_at(query, temporal_chunk_ids_per_time)
                 })
                 .unwrap_or_default()
-        }
+        };
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
     }
 
     fn latest_at(
@@ -855,7 +859,7 @@ impl ChunkStore {
         // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
         // need to make sure that the resulting chunks' global time ranges intersect with the
         // time range of the query itself.
-        chunks
+        let chunks = chunks
             .into_iter()
             .filter(|chunk| {
                 chunk
@@ -863,7 +867,11 @@ impl ChunkStore {
                     .get(&query.timeline())
                     .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
             })
-            .collect_vec()
+            .collect_vec();
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
     }
 
     fn range<'a>(
