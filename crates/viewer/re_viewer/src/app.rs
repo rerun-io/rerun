@@ -574,8 +574,7 @@ impl App {
                 self.state.display_mode = display_mode;
             }
             SystemCommand::AddRedapServer { origin } => {
-                self.redap_servers
-                    .fetch_catalog(&self.async_runtime, origin);
+                self.state.redap_servers.add_server(origin);
             }
 
             SystemCommand::LoadDataSource(data_source) => {

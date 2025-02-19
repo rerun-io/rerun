@@ -227,7 +227,7 @@ impl RedapServers {
         }
     }
 
-    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         self.add_server_modal_ui(ui);
 
         //TODO(ab): we should display something even if no catalog is currently selected.
@@ -237,13 +237,18 @@ impl RedapServers {
                 let collection = server.find_collection(*selected_collection);
 
                 if let Some(collection) = collection {
-                    let mut commands =
-                        super::collection_ui::collection_ui(ctx, ui, &server.origin, collection);
+                    let ctx = Context {
+                        command_sender: &self.command_sender,
+                        selected_collection: &self.selected_collection,
+                    };
 
-                    //TODO: clean that up
-                    for command in commands.drain(..) {
-                        let _ = self.command_sender.send(command);
-                    }
+                    super::collection_ui::collection_ui(
+                        viewer_ctx,
+                        &ctx,
+                        ui,
+                        &server.origin,
+                        collection,
+                    );
 
                     return;
                 }
