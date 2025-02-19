@@ -2488,6 +2488,17 @@ fn quote_clear_methods(obj: &Object) -> String {
     ))
 }
 
+fn quote_kwargs(obj: &Object) -> String {
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{field_name}': {field_name}")
+        })
+        .collect_vec()
+        .join(",\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -2503,15 +2514,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         .join(",\n");
     let parameters = indent::indent_by(8, parameters);
 
-    let kwargs = obj
-        .fields
-        .iter()
-        .map(|field| {
-            let field_name = field.snake_case_name();
-            format!("'{field_name}': {field_name}")
-        })
-        .collect_vec()
-        .join(",\n");
+    let kwargs = quote_kwargs(obj);
     let kwargs = indent::indent_by(12, kwargs);
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
@@ -2562,27 +2565,6 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     ))
 }
 
-fn quote_columnar_partition_size(obj: &Object) -> String {
-    // If the obj is a Scalar, we can infer partition size from the array-like shape.
-    if obj.snake_case_name() == "scalar"
-        && obj.kind == ObjectKind::Archetype
-        && obj.fields.len() == 1
-        && !obj.fields[0].is_nullable
-    {
-        unindent(&format!(
-            r#"
-        shape = np.shape({}) # type: ignore[arg-type]
-        batch_length = shape[1] if len(shape) > 1 else 1
-        num_rows = shape[0] if len(shape) >= 1 else 1
-        lengths = num_rows * np.ones(batch_length)
-        "#,
-            obj.fields[0].snake_case_name()
-        ))
-    } else {
-        unindent("lengths = np.ones(len(batches[0]._batch.as_arrow_array()))")
-    }
-}
-
 fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let parameters = obj
         .fields
@@ -2631,7 +2613,9 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         }
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
-    let partition_size = indent::indent_by(12, quote_columnar_partition_size(obj));
+
+    let kwargs = quote_kwargs(obj);
+    let kwargs = indent::indent_by(12, kwargs);
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
@@ -2654,11 +2638,29 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             if len(batches) == 0:
                 return ComponentColumnList([])
 
-            {partition_size}
-            columns = [batch.partition(lengths) for batch in batches]
+            kwargs = {{
+                {kwargs}
+            }}
+            columns = []
+
+            for batch in batches:
+                arrow_array = batch.as_arrow_array()
+
+                # For primitive arrays, we infer partition size from the input shape.
+                if pa.types.is_primitive(arrow_array.type):
+                    param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[arg-type]
+                    shape = np.shape(param)
+
+                    batch_length = shape[1] if len(shape) > 1 else 1
+                    num_rows = shape[0] if len(shape) >= 1 else 1
+                    lengths = batch_length * np.ones(num_rows)
+                else:
+                    # For non-primitive types, default to partitioning each element separately.
+                    lengths = np.ones(len(arrow_array))
+
+                columns.append(batch.partition(lengths))
 
             indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
-
             return ComponentColumnList([indicator_column] + columns)
         "#
     ))

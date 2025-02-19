@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -160,11 +161,27 @@ class BarChart(BarChartExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {"values": values, "color": color}
+        columns = []
+
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
+
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[arg-type]
+                shape = np.shape(param)
+
+                batch_length = shape[1] if len(shape) > 1 else 1
+                num_rows = shape[0] if len(shape) >= 1 else 1
+                lengths = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                lengths = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(lengths))
 
         indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
-
         return ComponentColumnList([indicator_column] + columns)
 
     values: components.TensorDataBatch | None = field(
