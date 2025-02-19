@@ -1,7 +1,6 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_grpc_client::redap;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
@@ -28,7 +27,7 @@ pub enum SystemCommand {
 
     /// Add a new server to the redap browser.
     AddRedapServer {
-        origin: redap::Origin,
+        endpoint: re_uri::CatalogEndpoint,
     },
 
     ChangeDisplayMode(crate::DisplayMode),
