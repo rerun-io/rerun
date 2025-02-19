@@ -34,22 +34,17 @@ pub enum ConnectionError {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub async fn client(
-    origin: Origin,
-) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
-    let tonic_client = tonic_web_wasm_client::Client::new_with_options(
+pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ConnectionError> {
+    let channel = tonic_web_wasm_client::Client::new_with_options(
         origin.as_url(),
         tonic_web_wasm_client::options::FetchOptions::new(),
     );
 
-    Ok(StorageNodeClient::new(tonic_client).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(channel)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(
-    origin: Origin,
-) -> Result<StorageNodeClient<tonic::transport::Channel>, ConnectionError> {
-    use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
+pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ConnectionError> {
     use tonic::transport::Endpoint;
 
     let http_url = origin.as_url();
@@ -59,9 +54,7 @@ pub async fn client(
         .connect()
         .await
     {
-        Ok(client) => {
-            Ok(StorageNodeClient::new(client).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
-        }
+        Ok(channel) => Ok(channel),
         Err(original_error) => {
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
@@ -77,6 +70,37 @@ pub async fn client(
             }
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub async fn client(
+    origin: Origin,
+) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
+    let channel = channel(origin).await?;
+    Ok(StorageNodeClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn client(
+    origin: Origin,
+) -> Result<StorageNodeClient<tonic::transport::Channel>, ConnectionError> {
+    let channel = channel(origin).await?;
+    Ok(StorageNodeClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
+    origin: Origin,
+    interceptor: I,
+) -> Result<
+    StorageNodeClient<
+        tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
+    >,
+    ConnectionError,
+> {
+    let channel = channel(origin).await?;
+    Ok(StorageNodeClient::with_interceptor(channel, interceptor)
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 pub async fn stream_recording_async(
