@@ -66,11 +66,45 @@ pub struct TimeColumnSelector {
     pub timeline: TimelineName,
 }
 
+impl From<TimelineName> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: TimelineName) -> Self {
+        Self { timeline }
+    }
+}
+
+impl From<Timeline> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: Timeline) -> Self {
+        Self {
+            timeline: *timeline.name(),
+        }
+    }
+}
+
+impl From<&str> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: &str) -> Self {
+        Self {
+            timeline: timeline.into(),
+        }
+    }
+}
+
+impl From<String> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: String) -> Self {
+        Self {
+            timeline: timeline.into(),
+        }
+    }
+}
+
 impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
-            timeline: *desc.timeline.name(),
+            timeline: *desc.timeline().name(),
         }
     }
 }

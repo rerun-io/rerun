@@ -213,5 +213,5 @@ impl FilterCommand {
 fn is_field_timeline_of(field: &ArrowField, dropped_timelines: &HashSet<String>) -> bool {
     re_sorbet::IndexColumnDescriptor::try_from(field)
         .ok()
-        .is_some_and(|schema| dropped_timelines.contains(schema.name().as_str()))
+        .is_some_and(|schema| dropped_timelines.contains(schema.column_name()))
 }
