@@ -11,11 +11,12 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 from ...blueprint import datatypes as blueprint_datatypes
+from .visualizer_overrides_ext import VisualizerOverridesExt
 
 __all__ = ["VisualizerOverrides", "VisualizerOverridesBatch"]
 
 
-class VisualizerOverrides(blueprint_datatypes.Utf8List, ComponentMixin):
+class VisualizerOverrides(VisualizerOverridesExt, blueprint_datatypes.Utf8List, ComponentMixin):
     """
     **Component**: Override the visualizers for an entity.
 

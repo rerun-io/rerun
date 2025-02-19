@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import rerun_bindings as bindings
 
-from .._baseclasses import AsComponents, ComponentBatchLike
+from .._baseclasses import AsComponents, DescribedComponentBatch
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
@@ -44,8 +44,8 @@ class View:
         name: Utf8Like | None,
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
-        defaults: list[AsComponents | ComponentBatchLike] | None = None,
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] | None = None,
     ) -> None:
         """
         Construct a blueprint for a new view.
@@ -70,12 +70,17 @@ class View:
         properties
             Dictionary of property archetypes to add to view's internal hierarchy.
         defaults:
-            List of default components or component batches to add to the view. When an archetype
-            in the view is missing a component included in this set, the value of default will be used
-            instead of the normal fallback for the visualizer.
+            List of archetypes or (described) component batches to add to the view.
+            When an archetype in the view is missing a component included in this set,
+            the value of default will be used instead of the normal fallback for the visualizer.
+
+            Note that an archetype's required components typically don't have any effect.
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
         overrides:
             Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of component or component batches to apply to the entity.
+            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
@@ -143,9 +148,8 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            stream.log(
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}",
-                components,  # type: ignore[arg-type]
+            stream.log(  # type: ignore[attr-defined]
+                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components, recording=stream
             )
 
     def _ipython_display_(self) -> None:
