@@ -634,7 +634,7 @@ impl ChunkStore {
                     temporal_chunk_ids_per_component
                         .iter()
                         .filter(|(component_name, _)| {
-                            static_chunks_per_component.contains_key(component_name)
+                            !static_chunks_per_component.contains_key(component_name)
                         })
                         .map(|(_, chunk_id_set)| chunk_id_set)
                 })
@@ -657,58 +657,6 @@ impl ChunkStore {
                 })
                 .unwrap_or_default()
         }
-    }
-
-    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
-    ///
-    /// The returned vector is guaranteed free of duplicates, by definition.
-    ///
-    /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
-    /// oblivious to the data therein.
-    /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
-    /// that a query has more than one relevant chunk.
-    ///
-    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
-    /// determine what exact row contains the final result.
-    pub fn latest_at_relevant_chunks_for_all_components_include_static(
-        &self,
-        query: &LatestAtQuery,
-        entity_path: &EntityPath,
-    ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!(format!("{query:?}"));
-
-        let static_chunks = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .map(|static_chunks_per_component| {
-                static_chunks_per_component
-                    .values()
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
-                    .map(|chunk| (chunk.id(), chunk))
-                    .collect::<BTreeMap<_, _>>()
-            })
-            .unwrap_or_default();
-
-        let temporal_chunks = self
-            .temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(&query.timeline())
-            })
-            .and_then(|temporal_chunk_ids_per_time| {
-                self.latest_at(query, temporal_chunk_ids_per_time)
-            })
-            .unwrap_or_default();
-
-        let chunks = static_chunks
-            .values()
-            .cloned()
-            .chain(temporal_chunks)
-            .collect_vec();
-
-        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
-
-        chunks
     }
 
     fn latest_at(
