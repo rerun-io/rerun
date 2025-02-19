@@ -44,7 +44,7 @@ pub enum SystemCommand {
     /// To force using the heuristics, use [`Self::ClearActiveBlueprintAndEnableHeuristics`].
     ///
     /// UI note: because of the above ambiguity, controls for this command should only be enabled if
-    /// a default blueprint is set.
+    /// a default blueprint is set or the behavior is explicitly explained.
     ClearActiveBlueprint,
 
     /// Clear the active blueprint and enable heuristics.
