@@ -71,8 +71,6 @@ impl TryFrom<&str> for TimeRange {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let (timeline, time_range) = value.split_once('@').ok_or(InvalidTimeRange)?;
 
-        // TODO: don't assume type
-
         #[allow(clippy::match_same_arms)]
         let timeline = match timeline {
             "log_time" => re_log_types::Timeline::new_temporal(timeline),

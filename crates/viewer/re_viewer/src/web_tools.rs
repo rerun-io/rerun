@@ -1,8 +1,6 @@
 //! Web-specific tools used by various parts of the application.
 
 use re_log::ResultExt;
-use re_log_types::StoreId;
-use re_log_types::StoreKind;
 use re_viewer_context::CommandSender;
 use re_viewer_context::SystemCommand;
 use re_viewer_context::SystemCommandSender;

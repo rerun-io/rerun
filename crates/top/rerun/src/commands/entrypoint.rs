@@ -2,9 +2,7 @@ use std::net::IpAddr;
 
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
-use re_viewer::external::re_viewer_context::{
-    command_channel, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{command_channel, SystemCommand, SystemCommandSender as _};
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
@@ -689,6 +687,7 @@ fn run_impl(
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
+    #[allow(unused_variables)]
     let (command_sender, command_receiver) = command_channel();
 
     // Where do we get the data from?

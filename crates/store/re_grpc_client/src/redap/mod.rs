@@ -132,7 +132,6 @@ pub async fn stream_recording_async(
     re_log::debug!("Fetching {recording_id}…");
 
     let mut resp = if let Some(req) = &time_range {
-        // TODO: actually stream this
         let chunk_ids = client
             .get_chunk_ids(GetChunkIdsRequest {
                 recording_id: Some(RecordingId {

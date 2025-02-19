@@ -135,6 +135,7 @@ re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
 re_video.workspace = true
+re_viewer_context.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true
