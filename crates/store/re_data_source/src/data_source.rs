@@ -320,7 +320,7 @@ impl DataSource {
 
 pub enum DataSourceCommand {
     SetLoopSelection {
-        recording_id: String,
+        recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
         time_range: re_log_types::ResolvedTimeRange,
     },

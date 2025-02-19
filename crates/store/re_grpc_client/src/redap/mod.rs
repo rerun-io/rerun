@@ -30,7 +30,7 @@ use crate::TonicStatusError;
 
 pub enum Command {
     SetLoopSelection {
-        recording_id: String,
+        recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
         time_range: re_log_types::ResolvedTimeRange,
     },
@@ -139,9 +139,9 @@ pub async fn stream_recording_async(
                     id: recording_id.clone(),
                 }),
                 time_index: Some(IndexColumnSelector {
-                    timeline: Some(req.timeline.clone().into()),
+                    timeline: Some(req.timeline.into()),
                 }),
-                time_range: Some(req.time_range.clone().into()),
+                time_range: Some(req.time_range.into()),
             })
             .await
             .map_err(TonicStatusError)?
@@ -231,7 +231,7 @@ pub async fn stream_recording_async(
 
     if let Some(time_range) = time_range {
         on_cmd(Command::SetLoopSelection {
-            recording_id,
+            recording_id: StoreId::from_string(StoreKind::Recording, recording_id),
             timeline: time_range.timeline,
             time_range: time_range.time_range,
         });

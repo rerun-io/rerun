@@ -1,6 +1,11 @@
 //! Web-specific tools used by various parts of the application.
 
 use re_log::ResultExt;
+use re_log_types::StoreId;
+use re_log_types::StoreKind;
+use re_viewer_context::CommandSender;
+use re_viewer_context::SystemCommand;
+use re_viewer_context::SystemCommandSender;
 use serde::Deserialize;
 use std::{ops::ControlFlow, sync::Arc};
 use wasm_bindgen::JsCast as _;
@@ -127,6 +132,7 @@ pub fn url_to_receiver(
     egui_ctx: egui::Context,
     follow_if_http: bool,
     url: String,
+    command_sender: CommandSender,
 ) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
@@ -143,7 +149,19 @@ pub fn url_to_receiver(
         ),
 
         EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::redap::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
+            let on_cmd = Box::new(move |cmd| match cmd {
+                re_grpc_client::redap::Command::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            });
+            re_grpc_client::redap::stream_from_redap(url, on_cmd, Some(ui_waker))
+                .map_err(|err| err.into())
         }
 
         EndpointCategory::WebEventListener(url) => {

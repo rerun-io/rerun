@@ -12,7 +12,6 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
@@ -602,10 +601,7 @@ impl App {
                         timeline,
                         time_range,
                     } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                        rec_id: re_log_types::StoreId::from_string(
-                            re_log_types::StoreKind::Recording,
-                            recording_id,
-                        ),
+                        rec_id: recording_id,
                         timeline,
                         time_range,
                     }),
