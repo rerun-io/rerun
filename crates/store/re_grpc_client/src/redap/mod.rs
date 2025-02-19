@@ -19,7 +19,6 @@ use re_protos::{
 
 // ----------------------------------------------------------------------------
 
-use crate::spawn_future;
 use crate::StreamError;
 use crate::TonicStatusError;
 
@@ -130,21 +129,20 @@ pub async fn client(
 
 pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    origin: Origin,
-    recording_id: String,
+    endpoint: re_uri::RecordingEndpoint,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    re_log::debug!("Connecting to {origin}…");
-    let mut client = client(origin).await?;
+    re_log::debug!("Connecting to {}…", endpoint.origin);
+    let mut client = client(endpoint.origin).await?;
 
-    re_log::debug!("Fetching catalog data for {recording_id}…");
+    re_log::debug!("Fetching catalog data for {}…", endpoint.recording_id);
 
     let resp = client
         .query_catalog(QueryCatalogRequest {
             column_projection: None, // fetch all columns
             filter: Some(CatalogFilter {
                 recording_ids: vec![RecordingId {
-                    id: recording_id.clone(),
+                    id: endpoint.recording_id.clone(),
                 }],
             }),
         })
@@ -164,21 +162,22 @@ pub async fn stream_recording_async(
     if resp.len() != 1 || resp[0].num_rows() != 1 {
         return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
-                "expected exactly one recording with id {recording_id}, got {}",
+                "expected exactly one recording with id {}, got {}",
+                endpoint.recording_id,
                 resp.len()
             ),
         }));
     }
 
-    let store_info = store_info_from_catalog_chunk(&resp[0].clone(), &recording_id)?;
+    let store_info = store_info_from_catalog_chunk(&resp[0].clone(), &endpoint.recording_id)?;
     let store_id = store_info.store_id.clone();
 
-    re_log::debug!("Fetching {recording_id}…");
+    re_log::debug!("Fetching {}…", endpoint.recording_id);
 
     let mut resp = client
         .fetch_recording(FetchRecordingRequest {
             recording_id: Some(RecordingId {
-                id: recording_id.clone(),
+                id: endpoint.recording_id.clone(),
             }),
         })
         .await

@@ -8,7 +8,7 @@ mod endpoints;
 mod error;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
+    endpoints::{catalog::CatalogEndpoint, recording::RecordingEndpoint},
     error::Error,
 };
 
@@ -117,7 +117,9 @@ impl std::fmt::Display for Origin {
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),
-    Proxy(ProxyEndpoint),
+
+    /// We use the `/proxy` endpoint to access another _local_ viewer.
+    Proxy(Origin),
 }
 
 impl std::fmt::Display for RedapUri {
@@ -125,7 +127,7 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
-            Self::Proxy(endpoint) => write!(f, "{endpoint}",),
+            Self::Proxy(origin) => write!(f, "{origin}/proxy",),
         }
     }
 }
@@ -142,6 +144,7 @@ impl TryFrom<&str> for RedapUri {
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
             .take(2)
+            .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
         match segments.as_slice() {
@@ -149,8 +152,8 @@ impl TryFrom<&str> for RedapUri {
                 origin,
                 (*recording_id).to_owned(),
             ))),
-            ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
-            ["catalog" | ""] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
+            ["proxy"] => Ok(Self::Proxy(origin)),
+            ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
     }
@@ -176,21 +179,21 @@ mod tests {
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttp,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "http://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "http://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
     }
 
     #[test]
@@ -198,10 +201,10 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/recording/12345";
         let address: RedapUri = url.try_into().unwrap();
 
-        let RedapUri::Recording {
+        let RedapUri::Recording(RecordingEndpoint {
             origin,
             recording_id,
-        } = address
+        }) = address
         else {
             panic!("Expected recording");
         };
@@ -218,13 +221,13 @@ mod tests {
         let address: RedapUri = url.try_into().unwrap();
         assert!(matches!(
             address,
-            RedapUri::Catalog {
+            RedapUri::Catalog(CatalogEndpoint {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                     port: 50051
                 },
-            }
+            })
         ));
     }
 
@@ -235,13 +238,13 @@ mod tests {
 
         assert!(matches!(
             address,
-            RedapUri::Catalog {
+            RedapUri::Catalog(CatalogEndpoint {
                 origin: Origin {
                     scheme: Scheme::RerunHttps,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                     port: 50051
-                },
-            }
+                }
+            })
         ));
     }
 
@@ -252,7 +255,7 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::ConnectionError::InvalidScheme { .. }
+            super::Error::InvalidScheme { .. }
         ));
     }
 
@@ -263,8 +266,27 @@ mod tests {
 
         assert!(matches!(
             address.unwrap_err(),
-            super::ConnectionError::UnexpectedEndpoint(unknown) if &unknown == "redap/"
+            super::Error::UnexpectedEndpoint(unknown) if &unknown == "redap/"
         ));
+    }
+
+    #[test]
+    fn test_proxy_endpoint() {
+        let url = "rerun://localhost:51234/proxy";
+        let address: Result<RedapUri, _> = url.try_into();
+
+        let expected = RedapUri::Proxy(Origin {
+            scheme: Scheme::Rerun,
+            host: url::Host::Domain("localhost".to_owned()),
+            port: 51234,
+        });
+
+        assert_eq!(address.unwrap(), expected);
+
+        let url = "rerun://localhost:51234/proxy/";
+        let address: Result<RedapUri, _> = url.try_into();
+
+        assert_eq!(address.unwrap(), expected);
     }
 
     #[test]
@@ -272,13 +294,13 @@ mod tests {
         let url = "rerun://localhost:51234";
         let address: Result<RedapUri, _> = url.try_into();
 
-        let expected = RedapUri::Catalog {
+        let expected = RedapUri::Catalog(CatalogEndpoint {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
-        };
+        });
 
         assert_eq!(address.unwrap(), expected);
 

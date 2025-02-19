@@ -6,7 +6,7 @@ use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 use anyhow::Context as _;
 
 /// Somewhere we can get Rerun data from.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
@@ -28,9 +28,11 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A file or a metadata catalog on a Rerun Data Platform server,
-    /// over `rerun://` gRPC interface.
-    RerunGrpcUrl { url: String },
+    /// A recording on a Rerun dataplatform server, over `rerun://` gRPC interface.
+    RedapRecordingEndpoint(re_uri::RecordingEndpoint),
+
+    /// A catalog on a Rerun dataplatform server, over `rerun://` gRPC interface.
+    RedapCatalogEndpoint(re_uri::CatalogEndpoint),
 
     /// A stream of messages over gRPC, relayed from the SDK.
     MessageProxy { url: String },
@@ -39,7 +41,7 @@ pub enum DataSource {
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData { endpoint: re_uri::Origin },
+    CatalogData { endpoint: re_uri::CatalogEndpoint },
 }
 
 impl DataSource {
@@ -50,6 +52,7 @@ impl DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> Self {
         use itertools::Itertools as _;
+        use re_uri::RedapUri;
 
         fn looks_like_windows_abs_path(path: &str) -> bool {
             let path = path.as_bytes();
@@ -93,14 +96,22 @@ impl DataSource {
             return Self::Stdin;
         }
 
-        let path = std::path::Path::new(&uri).to_path_buf();
+        match re_uri::RedapUri::try_from(uri.as_str()) {
+            Ok(re_uri::RedapUri::Recording(endpoint)) => {
+                return Self::RedapRecordingEndpoint(endpoint);
+            }
+            Ok(re_uri::RedapUri::Catalog(endpoint)) => {
+                return Self::RedapCatalogEndpoint(endpoint);
+            }
+            Ok(RedapUri::Proxy(proxy)) => {
+                return Self::MessageProxy {
+                    url: proxy.as_url(),
+                }
+            }
+            Err(_) => {} // Not a Rerun URI,
+        };
 
-        if uri.starts_with("rerun://")
-            || uri.starts_with("rerun+http://")
-            || uri.starts_with("rerun+https://")
-        {
-            return Self::RerunGrpcUrl { url: uri };
-        }
+        let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {
             Self::FilePath(file_source, path)
@@ -141,7 +152,7 @@ impl DataSource {
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
+            Self::RedapCatalogEndpoint { .. } | Self::RedapRecordingEndpoint { .. } => None, // TODO(jleibs): This needs to come from the server.
             Self::MessageProxy { .. } => None,
         }
     }
@@ -247,46 +258,33 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcUrl { url } => {
-                use re_grpc_client::redap::RedapAddress;
+            Self::RedapRecordingEndpoint(endpoint) => {
+                re_log::debug!(
+                    "Loading recording `{}` from `{}`…",
+                    endpoint.recording_id,
+                    endpoint.origin
+                );
 
-                re_log::debug!("Loading {url}…");
+                let url = endpoint.origin.as_url();
 
-                let address = url.as_str().try_into()?;
-
-                match address {
-                    RedapAddress::Recording {
-                        origin,
-                        recording_id,
-                    } => {
-                        let (tx, rx) = re_smart_channel::smart_channel(
-                            re_smart_channel::SmartMessageSource::RerunGrpcStream {
-                                url: url.clone(),
-                            },
-                            re_smart_channel::SmartChannelSource::RerunGrpcStream {
-                                url: url.clone(),
-                            },
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
+                );
+                spawn_future(async move {
+                    if let Err(err) =
+                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_msg).await
+                    {
+                        re_log::warn!(
+                            "Error while streaming {url}: {}",
+                            re_error::format_ref(&err)
                         );
-                        spawn_future(async move {
-                            if let Err(err) = re_grpc_client::redap::stream_recording_async(
-                                tx,
-                                origin,
-                                recording_id,
-                                on_msg,
-                            )
-                            .await
-                            {
-                                re_log::warn!(
-                                    "Error while streaming {url}: {}",
-                                    re_error::format_ref(&err)
-                                );
-                            }
-                        });
-                        Ok(StreamSource::LogMessages(rx))
                     }
-                    RedapAddress::Catalog { origin } => Ok(StreamSource::CatalogData { origin }),
-                }
+                });
+                Ok(StreamSource::LogMessages(rx))
             }
+
+            Self::RedapCatalogEndpoint(endpoint) => Ok(StreamSource::CatalogData { endpoint }),
 
             Self::MessageProxy { url } => re_grpc_client::message_proxy::stream(&url, on_msg)
                 .map_err(|err| err.into())

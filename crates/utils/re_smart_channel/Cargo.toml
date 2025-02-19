@@ -20,6 +20,7 @@ all-features = true
 
 [dependencies]
 re_tracing.workspace = true
+re_uri.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true

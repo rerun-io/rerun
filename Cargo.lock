@@ -5835,6 +5835,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_view_dataframe",
  "re_viewer_context",
  "thiserror 1.0.65",
@@ -6606,6 +6607,7 @@ dependencies = [
  "crossbeam",
  "parking_lot",
  "re_tracing",
+ "re_uri",
  "serde",
  "web-time",
 ]
@@ -7166,6 +7168,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_video",
  "re_view_bar_chart",
  "re_view_dataframe",

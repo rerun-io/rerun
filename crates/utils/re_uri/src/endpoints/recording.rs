@@ -1,6 +1,6 @@
 use crate::Origin;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecordingEndpoint {
     pub origin: Origin,
     pub recording_id: String,

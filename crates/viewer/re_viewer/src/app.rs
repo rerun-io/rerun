@@ -589,8 +589,9 @@ impl App {
 
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        self.catalog_hub
+                            .fetch_catalog(&self.async_runtime, endpoint);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1733,8 +1734,9 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
-        self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
+    pub fn fetch_catalog(&self, endpoint: re_uri::CatalogEndpoint) {
+        self.catalog_hub
+            .fetch_catalog(&self.async_runtime, endpoint);
     }
 }
 

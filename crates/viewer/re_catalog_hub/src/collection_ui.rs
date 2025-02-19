@@ -5,7 +5,6 @@ use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef;
-use re_grpc_client::redap;
 use re_log_types::{EntityPath, Timeline};
 use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
@@ -29,7 +28,7 @@ enum CollectionUiError {
 pub fn collection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    origin: &redap::Origin,
+    origin: &re_uri::Origin,
     collection: &RecordingCollection,
 ) -> Vec<Command> {
     let mut commands = vec![];
@@ -129,7 +128,7 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
 /// Convert a `SorbetBatch` to a `DisplayRecordBatch` and generate a `RecordingUri` column on the
 /// fly.
 fn catalog_sorbet_batch_to_display_record_batch(
-    origin: &redap::Origin,
+    origin: &re_uri::Origin,
     sorbet_batch: &SorbetBatch,
 ) -> Result<DisplayRecordBatch, CollectionUiError> {
     let rec_ids = sorbet_batch
