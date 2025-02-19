@@ -55,7 +55,6 @@ impl DataSource {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
-            use re_uri::RedapUri;
 
             fn looks_like_windows_abs_path(path: &str) -> bool {
                 let path = path.as_bytes();
@@ -89,28 +88,43 @@ impl DataSource {
                 }
             }
 
-        // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
-        // come up with more convoluted than that…) can lead to many unexpected,
-        // platform-specific problems that aren't even necessarily consistent across runs.
-        //
-        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
-        // throwing errors when we shouldn't), we just make reading from standard input explicit.
-        if uri == "-" {
-            return Self::Stdin;
+            // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+            // come up with more convoluted than that…) can lead to many unexpected,
+            // platform-specific problems that aren't even necessarily consistent across runs.
+            //
+            // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+            // throwing errors when we shouldn't), we just make reading from standard input explicit.
+            if uri == "-" {
+                return Self::Stdin;
+            }
+
+            let path = std::path::Path::new(&uri).to_path_buf();
+
+            if uri.starts_with("file://") || path.exists() {
+                return Self::FilePath(_file_source, path);
+            }
+
+            if looks_like_a_file_path(&uri) {
+                return Self::FilePath(_file_source, path);
+            }
         }
 
-        let path = std::path::Path::new(&uri).to_path_buf();
+        match re_uri::RedapUri::try_from(uri.as_str()) {
+            Ok(re_uri::RedapUri::Recording(endpoint)) => {
+                return Self::RedapRecordingEndpoint(endpoint);
+            }
+            Ok(re_uri::RedapUri::Catalog(endpoint)) => {
+                return Self::RedapCatalogEndpoint(endpoint);
+            }
+            Ok(re_uri::RedapUri::Proxy(proxy)) => {
+                return Self::MessageProxy {
+                    url: proxy.as_url(),
+                }
+            }
+            Err(_) => {} // Not a Rerun URI,
+        };
 
-        if uri.starts_with("rerun://")
-            || uri.starts_with("rerun+http://")
-            || uri.starts_with("rerun+https://")
-        {
-            return Self::RerunGrpcUrl { url: uri };
-        }
-
-        if redap::Scheme::try_from(uri.as_ref()).is_ok() {
-            Self::RerunGrpcUrl { url: uri }
-        } else if (uri.starts_with("http://") || uri.starts_with("https://"))
+        if (uri.starts_with("http://") || uri.starts_with("https://"))
             && (uri.ends_with(".rrd") || uri.ends_with(".rbl"))
         {
             Self::RrdHttpUrl {
@@ -125,7 +139,7 @@ impl DataSource {
                 follow: false,
             }
         } else {
-            // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+            // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
             re_log::debug!("Assuming gRPC endpoint");
             if !uri.contains("://") {
@@ -286,6 +300,28 @@ impl DataSource {
     }
 }
 
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
+#[cfg(target_arch = "wasm32")]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static + Send,
+{
+    tokio::spawn(future);
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn test_data_source_from_uri() {
@@ -349,26 +385,4 @@ fn test_data_source_from_uri() {
     }
 
     assert!(!failed, "one or more test cases failed");
-}
-
-// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
-// requires:
-// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
-//   where).
-// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `GlobalContext`?).
-#[cfg(target_arch = "wasm32")]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    wasm_bindgen_futures::spawn_local(future);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static + Send,
-{
-    tokio::spawn(future);
 }

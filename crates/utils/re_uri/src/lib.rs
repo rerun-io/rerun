@@ -61,7 +61,7 @@ impl Scheme {
 }
 
 impl TryFrom<&str> for Scheme {
-    type Error = InvalidScheme;
+    type Error = Error;
 
     fn try_from(url: &str) -> Result<Self, Self::Error> {
         if url.starts_with("rerun://") {
@@ -71,7 +71,7 @@ impl TryFrom<&str> for Scheme {
         } else if url.starts_with("rerun+https://") {
             Ok(Self::RerunHttps)
         } else {
-            Err(InvalidScheme)
+            Err(Self::Error::InvalidScheme)
         }
     }
 }
@@ -104,7 +104,7 @@ impl Origin {
 
 /// Parses a URL and returns the [`Origin`] and the canonical URL (i.e. one that
 ///  starts with `http://` or `https://`).
-fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), ConnectionError> {
+fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), Error> {
     let scheme = Scheme::try_from(value)?;
     let rewritten = scheme.canonical_url(value);
 
