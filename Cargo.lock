@@ -6171,6 +6171,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "serde",
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",

@@ -585,9 +585,7 @@ impl App {
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.state
-                            .redap_servers
-                            .fetch_catalog(&self.async_runtime, url);
+                        self.state.redap_servers.add_server(url);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1197,7 +1195,7 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.state.redap_servers.on_frame_start();
+                        self.state.redap_servers.on_frame_start(&self.async_runtime);
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1731,10 +1729,8 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
-        self.state
-            .redap_servers
-            .fetch_catalog(&self.async_runtime, origin);
+    pub fn add_redap_server(&mut self, origin: re_grpc_client::redap::Origin) {
+        self.state.redap_servers.add_server(origin);
     }
 }
 

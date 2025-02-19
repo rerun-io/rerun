@@ -15,7 +15,8 @@ use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
-use super::servers::{Command, RecordingCollection};
+use super::servers::Command;
+use crate::collections::Collection;
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -30,7 +31,7 @@ pub fn collection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     origin: &redap::Origin,
-    collection: &RecordingCollection,
+    collection: &Collection,
 ) -> Vec<Command> {
     let mut commands = vec![];
 
@@ -44,7 +45,7 @@ pub fn collection_ui(
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    let table_id_salt = collection.collection_id.with("__collection_table__");
+    let table_id_salt = egui::Id::new(collection.collection_id).with("__collection_table__");
 
     let num_rows = collection
         .collection

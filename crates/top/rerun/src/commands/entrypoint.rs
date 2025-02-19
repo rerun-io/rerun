@@ -903,7 +903,7 @@ fn run_impl(
                         app.set_examples_manifest_url(url);
                     }
                     for catalog in catalog_origins {
-                        app.fetch_catalog(catalog);
+                        app.add_redap_server(catalog);
                     }
                     Box::new(app)
                 }),

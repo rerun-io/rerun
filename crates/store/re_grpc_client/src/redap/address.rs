@@ -4,8 +4,9 @@
 //! `rerun://`, which is an alias for `rerun+https://`. These schemes are then
 //! converted on the fly to either `http://` or `https://`.
 
-use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
 use std::net::Ipv4Addr;
+
+use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConnectionError {
@@ -39,7 +40,9 @@ pub enum ConnectionError {
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Scheme {
     Rerun,
     RerunHttp,
@@ -66,7 +69,9 @@ impl Scheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct Origin {
     scheme: Scheme,
     host: url::Host<String>,

@@ -31,9 +31,10 @@ re_sorbet.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
-url.workspace = true
+url =  { workspace = true, features = ["serde"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
