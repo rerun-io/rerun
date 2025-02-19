@@ -153,7 +153,7 @@ pub fn url_to_receiver(
         )),
 
         EndpointCategory::RedapCatalog(_endpoint) => {
-            // TODO: Implement catalog support
+            // TODO(grtlr): Implement catalog support
             anyhow::bail!("Catalogs are not supported yet")
         }
 
