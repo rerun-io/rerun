@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -180,11 +181,27 @@ class EncodedImage(EncodedImageExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {"blob": blob, "media_type": media_type, "opacity": opacity, "draw_order": draw_order}
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1
+                num_rows = shape[0] if len(shape) >= 1 else 1
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     blob: components.BlobBatch | None = field(
