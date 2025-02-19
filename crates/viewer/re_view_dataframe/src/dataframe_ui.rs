@@ -287,7 +287,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         match column {
                             ColumnDescriptor::Time(desc) => (desc.timeline() != filtered_index)
                                 .then(|| HideColumnAction::HideTimeColumn {
-                                    timeline_name: *desc.name(),
+                                    timeline_name: *desc.timeline().name(),
                                 }),
 
                             ColumnDescriptor::Component(desc) => {

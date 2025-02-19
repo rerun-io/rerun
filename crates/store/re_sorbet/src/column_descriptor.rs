@@ -57,7 +57,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         match self {
-            Self::Time(descr) => descr.timeline.name().to_string(),
+            Self::Time(descr) => descr.column_name().to_owned(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }
@@ -73,7 +73,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn arrow_datatype(&self) -> ArrowDatatype {
         match self {
-            Self::Time(descr) => descr.datatype.clone(),
+            Self::Time(descr) => descr.datatype().clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
     }
@@ -134,14 +134,10 @@ fn test_schema_over_ipc() {
     #![expect(clippy::disallowed_methods)] // Schema::new
 
     let original_columns = [
-        ColumnDescriptor::Time(IndexColumnDescriptor {
-            timeline: re_log_types::Timeline::log_time(),
-            datatype: arrow::datatypes::DataType::Timestamp(
-                arrow::datatypes::TimeUnit::Nanosecond,
-                None,
-            ),
-            is_sorted: true,
-        }),
+        ColumnDescriptor::Time(IndexColumnDescriptor::from_timeline(
+            re_log_types::Timeline::log_time(),
+            true,
+        )),
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype_name: Some("archetype".to_owned().into()),

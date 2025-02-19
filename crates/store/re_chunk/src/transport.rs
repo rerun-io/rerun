@@ -63,11 +63,11 @@ impl Chunk {
                     } = info;
 
                     let array = info.times_array();
-                    let schema = re_sorbet::IndexColumnDescriptor {
-                        timeline: *timeline,
-                        datatype: array.data_type().clone(),
-                        is_sorted: *is_sorted,
-                    };
+
+                    debug_assert_eq!(&timeline.datatype(), array.data_type());
+
+                    let schema =
+                        re_sorbet::IndexColumnDescriptor::from_timeline(*timeline, *is_sorted);
 
                     (schema, into_arrow_ref(array))
                 })
@@ -165,17 +165,17 @@ impl Chunk {
                 let times =
                     TimeColumn::read_array(&as_array_ref(column.clone())).map_err(|err| {
                         ChunkError::Malformed {
-                            reason: format!("Bad time column '{}': {err}", schema.name()),
+                            reason: format!("Bad time column '{}': {err}", schema.column_name()),
                         }
                     })?;
 
                 let time_column =
-                    TimeColumn::new(schema.is_sorted.then_some(true), timeline, times);
+                    TimeColumn::new(schema.is_sorted().then_some(true), timeline, times);
                 if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "time column '{}' was specified more than once",
-                            schema.name(),
+                            timeline.name()
                         ),
                     });
                 }

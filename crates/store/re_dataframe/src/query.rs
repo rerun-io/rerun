@@ -393,7 +393,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
                             ColumnDescriptor::Component(_) => None,
                         })
-                        .find(|(_idx, view_descr)| *view_descr.name() == *selected_timeline)
+                        .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
                         .map_or_else(
                             || {
                                 (
@@ -1204,7 +1204,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline()).map_or_else(
                         || arrow::array::new_null_array(&column.arrow_datatype(), 1),
-                        |(_time, time_sliced)| descr.typ().make_arrow_array(time_sliced.clone()),
+                        |(_time, time_sliced)| {
+                            descr.timeline().typ().make_arrow_array(time_sliced.clone())
+                        },
                     )
                 }
 
@@ -1829,15 +1831,9 @@ mod tests {
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: "ATimeColumnThatDoesntExist".into(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from("ATimeColumnThatDoesntExist")),
                 ]),
                 ..Default::default()
             };
@@ -1904,36 +1900,16 @@ mod tests {
                 selection: Some(vec![
                     // NOTE: This will force a crash if the selected indexes vs. view indexes are
                     // improperly handled.
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -1986,15 +1962,9 @@ mod tests {
                     .collect(),
                 ),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_time().name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_tick().name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_time().name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_tick().name())),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
