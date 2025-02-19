@@ -1,6 +1,6 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
-use re_uri::Origin;
+use re_uri::{Origin, RecordingEndpoint};
 use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -17,48 +17,37 @@ use re_protos::{
     },
 };
 
-use crate::{StreamError, TonicStatusError, MAX_DECODING_MESSAGE_SIZE};
+use crate::{spawn_future, StreamError, TonicStatusError, MAX_DECODING_MESSAGE_SIZE};
 
-// /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
-// ///
-// /// `on_msg` can be used to wake up the UI thread on Wasm.
-// pub fn stream_from_redap(
-//     url: String,
-//     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-// ) -> Result<re_smart_channel::Receiver<LogMsg>, ConnectionError> {
-//     re_log::debug!("Loading {url}…");
+/// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
+///
+/// `on_msg` can be used to wake up the UI thread on Wasm.
+pub fn stream_from_redap(
+    endpoint: RecordingEndpoint,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> re_smart_channel::Receiver<LogMsg> {
+    re_log::debug!("Loading {endpoint}…");
 
-//     let address = url.as_str().try_into()?;
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::RerunGrpcStream {
+            url: endpoint.to_string(),
+        },
+        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+            url: endpoint.to_string(),
+        },
+    );
 
-//     let (tx, rx) = re_smart_channel::smart_channel(
-//         re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
-//         re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
-//     );
+    spawn_future(async move {
+        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_msg).await {
+            re_log::error!(
+                "Error while streaming {endpoint}: {}",
+                re_error::format_ref(&err)
+            );
+        }
+    });
 
-//     match address {
-//         RedapAddress::Recording {
-//             origin,
-//             recording_id,
-//         } => {
-//             spawn_future(async move {
-//                 if let Err(err) = stream_recording_async(tx, origin, recording_id, on_msg).await {
-//                     re_log::error!(
-//                         "Error while streaming {url}: {}",
-//                         re_error::format_ref(&err)
-//                     );
-//                 }
-//             });
-//         }
-//         // TODO(#9058): This should be fix by introducing a `RedapRecordingAddress`.
-//         RedapAddress::Catalog { origin } => {
-//             return Err(ConnectionError::CannotLoadUrlAsRecording {
-//                 url: origin.to_string(),
-//             });
-//         }
-//     }
-
-//     Ok(rx)
-// }
+    rx
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {

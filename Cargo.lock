@@ -6163,6 +6163,7 @@ dependencies = [
  "async-stream",
  "re_arrow_util",
  "re_chunk",
+ "re_error",
  "re_log",
  "re_log_encoding",
  "re_log_types",

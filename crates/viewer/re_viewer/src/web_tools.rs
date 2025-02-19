@@ -85,7 +85,10 @@ enum EndpointCategory {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    RerunGrpc(String),
+    RedapRecording(re_uri::RecordingEndpoint),
+
+    /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/catalog`
+    RedapCatalog(re_uri::CatalogEndpoint),
 
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
@@ -96,13 +99,15 @@ enum EndpointCategory {
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
+        match re_uri::RedapUri::try_from(uri.as_ref()) {
+            Ok(re_uri::RedapUri::Recording(endpoint)) => return Self::RedapRecording(endpoint),
+            Ok(re_uri::RedapUri::Catalog(endpoint)) => return Self::RedapCatalog(endpoint),
+            Ok(re_uri::RedapUri::Proxy(endpoint)) => return Self::MessageProxy(uri),
+            Err(_) => {} // Not a Rerun URI,
+        }
+
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
-        } else if uri.starts_with("rerun://")
-            || uri.starts_with("rerun+http://")
-            || uri.starts_with("rerun+https://")
-        {
-            Self::RerunGrpc(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
@@ -142,8 +147,14 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::redap::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
+        EndpointCategory::RedapRecording(endpoint) => Ok(re_grpc_client::redap::stream_from_redap(
+            endpoint,
+            Some(ui_waker),
+        )),
+
+        EndpointCategory::RedapCatalog(endpoint) => {
+            // TODO: Implement catalog support
+            anyhow::bail!("Catalogs are not supported yet")
         }
 
         EndpointCategory::WebEventListener(url) => {
