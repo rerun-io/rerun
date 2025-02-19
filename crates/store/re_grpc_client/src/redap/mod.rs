@@ -17,8 +17,7 @@ use re_protos::{
     },
 };
 
-use crate::StreamError;
-use crate::TonicStatusError;
+use crate::{StreamError, TonicStatusError, MAX_DECODING_MESSAGE_SIZE};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
@@ -33,8 +32,6 @@ pub enum ConnectionError {
     #[error("invalid origin: {0}")]
     InvalidOrigin(String),
 }
-
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 #[cfg(target_arch = "wasm32")]
 pub async fn client(

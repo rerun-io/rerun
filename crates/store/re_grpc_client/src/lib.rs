@@ -5,6 +5,8 @@ pub use message_proxy::MessageProxyUrl;
 
 pub mod redap;
 
+const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(pub tonic::Status);
