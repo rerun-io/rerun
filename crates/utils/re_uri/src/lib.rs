@@ -16,7 +16,7 @@ pub use self::{
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-enum Scheme {
+pub enum Scheme {
     Rerun,
     RerunHttp,
     RerunHttps,
@@ -78,9 +78,9 @@ impl TryFrom<&str> for Scheme {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Origin {
-    scheme: Scheme,
-    host: url::Host<String>,
-    port: u16,
+    pub scheme: Scheme,
+    pub host: url::Host<String>,
+    pub port: u16,
 }
 
 impl Origin {
