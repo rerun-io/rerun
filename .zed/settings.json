@@ -1,0 +1,43 @@
+{
+    "lsp": {
+      "rust-analyzer": {
+        "initialization_options": {
+          "check": {
+            "workspace": false,
+            "invocationLocation": "workspace",
+            "invocationStrategy": "per_workspace",
+            "overrideCommand": [
+              "cargo",
+              "clippy",
+              "--message-format=json",
+              "--target-dir=target_ra"
+            ]
+          },
+          "cargo": {
+            "allTargets": true,
+            "features": "all",
+            "targetDir": "target_ra",
+            "buildScripts": {
+              "invocationLocation": "workspace",
+              "invocationStrategy": "per_workspace",
+              "overrideCommand": [
+                "cargo",
+                "check",
+                "--quiet",
+                "--message-format=json",
+                "--target-dir=target_ra"
+              ],
+              "enable": false
+            },
+            "extraEnv": {
+              "IS_IN_RERUN_WORKSPACE": "yes"
+            }
+          },
+          "diagnostics": {
+            "enable": false
+          },
+          "showUnlinkedFileNotification": false
+        }
+      }
+    }
+  }
