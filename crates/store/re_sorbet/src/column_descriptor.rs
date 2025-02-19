@@ -57,7 +57,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         match self {
-            Self::Time(descr) => descr.name().to_string(),
+            Self::Time(descr) => descr.column_name().to_owned(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }

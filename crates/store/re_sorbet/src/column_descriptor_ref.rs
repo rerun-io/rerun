@@ -15,7 +15,7 @@ impl ColumnDescriptorRef<'_> {
     pub fn name(&self) -> String {
         match self {
             Self::RowId(descr) => descr.name().to_owned(),
-            Self::Time(descr) => descr.name().to_string(),
+            Self::Time(descr) => descr.column_name().to_owned(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }

@@ -393,7 +393,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
                             ColumnDescriptor::Component(_) => None,
                         })
-                        .find(|(_idx, view_descr)| *view_descr.name() == *selected_timeline)
+                        .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
                         .map_or_else(
                             || {
                                 (

@@ -165,7 +165,7 @@ impl Chunk {
                 let times =
                     TimeColumn::read_array(&as_array_ref(column.clone())).map_err(|err| {
                         ChunkError::Malformed {
-                            reason: format!("Bad time column '{}': {err}", schema.name()),
+                            reason: format!("Bad time column '{}': {err}", schema.column_name()),
                         }
                     })?;
 
@@ -175,7 +175,7 @@ impl Chunk {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "time column '{}' was specified more than once",
-                            schema.name(),
+                            timeline.name()
                         ),
                     });
                 }

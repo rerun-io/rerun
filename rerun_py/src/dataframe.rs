@@ -76,7 +76,7 @@ struct PyIndexColumnDescriptor(IndexColumnDescriptor);
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.name())
+        format!("Index(timeline:{})", self.0.column_name())
     }
 
     /// The name of the index.
@@ -84,7 +84,7 @@ impl PyIndexColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn name(&self) -> &str {
-        self.0.name()
+        self.0.column_name()
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
