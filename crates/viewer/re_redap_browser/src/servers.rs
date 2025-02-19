@@ -217,14 +217,11 @@ impl RedapServers {
     }
 
     fn server_list_ui(&self, ui: &mut egui::Ui) {
-        let ctx = Context {
-            command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
-        };
-
-        for server in self.servers.values() {
-            server.panel_ui(&ctx, ui);
-        }
+        self.with_ctx(|ctx| {
+            for server in self.servers.values() {
+                server.panel_ui(ctx, ui);
+            }
+        });
     }
 
     pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -237,18 +234,15 @@ impl RedapServers {
                 let collection = server.find_collection(*selected_collection);
 
                 if let Some(collection) = collection {
-                    let ctx = Context {
-                        command_sender: &self.command_sender,
-                        selected_collection: &self.selected_collection,
-                    };
-
-                    super::collection_ui::collection_ui(
-                        viewer_ctx,
-                        &ctx,
-                        ui,
-                        &server.origin,
-                        collection,
-                    );
+                    self.with_ctx(|ctx| {
+                        super::collection_ui::collection_ui(
+                            viewer_ctx,
+                            ctx,
+                            ui,
+                            &server.origin,
+                            collection,
+                        );
+                    });
 
                     return;
                 }
@@ -257,11 +251,22 @@ impl RedapServers {
     }
 
     fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+        //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
             selected_collection: &self.selected_collection,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
+    }
+
+    #[inline]
+    fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
+        let ctx = Context {
+            command_sender: &self.command_sender,
+            selected_collection: &self.selected_collection,
+        };
+
+        func(&ctx)
     }
 }
