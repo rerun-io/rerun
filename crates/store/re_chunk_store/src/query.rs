@@ -621,7 +621,7 @@ impl ChunkStore {
 
             let static_chunks = static_chunks_per_component
                 .values()
-                .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
                 .cloned();
 
             let temporal_chunks = self
@@ -640,7 +640,7 @@ impl ChunkStore {
                 })
                 .into_iter()
                 .flatten()
-                .flat_map(|temporal_chunk_ids_per_time| {
+                .filter_map(|temporal_chunk_ids_per_time| {
                     self.latest_at(query, temporal_chunk_ids_per_time)
                 })
                 .flatten();
@@ -683,7 +683,7 @@ impl ChunkStore {
             .map(|static_chunks_per_component| {
                 static_chunks_per_component
                     .values()
-                    .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
                     .map(|chunk| (chunk.id(), chunk))
                     .collect::<BTreeMap<_, _>>()
             })
@@ -703,7 +703,7 @@ impl ChunkStore {
         let chunks = static_chunks
             .values()
             .cloned()
-            .chain(temporal_chunks.into_iter())
+            .chain(temporal_chunks)
             .collect_vec();
 
         debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
@@ -858,7 +858,7 @@ impl ChunkStore {
 
             let static_chunks = static_chunks_per_component
                 .values()
-                .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
                 .cloned();
 
             let temporal_chunks = self
