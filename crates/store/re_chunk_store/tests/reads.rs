@@ -899,7 +899,6 @@ fn range() -> anyhow::Result<()> {
                     .range_relevant_chunks_for_all_components(
                         &RangeQuery::new(timeline_frame_nr, time_range),
                         &entity_path,
-                        false, /* don't include static chunks */
                     )
                     .into_iter()
                     .map(|chunk| {
@@ -1075,7 +1074,6 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
             .range_relevant_chunks_for_all_components(
                 &RangeQuery::new(timeline_frame_nr, time_range),
                 &entity_path,
-                false, /* don't include static chunks */
             )
             .into_iter()
             .map(|chunk| {
