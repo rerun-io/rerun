@@ -642,13 +642,17 @@ impl ChunkStore {
                 .filter_map(|temporal_chunk_ids_per_time| {
                     self.latest_at(query, temporal_chunk_ids_per_time)
                 })
-                .flatten()
-                // The latest_at queries may yield duplicate chunks, and it's unlikely
-                // anyone will use this without also deduplicating first.
-                .unique_by(|chunk| chunk.id());
+                .flatten();
 
-            static_chunks.chain(temporal_chunks).collect_vec()
+            static_chunks
+                .chain(temporal_chunks)
+                // Deduplicate before passing it along.
+                // Both temporal and static chunk "sets" here may have duplicates in them,
+                // so we de-duplicate them together to reduce the number of allocations.
+                .unique_by(|chunk| chunk.id())
+                .collect_vec()
         } else {
+            // This cannot yield duplicates by definition.
             self.temporal_chunk_ids_per_entity
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline| {
@@ -836,13 +840,18 @@ impl ChunkStore {
                         .into_iter()
                         .flatten(),
                 )
-                .into_iter()
-                // The range query may yield duplicate chunks, and it's unlikely
-                // anyone will use this without deduplicating first.
-                .unique_by(|chunk| chunk.id());
+                .into_iter();
 
-            Either::Left(static_chunks.chain(temporal_chunks))
+            Either::Left(
+                static_chunks
+                    .chain(temporal_chunks)
+                    // Deduplicate before passing it along.
+                    // Both temporal and static chunk "sets" here may have duplicates in them,
+                    // so we de-duplicate them together to reduce the number of allocations.
+                    .unique_by(|chunk| chunk.id()),
+            )
         } else {
+            // This cannot yield duplicates by definition.
             Either::Right(
                 self.range(
                     query,
