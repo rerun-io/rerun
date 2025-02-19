@@ -456,10 +456,12 @@ impl TestContext {
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
-                | SystemCommand::AddReceiver(_)
+                | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
+                | SystemCommand::ChangeDisplayMode(_)
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }

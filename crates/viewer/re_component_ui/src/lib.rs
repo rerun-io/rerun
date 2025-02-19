@@ -16,7 +16,6 @@ mod marker_shape;
 mod pinhole;
 mod plane3d;
 mod radius;
-mod recording_uri;
 mod resolution;
 mod response_utils;
 mod timeline;
@@ -160,8 +159,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
-
-    registry.add_singleline_edit_or_view(recording_uri::singleline_view_recording_uri);
 
     line_strip::register_linestrip_component_ui(&mut registry);
     geo_line_string::register_geo_line_string_component_ui(&mut registry);

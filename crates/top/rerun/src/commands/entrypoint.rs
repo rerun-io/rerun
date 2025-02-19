@@ -634,7 +634,7 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
-    tokio_runtime_handle: &tokio::runtime::Handle,
+    _tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
@@ -882,7 +882,7 @@ fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         {
-            let tokio_runtime_handle = tokio_runtime_handle.clone();
+            let tokio_runtime_handle = _tokio_runtime_handle.clone();
 
             return re_viewer::run_native_app(
                 _main_thread_token,

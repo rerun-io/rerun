@@ -14,15 +14,15 @@ pub struct UnsupportedTimeType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
-    pub timeline: Timeline,
+    timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
+    datatype: ArrowDatatype,
 
     /// Are the indices in this column sorted?
     ///
     /// `false` means either "unsorted" or "unknown".
-    pub is_sorted: bool,
+    is_sorted: bool,
 }
 
 impl PartialOrd for IndexColumnDescriptor {
@@ -58,23 +58,35 @@ impl IndexColumnDescriptor {
     }
 
     #[inline]
+    pub fn from_timeline(timeline: Timeline, is_sorted: bool) -> Self {
+        Self {
+            timeline,
+            datatype: timeline.datatype(),
+            is_sorted,
+        }
+    }
+
+    #[inline]
     pub fn timeline(&self) -> Timeline {
         self.timeline
     }
 
     #[inline]
-    pub fn name(&self) -> &TimelineName {
+    pub fn column_name(&self) -> &str {
         self.timeline.name()
-    }
-
-    #[inline]
-    pub fn typ(&self) -> re_log_types::TimeType {
-        self.timeline.typ()
     }
 
     #[inline]
     pub fn datatype(&self) -> &ArrowDatatype {
         &self.datatype
+    }
+
+    /// Are the indices in this column sorted?
+    ///
+    /// `false` means either "unsorted" or "unknown".
+    #[inline]
+    pub fn is_sorted(&self) -> bool {
+        self.is_sorted
     }
 
     #[inline]

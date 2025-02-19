@@ -19,7 +19,7 @@ use re_protos::{
 
 mod address;
 
-pub use address::{ConnectionError, Origin, RedapAddress};
+pub use address::{ConnectionError, InvalidScheme, Origin, RedapAddress, Scheme};
 
 use crate::spawn_future;
 use crate::StreamError;

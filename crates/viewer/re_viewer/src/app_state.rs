@@ -1,9 +1,9 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Ui};
-use std::cmp::PartialEq;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_grpc_client::redap;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -11,8 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext, StoreHub,
-    SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
+    ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -24,19 +25,6 @@ use crate::{
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
-
-/// Which display mode are we currently in?
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DisplayMode {
-    /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings,
-
-    /// The Redap server/catalog/collection browser.
-    RedapBrowser,
-
-    /// The current recording's data store browser.
-    ChunkStoreBrowser,
-}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -591,7 +579,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
+        check_for_clicked_hyperlinks(&ctx);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -763,24 +751,52 @@ pub(crate) fn recording_config_entry<'cfgs>(
 }
 
 /// We allow linking to entities and components via hyperlinks,
-/// e.g. in embedded markdown.
+/// e.g. in embedded markdown. We also have a custom `rerun://` scheme to be handled by the viewer.
 ///
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-fn check_for_clicked_hyperlinks(
-    egui_ctx: &egui::Context,
-    selection_state: &ApplicationSelectionState,
-) {
+///
+/// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
+fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
-    let mut path = None;
+    let mut recording_path = None;
 
-    egui_ctx.output_mut(|o| {
+    ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
-                    path = Some(path_str.to_owned());
+                let is_rerun_url = redap::Scheme::try_from(open_url.url.as_ref()).is_ok();
+
+                if is_rerun_url {
+                    let data_source = re_data_source::DataSource::from_uri(
+                        re_log_types::FileSource::Uri,
+                        open_url.url.clone(),
+                    );
+
+                    match data_source.stream(None) {
+                        Ok(re_data_source::StreamSource::LogMessages(rx)) => {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::AddReceiver(rx));
+
+                            if !open_url.new_tab {
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::ChangeDisplayMode(
+                                        DisplayMode::LocalRecordings,
+                                    ));
+                            }
+                        }
+
+                        Ok(re_data_source::StreamSource::CatalogData { origin }) => ctx
+                            .command_sender()
+                            .send_system(SystemCommand::AddRedapServer { origin }),
+                        Err(err) => {
+                            re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
+                        }
+                    }
+                    return false;
+                } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
+                    recording_path = Some(path_str.to_owned());
                     return false;
                 } else {
                     // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
@@ -791,10 +807,10 @@ fn check_for_clicked_hyperlinks(
         });
     });
 
-    if let Some(path) = path {
+    if let Some(path) = recording_path {
         match path.parse::<re_viewer_context::Item>() {
             Ok(item) => {
-                selection_state.set_selection(item);
+                ctx.selection_state.set_selection(item);
             }
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");

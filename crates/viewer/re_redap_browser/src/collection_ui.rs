@@ -9,8 +9,7 @@ use re_grpc_client::redap;
 use re_log_types::{EntityPath, Timeline};
 use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
-use re_types::components::RecordingUri;
-use re_types_core::{arrow_helpers::as_array_ref, Component as _};
+use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
@@ -114,7 +113,7 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
     static COMPONENT_URI_DESCRIPTOR: once_cell::sync::Lazy<ComponentColumnDescriptor> =
         once_cell::sync::Lazy::new(|| ComponentColumnDescriptor {
             store_datatype: ArrowDataType::Utf8,
-            component_name: RecordingUri::name(),
+            component_name: "recording_uri".into(),
             entity_path: EntityPath::root(),
             archetype_name: None,
             archetype_field_name: None,

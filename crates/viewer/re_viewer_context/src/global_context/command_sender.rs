@@ -1,6 +1,7 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
+use re_grpc_client::redap;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
@@ -22,7 +23,15 @@ pub enum SystemCommand {
     /// Clear everything that came from this source, and close the source.
     ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
+    /// Add a new receiver for log messages.
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
+
+    /// Add a new server to the redap browser.
+    AddRedapServer {
+        origin: redap::Origin,
+    },
+
+    ChangeDisplayMode(crate::DisplayMode),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
