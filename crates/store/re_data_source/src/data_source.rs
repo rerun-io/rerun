@@ -160,9 +160,12 @@ impl DataSource {
     /// Will do minimal checks (e.g. that the file exists), for synchronous errors,
     /// but the loading is done in a background task.
     ///
+    /// `on_cmd` is used to respond to UI commands.
+    ///
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
@@ -259,10 +262,23 @@ impl DataSource {
 
                 let address = url.as_str().try_into()?;
 
+                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
+                    redap::Command::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => on_cmd(DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
                 match address {
                     RedapAddress::Recording {
                         origin,
                         recording_id,
+                        time_range,
                     } => {
                         let (tx, rx) = re_smart_channel::smart_channel(
                             re_smart_channel::SmartMessageSource::RerunGrpcStream {
@@ -277,6 +293,8 @@ impl DataSource {
                                 tx,
                                 origin,
                                 recording_id,
+                                time_range,
+                                on_cmd,
                                 on_msg,
                             )
                             .await
@@ -298,6 +316,14 @@ impl DataSource {
                 .map(StreamSource::LogMessages),
         }
     }
+}
+
+pub enum DataSourceCommand {
+    SetLoopSelection {
+        recording_id: String,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRange,
+    },
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
+use re_viewer_context::{command_channel, AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
@@ -709,6 +709,7 @@ fn create_app(
         startup_options,
         cc,
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
+        command_channel(),
     );
 
     if enable_history {

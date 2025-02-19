@@ -1,8 +1,8 @@
-use re_chunk::EntityPath;
+use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_grpc_client::redap;
-use re_log_types::StoreId;
+use re_log_types::{ResolvedTimeRange, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------
@@ -100,6 +100,12 @@ pub enum SystemCommand {
     SetActiveTimeline {
         rec_id: StoreId,
         timeline: re_chunk::Timeline,
+    },
+
+    SetLoopSelection {
+        rec_id: StoreId,
+        timeline: Timeline,
+        time_range: ResolvedTimeRange,
     },
 
     /// Sets the focus to the given item.

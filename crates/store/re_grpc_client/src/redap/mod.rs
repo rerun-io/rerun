@@ -1,3 +1,4 @@
+use address::TimeRange;
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use tokio_stream::StreamExt as _;
 
@@ -8,10 +9,10 @@ use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
-    common::v0::RecordingId,
+    common::v0::{IndexColumnSelector, RecordingId},
     remote_store::v0::{
-        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
-        CATALOG_START_TIME_FIELD_NAME,
+        CatalogFilter, FetchRecordingRequest, GetChunkIdsRequest, GetChunksRequest,
+        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
     },
 };
 
@@ -27,11 +28,20 @@ use crate::TonicStatusError;
 
 // ----------------------------------------------------------------------------
 
+pub enum Command {
+    SetLoopSelection {
+        recording_id: String,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRange,
+    },
+}
+
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_from_redap(
     url: String,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<re_smart_channel::Receiver<LogMsg>, ConnectionError> {
     re_log::debug!("Loading {url}…");
@@ -47,9 +57,13 @@ pub fn stream_from_redap(
         RedapAddress::Recording {
             origin,
             recording_id,
+            time_range,
         } => {
             spawn_future(async move {
-                if let Err(err) = stream_recording_async(tx, origin, recording_id, on_msg).await {
+                if let Err(err) =
+                    stream_recording_async(tx, origin, recording_id, time_range, on_cmd, on_msg)
+                        .await
+                {
                     re_log::error!(
                         "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
@@ -72,6 +86,8 @@ pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     origin: Origin,
     recording_id: String,
+    time_range: Option<TimeRange>,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Connecting to {origin}…");
@@ -115,21 +131,71 @@ pub async fn stream_recording_async(
 
     re_log::debug!("Fetching {recording_id}…");
 
-    let mut resp = client
-        .fetch_recording(FetchRecordingRequest {
-            recording_id: Some(RecordingId {
-                id: recording_id.clone(),
-            }),
-        })
-        .await
-        .map_err(TonicStatusError)?
-        .into_inner()
-        .map(|resp| {
-            resp.and_then(|r| {
-                r.decode()
-                    .map_err(|err| tonic::Status::internal(err.to_string()))
+    let mut resp = if let Some(req) = &time_range {
+        // TODO: actually stream this
+        let chunk_ids = client
+            .get_chunk_ids(GetChunkIdsRequest {
+                recording_id: Some(RecordingId {
+                    id: recording_id.clone(),
+                }),
+                time_index: Some(IndexColumnSelector {
+                    timeline: Some(req.timeline.clone().into()),
+                }),
+                time_range: Some(req.time_range.clone().into()),
             })
-        });
+            .await
+            .map_err(TonicStatusError)?
+            .into_inner()
+            .collect::<Result<Vec<_>, tonic::Status>>()
+            .await
+            .map_err(TonicStatusError)?
+            .into_iter()
+            .flat_map(|r| r.chunk_ids)
+            .collect::<Vec<_>>();
+
+        client
+            .get_chunks(GetChunksRequest {
+                recording_id: Some(RecordingId {
+                    id: recording_id.clone(),
+                }),
+                chunk_ids,
+            })
+            .await
+            .map_err(TonicStatusError)?
+            .into_inner()
+    } else {
+        client
+            .fetch_recording(FetchRecordingRequest {
+                recording_id: Some(RecordingId {
+                    id: recording_id.clone(),
+                }),
+            })
+            .await
+            .map_err(TonicStatusError)?
+            .into_inner()
+    }
+    .map(|resp| {
+        resp.and_then(|r| {
+            r.decode()
+                .map_err(|err| tonic::Status::internal(err.to_string()))
+        })
+    });
+
+    // let mut resp = client
+    //     .fetch_recording(FetchRecordingRequest {
+    //         recording_id: Some(RecordingId {
+    //             id: recording_id.clone(),
+    //         }),
+    //     })
+    //     .await
+    //     .map_err(TonicStatusError)?
+    //     .into_inner()
+    //     .map(|resp| {
+    //         resp.and_then(|r| {
+    //             r.decode()
+    //                 .map_err(|err| tonic::Status::internal(err.to_string()))
+    //         })
+    //     });
 
     drop(client);
 
@@ -161,6 +227,14 @@ pub async fn stream_recording_async(
         if let Some(on_msg) = &on_msg {
             on_msg();
         }
+    }
+
+    if let Some(time_range) = time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id,
+            timeline: time_range.timeline,
+            time_range: time_range.time_range,
+        });
     }
 
     Ok(())

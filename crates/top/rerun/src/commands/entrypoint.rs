@@ -2,6 +2,9 @@ use std::net::IpAddr;
 
 use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
+use re_viewer::external::re_viewer_context::{
+    command_channel, SystemCommand, SystemCommandSender as _,
+};
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
@@ -686,6 +689,8 @@ fn run_impl(
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
+    let (command_sender, command_receiver) = command_channel();
+
     // Where do we get the data from?
     let mut catalog_origins: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
@@ -717,17 +722,35 @@ fn run_impl(
             }
         }
 
+        let command_sender = command_sender.clone();
+        let on_cmd = Box::new(move |cmd| match cmd {
+            re_data_source::DataSourceCommand::SetLoopSelection {
+                recording_id,
+                timeline,
+                time_range,
+            } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                rec_id: re_log_types::StoreId::from_string(
+                    re_log_types::StoreKind::Recording,
+                    recording_id,
+                ),
+                timeline,
+                time_range,
+            }),
+        });
+
         // We may need to spawn tasks from this point on:
         let mut rxs = data_sources
             .into_iter()
-            .filter_map(|data_source| match data_source.stream(None) {
-                Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
-                Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                    catalog_origins.push(url);
-                    None
-                }
-                Err(err) => Some(Err(err)),
-            })
+            .filter_map(
+                |data_source| match data_source.stream(on_cmd.clone(), None) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
+                        catalog_origins.push(url);
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                },
+            )
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -894,6 +917,7 @@ fn run_impl(
                         startup_options,
                         cc,
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        (command_sender, command_receiver),
                     );
                     for rx in rxs {
                         app.add_receiver(rx);

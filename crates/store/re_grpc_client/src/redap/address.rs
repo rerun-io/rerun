@@ -23,6 +23,9 @@ pub enum ConnectionError {
     #[error(transparent)]
     InvalidScheme(#[from] InvalidScheme),
 
+    #[error(transparent)]
+    InvalidTimeRange(#[from] InvalidTimeRange),
+
     #[error("unexpected endpoint: {0}")]
     UnexpectedEndpoint(String),
 
@@ -34,6 +37,76 @@ pub enum ConnectionError {
 
     #[error("URL {url:?} cannot be loaded as a recording")]
     CannotLoadUrlAsRecording { url: String },
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid time range (expected `?time_range=timeline@int_seconds..int_seconds`)")]
+pub struct InvalidTimeRange;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TimeRange {
+    pub timeline: re_log_types::Timeline,
+    pub time_range: re_log_types::ResolvedTimeRange,
+}
+
+impl std::fmt::Display for TimeRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            timeline,
+            time_range,
+        } = self;
+        write!(
+            f,
+            "{}@{}..{}",
+            timeline.name(),
+            time_range.min().as_f64(),
+            time_range.max().as_f64(),
+        )
+    }
+}
+
+impl TryFrom<&str> for TimeRange {
+    type Error = InvalidTimeRange;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let (timeline, time_range) = value.split_once('@').ok_or(InvalidTimeRange)?;
+
+        // TODO: don't assume type
+
+        let timeline = match timeline {
+            "log_time" => re_log_types::Timeline::new_temporal(timeline),
+            "log_tick" => re_log_types::Timeline::new_sequence(timeline),
+            "frame" => re_log_types::Timeline::new_sequence(timeline),
+            "frame_nr" => re_log_types::Timeline::new_sequence(timeline),
+            _ => re_log_types::Timeline::new_temporal(timeline),
+        };
+
+        let time_range = {
+            let (min, max) = time_range.split_once("..").ok_or(InvalidTimeRange)?;
+
+            re_log_types::ResolvedTimeRange::new(
+                re_log_types::TimeInt::from_seconds(
+                    min.parse::<i64>()
+                        .map_err(|_| InvalidTimeRange)?
+                        .try_into()
+                        .ok()
+                        .unwrap_or_default(),
+                ),
+                re_log_types::TimeInt::from_seconds(
+                    max.parse::<i64>()
+                        .map_err(|_| InvalidTimeRange)?
+                        .try_into()
+                        .ok()
+                        .unwrap_or_default(),
+                ),
+            )
+        };
+
+        Ok(Self {
+            timeline,
+            time_range,
+        })
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -218,6 +291,7 @@ pub enum RedapAddress {
     Recording {
         origin: Origin,
         recording_id: String,
+        time_range: Option<TimeRange>,
     },
     Catalog {
         origin: Origin,
@@ -230,7 +304,14 @@ impl std::fmt::Display for RedapAddress {
             Self::Recording {
                 origin,
                 recording_id,
-            } => write!(f, "{origin}/recording/{recording_id}",),
+                time_range,
+            } => match time_range {
+                None => write!(f, "{origin}/recording/{recording_id}"),
+                Some(time_range) => write!(
+                    f,
+                    "{origin}/recording/{recording_id}?time_range={time_range}"
+                ),
+            },
             Self::Catalog { origin } => write!(f, "{origin}/catalog",),
         }
     }
@@ -250,10 +331,19 @@ impl TryFrom<&str> for RedapAddress {
             .take(2)
             .collect::<Vec<_>>();
 
+        let time_range = canonical_url
+            .query_pairs()
+            .find(|(key, _)| key == "time_range")
+            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
+
         match segments.as_slice() {
             ["recording", recording_id] => Ok(Self::Recording {
                 origin,
                 recording_id: (*recording_id).to_owned(),
+                time_range: match time_range {
+                    Some(time_range) => Some(time_range?),
+                    None => None,
+                },
             }),
             ["catalog" | ""] | [] => Ok(Self::Catalog { origin }),
             [unknown, ..] => Err(ConnectionError::UnexpectedEndpoint(format!("{unknown}/"))),
@@ -306,6 +396,7 @@ mod tests {
         let RedapAddress::Recording {
             origin,
             recording_id,
+            time_range,
         } = address
         else {
             panic!("Expected recording");
@@ -315,6 +406,34 @@ mod tests {
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(recording_id, "12345");
+        assert_eq!(time_range, None);
+    }
+
+    #[test]
+    fn test_recording_url_time_range_to_address() {
+        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10..20";
+        let address: RedapAddress = url.try_into().unwrap();
+
+        let RedapAddress::Recording {
+            origin,
+            recording_id,
+            time_range,
+        } = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            time_range,
+            Some(TimeRange {
+                timeline: re_log_types::Timeline::new_temporal("timeline"),
+                time_range: re_log_types::ResolvedTimeRange::new(10, 20)
+            })
+        );
     }
 
     #[test]

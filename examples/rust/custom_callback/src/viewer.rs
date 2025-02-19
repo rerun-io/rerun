@@ -1,6 +1,6 @@
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
-use rerun::external::re_viewer::AsyncRuntimeHandle;
+use rerun::external::re_viewer::{command_channel, AsyncRuntimeHandle};
 use rerun::external::{eframe, re_log, re_memory, re_viewer};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -64,6 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 startup_options,
                 cc,
                 AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                command_channel(),
             );
 
             rerun_app.add_receiver(rx);

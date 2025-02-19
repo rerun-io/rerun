@@ -259,6 +259,7 @@ impl App {
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         tokio_runtime: AsyncRuntimeHandle,
+        command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -314,7 +315,7 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(&creation_context.egui_ctx, screenshot_path);
         }
 
-        let (command_sender, command_receiver) = command_channel();
+        let (command_sender, command_receiver) = command_channel;
 
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
@@ -594,7 +595,23 @@ impl App {
                     egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
                 });
 
-                match data_source.stream(Some(waker)) {
+                let command_sender = self.command_sender.clone();
+                let on_cmd = Box::new(move |cmd| match cmd {
+                    re_data_source::DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                        rec_id: re_log_types::StoreId::from_string(
+                            re_log_types::StoreKind::Recording,
+                            recording_id,
+                        ),
+                        timeline,
+                        time_range,
+                    }),
+                });
+
+                match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
                         self.redap_servers.fetch_catalog(&self.async_runtime, url);
@@ -674,6 +691,19 @@ impl App {
             SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                 if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
                     rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
+            }
+
+            SystemCommand::SetLoopSelection {
+                rec_id,
+                timeline,
+                time_range,
+            } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    let mut guard = rec_cfg.time_ctrl.write();
+                    guard.set_timeline(timeline);
+                    guard.set_loop_selection(time_range.into());
+                    guard.set_looping(re_viewer_context::Looping::Selection);
                 }
             }
 
