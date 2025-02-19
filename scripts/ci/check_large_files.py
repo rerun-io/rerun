@@ -10,6 +10,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/build/re_types_builder/src/codegen/cpp/mod.rs",  # TODO(andreas): This file should really be split up.
     "crates/build/re_types_builder/src/reflection.rs",
     "crates/store/re_dataframe/src/query.rs",
+    "crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",
     "crates/store/re_types/src/datatypes/tensor_buffer.rs",
     "crates/store/re_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
