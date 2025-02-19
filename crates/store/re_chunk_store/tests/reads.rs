@@ -322,6 +322,7 @@ fn latest_at() -> anyhow::Result<()> {
                     .latest_at_relevant_chunks_for_all_components(
                         &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                         &entity_path,
+                        false, /* don't include static data */
                     )
                     .into_iter()
                     .map(|chunk| chunk.id())
@@ -442,6 +443,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
                 .latest_at_relevant_chunks_for_all_components(
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
+                    false, /* don't include static data */
                 )
                 .into_iter()
                 .map(|chunk| {
@@ -602,6 +604,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
                 .latest_at_relevant_chunks_for_all_components(
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
+                    false, /* don't include static data */
                 )
                 .into_iter()
                 .map(|chunk| {
@@ -899,6 +902,7 @@ fn range() -> anyhow::Result<()> {
                     .range_relevant_chunks_for_all_components(
                         &RangeQuery::new(timeline_frame_nr, time_range),
                         &entity_path,
+                        false, /* don't include static data */
                     )
                     .into_iter()
                     .map(|chunk| {
@@ -1074,6 +1078,7 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
             .range_relevant_chunks_for_all_components(
                 &RangeQuery::new(timeline_frame_nr, time_range),
                 &entity_path,
+                false, /* don't include static data */
             )
             .into_iter()
             .map(|chunk| {
