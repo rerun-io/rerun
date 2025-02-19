@@ -592,6 +592,8 @@ impl ChunkStore {
 
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
     ///
+    /// Optionally include static data.
+    ///
     /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
     /// oblivious to the data therein.
     /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
@@ -606,42 +608,55 @@ impl ChunkStore {
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
+        include_static: bool,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let empty = Default::default();
-        let static_chunks_per_component = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .unwrap_or(&empty);
+        if include_static {
+            let empty = Default::default();
+            let static_chunks_per_component = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .unwrap_or(&empty);
 
-        let static_chunks = static_chunks_per_component
-            .values()
-            .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-            .cloned();
+            let static_chunks = static_chunks_per_component
+                .values()
+                .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .cloned();
 
-        let temporal_chunks = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline_per_component| {
-                temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
-            })
-            .map(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component
-                    .iter()
-                    .filter(|(component_name, _)| {
-                        !static_chunks_per_component.contains_key(component_name)
-                    })
-                    .map(|(_, chunk_id_set)| chunk_id_set)
-            })
-            .into_iter()
-            .flatten()
-            .flat_map(|temporal_chunk_ids_per_time| {
-                self.latest_at(query, temporal_chunk_ids_per_time)
-            })
-            .flatten();
+            let temporal_chunks = self
+                .temporal_chunk_ids_per_entity_per_component
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline_per_component| {
+                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                })
+                .map(|temporal_chunk_ids_per_component| {
+                    temporal_chunk_ids_per_component
+                        .iter()
+                        .filter(|(component_name, _)| {
+                            static_chunks_per_component.contains_key(component_name)
+                        })
+                        .map(|(_, chunk_id_set)| chunk_id_set)
+                })
+                .into_iter()
+                .flatten()
+                .flat_map(|temporal_chunk_ids_per_time| {
+                    self.latest_at(query, temporal_chunk_ids_per_time)
+                })
+                .flatten();
 
-        static_chunks.chain(temporal_chunks).collect_vec()
+            static_chunks.chain(temporal_chunks).collect_vec()
+        } else {
+            self.temporal_chunk_ids_per_entity
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.get(&query.timeline())
+                })
+                .and_then(|temporal_chunk_ids_per_time| {
+                    self.latest_at(query, temporal_chunk_ids_per_time)
+                })
+                .unwrap_or_default()
+        }
     }
 
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
@@ -674,7 +689,6 @@ impl ChunkStore {
             })
             .unwrap_or_default();
 
-        // TODO: Don't query at all if we already have a static chunk
         let temporal_chunks = self
             .temporal_chunk_ids_per_entity
             .get(entity_path)
@@ -831,38 +845,64 @@ impl ChunkStore {
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
+        include_static: bool,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let empty = Default::default();
-        let static_chunks_per_component = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .unwrap_or(&empty);
+        if include_static {
+            let empty = Default::default();
+            let static_chunks_per_component = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .unwrap_or(&empty);
 
-        let static_chunks = static_chunks_per_component
-            .values()
-            .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-            .cloned();
+            let static_chunks = static_chunks_per_component
+                .values()
+                .flat_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .cloned();
 
-        let temporal_chunks = self
-            .range(
+            let temporal_chunks = self
+                .range(
+                    query,
+                    self.temporal_chunk_ids_per_entity_per_component
+                        .get(entity_path)
+                        .and_then(|temporal_chunk_ids_per_timeline_per_component| {
+                            temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                        })
+                        .map(|temporal_chunk_ids_per_component| {
+                            temporal_chunk_ids_per_component
+                                .iter()
+                                .filter(|(component_name, _)| {
+                                    !static_chunks_per_component.contains_key(component_name)
+                                })
+                                .map(|(_, chunk_id_set)| chunk_id_set)
+                        })
+                        .into_iter()
+                        .flatten(),
+                )
+                .into_iter()
+                // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
+                // need to make sure that the resulting chunks' global time ranges intersect with the
+                // time range of the query itself.
+                .filter(|chunk| {
+                    chunk
+                        .timelines()
+                        .get(&query.timeline())
+                        .is_some_and(|time_column| {
+                            time_column.time_range().intersects(query.range())
+                        })
+                });
+
+            static_chunks.chain(temporal_chunks).collect_vec()
+        } else {
+            self.range(
                 query,
-                self.temporal_chunk_ids_per_entity_per_component
+                self.temporal_chunk_ids_per_entity
                     .get(entity_path)
-                    .and_then(|temporal_chunk_ids_per_timeline_per_component| {
-                        temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                    .and_then(|temporal_chunk_ids_per_timeline| {
+                        temporal_chunk_ids_per_timeline.get(&query.timeline())
                     })
-                    .map(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component
-                            .iter()
-                            .filter(|(component_name, _)| {
-                                !static_chunks_per_component.contains_key(component_name)
-                            })
-                            .map(|(_, chunk_id_set)| chunk_id_set)
-                    })
-                    .into_iter()
-                    .flatten(),
+                    .into_iter(),
             )
             .into_iter()
             // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
@@ -873,9 +913,9 @@ impl ChunkStore {
                     .timelines()
                     .get(&query.timeline())
                     .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
-            });
-
-        static_chunks.chain(temporal_chunks).collect_vec()
+            })
+            .collect_vec()
+        }
     }
 
     fn range<'a>(
