@@ -302,22 +302,22 @@ impl PyStorageNodeClient {
     ///
     /// Parameters
     /// ----------
+    /// entry : str
+    ///     Catalog entry in which to register the recording in.
     /// storage_url : str
     ///     The URL to the storage location.
-    /// collection_name : Optional[str]
-    ///     The name of the collection to register the recording in.
     /// metadata : Optional[Table | RecordBatch]
     ///     A pyarrow Table or RecordBatch containing the metadata to update.
     ///     This Table must contain only a single row.
     #[pyo3(signature = (
+        entry,
         storage_url,
-        collection_name = None,
         metadata = None
     ))]
     fn register(
         &mut self,
+        entry: &str,
         storage_url: &str,
-        collection_name: Option<String>,
         metadata: Option<MetadataLike>,
     ) -> PyResult<String> {
         self.runtime.block_on(async {
@@ -344,7 +344,9 @@ impl PyStorageNodeClient {
                 .transpose()?;
 
             let request = RegisterRecordingRequest {
-                entry: collection_name.map(|name| CatalogEntry { name }),
+                entry: Some(CatalogEntry {
+                    name: entry.to_owned(),
+                }),
                 // TODO(jleibs): Description should really just be in the metadata
                 description: Default::default(),
                 storage_url: storage_url.to_string(),
