@@ -629,16 +629,16 @@ class StorageNodeClient:
         """
         ...
 
-    def register(self, collection_name: Optional[str], storage_url: str, metadata: Optional[TableLike] = None) -> str:
+    def register(self, storage_url: str, collection_name: Optional[str] = None, metadata: Optional[TableLike] = None) -> str:
         """
         Register a recording along with some metadata.
 
         Parameters
         ----------
-        collection_name : Optional[str]
-            The name of the collection to register the recording in.
         storage_url : str
             The URL to the storage location.
+        collection_name : Optional[str]
+            The name of the collection to register the recording in.
         metadata : Optional[Table | RecordBatch]
             A pyarrow Table or RecordBatch containing the metadata to update.
             This Table must contain only a single row.
