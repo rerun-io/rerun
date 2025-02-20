@@ -144,7 +144,7 @@ impl RowsDisplayData {
         row_indices: &Range<u64>,
         row_data: Vec<Vec<ArrayRef>>,
         selected_columns: &[ColumnDescriptor],
-        query_timeline: &Timeline,
+        query_timeline: &TimelineName,
     ) -> Result<Self, DisplayRecordBatchError> {
         let display_record_batches = row_data
             .into_iter()
@@ -170,7 +170,7 @@ impl RowsDisplayData {
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
-                    &time_column_desc.timeline() == query_timeline
+                    time_column_desc.timeline_name() == query_timeline
                 }
                 ColumnDescriptor::Component(_) => false,
             })
@@ -211,7 +211,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .query_handle
             .query()
             .filtered_index
-            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+            .unwrap_or_else(|| TimelineName::new(""));
 
         self.query_handle
             .seek_to_row(info.visible_rows.start as usize);
@@ -280,23 +280,22 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         .query_handle
                         .query()
                         .filtered_index
-                        .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+                        .unwrap_or_else(|| TimelineName::new(""));
 
                     // if this column can actually be hidden, then that's the corresponding action
-                    let hide_action =
-                        match column {
-                            ColumnDescriptor::Time(desc) => (desc.timeline() != filtered_index)
-                                .then(|| HideColumnAction::HideTimeColumn {
-                                    timeline_name: *desc.timeline().name(),
-                                }),
+                    let hide_action = match column {
+                        ColumnDescriptor::Time(desc) => (desc.timeline_name() != &filtered_index)
+                            .then(|| HideColumnAction::HideTimeColumn {
+                                timeline_name: *desc.timeline_name(),
+                            }),
 
-                            ColumnDescriptor::Component(desc) => {
-                                Some(HideColumnAction::HideComponentColumn {
-                                    entity_path: desc.entity_path.clone(),
-                                    component_name: desc.component_name,
-                                })
-                            }
-                        };
+                        ColumnDescriptor::Component(desc) => {
+                            Some(HideColumnAction::HideComponentColumn {
+                                entity_path: desc.entity_path.clone(),
+                                component_name: desc.component_name,
+                            })
+                        }
+                    };
 
                     let header_ui = |ui: &mut egui::Ui| {
                         let text = egui::RichText::new(column.short_name()).strong();
@@ -407,7 +406,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .query_handle
             .query()
             .filtered_index
-            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+            .unwrap_or_else(|| TimelineName::new(""));
         let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
         ui.set_truncate_style();

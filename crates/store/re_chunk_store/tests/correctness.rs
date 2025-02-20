@@ -158,7 +158,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(Timeline::new_temporal("doesnt_matter"), TimeInt::MAX);
+            let query = LatestAtQuery::new(TimelineName::new("doesnt_matter"), TimeInt::MAX);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point1, got_point);
@@ -264,7 +264,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_name = TimelineName::new("lag_time");
     let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::log_time();

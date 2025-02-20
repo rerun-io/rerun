@@ -10,7 +10,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline, TimelineName};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
@@ -401,7 +401,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        timeline,
+        timeline.name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -440,7 +440,7 @@ pub fn build_density_graph<'a>(
     row_rect: Rect,
     db: &re_entity_db::EntityDb,
     item: &TimePanelItem,
-    timeline: Timeline,
+    timeline: &TimelineName,
     config: DensityGraphBuilderConfig,
 ) -> DensityGraphBuilder<'a> {
     re_tracing::profile_function!();
@@ -458,7 +458,7 @@ pub fn build_density_graph<'a>(
 
         let engine = db.storage_engine();
         let store = engine.store();
-        let query = RangeQuery::new(timeline, visible_time_range);
+        let query = RangeQuery::new(*timeline, visible_time_range);
 
         if let Some(component_name) = item.component_name {
             let mut total_num_events = 0;
@@ -467,7 +467,7 @@ pub fn build_density_graph<'a>(
                     .range_relevant_chunks(&query, &item.entity_path, component_name)
                     .into_iter()
                     .filter_map(|chunk| {
-                        let time_range = chunk.timelines().get(&timeline)?.time_range();
+                        let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk
                             .num_events_for_component(component_name)
                             .map(|num_events| {
@@ -538,14 +538,14 @@ pub fn build_density_graph<'a>(
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             let should_render_individual_events = can_render_individual_events
-                && if chunk.is_timeline_sorted(&timeline) {
+                && if chunk.is_timeline_sorted(timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
                     num_events_in_chunk < config.max_events_in_unsorted_chunk
                 };
 
             if should_render_individual_events {
-                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
+                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
                     data.add_chunk_point(time, num_events as usize);
                 }
             } else {
@@ -627,7 +627,7 @@ fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
 
     let TimePanelItem {
         entity_path,

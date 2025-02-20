@@ -114,12 +114,7 @@ Configure in the selection panel:
         let view_query = view_query::Query::from_blueprint(ctx, query.view_id);
 
         // Make sure we know which timeline to query or display an error message.
-        let timeline = view_query.timeline(ctx)?;
-
-        let Some(timeline) = timeline else {
-            timeline_not_found_ui(ctx, ui, query.view_id);
-            return Ok(());
-        };
+        let timeline = view_query.timeline_name(ctx)?;
 
         let query_engine = QueryEngine {
             engine: ctx.recording().storage_engine_arc(),

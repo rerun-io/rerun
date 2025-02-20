@@ -1200,7 +1200,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => max_value_per_index
-                    .get(&descr.timeline().name())
+                    .get(descr.timeline().name())
                     .map_or_else(
                         || arrow::array::new_null_array(&column.arrow_datatype(), 1),
                         |(_time, time_sliced)| {

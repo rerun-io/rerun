@@ -3,14 +3,14 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, TimelineName};
+use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -140,6 +140,16 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
+    pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
+        self.storage_engine()
+            .store()
+            .time_column_type(timeline_name)
+            .unwrap_or_else(|| {
+                re_log::warn_once!("Timeline {timeline_name:?} not found");
+                TimeType::Sequence
+            })
+    }
+
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
@@ -248,8 +258,13 @@ impl EntityDb {
         self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
-        self.time_histogram_per_timeline.timelines()
+    pub fn timelines(&self) -> Vec<Timeline> {
+        self.storage_engine()
+            .store()
+            .timelines()
+            .values()
+            .copied()
+            .collect()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {

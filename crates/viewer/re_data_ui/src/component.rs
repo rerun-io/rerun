@@ -92,10 +92,8 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     );
                 }
             } else {
-                let formatted_time = query
-                    .timeline()
-                    .typ()
-                    .format(time, ctx.app_options().time_zone);
+                let typ = db.timeline_type(&query.timeline_name());
+                let formatted_time = typ.format(time, ctx.app_options().time_zone);
                 ui.horizontal(|ui| {
                     ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
                     ui.label(format!("Temporal component at {formatted_time}"));

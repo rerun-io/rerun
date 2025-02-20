@@ -355,14 +355,14 @@ fn entity_tree_stats_ui(
     let (static_stats, timeline_stats) = if include_subtree {
         (
             db.subtree_stats_static(&engine, &tree.path),
-            db.subtree_stats_on_timeline(&engine, &tree.path, timeline),
+            db.subtree_stats_on_timeline(&engine, &tree.path, timeline.name()),
         )
     } else {
         (
             engine.store().entity_stats_static(&tree.path),
             engine
                 .store()
-                .entity_stats_on_timeline(&tree.path, timeline),
+                .entity_stats_on_timeline(&tree.path, timeline.name()),
         )
     };
 
@@ -397,7 +397,10 @@ fn entity_tree_stats_ui(
 
     if 0 < timeline_stats.total_size_bytes && 1 < num_temporal_rows {
         // Try to estimate data-rate:
-        if let Some(time_range) = engine.store().entity_time_range(timeline, &tree.path) {
+        if let Some(time_range) = engine
+            .store()
+            .entity_time_range(timeline.name(), &tree.path)
+        {
             let min_time = time_range.min();
             let max_time = time_range.max();
             if min_time < max_time {
@@ -639,7 +642,9 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, query.timeline_name(), db, subtree, include_subtree);
+            let typ = db.timeline_type(&query.timeline_name());
+            let timeline = Timeline::new(query.timeline_name(), typ);
+            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats

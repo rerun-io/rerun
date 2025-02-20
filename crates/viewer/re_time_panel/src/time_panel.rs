@@ -332,7 +332,7 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let time_range = entity_db.time_range_for(time_ctrl.timeline());
+        let time_range = entity_db.time_range_for(time_ctrl.timeline().name());
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
@@ -771,7 +771,7 @@ impl TimePanel {
         if is_visible {
             let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
                 &entity_db.storage_engine(),
-                time_ctrl.timeline(),
+                time_ctrl.timeline().name(),
                 entity_path,
             );
             if tree_has_data_in_current_timeline {
@@ -879,7 +879,7 @@ impl TimePanel {
                 let num_static_messages =
                     store.num_static_events_for_component(entity_path, component_name);
                 let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
-                    time_ctrl.timeline(),
+                    time_ctrl.timeline().name(),
                     entity_path,
                     component_name,
                 );
@@ -928,7 +928,7 @@ impl TimePanel {
                         // can be confusing.
                         if is_static {
                             let query = re_chunk_store::LatestAtQuery::new(
-                                *time_ctrl.timeline(),
+                                *time_ctrl.timeline().name(),
                                 TimeInt::MAX,
                             );
                             let ui_layout = UiLayout::Tooltip;
@@ -951,7 +951,7 @@ impl TimePanel {
             if is_visible {
                 let component_has_data_in_current_timeline = store
                     .entity_has_component_on_timeline(
-                        time_ctrl.timeline(),
+                        time_ctrl.timeline().name(),
                         entity_path,
                         &component_name,
                     );
@@ -1235,7 +1235,7 @@ fn collapsed_time_marker_and_time(
 ) {
     let timeline = time_ctrl.timeline();
 
-    let Some(time_range) = entity_db.time_range_for(timeline) else {
+    let Some(time_range) = entity_db.time_range_for(timeline.name()) else {
         // We have no data on this timeline
         return;
     };
@@ -1390,7 +1390,7 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    if let Some(times) = entity_db.time_histogram(time_ctrl.timeline()) {
+    if let Some(times) = entity_db.time_histogram(time_ctrl.timeline().name()) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
             let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);

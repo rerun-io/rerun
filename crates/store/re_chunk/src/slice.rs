@@ -5,7 +5,7 @@ use arrow::array::{
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_log_types::{Timeline, TimelineName};
+use re_log_types::TimelineName;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};

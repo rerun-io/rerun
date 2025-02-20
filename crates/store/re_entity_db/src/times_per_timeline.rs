@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_chunk::TimelineName;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
-use re_log_types::{TimeInt, TimeType, Timeline};
+use re_log_types::{TimeInt, Timeline};
 
 // ---
 

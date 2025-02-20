@@ -8,7 +8,9 @@ use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
-use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline};
+use re_log_types::{
+    EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline, TimelineName,
+};
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
@@ -68,7 +70,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     pub fn path_recursive_chunks_for_entity_and_timeline(
         &self,
         entity_path: &EntityPath,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> Option<&EntityTimelineChunks> {
         self.chunks_per_timeline_per_entity
             .get(timeline)?

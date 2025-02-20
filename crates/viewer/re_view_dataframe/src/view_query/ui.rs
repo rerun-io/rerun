@@ -41,15 +41,16 @@ impl Query {
         timeline: Option<&Timeline>,
     ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value_and_type = timeline.map(|timeline| {
-            let time_drag_value = if let Some(times) = ctx.recording().time_histogram(timeline) {
-                TimeDragValue::from_time_histogram(times)
-            } else {
-                debug_assert!(
-                    false,
-                    "This should never happen because `timeline` should exist if not `None`"
-                );
-                TimeDragValue::from_time_range(0..=0)
-            };
+            let time_drag_value =
+                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
+                    TimeDragValue::from_time_histogram(times)
+                } else {
+                    debug_assert!(
+                        false,
+                        "This should never happen because `timeline` should exist if not `None`"
+                    );
+                    TimeDragValue::from_time_range(0..=0)
+                };
 
             (time_drag_value, timeline.typ())
         });
@@ -150,7 +151,7 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        timeline: Option<&Timeline>,
+        timeline: Option<&TimelineName>,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         //
@@ -499,7 +500,7 @@ impl Query {
 fn all_pov_entities_for_view(
     ctx: &ViewerContext<'_>,
     view_id: ViewId,
-    timeline: &Timeline,
+    timeline: &TimelineName,
 ) -> BTreeSet<EntityPath> {
     let mut all_entities = BTreeSet::new();
     ctx.lookup_query_result(view_id).tree.visit(&mut |node| {
