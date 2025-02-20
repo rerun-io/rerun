@@ -64,7 +64,7 @@ class TextLogView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = [],
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = {},
+        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = {},
     ) -> None:
         """
         Construct a blueprint for a new TextLogView view.

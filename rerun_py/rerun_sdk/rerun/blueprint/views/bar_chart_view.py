@@ -60,7 +60,7 @@ class BarChartView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = [],
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = {},
+        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = {},
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
     ) -> None:
         """

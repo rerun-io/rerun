@@ -45,7 +45,7 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] = {},
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = [],
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = {},
+        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = {},
     ):
         """
         Construct a blueprint for a new view.

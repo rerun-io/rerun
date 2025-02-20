@@ -84,7 +84,7 @@ class Spatial3DView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = [],
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = {},
+        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = {},
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
