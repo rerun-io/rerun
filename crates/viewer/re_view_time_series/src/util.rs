@@ -80,7 +80,7 @@ pub fn determine_time_range(
 // We have a bunch of raw points, and now we need to group them into individual series.
 // A series is a continuous run of points with identical attributes: each time
 // we notice a change in attributes, we need a new series.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn points_to_series(
     instance_path: InstancePath,
     time_per_pixel: f64,
@@ -202,6 +202,7 @@ pub fn apply_aggregation(
     (actual_aggregation_factor, points)
 }
 
+#[expect(clippy::too_many_arguments)]
 #[allow(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(

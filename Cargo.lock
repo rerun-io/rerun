@@ -2166,7 +2166,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.31.0"
-source = "git+https://github.com/emilk/egui_plot.git?branch=report-hidden-items#2e92aff9d86509d4c9d9d5328606b7f2850d103a"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#9ebfc9c400f8835255754e6a2edb52ea77fab8c7"
 dependencies = [
  "ahash",
  "egui",
