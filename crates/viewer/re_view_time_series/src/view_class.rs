@@ -6,13 +6,14 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_types::{
+    archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
         archetypes::{PlotLegend, ScalarAxis},
         components::{Corner2D, LockRangeDuringZoom},
     },
-    components::{AggregationPolicy, Range1D, Visible},
+    components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
-    View, ViewClassIdentifier,
+    ComponentBatch, View, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
 use re_view::controls::{
@@ -29,6 +30,7 @@ use re_viewer_context::{
     VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
+use smallvec::SmallVec;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
@@ -348,6 +350,13 @@ impl ViewClass for TimeSeriesView {
             .chain(point_series.all_series.iter())
             .collect();
 
+        // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
+        // (e.g. when plotting both lines & points with the same entity/instance path)
+        let plot_item_id_to_instance_path: HashMap<egui::Id, InstancePath> = all_plot_series
+            .iter()
+            .map(|series| (series.id, series.instance_path.clone()))
+            .collect();
+
         // Get the minimum time/X value for the entire plot…
         let min_time = all_plot_series
             .iter()
@@ -390,8 +399,13 @@ impl ViewClass for TimeSeriesView {
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let time_zone_for_timestamps = ctx.app_options().time_zone;
+
+        let plot_id = crate::plot_id(query.view_id);
+
+        set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
+
         let mut plot = Plot::new(plot_id_src)
-            .id(crate::plot_id(query.view_id))
+            .id(plot_id)
             .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
@@ -429,8 +443,6 @@ impl ViewClass for TimeSeriesView {
             let canvas_size = ui.available_size();
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
-
-        let mut plot_item_id_to_instance_path = HashMap::default();
 
         let mut is_resetting = false;
 
@@ -486,10 +498,9 @@ impl ViewClass for TimeSeriesView {
             add_series_to_plot(
                 plot_ui,
                 &query.highlights,
-                all_plot_series,
+                &all_plot_series,
                 time_offset,
                 &mut state.scalar_range,
-                &mut plot_item_id_to_instance_path,
             );
         });
 
@@ -529,6 +540,15 @@ impl ViewClass for TimeSeriesView {
             }
         }
 
+        // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
+        update_series_visibility_overrides_from_plot(
+            ctx,
+            query,
+            &all_plot_series,
+            ui.ctx(),
+            plot_id,
+        );
+
         if let Some(mut time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
             let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
@@ -563,13 +583,107 @@ impl ViewClass for TimeSeriesView {
     }
 }
 
+fn set_plot_visibility_from_store(
+    egui_ctx: &egui::Context,
+    plot_series_from_store: &[&crate::PlotSeries],
+    plot_id: egui::Id,
+) {
+    // egui_plot has its own memory about which plots are visible.
+    // We want to store that state in blueprint, so overwrite it (we sync with any changes that ui interaction may do later on, see `update_series_visibility`)
+    if let Some(mut plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) {
+        plot_memory.hidden_items = plot_series_from_store
+            .iter()
+            .filter(|&series| !series.visible)
+            .map(|series| series.id)
+            .collect();
+        plot_memory.store(egui_ctx, plot_id);
+    }
+}
+
+fn update_series_visibility_overrides_from_plot(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+    all_plot_series: &[&crate::PlotSeries],
+    egui_ctx: &egui::Context,
+    plot_id: egui::Id,
+) {
+    let Some(query_results) = ctx.query_results.get(&query.view_id) else {
+        return;
+    };
+    let Some(plot_memory) = egui_plot::PlotMemory::load(egui_ctx, plot_id) else {
+        return;
+    };
+    let hidden_items = plot_memory.hidden_items;
+
+    // Determine which series have changed visibility state.
+    let mut per_entity_series_new_visibility_state: HashMap<EntityPath, SmallVec<[bool; 1]>> =
+        HashMap::default();
+    let mut series_to_update = Vec::new();
+    for series in all_plot_series {
+        let entity_visibility_flags = per_entity_series_new_visibility_state
+            .entry(series.instance_path.entity_path.clone())
+            .or_default();
+
+        let visible_new = !hidden_items.contains(&series.id);
+
+        let instance = series.instance_path.instance;
+        let index = instance.specific_index().map_or(0, |i| i.get() as usize);
+        if entity_visibility_flags.len() <= index {
+            entity_visibility_flags.resize(index + 1, false);
+        }
+        entity_visibility_flags[index] = visible_new;
+
+        if series.visible != visible_new {
+            series_to_update.push(series);
+        }
+    }
+
+    for series in series_to_update {
+        let Some(visibility_state) =
+            per_entity_series_new_visibility_state.remove(&series.instance_path.entity_path)
+        else {
+            continue;
+        };
+        let Some(result) = query_results.result_for_entity(&series.instance_path.entity_path)
+        else {
+            continue;
+        };
+
+        let override_path = result.override_path();
+        let descriptor = match series.kind {
+            PlotSeriesKind::Continuous => Some(SeriesLine::descriptor_visible_series()),
+            PlotSeriesKind::Scatter(_) => Some(SeriesPoint::descriptor_visible_series()),
+            PlotSeriesKind::Clear => {
+                if cfg!(debug_assertions) {
+                    unreachable!(
+                        "Clear series can't be hidden since it doesn't show in the first place"
+                    );
+                }
+                None
+            }
+        };
+
+        let component_array = visibility_state
+            .into_iter()
+            .map(SeriesVisible::from)
+            .collect::<Vec<_>>();
+
+        if let Some(serialized_component_batch) = descriptor.and_then(|descriptor| {
+            component_array
+                .serialized()
+                .map(|serialized| serialized.with_descriptor_override(descriptor))
+        }) {
+            ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
+        }
+    }
+}
+
 fn add_series_to_plot(
     plot_ui: &mut egui_plot::PlotUi<'_>,
     highlights: &ViewHighlights,
-    all_plot_series: Vec<&crate::PlotSeries>,
+    all_plot_series: &[&crate::PlotSeries],
     time_offset: i64,
     scalar_range: &mut Range1D,
-    plot_item_id_to_instance_path: &mut HashMap<egui::Id, InstancePath>,
 ) {
     re_tracing::profile_function!();
 
@@ -593,8 +707,6 @@ fn add_series_to_plot(
             .collect::<Vec<_>>();
 
         let color = series.color;
-        let id = egui::Id::new(series.instance_path.hash());
-        plot_item_id_to_instance_path.insert(id, series.instance_path.clone());
 
         let interaction_highlight = highlights
             .entity_highlight(series.instance_path.entity_path.hash())
@@ -603,21 +715,19 @@ fn add_series_to_plot(
 
         match series.kind {
             PlotSeriesKind::Continuous => plot_ui.line(
-                Line::new(points)
-                    .name(&series.label)
+                Line::new(&series.label, points)
                     .color(color)
                     .width(2.0 * series.radius_ui)
                     .highlight(highlight)
-                    .id(id),
+                    .id(series.id),
             ),
             PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
-                Points::new(points)
-                    .name(&series.label)
+                Points::new(&series.label, points)
                     .color(color)
                     .radius(series.radius_ui)
                     .shape(scatter_attrs.marker.into())
                     .highlight(highlight)
-                    .id(id),
+                    .id(series.id),
             ),
             // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}

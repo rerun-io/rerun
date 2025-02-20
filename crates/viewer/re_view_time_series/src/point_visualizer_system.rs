@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes::{self, SeriesPoint},
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar},
+    components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
     external::arrow::datatypes::DataType as ArrowDatatype,
     Archetype as _, Component as _, Loggable as _,
 };
@@ -104,7 +104,13 @@ impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name]);
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
+        true.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
 impl SeriesPointSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -230,6 +236,7 @@ impl SeriesPointSystem {
                     MarkerSize::name(),
                     Name::name(),
                     Scalar::name(),
+                    SeriesVisible::name(),
                 ],
             );
 
@@ -246,6 +253,17 @@ impl SeriesPointSystem {
                     })
                     .map(|index| (index, ()))
             };
+
+            // TODO(#9020): support multiple series.
+            let num_series = 1;
+
+            // Determine per-series visibility flags.
+            let mut series_visibility_flags: Vec<bool> = results
+                .iter_as(query.timeline(), SeriesVisible::name())
+                .slice::<bool>()
+                .next()
+                .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
+            series_visibility_flags.resize(num_series, true);
 
             // Allocate all points.
             {
@@ -474,6 +492,7 @@ impl SeriesPointSystem {
             points_to_series(
                 InstancePath::entity_all(data_result.entity_path.clone()),
                 time_per_pixel,
+                series_visibility_flags[0],
                 points,
                 ctx.recording_engine().store(),
                 view_query,

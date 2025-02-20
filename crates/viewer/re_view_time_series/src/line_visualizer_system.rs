@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive};
+use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
@@ -105,7 +105,13 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLineSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
+        true.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name, SeriesVisible]);
 
 impl SeriesLineSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -205,6 +211,7 @@ impl SeriesLineSystem {
                     StrokeWidth::name(),
                     Name::name(),
                     AggregationPolicy::name(),
+                    SeriesVisible::name(),
                 ],
             );
 
@@ -235,6 +242,14 @@ impl SeriesLineSystem {
                         .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
                 })
                 .unwrap_or(1);
+
+            // Determine per-series visibility flags.
+            let mut series_visibility_flags: Vec<bool> = results
+                .iter_as(query.timeline(), SeriesVisible::name())
+                .slice::<bool>()
+                .next()
+                .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
+            series_visibility_flags.resize(num_series, true);
 
             // Allocate all points.
             {
@@ -535,10 +550,12 @@ impl SeriesLineSystem {
             }
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
-            for (instance, (points, label)) in points_per_series
-                .into_iter()
-                .zip(series_names.into_iter())
-                .enumerate()
+            for (instance, (points, label, visible)) in itertools::izip!(
+                points_per_series.into_iter(),
+                series_names.into_iter(),
+                series_visibility_flags.into_iter()
+            )
+            .enumerate()
             {
                 let instance_path = if num_series == 1 {
                     InstancePath::entity_all(data_result.entity_path.clone())
@@ -552,6 +569,7 @@ impl SeriesLineSystem {
                 points_to_series(
                     instance_path,
                     time_per_pixel,
+                    visible,
                     points,
                     ctx.recording_engine().store(),
                     view_query,

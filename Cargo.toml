@@ -610,7 +610,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-18 - legend hover reports as hovered items
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-20 - everything is id identified, allowing for instance reading out hidden items reliable
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
