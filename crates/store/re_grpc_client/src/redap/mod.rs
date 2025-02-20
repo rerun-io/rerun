@@ -246,22 +246,6 @@ pub async fn stream_recording_async(
         })
     });
 
-    // let mut resp = client
-    //     .fetch_recording(FetchRecordingRequest {
-    //         recording_id: Some(RecordingId {
-    //             id: recording_id.clone(),
-    //         }),
-    //     })
-    //     .await
-    //     .map_err(TonicStatusError)?
-    //     .into_inner()
-    //     .map(|resp| {
-    //         resp.and_then(|r| {
-    //             r.decode()
-    //                 .map_err(|err| tonic::Status::internal(err.to_string()))
-    //         })
-    //     });
-
     drop(client);
 
     // We need a whole StoreInfo here.
@@ -276,7 +260,6 @@ pub async fn stream_recording_async(
         return Ok(());
     }
 
-    re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
         let batch = result.map_err(TonicStatusError)?;
         let chunk = Chunk::from_record_batch(&batch)?;

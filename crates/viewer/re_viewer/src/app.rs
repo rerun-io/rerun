@@ -1029,6 +1029,10 @@ impl App {
                 }
             }
 
+            UICommand::CopyTimeRangeLink => {
+                self.run_copy_time_range_link_command(store_context);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGl => {
                 if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
@@ -1122,6 +1126,40 @@ impl App {
             .success(format!("Copied {direct_link:?} to clipboard"));
 
         Some(())
+    }
+
+    fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            return;
+        };
+
+        let base_url = match &entity_db.data_source {
+            Some(SmartChannelSource::RerunGrpcStream { url }) => url,
+            // not a recording endpoint
+            _ => return,
+        };
+
+        let rec_id = entity_db.store_id();
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
+            return;
+        };
+        let time_ctrl = rec_cfg.time_ctrl.get_mut();
+
+        let Some(range) = time_ctrl.loop_selection() else {
+            // no loop selection
+            return;
+        };
+
+        let time_range = re_uri::TimeRange {
+            timeline: time_ctrl.timeline().clone(),
+            range,
+        };
+
+        let url = format!("{base_url}?time_range={time_range}");
+
+        self.egui_ctx.copy_text(url.clone());
+        self.notifications
+            .success(format!("Copied {url:?} to clipboard"));
     }
 
     fn memory_panel_ui(
