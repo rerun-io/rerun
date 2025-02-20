@@ -1,6 +1,6 @@
 use arrow::array::Array as ArrowArray;
 
-use re_log_types::{TimeInt, Timeline, TimelineName};
+use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentName;
 
 use crate::{Chunk, RowId};

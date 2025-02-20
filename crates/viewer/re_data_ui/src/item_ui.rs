@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -77,7 +77,7 @@ pub fn entity_path_parts_buttons(
         if !with_individual_icons {
             // Show one single icon up-front instead:
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ui.add(instance_path_icon(query.timeline_name(), db, &instance_path).as_image());
+            ui.add(instance_path_icon(&query.timeline_name(), db, &instance_path).as_image());
         }
 
         if entity_path.is_root() {
@@ -176,7 +176,7 @@ pub fn instance_path_button(
 /// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
 /// _on the current timeline_.
 pub fn instance_path_icon(
-    timeline: &re_chunk_store::Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
@@ -227,7 +227,7 @@ pub fn guess_instance_path_icon(
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(query.timeline_name(), db, instance_path)
+    instance_path_icon(&query.timeline_name(), db, instance_path)
 }
 
 /// Show an instance id and make it selectable.
@@ -263,7 +263,7 @@ fn instance_path_button_to_ex(
 
     let response = if with_icon {
         ui.selectable_label_with_icon(
-            instance_path_icon(query.timeline_name(), db, instance_path),
+            instance_path_icon(&query.timeline_name(), db, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
@@ -295,7 +295,7 @@ pub fn instance_path_parts_buttons(
         ui.spacing_mut().item_spacing.x = 2.0;
 
         // Show one single icon up-front instead:
-        ui.add(instance_path_icon(query.timeline_name(), db, instance_path).as_image());
+        ui.add(instance_path_icon(&query.timeline_name(), db, instance_path).as_image());
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {

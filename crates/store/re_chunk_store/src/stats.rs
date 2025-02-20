@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, ComponentName, EntityPath, Timeline, TimelineName};
+use re_chunk::{Chunk, ComponentName, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 

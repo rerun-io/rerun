@@ -104,7 +104,7 @@ impl BlueprintUndoState {
 
             // Drop everything after the current timeline time
             let events = blueprint_db.drop_time_range(
-                &blueprint_timeline().name(),
+                blueprint_timeline().name(),
                 ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 

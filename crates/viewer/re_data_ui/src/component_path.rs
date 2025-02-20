@@ -36,7 +36,7 @@ impl DataUi for ComponentPath {
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
                 if engine.store().entity_has_component_on_timeline(
-                    query.timeline_name(),
+                    &query.timeline_name(),
                     entity_path,
                     component_name,
                 ) {

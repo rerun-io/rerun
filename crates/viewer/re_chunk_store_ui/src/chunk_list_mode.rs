@@ -39,7 +39,7 @@ impl ChunkListMode {
         let all_components = chunk_store.all_components_sorted();
 
         let current_timeline = match self {
-            Self::All => all_timelines.first().copied()?,
+            Self::All => all_timelines.values().next().copied()?,
             Self::Query { timeline, .. } => *timeline,
         };
         let current_entity = match self {
@@ -122,7 +122,7 @@ impl ChunkListMode {
                 egui::ComboBox::new("timeline", "")
                     .selected_text(current_timeline.name().as_str())
                     .show_ui(ui, |ui| {
-                        for timeline in all_timelines {
+                        for &timeline in all_timelines.values() {
                             if ui.button(timeline.name().as_str()).clicked() {
                                 *query_timeline = timeline;
                             }
@@ -154,14 +154,15 @@ impl ChunkListMode {
                     });
             });
 
-            let time_drag_value = if let Some(time_range) = chunk_store.time_range(query_timeline) {
-                TimeDragValue::from_time_range(RangeInclusive::new(
-                    time_range.min().as_i64(),
-                    time_range.max().as_i64(),
-                ))
-            } else {
-                TimeDragValue::from_time_range(0..=0)
-            };
+            let time_drag_value =
+                if let Some(time_range) = chunk_store.time_range(query_timeline.name()) {
+                    TimeDragValue::from_time_range(RangeInclusive::new(
+                        time_range.min().as_i64(),
+                        time_range.max().as_i64(),
+                    ))
+                } else {
+                    TimeDragValue::from_time_range(0..=0)
+                };
             let time_typ = query_timeline.typ();
 
             match query {

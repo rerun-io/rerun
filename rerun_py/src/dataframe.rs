@@ -876,13 +876,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not a sequence.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO: do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not a sequence.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -947,13 +947,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not temporal.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO: do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not temporal.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
