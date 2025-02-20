@@ -6440,7 +6440,6 @@ dependencies = [
  "egui",
  "egui_table",
  "once_cell",
- "parking_lot",
  "re_arrow_util",
  "re_grpc_client",
  "re_log",
