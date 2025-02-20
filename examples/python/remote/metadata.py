@@ -17,7 +17,6 @@ if __name__ == "__main__":
     print_schema_cmd = subparsers.add_parser("print-schema", help="Print schema for a recording in the catalog")
     register_cmd = subparsers.add_parser("register", help="Register a new recording")
     update_cmd = subparsers.add_parser("update", help="Update metadata for a recording")
-    create_index_cmd = subparsers.add_parser("create-index", help="Create a vector index")
 
     update_cmd.add_argument("id", help="ID of the recording to update")
     update_cmd.add_argument("key", help="Key of the metadata to update")
@@ -69,12 +68,3 @@ if __name__ == "__main__":
         schema = conn.get_recording_schema(id)
         for column in schema:
             print(column)
-    elif args.subcommand == "create-index":
-        conn.create_vector_index(
-            "default",
-            rr.dataframe.ComponentColumnSelector("vectors", "embedding"),
-            rr.dataframe.IndexColumnSelector("log_time"),
-            num_partitions=5,
-            num_sub_vectors=16,
-            distance_metric="Cosine",
-        )
