@@ -8,9 +8,7 @@ use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
-use re_log_types::{
-    EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline, TimelineName,
-};
+use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]

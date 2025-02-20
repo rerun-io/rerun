@@ -13,9 +13,12 @@
 use std::collections::BTreeMap;
 
 use rerun::{
-    external::{anyhow, re_build_info, re_chunk_store, re_log, re_log_types::ResolvedTimeRange},
+    external::{
+        anyhow, re_build_info, re_chunk::TimelineName, re_chunk_store, re_log,
+        re_log_types::ResolvedTimeRange,
+    },
     time::TimeInt,
-    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId, Timeline,
+    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
@@ -147,7 +150,7 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
 /// For every [`ChunkStoreEvent`], it displays the state of the secondary index to the terminal.
 #[derive(Default, Debug, PartialEq, Eq)]
 struct TimeRangesPerEntity {
-    times: BTreeMap<EntityPath, BTreeMap<Timeline, BTreeMap<TimeInt, u64>>>,
+    times: BTreeMap<EntityPath, BTreeMap<TimelineName, BTreeMap<TimeInt, u64>>>,
 }
 
 impl ChunkStoreSubscriber for TimeRangesPerEntity {
@@ -202,8 +205,7 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
                         .last_key_value()
                         .map_or(TimeInt::MAX, |(time, _)| *time),
                 );
-                let time_range = timeline.format_time_range_utc(&time_range);
-                println!("  {time_range}");
+                println!("  {timeline}: {time_range:?}");
             }
         }
     }

@@ -170,32 +170,4 @@ Configure in the selection panel:
     }
 }
 
-fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
-    let full_view_rect = ui.available_rect_before_wrap();
-
-    egui::Frame::new()
-        .inner_margin(re_ui::DesignTokens::view_padding())
-        .show(ui, |ui| {
-            ui.warning_label("Unknown timeline");
-
-            ui.label(
-                "The timeline currently configured for this view does not exist in the current \
-                recording. Select another timeline in the view properties found in the selection \
-                panel.",
-            )
-        });
-
-    // select the view when clicked
-    if ui
-        .interact(
-            full_view_rect,
-            egui::Id::from("dataframe_view_empty").with(view_id),
-            egui::Sense::click(),
-        )
-        .clicked()
-    {
-        ctx.selection_state.set_selection(Item::View(view_id));
-    }
-}
-
 re_viewer_context::impl_component_fallback_provider!(DataframeView => []);

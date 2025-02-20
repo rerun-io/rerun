@@ -29,7 +29,7 @@ pub use self::{
 /// any temporal data of the same type.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
+pub struct TimePoint(BTreeMap<Timeline, TimeInt>); // TODO(#9084): use `TimelineName` as the key
 
 impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
     fn from(timelines: BTreeMap<Timeline, TimeInt>) -> Self {
@@ -39,8 +39,14 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 
 impl TimePoint {
     #[inline]
-    pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
-        self.0.get(timeline)
+    pub fn get(&self, timeline_name: &TimelineName) -> Option<&TimeInt> {
+        self.0.iter().find_map(|(timeline, time)| {
+            if timeline.name() == timeline_name {
+                Some(time)
+            } else {
+                None
+            }
+        })
     }
 
     #[inline]

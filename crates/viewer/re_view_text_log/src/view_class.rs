@@ -356,7 +356,7 @@ fn table_ui(
                 let entry = &entries[row.index()];
 
                 // timeline(s)
-                for timeline in &timelines {
+                for &timeline in &timelines {
                     row.col(|ui| {
                         let row_time = entry
                             .timepoint
@@ -366,7 +366,7 @@ fn table_ui(
                         item_ui::time_button(ctx, ui, timeline, row_time);
 
                         if let Some(global_time) = global_time {
-                            if *timeline == &global_timeline {
+                            if timeline == global_timeline.name() {
                                 #[allow(clippy::comparison_chain)]
                                 if global_time < row_time {
                                     // We've past the global time - it is thus above this row.
