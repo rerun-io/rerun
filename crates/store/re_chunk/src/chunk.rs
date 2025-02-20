@@ -1441,7 +1441,7 @@ impl Chunk {
             if time_column.times.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs.\
+                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
                          Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
                         row_ids.len(), time_column.times.len(),
                     ),
@@ -1472,7 +1472,7 @@ impl Chunk {
                 if list_array.len() != row_ids.len() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs.\
+                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
                             row_ids.len(), list_array.len(),
                         ),

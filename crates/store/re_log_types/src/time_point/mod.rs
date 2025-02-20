@@ -51,6 +51,19 @@ impl TimePoint {
 
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Option<TimeInt> {
+        for existing_timeline in self.0.keys() {
+            if existing_timeline.name() == timeline.name()
+                && existing_timeline.typ() != timeline.typ()
+            {
+                re_log::warn_once!(
+                    "Timeline {:?} changed type from {:?} to {:?}",
+                    timeline.name(),
+                    existing_timeline.typ(),
+                    timeline.typ()
+                );
+            }
+        }
+
         let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
         self.0.insert(timeline, time)
     }
