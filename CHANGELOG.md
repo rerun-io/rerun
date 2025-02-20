@@ -1,6 +1,7 @@
 # Rerun changelog
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.1...HEAD)
+<!-- Can't compare 0.21.1 with HEAD -->
+## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD)
 
 ## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Bugfixes - 2025-02-20
 
