@@ -415,15 +415,15 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
+    ) -> IntMap<Timeline, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
     {
         re_tracing::profile_function!();
 
         self.timelines
-            .iter()
-            .map(|(&timeline, time_column)| {
+            .values()
+            .map(|time_column| {
                 (
-                    timeline,
+                    time_column.timeline,
                     time_column.time_range_per_component(&self.components),
                 )
             })

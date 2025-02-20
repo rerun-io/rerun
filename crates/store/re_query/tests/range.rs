@@ -1072,7 +1072,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+                    chunk.iter_component_indices(query.timeline_name(), &MyPoint::name()),
                     chunk.iter_component::<MyPoint>()
                 )
             })
@@ -1088,7 +1088,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
+                    chunk.iter_component_indices(query.timeline_name(), &MyColor::name()),
                     chunk.iter_slices::<u32>(MyColor::name()),
                 )
             })

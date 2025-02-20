@@ -77,7 +77,7 @@ pub fn entity_path_parts_buttons(
         if !with_individual_icons {
             // Show one single icon up-front instead:
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
+            ui.add(instance_path_icon(query.timeline_name(), db, &instance_path).as_image());
         }
 
         if entity_path.is_root() {
@@ -227,7 +227,7 @@ pub fn guess_instance_path_icon(
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query.timeline(), db, instance_path)
+    instance_path_icon(query.timeline_name(), db, instance_path)
 }
 
 /// Show an instance id and make it selectable.
@@ -263,7 +263,7 @@ fn instance_path_button_to_ex(
 
     let response = if with_icon {
         ui.selectable_label_with_icon(
-            instance_path_icon(&query.timeline(), db, instance_path),
+            instance_path_icon(query.timeline_name(), db, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
@@ -295,7 +295,7 @@ pub fn instance_path_parts_buttons(
         ui.spacing_mut().item_spacing.x = 2.0;
 
         // Show one single icon up-front instead:
-        ui.add(instance_path_icon(&query.timeline(), db, instance_path).as_image());
+        ui.add(instance_path_icon(query.timeline_name(), db, instance_path).as_image());
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
@@ -639,7 +639,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
+            entity_tree_stats_ui(ui, query.timeline_name(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats

@@ -20,7 +20,7 @@ use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
-    external::nohash_hasher::IntMap,
+    external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
@@ -1010,7 +1010,7 @@ fn rr_recording_stream_send_columns_impl(
             })?;
 
             Ok((
-                timeline,
+                *timeline.name(),
                 TimeColumn::new(
                     time_column.sorting_status.is_sorted(),
                     timeline,

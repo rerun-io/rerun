@@ -38,13 +38,13 @@ impl DataUi for InstancePath {
             // We are looking at an entity in the recording
             ctx.recording_engine()
                 .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
+                .all_components_on_timeline(query.timeline_name(), entity_path)
         } else if ctx.blueprint_db().is_known_entity(entity_path) {
             // We are looking at an entity in the blueprint
             ctx.blueprint_db()
                 .storage_engine()
                 .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
+                .all_components_on_timeline(query.timeline_name(), entity_path)
         } else {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;

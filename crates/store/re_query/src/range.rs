@@ -176,7 +176,7 @@ impl RangeCache {
                 cached
                     .chunk
                     .timelines()
-                    .get(&self.cache_key.timeline)
+                    .get(self.cache_key.timeline.name())
                     .map(|time_column| time_column.time_range())
             })
             .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
@@ -287,8 +287,8 @@ impl RangeCache {
                         // will speed up future arrow operations on this chunk.
                         .densified(component_name)
                         // Pre-sort the cached chunk according to the cache key's timeline.
-                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline),
-                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline),
+                        .sorted_by_timeline_if_unsorted(self.cache_key.timeline.name()),
+                    resorted: !raw_chunk.is_timeline_sorted(self.cache_key.timeline.name()),
                 });
         }
 

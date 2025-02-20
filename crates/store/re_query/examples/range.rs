@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
     // to reference to.
     let all_points_indexed = all_points_chunks.iter().flat_map(|chunk| {
         izip!(
-            chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+            chunk.iter_component_indices(query.timeline_name(), &MyPoint::name()),
             chunk.iter_component::<MyPoint>()
         )
     });
@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(&query.timeline(), &MyLabel::name()),
+                chunk.iter_component_indices(query.timeline_name(), &MyLabel::name()),
                 chunk.iter_component::<MyLabel>()
             )
         });
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
+                chunk.iter_component_indices(query.timeline_name(), &MyColor::name()),
                 chunk.iter_slices::<u32>(MyColor::name()),
             )
         });
