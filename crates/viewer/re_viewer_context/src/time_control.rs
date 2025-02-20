@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimesPerTimeline};
 use re_log_types::{
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
@@ -321,7 +322,7 @@ impl TimeControl {
             (callbacks.on_timelinechange)(*self.timeline, time);
         }
 
-        if let Some(state) = self.states.get_mut(&self.timeline) {
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
             // TODO(jan): throttle?
             if state.prev.time != state.current.time {
                 state.prev.time = state.current.time;
@@ -369,14 +370,16 @@ impl TimeControl {
                 self.following = false;
 
                 // Start from beginning if we are at the end:
-                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
-                    if let Some(state) = self.states.get_mut(&self.timeline) {
-                        if max(time_points) <= state.current.time {
-                            state.current.time = min(time_points).into();
+                if let Some(timeline_stats) = times_per_timeline.get(self.timeline.name()) {
+                    if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                        if max(&timeline_stats.per_time) <= state.current.time {
+                            state.current.time = min(&timeline_stats.per_time).into();
                         }
                     } else {
-                        self.states
-                            .insert(*self.timeline, TimeStateEntry::new(min(time_points)));
+                        self.states.insert(
+                            *self.timeline,
+                            TimeStateEntry::new(min(&timeline_stats.per_time)),
+                        );
                     }
                 }
             }
@@ -384,14 +387,14 @@ impl TimeControl {
                 self.playing = true;
                 self.following = true;
 
-                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                if let Some(timeline_stats) = times_per_timeline.get(self.timeline.name()) {
                     // Set the time to the max:
                     match self.states.entry(*self.timeline) {
                         std::collections::btree_map::Entry::Vacant(entry) => {
-                            entry.insert(TimeStateEntry::new(max(time_points)));
+                            entry.insert(TimeStateEntry::new(max(&timeline_stats.per_time)));
                         }
                         std::collections::btree_map::Entry::Occupied(mut entry) => {
-                            entry.get_mut().current.time = max(time_points).into();
+                            entry.get_mut().current.time = max(&timeline_stats.per_time).into();
                         }
                     }
                 }
@@ -404,7 +407,7 @@ impl TimeControl {
     }
 
     pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+        let Some(timeline_stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
 
@@ -413,16 +416,16 @@ impl TimeControl {
         if let Some(time) = self.time() {
             #[allow(clippy::collapsible_else_if)]
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                step_back_time_looped(time, time_values, &loop_range)
+                step_back_time_looped(time, &timeline_stats.per_time, &loop_range)
             } else {
-                step_back_time(time, time_values).into()
+                step_back_time(time, &timeline_stats.per_time).into()
             };
             self.set_time(new_time);
         }
     }
 
     pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+        let Some(stats) = times_per_timeline.get(self.timeline().name()) else {
             return;
         };
 
@@ -431,18 +434,18 @@ impl TimeControl {
         if let Some(time) = self.time() {
             #[allow(clippy::collapsible_else_if)]
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                step_fwd_time_looped(time, time_values, &loop_range)
+                step_fwd_time_looped(time, &stats.per_time, &loop_range)
             } else {
-                step_fwd_time(time, time_values).into()
+                step_fwd_time(time, &stats.per_time).into()
             };
             self.set_time(new_time);
         }
     }
 
     pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
-            if let Some(state) = self.states.get_mut(&self.timeline) {
-                state.current.time = min(time_points).into();
+        if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
+            if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                state.current.time = min(&stats.per_time).into();
                 self.following = false;
             }
         }
@@ -476,10 +479,10 @@ impl TimeControl {
             // the beginning in play mode.
 
             // Start from beginning if we are at the end:
-            if let Some(time_points) = times_per_timeline.get(&self.timeline) {
-                if let Some(state) = self.states.get_mut(&self.timeline) {
-                    if max(time_points) <= state.current.time {
-                        state.current.time = min(time_points).into();
+            if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
+                if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                    if max(&stats.per_time) <= state.current.time {
+                        state.current.time = min(&stats.per_time).into();
                         self.playing = true;
                         self.following = false;
                         return;
@@ -508,13 +511,13 @@ impl TimeControl {
     /// playback fps
     pub fn fps(&self) -> Option<f32> {
         self.states
-            .get(self.timeline())
+            .get(self.timeline().name())
             .map(|state| state.current.fps)
     }
 
     /// playback fps
     pub fn set_fps(&mut self, fps: f32) {
-        if let Some(state) = self.states.get_mut(&self.timeline) {
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
             state.current.fps = fps;
         }
     }
@@ -556,7 +559,7 @@ impl TimeControl {
     /// The current time.
     pub fn time(&self) -> Option<TimeReal> {
         self.states
-            .get(self.timeline())
+            .get(self.timeline().name())
             .map(|state| state.current.time)
     }
 
@@ -573,7 +576,7 @@ impl TimeControl {
     /// Query for latest value at the currently selected time on the currently selected timeline.
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
         re_chunk_store::LatestAtQuery::new(
-            *self.timeline,
+            *self.timeline.name(),
             self.time().map_or(TimeInt::MAX, |t| t.floor()),
         )
     }
@@ -581,7 +584,10 @@ impl TimeControl {
     /// The current loop range, iff selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<ResolvedTimeRangeF> {
         if self.looping == Looping::Selection {
-            self.states.get(self.timeline())?.current.loop_selection
+            self.states
+                .get(self.timeline().name())?
+                .current
+                .loop_selection
         } else {
             None
         }
@@ -589,14 +595,19 @@ impl TimeControl {
 
     /// The full range of times for the current timeline
     pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<ResolvedTimeRange> {
-        times_per_timeline.get(self.timeline()).map(range)
+        times_per_timeline
+            .get(self.timeline().name())
+            .map(|stats| range(&stats.per_time))
     }
 
     /// The selected slice of time that is called the "loop selection".
     ///
     /// This can still return `Some` even if looping is currently off.
     pub fn loop_selection(&self) -> Option<ResolvedTimeRangeF> {
-        self.states.get(self.timeline())?.current.loop_selection
+        self.states
+            .get(self.timeline().name())?
+            .current
+            .loop_selection
     }
 
     /// Set the current loop selection without enabling looping.
@@ -610,7 +621,7 @@ impl TimeControl {
 
     /// Remove the current loop selection.
     pub fn remove_loop_selection(&mut self) {
-        if let Some(state) = self.states.get_mut(&self.timeline) {
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
             state.current.loop_selection = None;
         }
         if self.looping() == Looping::Selection {
@@ -624,7 +635,7 @@ impl TimeControl {
             return false;
         }
 
-        if let Some(state) = self.states.get(self.timeline()) {
+        if let Some(state) = self.states.get(self.timeline().name()) {
             state.current.time.floor() == needle
         } else {
             false
@@ -663,7 +674,7 @@ impl TimeControl {
     /// The range of time we are currently zoomed in on.
     pub fn time_view(&self) -> Option<TimeView> {
         self.states
-            .get(self.timeline())
+            .get(self.timeline().name())
             .and_then(|state| state.current.view)
     }
 
@@ -678,7 +689,7 @@ impl TimeControl {
 
     /// The range of time we are currently zoomed in on.
     pub fn reset_time_view(&mut self) {
-        if let Some(state) = self.states.get_mut(&self.timeline) {
+        if let Some(state) = self.states.get_mut(self.timeline.name()) {
             state.current.view = None;
         }
     }

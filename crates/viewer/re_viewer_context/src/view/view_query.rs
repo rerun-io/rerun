@@ -321,6 +321,6 @@ impl<'s> ViewQuery<'s> {
 
     #[inline]
     pub fn latest_at_query(&self) -> LatestAtQuery {
-        LatestAtQuery::new(self.timeline, self.latest_at)
+        LatestAtQuery::new(*self.timeline.name(), self.latest_at)
     }
 }

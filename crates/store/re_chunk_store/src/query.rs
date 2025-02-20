@@ -4,11 +4,11 @@ use std::{
 };
 
 use itertools::{Either, Itertools};
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
+use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_log_types::{ResolvedTimeRange, TimeType};
 use re_types_core::{ComponentName, ComponentNameSet, UnorderedComponentNameSet};
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
@@ -30,7 +30,7 @@ impl ChunkStore {
     pub fn timelines(&self) -> BTreeMap<TimelineName, Timeline> {
         self.time_type_registry
             .iter()
-            .map(|(name, typ)| (name.clone(), Timeline::new(name.clone(), *typ)))
+            .map(|(name, typ)| (*name, Timeline::new(*name, *typ)))
             .collect()
     }
 

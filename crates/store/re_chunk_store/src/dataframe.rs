@@ -416,8 +416,8 @@ impl ChunkStore {
 
         let indices = self
             .timelines()
-            .into_iter()
-            .map(|(_name, timeline)| IndexColumnDescriptor::from(timeline))
+            .values()
+            .map(|timeline| IndexColumnDescriptor::from(*timeline))
             .collect();
 
         let components = self
