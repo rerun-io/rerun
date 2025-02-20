@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_chunk::RowId;
+use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
 use re_query::StorageEngineReadGuard;

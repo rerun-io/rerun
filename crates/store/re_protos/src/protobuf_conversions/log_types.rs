@@ -106,19 +106,17 @@ impl From<re_log_types::Timeline> for crate::common::v0::Timeline {
     }
 }
 
-impl TryFrom<crate::common::v0::IndexColumnSelector> for re_log_types::Timeline {
+impl TryFrom<crate::common::v0::IndexColumnSelector> for re_log_types::TimelineName {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v0::IndexColumnSelector) -> Result<Self, Self::Error> {
-        let timeline = value
-            .timeline
-            .ok_or(missing_field!(
-                crate::common::v0::IndexColumnSelector,
-                "timeline"
-            ))?
-            .into();
+        let timeline = value.timeline.ok_or(missing_field!(
+            crate::common::v0::IndexColumnSelector,
+            "timeline"
+        ))?;
+        let timeline = re_log_types::Timeline::from(timeline);
 
-        Ok(timeline)
+        Ok(*timeline.name())
     }
 }
 

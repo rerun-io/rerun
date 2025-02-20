@@ -23,7 +23,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
-    Timeline, UnitChunkShared,
+    Timeline, TimelineName, UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
@@ -172,7 +172,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let filtered_index = self
             .query
             .filtered_index
-            .unwrap_or_else(|| Timeline::new_sequence(""));
+            .unwrap_or_else(|| TimelineName::new(""));
 
         // 1. Compute the schema for the query.
         let view_contents_schema = store.schema_for_query(&self.query);
@@ -1201,14 +1201,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.get(&descr.timeline()).map_or_else(
+                ColumnDescriptor::Time(descr) => max_value_per_index
+                    .get(&descr.timeline().name())
+                    .map_or_else(
                         || arrow::array::new_null_array(&column.arrow_datatype(), 1),
                         |(_time, time_sliced)| {
                             descr.timeline().typ().make_arrow_array(time_sliced.clone())
                         },
-                    )
-                }
+                    ),
 
                 ColumnDescriptor::Component(_descr) => view_sliced_arrays
                     .get(*view_idx)

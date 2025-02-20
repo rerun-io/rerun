@@ -18,7 +18,7 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     let timeline = blueprint_timeline();
 
     let max_time = blueprint
-        .time_histogram(&timeline)
+        .time_histogram(timeline.name())
         .and_then(|times| times.max_key())
         .unwrap_or(0)
         .saturating_add(1);

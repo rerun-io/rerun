@@ -252,7 +252,7 @@ impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContent
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
-pub type Index = Timeline;
+pub type Index = TimelineName;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `TimeInt`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).

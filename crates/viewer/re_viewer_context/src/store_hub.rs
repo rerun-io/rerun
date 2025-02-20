@@ -727,7 +727,7 @@ impl StoreHub {
                     if let Some(time) = undo.oldest_undo_point() {
                         // Save everything that we could want to undo to:
                         protected_time_ranges.insert(
-                            crate::blueprint_timeline(),
+                            *crate::blueprint_timeline().name(),
                             ResolvedTimeRange::new(time, re_chunk::TimeInt::MAX),
                         );
                     }

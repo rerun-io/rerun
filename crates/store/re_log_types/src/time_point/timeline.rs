@@ -6,6 +6,28 @@ re_string_interner::declare_new_type!(
     pub struct TimelineName;
 );
 
+impl TimelineName {
+    /// The log time timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
+    /// which point the data was logged (according to the client's wall-clock).
+    #[inline]
+    pub fn log_time() -> Self {
+        Self::new("log_time")
+    }
+
+    /// The log tick timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the logging tick at
+    /// which point the data was logged.
+    /// The logging tick is monotically incremented each time the client calls one of the logging
+    /// methods on a `RecordingStream`.
+    #[inline]
+    pub fn log_tick() -> Self {
+        Self::new("log_tick")
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
@@ -63,7 +85,7 @@ impl Timeline {
     /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
-        Self::new("log_time", TimeType::Time)
+        Self::new(TimelineName::log_time(), TimeType::Time)
     }
 
     /// The log tick timeline to which all API functions will always log.
@@ -74,7 +96,7 @@ impl Timeline {
     /// methods on a `RecordingStream`.
     #[inline]
     pub fn log_tick() -> Self {
-        Self::new("log_tick", TimeType::Sequence)
+        Self::new(TimelineName::log_tick(), TimeType::Sequence)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.

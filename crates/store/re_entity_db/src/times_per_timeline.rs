@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use re_chunk::TimelineName;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{TimeInt, Timeline};
 
@@ -10,10 +11,10 @@ pub type TimeCounts = BTreeMap<TimeInt, u64>;
 /// A [`ChunkStoreSubscriber`] that keeps track of all unique timestamps on each [`Timeline`].
 ///
 /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-pub struct TimesPerTimeline(BTreeMap<Timeline, TimeCounts>);
+pub struct TimesPerTimeline(BTreeMap<TimelineName, TimeCounts>);
 
 impl std::ops::Deref for TimesPerTimeline {
-    type Target = BTreeMap<Timeline, TimeCounts>;
+    type Target = BTreeMap<TimelineName, TimeCounts>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -23,7 +24,7 @@ impl std::ops::Deref for TimesPerTimeline {
 
 impl TimesPerTimeline {
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
         self.0.keys()
     }
 }
@@ -31,7 +32,10 @@ impl TimesPerTimeline {
 // Always ensure we have a default "log_time" timeline.
 impl Default for TimesPerTimeline {
     fn default() -> Self {
-        Self(BTreeMap::from([(Timeline::log_time(), Default::default())]))
+        Self(BTreeMap::from([(
+            TimelineName::log_time(),
+            Default::default(),
+        )]))
     }
 }
 
