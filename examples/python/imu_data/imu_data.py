@@ -1,10 +1,45 @@
+import os
 import pandas as pd
 import pathlib
+import requests
+import tarfile
 
 import rerun as rr
 from rerun import blueprint as rrb
 
 cwd = pathlib.Path(__file__).parent.resolve()
+
+DATASET_URL = "https://vision.in.tum.de/tumvi/exported/euroc/512_16/dataset-corridor4_512_16.tar"
+DATASET_NAME = "dataset-corridor4_512_16"
+XYZ_AXIS_NAMES = ["x", "y", "z"]
+XYZ_AXIS_COLORS = [[(231, 76, 60), (39, 174, 96), (52, 120, 219)]]
+
+
+def main() -> None:
+    dataset_path = cwd / DATASET_NAME
+    if not dataset_path.exists():
+        _download_dataset(cwd)
+
+    _setup_rerun()
+    _log_imu_data()
+    _log_image_data()
+    _log_gt_imu()
+
+
+def _download_dataset(root: pathlib.Path, dataset_url: str = DATASET_URL) -> None:
+    os.makedirs(root, exist_ok=True)
+    tar_path = os.path.join(root, "dataset-corridor4_512_16.tar")
+    print("Downloading dataset...")
+    with requests.get(dataset_url, stream=True) as r:
+        r.raise_for_status()
+        with open(tar_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    print("Extracting dataset...")
+    with tarfile.open(tar_path, "r:") as tar:
+        tar.extractall(path=root)
+    os.remove(tar_path)
 
 
 def _setup_rerun() -> None:
@@ -18,8 +53,8 @@ def _setup_rerun() -> None:
                     name="Gyroscope",
                     overrides={
                         "/gyroscope": [
-                            rr.components.NameBatch(["x", "y", "z"]),
-                            rr.components.ColorBatch([(231, 76, 60), (39, 174, 96), (52, 120, 219)]),
+                            rr.components.NameBatch(XYZ_AXIS_NAMES),
+                            rr.components.ColorBatch(XYZ_AXIS_COLORS),
                         ]
                     },
                 ),
@@ -28,30 +63,88 @@ def _setup_rerun() -> None:
                     name="Accelerometer",
                     overrides={
                         "/accelerometer": [
-                            rr.components.NameBatch(["x", "y", "z"]),
-                            rr.components.ColorBatch([(231, 76, 60), (39, 174, 96), (52, 120, 219)]),
+                            rr.components.NameBatch(XYZ_AXIS_NAMES),
+                            rr.components.ColorBatch(XYZ_AXIS_COLORS),
                         ]
                     },
                 ),
-            )
+            ),
+            rrb.Spatial3DView(origin="/", name="World position"),
+            column_shares=[0.3, 0.7],
         )
     )
 
 
-def main() -> None:
-    imu_data = pd.read_csv(cwd / "dataset-corridor4_512_16/mav0/imu0/data.csv")
+def _log_imu_data() -> None:
+    imu_data = pd.read_csv(
+        cwd / DATASET_NAME / "dso/imu.txt",
+        sep=" ",
+        header=0,
+        names=["timestamp", "gyro.x", "gyro.y", "gyro.z", "accel.x", "accel.y", "accel.z"],
+        comment="#",
+    )
 
-    print(imu_data)
+    times = rr.TimeNanosColumn("timestamp", imu_data["timestamp"])
 
-    times = rr.TimeNanosColumn("timestamp", imu_data["#timestamp [ns]"])
-
-    gyro = imu_data[["w_RS_S_x [rad s^-1]", "w_RS_S_y [rad s^-1]", "w_RS_S_z [rad s^-1]"]]
+    gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
     rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
 
-    accel = imu_data[["a_RS_S_x [m s^-2]", "a_RS_S_y [m s^-2]", "a_RS_S_z [m s^-2]"]]
+    accel = imu_data[["accel.x", "accel.y", "accel.z"]]
     rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalar.columns(scalar=accel))
 
 
+def _log_image_data() -> None:
+    times = pd.read_csv(
+        cwd / DATASET_NAME / "dso/cam0/times.txt",
+        sep=" ",
+        header=0,
+        names=["filename", "timestamp", "exposure_time"],
+        comment="#",
+        dtype={"filename": str},
+    )
+
+    rr.set_time_seconds("timestamp", times["timestamp"][0])
+    rr.log(
+        "/cam0",
+        rr.Pinhole(
+            focal_length=(0.373 * 512, 0.373 * 512),
+            resolution=(512, 512),
+            camera_xyz=rr.components.ViewCoordinates.FLU,
+            image_plane_distance=0.4,
+        ),
+        static=True,
+    )
+
+    for _, (filename, timestamp, _) in times.iterrows():
+        image_path = cwd / DATASET_NAME / "dso/cam0/images" / f"{filename}.png"
+        rr.set_time_seconds("timestamp", timestamp)
+        rr.log("/cam0/image", rr.ImageEncoded(path=image_path))
+
+
+def _log_gt_imu() -> None:
+    gt_imu = pd.read_csv(
+        cwd / DATASET_NAME / "dso/gt_imu.csv",
+        sep=",",
+        header=0,
+        names=["timestamp", "t.x", "t.y", "t.z", "q.w", "q.x", "q.y", "q.z"],
+        comment="#",
+    )
+
+    times = rr.TimeNanosColumn("timestamp", gt_imu["timestamp"])
+
+    translations = gt_imu[["t.x", "t.y", "t.z"]]
+    quaternions = gt_imu[
+        [
+            "q.x",
+            "q.y",
+            "q.z",
+            "q.w",
+        ]
+    ]
+    rr.send_columns(
+        "/cam0", indexes=[times], columns=rr.Transform3D.columns(translation=translations, quaternion=quaternions)
+    )
+
+
 if __name__ == "__main__":
-    _setup_rerun()
     main()
