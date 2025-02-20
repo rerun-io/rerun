@@ -15,13 +15,13 @@ struct Server {
 }
 
 impl Server {
-    fn new(runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) -> Self {
+    fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
         //let default_catalog = FetchCollectionTask::new(runtime, origin.clone());
 
         let mut collections = Collections::default();
 
         //TODO(ab): For now, we just auto-download the default collection
-        collections.add(runtime, origin.clone());
+        collections.add(runtime, egui_ctx, origin.clone());
 
         Self {
             origin,
@@ -139,11 +139,10 @@ impl RedapServers {
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
-    /// - Load servers from `server_list`.
     /// - Update all servers.
-    pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle) {
+    pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(runtime, command);
+            self.handle_command(runtime, egui_ctx, command);
         }
 
         for server in self.servers.values_mut() {
@@ -151,7 +150,12 @@ impl RedapServers {
         }
     }
 
-    fn handle_command(&mut self, runtime: &AsyncRuntimeHandle, command: Command) {
+    fn handle_command(
+        &mut self,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        command: Command,
+    ) {
         match command {
             Command::SelectCollection(collection_handle) => {
                 self.selected_collection = Some(collection_handle);
@@ -161,8 +165,10 @@ impl RedapServers {
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
-                    self.servers
-                        .insert(origin.clone(), Server::new(runtime, origin.clone()));
+                    self.servers.insert(
+                        origin.clone(),
+                        Server::new(runtime, egui_ctx, origin.clone()),
+                    );
                 } else {
                     re_log::warn!(
                         "Tried to add pre-existing sever at {:?}",

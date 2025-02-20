@@ -20,10 +20,26 @@ impl<T: Send + 'static> RequestedObject<T> {
         runtime.spawn_future(async move {
             let result = func.await;
             let _ = tx.send(result);
-            //TODO: refresh egui?
         });
 
         handle
+    }
+
+    /// Create a new [`Self`] with the given future and automatically request a repaint of the UI
+    /// when the future completes.
+    pub fn new_with_repaint<F>(
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: egui::Context,
+        func: F,
+    ) -> Self
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+    {
+        Self::new(runtime, async move {
+            let result = func.await;
+            egui_ctx.request_repaint();
+            result
+        })
     }
 
     /// Check if the future has completed and, if so, update our state to [`Self::Completed`].

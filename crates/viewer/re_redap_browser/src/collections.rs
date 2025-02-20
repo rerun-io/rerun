@@ -34,13 +34,20 @@ pub struct Collections {
 }
 
 impl Collections {
-    pub fn add(&mut self, runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) {
+    pub fn add(
+        &mut self,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+    ) {
         //TODO(ab): should we return error if the requested collection already exists? Or maybe just
         // query it again.
         self.collections.entry(origin.clone()).or_insert_with(|| {
-            RequestedObject::new(runtime, stream_catalog_async(origin))
-
-            //CollectionOrQueryHandle::QueryHandle(CollectionQueryHandle::new(runtime, origin))
+            RequestedObject::new_with_repaint(
+                runtime,
+                egui_ctx.clone(),
+                stream_catalog_async(origin),
+            )
         });
     }
 

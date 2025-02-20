@@ -1205,7 +1205,9 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.state.redap_servers.on_frame_start(&self.async_runtime);
+                        self.state
+                            .redap_servers
+                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
 
                         render_ctx.begin_frame();
                         self.state.show(
