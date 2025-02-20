@@ -412,7 +412,10 @@ message UnregisterRecordingRequest {
 }
 message UnregisterRecordingResponse {}
 
-message UnregisterAllRecordingsRequest {}
+message UnregisterAllRecordingsRequest {
+    // which catalog entry do we want to unregister all recordings from
+    CatalogEntry entry = 1;
+}
 message UnregisterAllRecordingsResponse {}
 
 // ---------------- UpdateCatalog  -----------------

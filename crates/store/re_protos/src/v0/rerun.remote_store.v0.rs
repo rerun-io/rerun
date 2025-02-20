@@ -710,8 +710,12 @@ impl ::prost::Name for UnregisterRecordingResponse {
         "/rerun.remote_store.v0.UnregisterRecordingResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct UnregisterAllRecordingsRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnregisterAllRecordingsRequest {
+    /// which catalog entry do we want to unregister all recordings from
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+}
 impl ::prost::Name for UnregisterAllRecordingsRequest {
     const NAME: &'static str = "UnregisterAllRecordingsRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
