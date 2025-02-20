@@ -253,7 +253,13 @@ class SeriesLine(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"color": color, "width": width, "name": name, "aggregation_policy": aggregation_policy}
+        kwargs = {
+            "color": color,
+            "width": width,
+            "name": name,
+            "visible_series": visible_series,
+            "aggregation_policy": aggregation_policy,
+        }
         columns = []
 
         for batch in batches:

@@ -255,7 +255,13 @@ class SeriesPoint(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"color": color, "marker": marker, "name": name, "marker_size": marker_size}
+        kwargs = {
+            "color": color,
+            "marker": marker,
+            "name": name,
+            "visible_series": visible_series,
+            "marker_size": marker_size,
+        }
         columns = []
 
         for batch in batches:
