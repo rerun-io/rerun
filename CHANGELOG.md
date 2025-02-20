@@ -11,6 +11,13 @@ A small release addressing bugs and polishing rough edges.
 
 An issue with the 0.20.0 release led to incorrect artifacts being published, causing a few minor changes to be missing from those artifacts. The correct version has always been available on crates.io, PyPI, Conda, and other distribution channels, so no action is needed if you installed from these sources.
 
+### 🤖 Native loading for LeRobot datasets
+We're gradually rolling out support for native loading of LeRobot datasets. It’s not fully feature-complete yet, there are tons of variations in these datasets, so it’ll take a bit of time to cover all the edge cases. More improvements and features are planned for the 0.23 release, so expect things to get smoother and more robust soon.
+
+If you run into any issues, let us know! Your feedback helps us iron out bugs and improve the experience faster.
+
+https://github.com/user-attachments/assets/4b6d7e8c-02c6-43c9-be66-dcdbcf782cbd
+
 ### 🔎 Details
 
 #### 🐍 Python API
