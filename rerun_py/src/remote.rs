@@ -344,7 +344,7 @@ impl PyStorageNodeClient {
                 .transpose()?;
 
             let request = RegisterRecordingRequest {
-                entry: None,
+                entry: collection_name.map(|name| CatalogEntry { name }),
                 // TODO(jleibs): Description should really just be in the metadata
                 description: Default::default(),
                 storage_url: storage_url.to_string(),
