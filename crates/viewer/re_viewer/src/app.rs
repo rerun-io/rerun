@@ -578,9 +578,9 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.display_mode = display_mode;
             }
-            SystemCommand::AddRedapServer { origin } => {
+            SystemCommand::AddRedapServer { endpoint } => {
                 self.redap_servers
-                    .fetch_catalog(&self.async_runtime, origin);
+                    .fetch_catalog(&self.async_runtime, endpoint);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -609,8 +609,9 @@ impl App {
 
                 match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.redap_servers.fetch_catalog(&self.async_runtime, url);
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        self.redap_servers
+                            .fetch_catalog(&self.async_runtime, endpoint);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -698,7 +699,7 @@ impl App {
                 if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
-                    guard.set_loop_selection(time_range.into());
+                    guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
                 }
             }
@@ -885,6 +886,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearActiveBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprint);
+            }
             UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
@@ -1768,9 +1773,9 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
+    pub fn fetch_catalog(&self, endpoint: re_uri::CatalogEndpoint) {
         self.redap_servers
-            .fetch_catalog(&self.async_runtime, origin);
+            .fetch_catalog(&self.async_runtime, endpoint);
     }
 }
 

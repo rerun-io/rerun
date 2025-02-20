@@ -3,7 +3,6 @@ use egui::{NumExt as _, Ui};
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::redap;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -762,7 +761,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let is_rerun_url = redap::Scheme::try_from(open_url.url.as_ref()).is_ok();
+                let is_rerun_url = re_uri::RedapUri::try_from(open_url.url.as_ref()).is_ok();
 
                 if is_rerun_url {
                     let data_source = re_data_source::DataSource::from_uri(
@@ -796,9 +795,9 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             }
                         }
 
-                        Ok(re_data_source::StreamSource::CatalogData { origin }) => ctx
+                        Ok(re_data_source::StreamSource::CatalogData { endpoint }) => ctx
                             .command_sender()
-                            .send_system(SystemCommand::AddRedapServer { origin }),
+                            .send_system(SystemCommand::AddRedapServer { endpoint }),
                         Err(err) => {
                             re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
                         }

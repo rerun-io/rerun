@@ -87,6 +87,7 @@ re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.23.0-
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.23.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.23.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.23.0-alpha.1", default-features = false }
+re_uri = { path = "crates/utils/re_uri", version = "=0.23.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/viewer:

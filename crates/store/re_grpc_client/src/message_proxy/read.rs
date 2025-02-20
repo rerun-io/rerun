@@ -9,6 +9,7 @@ use url::Url;
 
 use crate::StreamError;
 use crate::TonicStatusError;
+use crate::MAX_DECODING_MESSAGE_SIZE;
 
 pub fn stream(
     url: &str,
@@ -114,7 +115,7 @@ async fn stream_async(
         let tonic_client = { tonic::transport::Endpoint::new(url)?.connect().await? };
 
         // TODO(#8411): figure out the right size for this
-        MessageProxyClient::new(tonic_client).max_decoding_message_size(usize::MAX)
+        MessageProxyClient::new(tonic_client).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
     };
 
     re_log::debug!("Streaming messages from gRPC endpoint {url}");

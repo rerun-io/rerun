@@ -5,6 +5,8 @@ pub use message_proxy::MessageProxyUrl;
 
 pub mod redap;
 
+const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(pub tonic::Status);
@@ -62,6 +64,12 @@ pub enum StreamError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

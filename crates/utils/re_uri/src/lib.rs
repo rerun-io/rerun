@@ -4,113 +4,64 @@
 //! `rerun://`, which is an alias for `rerun+https://`. These schemes are then
 //! converted on the fly to either `http://` or `https://`.
 
-use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
-use std::net::Ipv4Addr;
+mod endpoints;
+mod error;
 
-#[derive(thiserror::Error, Debug)]
-pub enum ConnectionError {
-    /// Native connection error
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Connection error: {0}")]
-    Tonic(#[from] tonic::transport::Error),
+pub use self::{
+    endpoints::{catalog::CatalogEndpoint, recording::RecordingEndpoint},
+    error::Error,
+};
 
-    #[error(transparent)]
-    ParseError(#[from] url::ParseError),
-
-    #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
-    UnencryptedServer,
-
-    #[error(transparent)]
-    InvalidScheme(#[from] InvalidScheme),
-
-    #[error(transparent)]
-    InvalidTimeRange(#[from] InvalidTimeRange),
-
-    #[error("unexpected endpoint: {0}")]
-    UnexpectedEndpoint(String),
-
-    #[error("unexpected opaque origin: {0}")]
-    UnexpectedOpaqueOrigin(String),
-
-    #[error("unexpected base URL: {0}")]
-    UnexpectedBaseUrl(String),
-
-    #[error("URL {url:?} cannot be loaded as a recording")]
-    CannotLoadUrlAsRecording { url: String },
-}
-
-#[derive(thiserror::Error, Debug)]
-#[error("invalid time range (expected `?time_range=timeline@int_seconds..int_seconds`)")]
-pub struct InvalidTimeRange;
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeRange {
     pub timeline: re_log_types::Timeline,
-    pub time_range: re_log_types::ResolvedTimeRange,
+    pub range: re_log_types::ResolvedTimeRangeF,
 }
 
 impl std::fmt::Display for TimeRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            timeline,
-            time_range,
-        } = self;
+        let Self { timeline, range } = self;
         write!(
             f,
             "{}@{}..{}",
             timeline.name(),
-            time_range.min().as_f64(),
-            time_range.max().as_f64(),
+            range.min.as_f64(),
+            range.max.as_f64()
         )
     }
 }
 
 impl TryFrom<&str> for TimeRange {
-    type Error = InvalidTimeRange;
+    type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let (timeline, time_range) = value.split_once('@').ok_or(InvalidTimeRange)?;
+        let (timeline, range) = value.split_once('@').ok_or(Error::InvalidTimeRange)?;
 
-        #[allow(clippy::match_same_arms)]
-        let timeline = match timeline {
-            "log_time" => re_log_types::Timeline::new_temporal(timeline),
-            "log_tick" => re_log_types::Timeline::new_sequence(timeline),
-            "frame" => re_log_types::Timeline::new_sequence(timeline),
-            "frame_nr" => re_log_types::Timeline::new_sequence(timeline),
-            _ => re_log_types::Timeline::new_temporal(timeline),
+        let (min, max) = range.split_once("..").ok_or(Error::InvalidTimeRange)?;
+
+        // NOTE: We have some well-known timeline names, but we're explicitly not using them here
+        //       as this URL should really not be constructed by a user, ever.
+        let (min, typ) = match min.strip_suffix('s') {
+            Some(min) => (min, re_log_types::TimeType::Time),
+            None => (min, re_log_types::TimeType::Sequence),
+        };
+        let (max, typ) = match (max.strip_suffix('s'), typ) {
+            // if `max` had no `s` suffix, but `min` does, then it's a temporal timeline:
+            (Some(max), re_log_types::TimeType::Sequence) => (max, re_log_types::TimeType::Time),
+            // otherwise it's just whatever we already had, with the suffix stripped:
+            (Some(max), typ) => (max, typ),
+            (None, typ) => (max, typ),
         };
 
-        let time_range = {
-            let (min, max) = time_range.split_once("..").ok_or(InvalidTimeRange)?;
+        let min = min.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
+        let max = max.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
 
-            re_log_types::ResolvedTimeRange::new(
-                re_log_types::TimeInt::from_seconds(
-                    min.parse::<i64>()
-                        .map_err(|_err| InvalidTimeRange)?
-                        .try_into()
-                        .ok()
-                        .unwrap_or_default(),
-                ),
-                re_log_types::TimeInt::from_seconds(
-                    max.parse::<i64>()
-                        .map_err(|_err| InvalidTimeRange)?
-                        .try_into()
-                        .ok()
-                        .unwrap_or_default(),
-                ),
-            )
-        };
+        let timeline = re_log_types::Timeline::new(timeline, typ);
+        let range = re_log_types::ResolvedTimeRangeF::new(min, max);
 
-        Ok(Self {
-            timeline,
-            time_range,
-        })
+        Ok(Self { timeline, range })
     }
 }
-
-#[derive(thiserror::Error, Debug)]
-#[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
-pub struct InvalidScheme;
 
 /// The different schemes supported by Rerun.
 ///
@@ -161,7 +112,7 @@ impl Scheme {
 }
 
 impl TryFrom<&str> for Scheme {
-    type Error = InvalidScheme;
+    type Error = Error;
 
     fn try_from(url: &str) -> Result<Self, Self::Error> {
         if url.starts_with("rerun://") {
@@ -171,24 +122,21 @@ impl TryFrom<&str> for Scheme {
         } else if url.starts_with("rerun+https://") {
             Ok(Self::RerunHttps)
         } else {
-            Err(InvalidScheme)
+            Err(Self::Error::InvalidScheme)
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Origin {
-    scheme: Scheme,
-    host: url::Host<String>,
-    port: u16,
+    pub scheme: Scheme,
+    pub host: url::Host<String>,
+    pub port: u16,
 }
 
 impl Origin {
-    // TODO(#8411): figure out the right size for this
-    const MAX_DECODING_MESSAGE_SIZE: usize = usize::MAX;
-
-    // Converts an entire [`Origin`] to a `http` or `https` URL.
-    fn to_http_scheme(&self) -> String {
+    /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
+    pub fn as_url(&self) -> String {
         format!(
             "{}://{}:{}",
             self.scheme.as_http_scheme(),
@@ -197,81 +145,36 @@ impl Origin {
         )
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn coerce_http_scheme(&self) -> String {
+    /// Converts the [`Origin`] to a `http` URL.
+    ///
+    /// In most cases you want to use [`Origin::as_url()`] instead.
+    pub fn coerce_http_url(&self) -> String {
         format!("http://{}:{}", self.host, self.port)
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub async fn client(
-        &self,
-    ) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            self.to_http_scheme(),
-            tonic_web_wasm_client::options::FetchOptions::new(),
-        );
-
-        Ok(StorageNodeClient::new(tonic_client)
-            .max_decoding_message_size(Self::MAX_DECODING_MESSAGE_SIZE))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn client(
-        &self,
-    ) -> Result<StorageNodeClient<tonic::transport::Channel>, ConnectionError> {
-        use tonic::transport::Endpoint;
-
-        match Endpoint::new(self.to_http_scheme())?
-            .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
-            .connect()
-            .await
-        {
-            Ok(client) => Ok(StorageNodeClient::new(client)
-                .max_decoding_message_size(Self::MAX_DECODING_MESSAGE_SIZE)),
-            Err(original_error) => {
-                // If we can't establish a connection, we probe if the server is
-                // expecting unencrypted traffic. If that is the case, we return
-                // a more meaningful error message.
-                let Ok(endpoint) = Endpoint::new(self.coerce_http_scheme()) else {
-                    return Err(ConnectionError::Tonic(original_error));
-                };
-
-                if endpoint.connect().await.is_ok() {
-                    Err(ConnectionError::UnencryptedServer)
-                } else {
-                    Err(ConnectionError::Tonic(original_error))
-                }
-            }
-        }
     }
 }
 
 /// Parses a URL and returns the [`Origin`] and the canonical URL (i.e. one that
 ///  starts with `http://` or `https://`).
-fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), ConnectionError> {
+fn replace_and_parse(value: &str) -> Result<(Origin, url::Url), Error> {
     let scheme = Scheme::try_from(value)?;
     let rewritten = scheme.canonical_url(value);
 
     // We have to first rewrite the endpoint, because `Url` does not allow
     // `.set_scheme()` for non-opaque origins, nor does it return a proper
     // `Origin` in that case.
-    let canonic_url = url::Url::parse(&rewritten)?;
+    let http_url = url::Url::parse(&rewritten)?;
 
-    let url::Origin::Tuple(_, host, port) = canonic_url.origin() else {
-        return Err(ConnectionError::UnexpectedOpaqueOrigin(value.to_owned()));
+    let url::Origin::Tuple(_, host, port) = http_url.origin() else {
+        return Err(Error::UnexpectedOpaqueOrigin(value.to_owned()));
     };
-
-    if host == url::Host::<String>::Ipv4(Ipv4Addr::UNSPECIFIED) {
-        re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
-    }
 
     let origin = Origin { scheme, host, port };
 
-    Ok((origin, canonic_url))
+    Ok((origin, http_url))
 }
 
 impl TryFrom<&str> for Origin {
-    type Error = ConnectionError;
+    type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         replace_and_parse(value).map(|(origin, _)| origin)
@@ -286,66 +189,53 @@ impl std::fmt::Display for Origin {
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq)]
-pub enum RedapAddress {
-    Recording {
-        origin: Origin,
-        recording_id: String,
-        time_range: Option<TimeRange>,
-    },
-    Catalog {
-        origin: Origin,
-    },
+pub enum RedapUri {
+    Recording(RecordingEndpoint),
+    Catalog(CatalogEndpoint),
+
+    /// We use the `/proxy` endpoint to access another _local_ viewer.
+    Proxy(Origin),
 }
 
-impl std::fmt::Display for RedapAddress {
+impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Recording {
-                origin,
-                recording_id,
-                time_range,
-            } => match time_range {
-                None => write!(f, "{origin}/recording/{recording_id}"),
-                Some(time_range) => write!(
-                    f,
-                    "{origin}/recording/{recording_id}?time_range={time_range}"
-                ),
-            },
-            Self::Catalog { origin } => write!(f, "{origin}/catalog",),
+            Self::Recording(endpoint) => write!(f, "{endpoint}",),
+            Self::Catalog(endpoint) => write!(f, "{endpoint}",),
+            Self::Proxy(origin) => write!(f, "{origin}/proxy",),
         }
     }
 }
 
-impl TryFrom<&str> for RedapAddress {
-    type Error = ConnectionError;
+impl TryFrom<&str> for RedapUri {
+    type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let (origin, canonical_url) = replace_and_parse(value)?;
+        let (origin, http_url) = replace_and_parse(value)?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
-        let segments = canonical_url
+        let segments = http_url
             .path_segments()
-            .ok_or_else(|| ConnectionError::UnexpectedBaseUrl(value.to_owned()))?
+            .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
             .take(2)
+            .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        let time_range = canonical_url
+        let time_range = http_url
             .query_pairs()
             .find(|(key, _)| key == "time_range")
             .map(|(_, value)| TimeRange::try_from(value.as_ref()));
 
         match segments.as_slice() {
-            ["recording", recording_id] => Ok(Self::Recording {
+            ["recording", recording_id] => Ok(Self::Recording(RecordingEndpoint::new(
                 origin,
-                recording_id: (*recording_id).to_owned(),
-                time_range: match time_range {
-                    Some(time_range) => Some(time_range?),
-                    None => None,
-                },
-            }),
-            ["catalog" | ""] | [] => Ok(Self::Catalog { origin }),
-            [unknown, ..] => Err(ConnectionError::UnexpectedEndpoint(format!("{unknown}/"))),
+                (*recording_id).to_owned(),
+                time_range.transpose()?,
+            ))),
+            ["proxy"] => Ok(Self::Proxy(origin)),
+            ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
+            [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
     }
 }
@@ -370,33 +260,33 @@ mod tests {
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttp,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "http://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "http://127.0.0.1:1234");
 
         let origin = Origin {
             scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
         };
-        assert_eq!(origin.to_http_scheme(), "https://127.0.0.1:1234");
+        assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
     }
 
     #[test]
     fn test_recording_url_to_address() {
         let url = "rerun://127.0.0.1:1234/recording/12345";
-        let address: RedapAddress = url.try_into().unwrap();
+        let address: RedapUri = url.try_into().unwrap();
 
-        let RedapAddress::Recording {
+        let RedapUri::Recording(RecordingEndpoint {
             origin,
             recording_id,
             time_range,
-        } = address
+        }) = address
         else {
             panic!("Expected recording");
         };
@@ -438,75 +328,111 @@ mod tests {
     #[test]
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
-        let address: RedapAddress = url.try_into().unwrap();
+        let address: RedapUri = url.try_into().unwrap();
         assert!(matches!(
             address,
-            RedapAddress::Catalog {
+            RedapUri::Catalog(CatalogEndpoint {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                     port: 50051
                 },
-            }
+            })
         ));
     }
 
     #[test]
     fn test_https_catalog_url_to_address() {
         let url = "rerun+https://127.0.0.1:50051/catalog";
-        let address: RedapAddress = url.try_into().unwrap();
+        let address: RedapUri = url.try_into().unwrap();
 
         assert!(matches!(
             address,
-            RedapAddress::Catalog {
+            RedapUri::Catalog(CatalogEndpoint {
                 origin: Origin {
                     scheme: Scheme::RerunHttps,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                     port: 50051
-                },
-            }
+                }
+            })
         ));
+    }
+
+    #[test]
+    fn test_localhost_url() {
+        let url = "rerun+http://localhost:51234/catalog";
+        let address = RedapUri::try_from(url).unwrap();
+
+        assert_eq!(
+            address,
+            RedapUri::Catalog(CatalogEndpoint {
+                origin: Origin {
+                    scheme: Scheme::RerunHttp,
+                    host: url::Host::<String>::Domain("localhost".to_owned()),
+                    port: 51234
+                }
+            })
+        );
     }
 
     #[test]
     fn test_invalid_url() {
         let url = "http://wrong-scheme:1234/recording/12345";
-        let address: Result<RedapAddress, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.try_into();
 
         assert!(matches!(
             address.unwrap_err(),
-            super::ConnectionError::InvalidScheme { .. }
+            super::Error::InvalidScheme { .. }
         ));
     }
 
     #[test]
     fn test_invalid_path() {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
-        let address: Result<RedapAddress, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.try_into();
 
         assert!(matches!(
             address.unwrap_err(),
-            super::ConnectionError::UnexpectedEndpoint(unknown) if &unknown == "redap/"
+            super::Error::UnexpectedEndpoint(unknown) if &unknown == "redap/"
         ));
+    }
+
+    #[test]
+    fn test_proxy_endpoint() {
+        let url = "rerun://localhost:51234/proxy";
+        let address: Result<RedapUri, _> = url.try_into();
+
+        let expected = RedapUri::Proxy(Origin {
+            scheme: Scheme::Rerun,
+            host: url::Host::Domain("localhost".to_owned()),
+            port: 51234,
+        });
+
+        assert_eq!(address.unwrap(), expected);
+
+        let url = "rerun://localhost:51234/proxy/";
+        let address: Result<RedapUri, _> = url.try_into();
+
+        assert_eq!(address.unwrap(), expected);
     }
 
     #[test]
     fn test_catalog_default() {
         let url = "rerun://localhost:51234";
-        let address: Result<RedapAddress, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.try_into();
 
-        let expected = RedapAddress::Catalog {
+        let expected = RedapUri::Catalog(CatalogEndpoint {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
-        };
+        });
 
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/";
-        let address: Result<RedapAddress, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.try_into();
 
         assert_eq!(address.unwrap(), expected);
     }

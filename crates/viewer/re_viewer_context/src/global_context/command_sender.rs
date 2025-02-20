@@ -1,8 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_grpc_client::redap;
-use re_log_types::{ResolvedTimeRange, StoreId};
+use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------
@@ -28,7 +27,7 @@ pub enum SystemCommand {
 
     /// Add a new server to the redap browser.
     AddRedapServer {
-        origin: redap::Origin,
+        endpoint: re_uri::CatalogEndpoint,
     },
 
     ChangeDisplayMode(crate::DisplayMode),
@@ -45,7 +44,7 @@ pub enum SystemCommand {
     /// To force using the heuristics, use [`Self::ClearActiveBlueprintAndEnableHeuristics`].
     ///
     /// UI note: because of the above ambiguity, controls for this command should only be enabled if
-    /// a default blueprint is set.
+    /// a default blueprint is set or the behavior is explicitly explained.
     ClearActiveBlueprint,
 
     /// Clear the active blueprint and enable heuristics.
@@ -105,7 +104,7 @@ pub enum SystemCommand {
     SetLoopSelection {
         rec_id: StoreId,
         timeline: Timeline,
-        time_range: ResolvedTimeRange,
+        time_range: ResolvedTimeRangeF,
     },
 
     /// Sets the focus to the given item.

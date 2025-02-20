@@ -27,6 +27,9 @@ use tower_http::cors::CorsLayer;
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
+const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
+
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
 /// Start a Rerun server, listening on `addr`.
@@ -75,8 +78,8 @@ async fn serve_impl(
         routes_builder.add_service(
             // TODO(#8411): figure out the right size for this
             re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(message_proxy)
-                .max_decoding_message_size(usize::MAX)
-                .max_encoding_message_size(usize::MAX),
+                .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+                .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
         );
         routes_builder.routes()
     };
