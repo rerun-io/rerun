@@ -1,8 +1,8 @@
-use crate::context::Context;
-use crate::servers::Command;
-use re_grpc_client::redap;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::UiExt;
+
+use crate::context::Context;
+use crate::servers::Command;
 
 #[derive(Default)]
 pub struct AddServerModal {
@@ -26,7 +26,7 @@ impl AddServerModal {
                 ui.label("URL:");
                 ui.add(egui::TextEdit::singleline(&mut self.url).lock_focus(false));
 
-                let origin = redap::Origin::try_from(self.url.as_ref());
+                let origin = re_uri::Origin::try_from(self.url.as_ref());
 
                 match &origin {
                     Ok(_) => {

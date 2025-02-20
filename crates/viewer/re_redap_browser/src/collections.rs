@@ -36,7 +36,7 @@ struct CollectionQueryHandle {
 
 impl CollectionQueryHandle {
     /// Initiate a collection query call.
-    pub fn new(runtime: &AsyncRuntimeHandle, origin: redap::Origin) -> Self {
+    pub fn new(runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) -> Self {
         let result = Arc::new(Mutex::new(None));
         let handle = Self {
             result: result.clone(),
@@ -60,11 +60,11 @@ enum CollectionOrQueryHandle {
 /// A collection of [`Collection`]s.
 #[derive(Default)]
 pub struct Collections {
-    collections: HashMap<redap::Origin, CollectionOrQueryHandle>,
+    collections: HashMap<re_uri::Origin, CollectionOrQueryHandle>,
 }
 
 impl Collections {
-    pub fn add(&mut self, runtime: &AsyncRuntimeHandle, origin: redap::Origin) {
+    pub fn add(&mut self, runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) {
         //TODO(ab): should we return error if the requested collection already exists? Or maybe just
         // query it again.
         self.collections.entry(origin.clone()).or_insert_with(|| {
@@ -129,8 +129,8 @@ impl Collections {
     }
 }
 
-async fn stream_catalog_async(origin: redap::Origin) -> Result<Collection, StreamError> {
-    let mut client = origin.client().await?;
+async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, StreamError> {
+    let mut client = redap::client(origin.clone()).await?;
 
     re_log::debug!("Fetching collection…");
 

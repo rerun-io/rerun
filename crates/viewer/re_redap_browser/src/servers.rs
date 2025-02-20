@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::{Receiver, Sender};
 
-use re_grpc_client::redap;
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
@@ -10,13 +9,13 @@ use crate::collections::{Collection, CollectionId, Collections};
 use crate::context::Context;
 
 struct Server {
-    origin: redap::Origin,
+    origin: re_uri::Origin,
 
     collections: Collections,
 }
 
 impl Server {
-    fn new(runtime: &AsyncRuntimeHandle, origin: redap::Origin) -> Self {
+    fn new(runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) -> Self {
         //let default_catalog = FetchCollectionTask::new(runtime, origin.clone());
 
         let mut collections = Collections::default();
@@ -74,12 +73,12 @@ pub struct RedapServers {
     /// The list of server.
     ///
     /// This is the only data persisted. Everything else being recreated on the fly.
-    server_list: BTreeSet<redap::Origin>,
+    server_list: BTreeSet<re_uri::Origin>,
 
     /// The actual servers, populated from the server list if needed.
     ///
     /// Servers in `server_list` are automatically added to `server` by `on_frame_start`.
-    servers: BTreeMap<redap::Origin, Server>,
+    servers: BTreeMap<re_uri::Origin, Server>,
 
     selected_collection: Option<CollectionId>,
 
@@ -104,7 +103,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     where
         D: serde::Deserializer<'de>,
     {
-        let server_list = BTreeSet::<redap::Origin>::deserialize(deserializer)?;
+        let server_list = BTreeSet::<re_uri::Origin>::deserialize(deserializer)?;
         let (command_sender, command_receiver) = std::sync::mpsc::channel();
         Ok(Self {
             server_list,
@@ -135,18 +134,18 @@ impl Default for RedapServers {
 pub enum Command {
     SelectCollection(CollectionId),
     DeselectCollection,
-    AddServer(redap::Origin),
-    RemoveServer(redap::Origin),
+    AddServer(re_uri::Origin),
+    RemoveServer(re_uri::Origin),
 }
 
 impl RedapServers {
     /// Add a server to the hub.
-    pub fn add_server(&mut self, origin: redap::Origin) {
+    pub fn add_server(&mut self, origin: re_uri::Origin) {
         self.server_list.insert(origin);
     }
 
     /// Remove a server from the hub.
-    pub fn remove_server(&mut self, origin: &redap::Origin) {
+    pub fn remove_server(&mut self, origin: &re_uri::Origin) {
         self.server_list.remove(origin);
         self.servers.remove(origin);
     }

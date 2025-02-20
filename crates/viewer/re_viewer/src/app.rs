@@ -573,8 +573,8 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.display_mode = display_mode;
             }
-            SystemCommand::AddRedapServer { origin } => {
-                self.state.redap_servers.add_server(origin);
+            SystemCommand::AddRedapServer { endpoint } => {
+                self.state.redap_servers.add_server(endpoint.origin);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -590,8 +590,8 @@ impl App {
 
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.state.redap_servers.add_server(url);
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        self.state.redap_servers.add_server(endpoint.origin);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -853,6 +853,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearActiveBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprint);
+            }
             UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
@@ -1735,8 +1739,8 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&mut self, origin: re_grpc_client::redap::Origin) {
-        self.state.redap_servers.add_server(origin);
+    pub fn add_redap_server(&mut self, endpoint: re_uri::CatalogEndpoint) {
+        self.state.redap_servers.add_server(endpoint.origin);
     }
 }
 

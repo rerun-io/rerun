@@ -6004,6 +6004,7 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "re_uri",
  "tokio",
  "wasm-bindgen-futures",
 ]
@@ -6169,6 +6170,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_uri",
  "serde",
  "thiserror 1.0.65",
  "tokio",
@@ -6448,6 +6450,7 @@ dependencies = [
  "re_sorbet",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_view_dataframe",
  "re_viewer_context",
  "serde",
@@ -6830,6 +6833,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_uri"
+version = "0.23.0-alpha.1+dev"
+dependencies = [
+ "serde",
+ "thiserror 1.0.65",
+ "url",
+]
+
+[[package]]
 name = "re_video"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
@@ -7155,6 +7167,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_video",
  "re_view_bar_chart",
  "re_view_dataframe",
@@ -7219,7 +7232,6 @@ dependencies = [
  "re_data_source",
  "re_entity_db",
  "re_format",
- "re_grpc_client",
  "re_log",
  "re_log_types",
  "re_math",
@@ -7231,6 +7243,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_video",
  "rfd",
  "serde",

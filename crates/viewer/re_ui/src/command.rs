@@ -32,6 +32,7 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
+    ClearActiveBlueprint,
     ClearActiveBlueprintAndEnableHeuristics,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -137,9 +138,14 @@ impl UICommand {
                 "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
 
+            Self::ClearActiveBlueprint => (
+                "Reset to default blueprint",
+                "Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint."
+            ),
+
             Self::ClearActiveBlueprintAndEnableHeuristics => (
                 "Reset to heuristic blueprint",
-                "Re-populate viewport with automatically chosen views"
+                "Re-populate viewport with automatically chosen views using default visualizers"
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -311,6 +317,7 @@ impl UICommand {
             Self::Quit => smallvec![cmd(Key::Q)],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
+            Self::ClearActiveBlueprint => smallvec![],
             Self::ClearActiveBlueprintAndEnableHeuristics => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]

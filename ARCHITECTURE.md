@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/425c53093e8ce590bc8bfc0c2a71ae2d9ec2fafc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/425c53093e8ce590bc8bfc0c2a71ae2d9ec2fafc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/425c53093e8ce590bc8bfc0c2a71ae2d9ec2fafc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/425c53093e8ce590bc8bfc0c2a71ae2d9ec2fafc/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/425c53093e8ce590bc8bfc0c2a71ae2d9ec2fafc/1200w.png">
+  <img src="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -134,7 +134,7 @@ Update instructions:
 ##### UI crates
 
 | Crate                 | Description                                                                                                |
-|-----------------------|------------------------------------------------------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
 | re_redap_browser      | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
@@ -189,13 +189,13 @@ Update instructions:
 
 ### Data flow
 
-| Crate                | Description                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------ |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
-| re_data_source       | Handles loading of Rerun data from different sources                                                   |
-| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                                                     |
-| re_grpc_server       | Host an in-memory Storage Node                                                                         |
-| re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
+| Crate                | Description                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+| re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
+| re_data_source       | Handles loading of Rerun data from different sources              |
+| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                |
+| re_grpc_server       | Host an in-memory Storage Node                                    |
+| re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP             |
 
 ### Build support
 
@@ -227,6 +227,7 @@ Update instructions:
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_uri             | Parsing and constructing of Rerun URIs                                               |
 | re_video           | Video decoding library                                                               |
 
 ### Dependencies and docs
