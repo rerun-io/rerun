@@ -37,7 +37,7 @@ fn query_latest_array(
                 .into_unit()
                 .and_then(|chunk| {
                     chunk
-                        .index(query.timeline_name())
+                        .index(query.timeline())
                         .map(|index| (index, chunk))
                 })
         })

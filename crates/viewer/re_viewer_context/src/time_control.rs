@@ -630,8 +630,8 @@ impl TimeControl {
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
-    pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeInt) -> bool {
-        if timeline != self.timeline() {
+    pub fn is_time_selected(&self, timeline: &TimelineName, needle: TimeInt) -> bool {
+        if timeline != self.timeline().name() {
             return false;
         }
 

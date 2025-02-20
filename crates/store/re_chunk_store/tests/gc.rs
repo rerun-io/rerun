@@ -33,11 +33,7 @@ fn query_latest_array(
             chunk
                 .latest_at(query, component_name)
                 .into_unit()
-                .and_then(|chunk| {
-                    chunk
-                        .index(query.timeline_name())
-                        .map(|index| (index, chunk))
-                })
+                .and_then(|chunk| chunk.index(query.timeline()).map(|index| (index, chunk)))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 

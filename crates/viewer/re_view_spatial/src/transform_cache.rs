@@ -10,7 +10,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
     archetypes::{self},
     components::{self},
@@ -43,7 +43,7 @@ pub struct TransformCacheStoreSubscriber {
     /// All components related to pinholes (i.e. [`components::PinholeProjection`] and [`components::ViewCoordinates`]).
     pinhole_components: IntSet<ComponentName>,
 
-    per_timeline: HashMap<Timeline, CachedTransformsForTimeline>,
+    per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
 }
 
@@ -122,7 +122,7 @@ pub struct CachedTransformsForTimeline {
 }
 
 impl CachedTransformsForTimeline {
-    fn new(timeline: &Timeline, static_transforms: &Self) -> Self {
+    fn new(timeline: &TimelineName, static_transforms: &Self) -> Self {
         Self {
             // It's crucial to take over any invalidated transform events from the static timeline,
             // otherwise we'd miss any pending static transforms that should ALSO be added to this timeline.
@@ -178,7 +178,7 @@ type PinholeProjectionMap = BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>
 pub struct TransformsForEntity {
     // Is None if this is about the "static timeline".
     #[cfg(debug_assertions)]
-    timeline: Option<Timeline>,
+    timeline: Option<TimelineName>,
 
     tree_transforms: BTreeMap<TimeInt, Affine3A>,
 
@@ -209,7 +209,7 @@ impl CachedTransformsForTimeline {
 impl TransformsForEntity {
     fn new(
         entity_path: &EntityPath,
-        _timeline: Timeline,
+        _timeline: TimelineName,
         recursive_clears: &IntMap<EntityPathHash, Vec<TimeInt>>,
         static_timeline: &CachedTransformsForTimeline,
     ) -> Self {
@@ -245,7 +245,7 @@ impl TransformsForEntity {
         result
     }
 
-    fn new_for_new_empty_timeline(_timeline: Timeline, static_timeline_entry: &Self) -> Self {
+    fn new_for_new_empty_timeline(_timeline: TimelineName, static_timeline_entry: &Self) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
@@ -343,7 +343,7 @@ impl TransformCacheStoreSubscriber {
     ///
     /// Returns `None` if the timeline doesn't have any transforms at all.
     #[inline]
-    pub fn transforms_for_timeline(&self, timeline: Timeline) -> &CachedTransformsForTimeline {
+    pub fn transforms_for_timeline(&self, timeline: TimelineName) -> &CachedTransformsForTimeline {
         self.per_timeline
             .get(&timeline)
             .unwrap_or(&self.static_timeline)
@@ -376,7 +376,7 @@ impl TransformCacheStoreSubscriber {
             // Technically this doesn't query static components but rather just what's at the beginning of this arbitrary timeline,
             // but it's the most convenient way to the data we want.
             let query = LatestAtQuery::new(
-                Timeline::new_sequence(
+                TimelineName::new(
                     "placeholder timeline (only actually interested in static components)",
                 ),
                 TimeInt::MIN,

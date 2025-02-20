@@ -194,7 +194,7 @@ fn active_defaults(
     ctx.blueprint_db()
         .storage_engine()
         .store()
-        .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
+        .all_components_on_timeline(blueprint_timeline().name(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {

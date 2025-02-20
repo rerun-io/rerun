@@ -255,7 +255,7 @@ impl ViewBlueprint {
                         store_context.blueprint_timepoint_for_writes(),
                         blueprint_engine
                             .store()
-                            .all_components_on_timeline(&query.timeline_name(), path)
+                            .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the ViewBlueprint's components

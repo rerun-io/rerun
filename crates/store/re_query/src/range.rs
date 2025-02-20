@@ -39,7 +39,7 @@ impl QueryCache {
             let component_descr = component_descr.into();
             store
                 .entity_has_component_on_timeline(
-                    query.timeline_name(),
+                    query.timeline(),
                     entity_path,
                     &component_descr.component_name,
                 )
@@ -47,8 +47,7 @@ impl QueryCache {
         });
 
         for component_name in component_names {
-            let key =
-                QueryCacheKey::new(entity_path.clone(), *query.timeline_name(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -267,7 +266,7 @@ impl RangeCache {
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        debug_assert_eq!(query.timeline_name(), &self.cache_key.timeline_name);
+        debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
 
         // First, we forward the query as-is to the store.
         //
@@ -304,7 +303,7 @@ impl RangeCache {
             .map(|cached_sorted_chunk| {
                 debug_assert!(cached_sorted_chunk
                     .chunk
-                    .is_timeline_sorted(query.timeline_name()));
+                    .is_timeline_sorted(query.timeline()));
 
                 let chunk = &cached_sorted_chunk.chunk;
 

@@ -9,7 +9,7 @@ use itertools::Itertools;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
-use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{EntityPath, TimeInt,  TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};

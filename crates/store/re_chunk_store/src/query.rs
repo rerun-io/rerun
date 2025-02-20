@@ -563,7 +563,7 @@ impl ChunkStore {
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(&query.timeline_name())
+                temporal_chunk_ids_per_timeline.get(&query.timeline())
             })
             .and_then(|temporal_chunk_ids_per_component| {
                 temporal_chunk_ids_per_component.get(&component_name)
@@ -621,7 +621,7 @@ impl ChunkStore {
                 .temporal_chunk_ids_per_entity_per_component
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline_per_component| {
-                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline_name())
+                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
                 })
                 .map(|temporal_chunk_ids_per_component| {
                     temporal_chunk_ids_per_component
@@ -646,7 +646,7 @@ impl ChunkStore {
             self.temporal_chunk_ids_per_entity
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline| {
-                    temporal_chunk_ids_per_timeline.get(&query.timeline_name())
+                    temporal_chunk_ids_per_timeline.get(&query.timeline())
                 })
                 .and_then(|temporal_chunk_ids_per_time| {
                     self.latest_at(query, temporal_chunk_ids_per_time)
@@ -745,7 +745,7 @@ impl ChunkStore {
                 self.temporal_chunk_ids_per_entity_per_component
                     .get(entity_path)
                     .and_then(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.get(&query.timeline_name())
+                        temporal_chunk_ids_per_timeline.get(&query.timeline())
                     })
                     .and_then(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.get(&component_name)
@@ -759,7 +759,7 @@ impl ChunkStore {
             .filter(|chunk| {
                 chunk
                     .timelines()
-                    .get(&query.timeline_name())
+                    .get(&query.timeline())
                     .is_some_and(|time_column| {
                         time_column
                             .time_range_per_component(chunk.components())
@@ -814,7 +814,7 @@ impl ChunkStore {
                         .get(entity_path)
                         .and_then(|temporal_chunk_ids_per_timeline_per_component| {
                             temporal_chunk_ids_per_timeline_per_component
-                                .get(&query.timeline_name())
+                                .get(&query.timeline())
                         })
                         .map(|temporal_chunk_ids_per_component| {
                             temporal_chunk_ids_per_component
@@ -840,7 +840,7 @@ impl ChunkStore {
                     self.temporal_chunk_ids_per_entity
                         .get(entity_path)
                         .and_then(|temporal_chunk_ids_per_timeline| {
-                            temporal_chunk_ids_per_timeline.get(query.timeline_name())
+                            temporal_chunk_ids_per_timeline.get(query.timeline())
                         })
                         .into_iter(),
                 ),
@@ -855,7 +855,7 @@ impl ChunkStore {
             .filter(|chunk| {
                 chunk
                     .timelines()
-                    .get(query.timeline_name())
+                    .get(query.timeline())
                     .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
             })
             .collect_vec()

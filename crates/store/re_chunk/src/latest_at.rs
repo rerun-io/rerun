@@ -42,7 +42,7 @@ impl LatestAtQuery {
     }
 
     #[inline]
-    pub fn timeline_name(&self) -> TimelineName {
+    pub fn timeline(&self) -> TimelineName {
         self.timeline
     }
 
@@ -116,7 +116,7 @@ impl Chunk {
                 }
             }
         } else {
-            let Some(time_column) = self.timelines.get(&query.timeline_name()) else {
+            let Some(time_column) = self.timelines.get(&query.timeline()) else {
                 return self.emptied();
             };
 

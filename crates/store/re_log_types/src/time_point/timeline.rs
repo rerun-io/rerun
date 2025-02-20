@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
@@ -147,10 +149,20 @@ impl std::hash::Hash for Timeline {
     }
 }
 
-// Makes it more ergonomic to do lookups in `Map<TimelineName, X>` using `Timeline`.
+// TODO(#9084): Remove this crutch
 impl std::borrow::Borrow<TimelineName> for Timeline {
     #[inline]
     fn borrow(&self) -> &TimelineName {
+        &self.name
+    }
+}
+
+// TODO(#9084): Remove this crutch
+impl Deref for Timeline {
+    type Target = TimelineName;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
         &self.name
     }
 }

@@ -6,7 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
-use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType, Timeline};
+use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};

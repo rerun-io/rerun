@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::{EntityPath, Timeline, TimelineName};
 use re_types::View;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -121,7 +121,7 @@ Filter message types and toggle column visibility in a selection panel.",
             ui.grid_left_hand_label("Columns");
             ui.vertical(|ui| {
                 for (timeline, visible) in col_timelines {
-                    ui.re_checkbox(visible, timeline.name().to_string());
+                    ui.re_checkbox(visible, timeline.to_string());
                 }
                 ui.re_checkbox(col_entity_path, "Entity path");
                 ui.re_checkbox(col_log_level, "Log level");
@@ -219,7 +219,7 @@ Filter message types and toggle column visibility in a selection panel.",
 pub struct ViewTextFilters {
     // Column filters: which columns should be visible?
     // Timelines are special: each one has a dedicated column.
-    pub col_timelines: BTreeMap<Timeline, bool>,
+    pub col_timelines: BTreeMap<TimelineName, bool>,
     pub col_entity_path: bool,
     pub col_log_level: bool,
 
@@ -256,7 +256,7 @@ impl ViewTextFilters {
         } = self;
 
         for timeline in ctx.recording().timelines() {
-            col_timelines.entry(*timeline).or_insert(true);
+            col_timelines.entry(*timeline.name()).or_insert(true);
         }
 
         for level in entries.iter().filter_map(|te| te.level.as_ref()) {

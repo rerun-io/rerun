@@ -10,7 +10,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline, TimelineName};
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt,  TimelineName};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;

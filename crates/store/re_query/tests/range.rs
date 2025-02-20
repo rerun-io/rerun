@@ -391,15 +391,15 @@ fn invalidation() {
                              past_data_timepoint: TimePoint,
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
-            .get(&query.timeline_name())
+            .get(&query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
-            .get(&query.timeline_name())
+            .get(&query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
         let future_timestamp = future_data_timepoint
-            .get(&query.timeline_name())
+            .get(&query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
 
@@ -1072,7 +1072,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline_name(), &MyPoint::name()),
+                    chunk.iter_component_indices(query.timeline(), &MyPoint::name()),
                     chunk.iter_component::<MyPoint>()
                 )
             })
@@ -1088,7 +1088,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline_name(), &MyColor::name()),
+                    chunk.iter_component_indices(query.timeline(), &MyColor::name()),
                     chunk.iter_slices::<u32>(MyColor::name()),
                 )
             })

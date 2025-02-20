@@ -77,7 +77,7 @@ pub fn entity_path_parts_buttons(
         if !with_individual_icons {
             // Show one single icon up-front instead:
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ui.add(instance_path_icon(&query.timeline_name(), db, &instance_path).as_image());
+            ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
         }
 
         if entity_path.is_root() {
@@ -227,7 +227,7 @@ pub fn guess_instance_path_icon(
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query.timeline_name(), db, instance_path)
+    instance_path_icon(&query.timeline(), db, instance_path)
 }
 
 /// Show an instance id and make it selectable.
@@ -263,7 +263,7 @@ fn instance_path_button_to_ex(
 
     let response = if with_icon {
         ui.selectable_label_with_icon(
-            instance_path_icon(&query.timeline_name(), db, instance_path),
+            instance_path_icon(&query.timeline(), db, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
@@ -295,7 +295,7 @@ pub fn instance_path_parts_buttons(
         ui.spacing_mut().item_spacing.x = 2.0;
 
         // Show one single icon up-front instead:
-        ui.add(instance_path_icon(&query.timeline_name(), db, instance_path).as_image());
+        ui.add(instance_path_icon(&query.timeline(), db, instance_path).as_image());
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
@@ -335,7 +335,7 @@ pub fn instance_path_parts_buttons(
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     tree: &EntityTree,
     include_subtree: bool,
@@ -355,14 +355,14 @@ fn entity_tree_stats_ui(
     let (static_stats, timeline_stats) = if include_subtree {
         (
             db.subtree_stats_static(&engine, &tree.path),
-            db.subtree_stats_on_timeline(&engine, &tree.path, timeline.name()),
+            db.subtree_stats_on_timeline(&engine, &tree.path, timeline),
         )
     } else {
         (
             engine.store().entity_stats_static(&tree.path),
             engine
                 .store()
-                .entity_stats_on_timeline(&tree.path, timeline.name()),
+                .entity_stats_on_timeline(&tree.path, timeline),
         )
     };
 
@@ -379,7 +379,6 @@ fn entity_tree_stats_ui(
         ui.label(format!(
             "{} rows on timeline '{timeline}'{subtree_caveat}",
             format_uint(total_stats.num_rows),
-            timeline = timeline.name()
         ));
     } else {
         ui.label(format!(
@@ -387,7 +386,6 @@ fn entity_tree_stats_ui(
             format_uint(total_stats.num_rows),
             format_uint(static_stats.num_rows),
             format_uint(timeline_stats.num_rows),
-            timeline = timeline.name()
         ));
     }
 
@@ -397,10 +395,7 @@ fn entity_tree_stats_ui(
 
     if 0 < timeline_stats.total_size_bytes && 1 < num_temporal_rows {
         // Try to estimate data-rate:
-        if let Some(time_range) = engine
-            .store()
-            .entity_time_range(timeline.name(), &tree.path)
-        {
+        if let Some(time_range) = engine.store().entity_time_range(timeline, &tree.path) {
             let min_time = time_range.min();
             let max_time = time_range.max();
             if min_time < max_time {
@@ -420,19 +415,17 @@ fn entity_tree_stats_ui(
                 // Fencepost adjustment:
                 bytes_per_time *= (num_temporal_rows - 1) as f64 / num_temporal_rows as f64;
 
-                data_rate = Some(match timeline.typ() {
+                let typ = db.timeline_type(timeline);
+
+                data_rate = Some(match typ {
                     re_log_types::TimeType::Time => {
                         let bytes_per_second = 1e9 * bytes_per_time;
 
-                        format!(
-                            "{}/s in '{}'",
-                            format_bytes(bytes_per_second),
-                            timeline.name()
-                        )
+                        format!("{}/s in '{}'", format_bytes(bytes_per_second), timeline)
                     }
 
                     re_log_types::TimeType::Sequence => {
-                        format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
                     }
                 });
             }
@@ -539,24 +532,24 @@ pub fn data_blueprint_button_to(
 pub fn time_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
     value: TimeInt,
 ) -> egui::Response {
     let is_selected = ctx
         .rec_cfg
         .time_ctrl
         .read()
-        .is_time_selected(timeline, value);
+        .is_time_selected(timeline_name, value);
 
-    let response = ui.selectable_label(
-        is_selected,
-        timeline.typ().format(value, ctx.app_options().time_zone),
-    );
+    let typ = ctx.recording().timeline_type(timeline_name);
+
+    let response = ui.selectable_label(is_selected, typ.format(value, ctx.app_options().time_zone));
     if response.clicked() {
+        let timeline = Timeline::new(*timeline_name, typ);
         ctx.rec_cfg
             .time_ctrl
             .write()
-            .set_timeline_and_time(*timeline, value);
+            .set_timeline_and_time(timeline, value);
         ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
@@ -565,25 +558,26 @@ pub fn time_button(
 pub fn timeline_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
 ) -> egui::Response {
-    timeline_button_to(ctx, ui, timeline.name().to_string(), timeline)
+    timeline_button_to(ctx, ui, timeline.to_string(), timeline)
 }
 
 pub fn timeline_button_to(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline() == timeline;
+    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline().name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
         let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        time_ctrl.set_timeline(*timeline);
+        let timeline = Timeline::new(*timeline_name, ctx.recording().timeline_type(timeline_name));
+        time_ctrl.set_timeline(timeline);
         time_ctrl.pause();
     }
     response
@@ -642,8 +636,8 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            let typ = db.timeline_type(&query.timeline_name());
-            let timeline = Timeline::new(query.timeline_name(), typ);
+            let typ = db.timeline_type(&query.timeline());
+            let timeline = Timeline::new(query.timeline(), typ);
             entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
         }
     } else {

@@ -38,13 +38,13 @@ impl DataUi for InstancePath {
             // We are looking at an entity in the recording
             ctx.recording_engine()
                 .store()
-                .all_components_on_timeline(&query.timeline_name(), entity_path)
+                .all_components_on_timeline(&query.timeline(), entity_path)
         } else if ctx.blueprint_db().is_known_entity(entity_path) {
             // We are looking at an entity in the blueprint
             ctx.blueprint_db()
                 .storage_engine()
                 .store()
-                .all_components_on_timeline(&query.timeline_name(), entity_path)
+                .all_components_on_timeline(&query.timeline(), entity_path)
         } else {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
@@ -55,7 +55,7 @@ impl DataUi for InstancePath {
                 ui,
                 format!(
                     "{self} has no components on timeline {:?}",
-                    query.timeline_name()
+                    query.timeline()
                 ),
             );
             return;
@@ -70,12 +70,12 @@ impl DataUi for InstancePath {
         let mut components = latest_at(db, query, entity_path, &components);
 
         if components.is_empty() {
-            let typ = db.timeline_type(&query.timeline_name());
+            let typ = db.timeline_type(&query.timeline());
             ui_layout.label(
                 ui,
                 format!(
                     "Nothing logged at {} = {}",
-                    query.timeline_name(),
+                    query.timeline(),
                     typ.format(query.at(), ctx.app_options().time_zone),
                 ),
             );

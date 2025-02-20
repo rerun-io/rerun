@@ -53,7 +53,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         if !ui_layout.is_single_line() {
             let time = self
                 .unit
-                .index(&query.timeline_name())
+                .index(&query.timeline())
                 .map_or(TimeInt::STATIC, |(time, _)| time);
 
             // if the component is static, we display extra diagnostic information
@@ -92,7 +92,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     );
                 }
             } else {
-                let typ = db.timeline_type(&query.timeline_name());
+                let typ = db.timeline_type(&query.timeline());
                 let formatted_time = typ.format(time, ctx.app_options().time_zone);
                 ui.horizontal(|ui| {
                     ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());

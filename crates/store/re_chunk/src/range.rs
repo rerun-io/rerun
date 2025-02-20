@@ -157,7 +157,7 @@ impl RangeQuery {
     }
 
     #[inline]
-    pub fn timeline_name(&self) -> &TimelineName {
+    pub fn timeline(&self) -> &TimelineName {
         &self.timeline
     }
 
@@ -210,7 +210,7 @@ impl Chunk {
         // (e.g. the range query itself) much cheaper to compute.
         use std::borrow::Cow;
         let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(*query.timeline_name()))
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
         } else {
             Cow::Borrowed(self)
         };
@@ -225,13 +225,13 @@ impl Chunk {
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
             chunk.latest_at(
-                &crate::LatestAtQuery::new(*query.timeline_name(), TimeInt::MAX),
+                &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
                 component_name,
             )
         } else {
             let Some(is_sorted_by_time) = chunk
                 .timelines
-                .get(&query.timeline_name())
+                .get(query.timeline())
                 .map(|time_column| time_column.is_sorted())
             else {
                 return chunk.emptied();
@@ -244,12 +244,12 @@ impl Chunk {
                 chunk
             } else {
                 // Temporal, unsorted chunk
-                chunk.sorted_by_timeline_if_unsorted(query.timeline_name())
+                chunk.sorted_by_timeline_if_unsorted(query.timeline())
             };
 
             let Some(times) = chunk
                 .timelines
-                .get(&query.timeline_name())
+                .get(query.timeline())
                 .map(|time_column| time_column.times_raw())
             else {
                 return chunk.emptied();

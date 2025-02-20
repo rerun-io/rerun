@@ -242,7 +242,7 @@ pub trait RangeResultsExt {
     /// * [`HybridResultsChunkIter::slice_from_struct_field`]
     fn iter_as(
         &self,
-        timeline: Timeline,
+        timeline: TimelineName,
         component_name: ComponentName,
     ) -> HybridResultsChunkIter<'_> {
         let chunks = self.get_optional_chunks(&component_name);
@@ -405,13 +405,13 @@ impl RangeResultsExt for HybridResults<'_> {
 
 // ---
 
-use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
+use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, TimelineName};
 use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`HybridResults::iter_as`].
 pub struct HybridResultsChunkIter<'a> {
     chunks: Cow<'a, [Chunk]>,
-    timeline: Timeline,
+    timeline: TimelineName,
     component_name: ComponentName,
 }
 

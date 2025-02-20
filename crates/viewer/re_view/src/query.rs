@@ -6,7 +6,7 @@ use crate::{
     HybridResults,
 };
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentName};
 use re_viewer_context::{

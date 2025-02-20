@@ -28,10 +28,7 @@ fn query_latest_component<C: re_types_core::Component>(
             chunk
                 .latest_at(query, C::name())
                 .into_unit()
-                .and_then(|unit| {
-                    unit.index(&query.timeline_name())
-                        .map(|index| (index, unit))
-                })
+                .and_then(|unit| unit.index(&query.timeline()).map(|index| (index, unit)))
         })
         .max_by_key(|(index, _unit)| *index)?;
 

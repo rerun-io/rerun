@@ -63,7 +63,7 @@ impl QueryCache {
             let component_descr = component_descr.into();
             store
                 .entity_has_component_on_timeline(
-                    &query.timeline_name(),
+                    &query.timeline(),
                     entity_path,
                     &component_descr.component_name,
                 )
@@ -107,7 +107,7 @@ impl QueryCache {
 
                 let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
-                    query.timeline_name(),
+                    query.timeline(),
                     ClearIsRecursive::name(),
                 );
 
@@ -134,7 +134,7 @@ impl QueryCache {
                     // recursive flag is set.
                     #[allow(clippy::collapsible_if)] // readability
                     if clear_entity_path == *entity_path || found_recursive_clear {
-                        if let Some(index) = cached.index(&query.timeline_name()) {
+                        if let Some(index) = cached.index(&query.timeline()) {
                             if compare_indices(index, max_clear_index)
                                 == std::cmp::Ordering::Greater
                             {
@@ -154,7 +154,7 @@ impl QueryCache {
 
         for component_name in component_names {
             let key =
-                QueryCacheKey::new(entity_path.clone(), query.timeline_name(), component_name);
+                QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -169,7 +169,7 @@ impl QueryCache {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(&query.timeline_name()) {
+                if let Some(index) = cached.index(&query.timeline()) {
                     if component_name == ClearIsRecursive::name()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
@@ -655,7 +655,7 @@ impl LatestAtCache {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
 
-        debug_assert_eq!(query.timeline_name(), self.cache_key.timeline_name);
+        debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 
         let Self {
             cache_key: _,
@@ -676,7 +676,7 @@ impl LatestAtCache {
                     .into_unit()
                     .and_then(|chunk| {
                         chunk
-                            .index(&query.timeline_name())
+                            .index(&query.timeline())
                             .map(|index| (index, chunk))
                     })
             })
