@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     elif args.subcommand == "register":
         extra_metadata = pa.Table.from_pydict({"extra": [42]})
-        id = conn.register(args.storage_url, extra_metadata)
+        id = conn.register(None, args.storage_url, extra_metadata)
         print(f"Registered new recording with ID: {id}")
 
     elif args.subcommand == "update":
