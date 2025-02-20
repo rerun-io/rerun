@@ -652,18 +652,21 @@ impl ::prost::Name for GetRecordingSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingRequest {
+    /// to which catalog entry do we want to register the recording
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
     /// human readable description of the recording
-    #[prost(string, tag = "1")]
+    #[prost(string, tag = "2")]
     pub description: ::prost::alloc::string::String,
     /// recording storage url (e.g. s3://bucket/file or file:///path/to/file)
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "3")]
     pub storage_url: ::prost::alloc::string::String,
     /// type of recording
-    #[prost(enumeration = "RecordingType", tag = "3")]
+    #[prost(enumeration = "RecordingType", tag = "4")]
     pub typ: i32,
     /// (optional) any additional metadata that should be associated with the recording
     /// You can associate any arbtrirary number of columns with a specific recording
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "5")]
     pub metadata: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for RegisterRecordingRequest {
@@ -678,8 +681,11 @@ impl ::prost::Name for RegisterRecordingRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UnregisterRecordingRequest {
-    /// unique identifier of the recording
+    /// which catalog entry do we want to unregister the recording from
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// unique identifier of the recording
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
 }
 impl ::prost::Name for UnregisterRecordingRequest {
@@ -704,8 +710,12 @@ impl ::prost::Name for UnregisterRecordingResponse {
         "/rerun.remote_store.v0.UnregisterRecordingResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct UnregisterAllRecordingsRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnregisterAllRecordingsRequest {
+    /// which catalog entry do we want to unregister all recordings from
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+}
 impl ::prost::Name for UnregisterAllRecordingsRequest {
     const NAME: &'static str = "UnregisterAllRecordingsRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";

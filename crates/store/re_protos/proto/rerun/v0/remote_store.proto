@@ -56,7 +56,8 @@ service StorageNode {
 
     rpc UnregisterRecording(UnregisterRecordingRequest) returns (UnregisterRecordingResponse) {}
 
-    rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest) returns (UnregisterAllRecordingsResponse) {}
+    rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest)
+        returns (UnregisterAllRecordingsResponse) {}
 }
 
 // ---------------- Common response message ------------------
@@ -166,8 +167,7 @@ message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
 
-message ReIndexResponse {
-}
+message ReIndexResponse {}
 
 // ---------------- SearchIndex ------------------
 
@@ -212,7 +212,6 @@ message BTreeIndexQuery {
 message CatalogEntry {
     string name = 1;
 }
-
 
 // ---------------- CreateManifests ------------------
 
@@ -390,26 +389,33 @@ message GetRecordingSchemaResponse {
 // ---------------- RegisterRecording ------------------
 
 message RegisterRecordingRequest {
+    // to which catalog entry do we want to register the recording
+    CatalogEntry entry = 1;
     // human readable description of the recording
-    string description = 1;
+    string description = 2;
     // recording storage url (e.g. s3://bucket/file or file:///path/to/file)
-    string storage_url = 2;
+    string storage_url = 3;
     // type of recording
-    RecordingType typ = 3;
+    RecordingType typ = 4;
     // (optional) any additional metadata that should be associated with the recording
     // You can associate any arbtrirary number of columns with a specific recording
-    DataframePart metadata = 4;
+    DataframePart metadata = 5;
 }
 
 // ---------------- Unregister from catalog ------------------
 
 message UnregisterRecordingRequest {
+    // which catalog entry do we want to unregister the recording from
+    CatalogEntry entry = 1;
     // unique identifier of the recording
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
 }
 message UnregisterRecordingResponse {}
 
-message UnregisterAllRecordingsRequest {}
+message UnregisterAllRecordingsRequest {
+    // which catalog entry do we want to unregister all recordings from
+    CatalogEntry entry = 1;
+}
 message UnregisterAllRecordingsResponse {}
 
 // ---------------- UpdateCatalog  -----------------
