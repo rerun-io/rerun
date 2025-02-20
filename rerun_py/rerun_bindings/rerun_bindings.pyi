@@ -629,7 +629,9 @@ class StorageNodeClient:
         """
         ...
 
-    def register(self, storage_url: str, collection_name: Optional[str] = None, metadata: Optional[TableLike] = None) -> str:
+    def register(
+        self, storage_url: str, collection_name: Optional[str] = None, metadata: Optional[TableLike] = None
+    ) -> str:
         """
         Register a recording along with some metadata.
 
