@@ -401,6 +401,8 @@ pub struct ChunkStore {
     pub(crate) config: ChunkStoreConfig,
 
     /// Keeps track of the _latest_ datatype for each time column.
+    ///
+    /// See also [`Self::time_column_type`].
     pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
 
     /// Keeps track of the _latest_ datatype information for all component types that have been written
@@ -650,6 +652,12 @@ impl ChunkStore {
     #[inline]
     pub fn num_chunks(&self) -> usize {
         self.chunks_per_chunk_id.len()
+    }
+
+    /// Lookup the _latest_ [`TimeType`] used by a specific [`TimelineName`].
+    #[inline]
+    pub fn time_column_type(&self, timeline_name: &TimelineName) -> Option<TimeType> {
+        self.time_type_registry.get(timeline_name).copied()
     }
 
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].

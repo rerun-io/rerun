@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(timeline, ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timeline.name(), ResolvedTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
     let caches = re_query::QueryCache::new(store.clone());

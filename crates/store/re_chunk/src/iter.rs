@@ -935,12 +935,12 @@ mod tests {
 
         {
             let got = Arc::clone(&chunk)
-                .iter_indices_owned(&timeline_frame)
+                .iter_indices_owned(timeline_frame.name())
                 .collect_vec();
             let expected = izip!(
                 chunk
                     .timelines
-                    .get(&timeline_frame)
+                    .get(timeline_frame.name())
                     .map(|time_column| time_column.times().collect_vec())
                     .unwrap_or_default(),
                 chunk.row_ids()
@@ -983,7 +983,7 @@ mod tests {
 
         {
             let got = Arc::clone(&chunk)
-                .iter_indices_owned(&timeline_frame)
+                .iter_indices_owned(timeline_frame.name())
                 .collect_vec();
             let expected = izip!(std::iter::repeat(TimeInt::STATIC), chunk.row_ids()).collect_vec();
 

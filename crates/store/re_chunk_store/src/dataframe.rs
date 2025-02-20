@@ -331,7 +331,7 @@ pub struct QueryExpression {
     ///
     /// If left unspecified, the results will only contain static data.
     ///
-    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
+    /// Examples: `Some(TimelineName("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
     pub filtered_index: Option<Index>,

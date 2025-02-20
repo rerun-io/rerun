@@ -11,7 +11,7 @@ use re_chunk::ChunkId;
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
-use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, TimelineName};
 use re_types_core::{components::ClearIsRecursive, Component as _, ComponentName};
 
 use crate::{LatestAtCache, RangeCache};
@@ -22,7 +22,7 @@ use crate::{LatestAtCache, RangeCache};
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
-    pub timeline: Timeline,
+    pub timeline_name: TimelineName,
     pub component_name: ComponentName,
 }
 
@@ -31,7 +31,7 @@ impl re_byte_size::SizeBytes for QueryCacheKey {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             entity_path,
-            timeline,
+            timeline_name: timeline,
             component_name,
         } = self;
         entity_path.heap_size_bytes()
@@ -45,12 +45,11 @@ impl std::fmt::Debug for QueryCacheKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            timeline,
+            timeline_name: timeline,
             component_name,
         } = self;
         f.write_fmt(format_args!(
-            "{entity_path}:{component_name} on {}",
-            timeline.name()
+            "{entity_path}:{component_name} on '{timeline}'"
         ))
     }
 }
@@ -59,12 +58,12 @@ impl QueryCacheKey {
     #[inline]
     pub fn new(
         entity_path: impl Into<EntityPath>,
-        timeline: impl Into<Timeline>,
+        timeline: impl Into<TimelineName>,
         component_name: impl Into<ComponentName>,
     ) -> Self {
         Self {
             entity_path: entity_path.into(),
-            timeline: timeline.into(),
+            timeline_name: timeline.into(),
             component_name: component_name.into(),
         }
     }
@@ -166,7 +165,7 @@ impl std::fmt::Debug for QueryCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             store_id,
-            store: _,
+            store,
             might_require_clearing,
             latest_at_per_cache_key,
             range_per_cache_key,
@@ -195,9 +194,16 @@ impl std::fmt::Debug for QueryCache {
                 let cache = cache.read();
                 strings.push(format!(
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
-                    cache.pending_invalidations.first().map(|&t| cache_key
-                        .timeline
-                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
+                    cache.pending_invalidations.first().map(|&t| {
+                        let range = ResolvedTimeRange::new(t, TimeInt::MAX);
+                        if let Some(time_type) =
+                            store.read().time_column_type(&cache_key.timeline_name)
+                        {
+                            time_type.format_range_utc(range)
+                        } else {
+                            format!("{range:?}")
+                        }
+                    })
                 ));
                 strings.push(indent::indent_all_by(4, format!("{cache:?}")));
             }
@@ -331,7 +337,7 @@ impl ChunkStoreSubscriber for QueryCache {
                         for (component_desc, time_range) in per_desc {
                             let key = QueryCacheKey::new(
                                 chunk.entity_path().clone(),
-                                timeline,
+                                *timeline.name(),
                                 component_name,
                             );
 

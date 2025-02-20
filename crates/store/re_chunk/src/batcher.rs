@@ -1099,7 +1099,7 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 43, 44].into()),
             )];
             let expected_components = [
@@ -1372,7 +1372,7 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
@@ -1396,7 +1396,7 @@ mod tests {
         {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
@@ -1479,7 +1479,7 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42].into()),
             )];
             let expected_components = [(
@@ -1504,11 +1504,11 @@ mod tests {
             let expected_row_ids = vec![row2.row_id, row3.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(true), timeline1, vec![43, 44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(true), timeline2, vec![1000, 1001].into()),
                 ),
             ];
@@ -1588,7 +1588,7 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
@@ -1612,7 +1612,7 @@ mod tests {
         {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
@@ -1710,11 +1710,11 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id, row4.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(false), timeline1, vec![45, 42, 43, 44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001, 1002].into()),
                 ),
             ];
@@ -1814,11 +1814,11 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(false), timeline1, vec![45, 42, 43].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001].into()),
                 ),
             ];
@@ -1844,11 +1844,11 @@ mod tests {
             let expected_row_ids = vec![row4.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(true), timeline1, vec![44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(true), timeline2, vec![1002].into()),
                 ),
             ];

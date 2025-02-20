@@ -287,7 +287,7 @@ mod tests {
 
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1: IntMap<_, _> = std::iter::once((
-            timeline1,
+            *timeline1.name(),
             TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
         .collect();

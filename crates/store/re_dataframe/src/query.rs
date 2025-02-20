@@ -339,10 +339,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     ColumnDescriptor::Component(descr) => {
                         descr.sanity_check();
 
-                        let query = re_chunk::LatestAtQuery::new(
-                            Timeline::new_sequence(""),
-                            TimeInt::STATIC,
-                        );
+                        let query =
+                            re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
                         let results = cache.latest_at(
                             &query,
@@ -1118,7 +1116,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 })
                 .for_each(|(timeline, (time, time_sliced))| {
                     max_value_per_index
-                        .entry(timeline)
+                        .entry(*timeline.name())
                         .and_modify(|(max_time, max_time_sliced)| {
                             if time > *max_time {
                                 *max_time = time;

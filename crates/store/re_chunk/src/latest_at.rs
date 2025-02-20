@@ -12,16 +12,15 @@ use crate::{Chunk, RowId};
 /// Get the latest version of the data available at this time.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LatestAtQuery {
-    timeline: Timeline,
+    timeline: TimelineName,
     at: TimeInt,
 }
 
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest-at {} on {:?}>",
-            self.timeline.typ().format_utc(self.at),
-            self.timeline.name(),
+            "<latest-at {:?} on {:?}>",
+            self.at, self.timeline,
         ))
     }
 }
@@ -29,13 +28,13 @@ impl std::fmt::Debug for LatestAtQuery {
 impl LatestAtQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub fn new(timeline: Timeline, at: impl TryInto<TimeInt>) -> Self {
+    pub fn new(timeline: TimelineName, at: impl TryInto<TimeInt>) -> Self {
         let at = at.try_into().unwrap_or(TimeInt::MIN);
         Self { timeline, at }
     }
 
     #[inline]
-    pub const fn latest(timeline: Timeline) -> Self {
+    pub const fn latest(timeline: TimelineName) -> Self {
         Self {
             timeline,
             at: TimeInt::MAX,
@@ -43,13 +42,8 @@ impl LatestAtQuery {
     }
 
     #[inline]
-    pub fn timeline(&self) -> Timeline {
+    pub fn timeline_name(&self) -> TimelineName {
         self.timeline
-    }
-
-    #[inline]
-    pub fn timeline_name(&self) -> &TimelineName {
-        self.timeline.name()
     }
 
     #[inline]
@@ -122,7 +116,7 @@ impl Chunk {
                 }
             }
         } else {
-            let Some(time_column) = self.timelines.get(query.timeline_name()) else {
+            let Some(time_column) = self.timelines.get(&query.timeline_name()) else {
                 return self.emptied();
             };
 

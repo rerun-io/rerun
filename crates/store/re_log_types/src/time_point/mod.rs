@@ -117,7 +117,7 @@ impl re_byte_size::SizeBytes for TimePoint {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
-    /// Normal wall time.
+    /// Normal wall time, encoded as nanoseconds.
     Time,
 
     /// Used e.g. for frames in a film.

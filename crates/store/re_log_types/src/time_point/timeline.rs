@@ -106,11 +106,7 @@ impl Timeline {
         time_range: &ResolvedTimeRange,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
-        format!(
-            "{}..={}",
-            self.typ.format(time_range.min(), time_zone_for_timestamps),
-            self.typ.format(time_range.max(), time_zone_for_timestamps),
-        )
+        self.typ.format_range(*time_range, time_zone_for_timestamps)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
@@ -148,5 +144,13 @@ impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.name.hash() ^ self.typ.hash());
+    }
+}
+
+// Makes it more ergonomic to do lookups in `Map<TimelineName, X>` using `Timeline`.
+impl std::borrow::Borrow<TimelineName> for Timeline {
+    #[inline]
+    fn borrow(&self) -> &TimelineName {
+        &self.name
     }
 }

@@ -75,7 +75,7 @@ impl Default for DataQueryResult {
             num_visualized_entities: 0,
             component_defaults: re_query::LatestAtResults {
                 entity_path: "<defaults>".into(),
-                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+                query: re_chunk_store::LatestAtQuery::latest(*blueprint_timeline().name()),
                 compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
                 components: Default::default(),
             },

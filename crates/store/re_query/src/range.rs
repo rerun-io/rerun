@@ -47,7 +47,8 @@ impl QueryCache {
         });
 
         for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key =
+                QueryCacheKey::new(entity_path.clone(), *query.timeline_name(), component_name);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -176,7 +177,7 @@ impl RangeCache {
                 cached
                     .chunk
                     .timelines()
-                    .get(self.cache_key.timeline.name())
+                    .get(&self.cache_key.timeline_name)
                     .map(|time_column| time_column.time_range())
             })
             .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
@@ -198,8 +199,8 @@ impl std::fmt::Debug for RangeCache {
         let mut strings: Vec<String> = Vec::new();
 
         strings.push(format!(
-            "{} ({})",
-            cache_key.timeline.typ().format_range_utc(self.time_range()),
+            "{:?} ({})",
+            self.time_range(),
             re_format::format_bytes(chunks.total_size_bytes() as _),
         ));
 
@@ -266,7 +267,7 @@ impl RangeCache {
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        debug_assert_eq!(query.timeline(), self.cache_key.timeline);
+        debug_assert_eq!(query.timeline_name(), &self.cache_key.timeline_name);
 
         // First, we forward the query as-is to the store.
         //
@@ -287,8 +288,8 @@ impl RangeCache {
                         // will speed up future arrow operations on this chunk.
                         .densified(component_name)
                         // Pre-sort the cached chunk according to the cache key's timeline.
-                        .sorted_by_timeline_if_unsorted(self.cache_key.timeline.name()),
-                    resorted: !raw_chunk.is_timeline_sorted(self.cache_key.timeline.name()),
+                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
                 });
         }
 

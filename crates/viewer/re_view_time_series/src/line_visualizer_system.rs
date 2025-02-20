@@ -508,11 +508,11 @@ impl SeriesLineSystem {
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
                         .timelines()
-                        .get(query.timeline_name())
+                        .get(&query.timeline_name())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
                         .timelines()
-                        .get(query.timeline_name())
+                        .get(&query.timeline_name())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
                     lhs_time_max <= rhs_time_min
                 });

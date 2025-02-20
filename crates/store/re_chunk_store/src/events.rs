@@ -204,7 +204,7 @@ impl ChunkStoreDiff {
 mod tests {
     use std::collections::BTreeMap;
 
-    use re_chunk::RowId;
+    use re_chunk::{RowId, TimelineName};
     use re_log_types::{
         example_components::{MyColor, MyIndex, MyPoint},
         EntityPath, TimeInt, TimePoint, Timeline,
@@ -222,7 +222,7 @@ mod tests {
     #[derive(Default, Debug, PartialEq, Eq)]
     struct GlobalCounts {
         row_ids: BTreeMap<RowId, i64>,
-        timelines: BTreeMap<Timeline, i64>,
+        timelines: BTreeMap<TimelineName, i64>,
         entity_paths: BTreeMap<EntityPath, i64>,
         component_names: BTreeMap<ComponentName, i64>,
         times: BTreeMap<TimeInt, i64>,
@@ -232,7 +232,7 @@ mod tests {
     impl GlobalCounts {
         fn new(
             row_ids: impl IntoIterator<Item = (RowId, i64)>, //
-            timelines: impl IntoIterator<Item = (Timeline, i64)>, //
+            timelines: impl IntoIterator<Item = (TimelineName, i64)>, //
             entity_paths: impl IntoIterator<Item = (EntityPath, i64)>, //
             component_names: impl IntoIterator<Item = (ComponentName, i64)>, //
             times: impl IntoIterator<Item = (TimeInt, i64)>, //
@@ -317,9 +317,9 @@ mod tests {
                     (row_id1, 1), //
                 ],
                 [
-                    (timeline_frame, 1),
-                    (timeline_other, 1),
-                    (timeline_yet_another, 1),
+                    (*timeline_frame.name(), 1),
+                    (*timeline_other.name(), 1),
+                    (*timeline_yet_another.name(), 1),
                 ],
                 [
                     (entity_path1.clone(), 1), //
@@ -363,9 +363,9 @@ mod tests {
                     (row_id2, 1),
                 ],
                 [
-                    (timeline_frame, 2),
-                    (timeline_other, 1),
-                    (timeline_yet_another, 2),
+                    (*timeline_frame.name(), 2),
+                    (*timeline_other.name(), 1),
+                    (*timeline_yet_another.name(), 2),
                 ],
                 [
                     (entity_path1.clone(), 1), //
@@ -413,9 +413,9 @@ mod tests {
                     (row_id3, 1),
                 ],
                 [
-                    (timeline_frame, 2),
-                    (timeline_other, 1),
-                    (timeline_yet_another, 2),
+                    (*timeline_frame.name(), 2),
+                    (*timeline_other.name(), 1),
+                    (*timeline_yet_another.name(), 2),
                 ],
                 [
                     (entity_path1.clone(), 1), //
@@ -447,9 +447,9 @@ mod tests {
                     (row_id3, 1), // static -- no gc
                 ],
                 [
-                    (timeline_frame, 0),
-                    (timeline_other, 0),
-                    (timeline_yet_another, 0),
+                    (*timeline_frame.name(), 0),
+                    (*timeline_other.name(), 0),
+                    (*timeline_yet_another.name(), 0),
                 ],
                 [
                     (entity_path1.clone(), 0), //

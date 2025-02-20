@@ -1089,7 +1089,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
@@ -1112,7 +1112,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(5, got.num_rows());
 
@@ -1220,7 +1220,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
@@ -1239,7 +1239,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 

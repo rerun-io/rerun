@@ -489,28 +489,28 @@ mod tests {
 
             assert!(chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted());
             assert!(chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             assert!(!chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted());
             assert!(!chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             let chunk_sorted_timeline2 =
-                chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(&timeline2);
+                chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(timeline2.name());
 
             eprintln!("sorted:\n{chunk_sorted_timeline2}");
 
@@ -519,23 +519,23 @@ mod tests {
 
             assert!(!chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted());
             assert!(!chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             assert!(chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted());
             assert!(chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted_uncached());
 

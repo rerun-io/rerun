@@ -28,7 +28,10 @@ fn query_latest_component<C: re_types_core::Component>(
             chunk
                 .latest_at(query, C::name())
                 .into_unit()
-                .and_then(|unit| unit.index(query.timeline_name()).map(|index| (index, unit)))
+                .and_then(|unit| {
+                    unit.index(&query.timeline_name())
+                        .map(|index| (index, unit))
+                })
         })
         .max_by_key(|(index, _unit)| *index)?;
 
@@ -70,7 +73,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point2, got_point);
@@ -122,7 +125,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point1, got_point);
@@ -186,7 +189,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point1, got_point);
@@ -269,7 +272,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty frame_nr
     {
         let chunks = store.latest_at_relevant_chunks(
-            &LatestAtQuery::new(timeline_frame_nr, frame39),
+            &LatestAtQuery::new(*timeline_frame_nr.name(), frame39),
             &entity_path,
             MyIndex::name(),
         );
@@ -289,7 +292,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong entity path
     {
         let chunks = store.latest_at_relevant_chunks(
-            &LatestAtQuery::new(timeline_frame_nr, frame40),
+            &LatestAtQuery::new(*timeline_frame_nr.name(), frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),
         );
