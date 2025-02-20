@@ -374,8 +374,8 @@ mod tests {
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
                 range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeReal::from(10.0),
-                    re_log_types::TimeReal::from(20.0)
+                    re_log_types::TimeReal::from(100.0),
+                    re_log_types::TimeReal::from(200.0)
                 )
             })
         );
