@@ -425,7 +425,9 @@ impl<'de> Deserialize<'de> for NamesList {
                 }
             }
         }
-        Err(serde::de::Error::custom("Unsupported name format in LeRobot dataset!"))
+        Err(serde::de::Error::custom(
+            "Unsupported name format in LeRobot dataset!",
+        ))
     }
 }
 
