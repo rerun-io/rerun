@@ -316,8 +316,8 @@ impl PyStorageNodeClient {
     ))]
     fn register(
         &mut self,
-        collection_name: Option<String>,
         storage_url: &str,
+        collection_name: Option<String>,
         metadata: Option<MetadataLike>,
     ) -> PyResult<String> {
         self.runtime.block_on(async {
