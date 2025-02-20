@@ -57,6 +57,19 @@ impl TryFrom<&str> for TimeRange {
         let max = max.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
 
         let timeline = re_log_types::Timeline::new(timeline, typ);
+
+        let (min, max) = match typ {
+            // in frame numbers
+            re_log_types::TimeType::Sequence => (
+                re_log_types::TimeReal::from(min),
+                re_log_types::TimeReal::from(max),
+            ),
+            // in seconds
+            re_log_types::TimeType::Time => (
+                re_log_types::TimeReal::from_seconds(min),
+                re_log_types::TimeReal::from_seconds(max),
+            ),
+        };
         let range = re_log_types::ResolvedTimeRangeF::new(min, max);
 
         Ok(Self { timeline, range })
