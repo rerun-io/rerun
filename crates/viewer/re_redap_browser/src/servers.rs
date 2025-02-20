@@ -101,6 +101,9 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
         let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
         let servers = Self::default();
+
+        // We cannot create `Server` right away, because we need an async handle and an
+        // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
             let _ = servers.command_sender.send(Command::AddServer(origin));
         }
