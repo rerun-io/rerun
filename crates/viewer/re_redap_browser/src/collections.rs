@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use ahash::HashMap;
-use parking_lot::Mutex;
 use tokio_stream::StreamExt as _;
 
 use re_grpc_client::{redap, StreamError, TonicStatusError};
@@ -12,6 +9,7 @@ use re_ui::{list_item, UiExt};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::context::Context;
+use crate::requested_object::RequestedObject;
 use crate::servers::Command;
 
 /// An id for a [`Collection`].
@@ -28,39 +26,11 @@ pub struct Collection {
     pub collection: Vec<SorbetBatch>,
 }
 
-/// A handle on an in-flight collection query. Contains `Some(Ok(_))` or `Some(Err(_))` once the
-/// query has completed.
-struct CollectionQueryHandle {
-    result: Arc<Mutex<Option<Result<Collection, StreamError>>>>,
-}
-
-impl CollectionQueryHandle {
-    /// Initiate a collection query call.
-    pub fn new(runtime: &AsyncRuntimeHandle, origin: re_uri::Origin) -> Self {
-        let result = Arc::new(Mutex::new(None));
-        let handle = Self {
-            result: result.clone(),
-        };
-
-        runtime.spawn_future(async move {
-            let collection = stream_catalog_async(origin.clone()).await;
-            result.lock().replace(collection);
-        });
-
-        handle
-    }
-}
-
-/// Either a [`Collection`] or a handle on the query to get it.
-enum CollectionOrQueryHandle {
-    QueryHandle(CollectionQueryHandle),
-    Collection(Result<Collection, StreamError>),
-}
-
 /// A collection of [`Collection`]s.
 #[derive(Default)]
 pub struct Collections {
-    collections: HashMap<re_uri::Origin, CollectionOrQueryHandle>,
+    //TODO(ab): these should be indexed by collection id
+    collections: HashMap<re_uri::Origin, RequestedObject<Result<Collection, StreamError>>>,
 }
 
 impl Collections {
@@ -68,21 +38,16 @@ impl Collections {
         //TODO(ab): should we return error if the requested collection already exists? Or maybe just
         // query it again.
         self.collections.entry(origin.clone()).or_insert_with(|| {
-            CollectionOrQueryHandle::QueryHandle(CollectionQueryHandle::new(runtime, origin))
+            RequestedObject::new(runtime, stream_catalog_async(origin))
+
+            //CollectionOrQueryHandle::QueryHandle(CollectionQueryHandle::new(runtime, origin))
         });
     }
 
     /// Convert all completed queries into proper collections.
     pub fn on_frame_start(&mut self) {
         for collection in self.collections.values_mut() {
-            let result = match collection {
-                CollectionOrQueryHandle::QueryHandle(handle) => handle.result.lock().take(),
-                CollectionOrQueryHandle::Collection(_) => None,
-            };
-
-            if let Some(result) = result {
-                *collection = CollectionOrQueryHandle::Collection(result);
-            }
+            collection.on_frame_start();
         }
     }
 
@@ -90,23 +55,22 @@ impl Collections {
     pub fn find(&self, collection_id: CollectionId) -> Option<&Collection> {
         self.collections
             .values()
-            .filter_map(|handle| match handle {
-                CollectionOrQueryHandle::QueryHandle(_) => None,
-                CollectionOrQueryHandle::Collection(collection) => collection.as_ref().ok(),
-            })
+            .filter_map(|handle| handle.try_as_ref())
+            .filter_map(|result| result.as_ref().ok())
             .find(|collection| collection.collection_id == collection_id)
     }
 
     /// [`list_item::ListItem`]-based UI for the collections.
     pub fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
         for collection in self.collections.values() {
-            match collection {
-                CollectionOrQueryHandle::QueryHandle(_) => {
+            match collection.try_as_ref() {
+                None => {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new("Loading default collection…").italics(true),
                     );
                 }
-                CollectionOrQueryHandle::Collection(Ok(collection)) => {
+
+                Some(Ok(collection)) => {
                     let is_selected = *ctx.selected_collection == Some(collection.collection_id);
 
                     let content = list_item::LabelContent::new(&collection.name);
@@ -118,7 +82,8 @@ impl Collections {
                             .send(Command::SelectCollection(collection.collection_id));
                     }
                 }
-                CollectionOrQueryHandle::Collection(Err(err)) => {
+
+                Some(Err(err)) => {
                     ui.list_item_flat_noninteractive(list_item::LabelContent::new(
                         egui::RichText::new("Failed to load").color(ui.visuals().error_fg_color),
                     ))
