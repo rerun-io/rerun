@@ -1,6 +1,6 @@
 use crossbeam_channel::{bounded, Receiver};
 
-use re_viewer_context::AsyncRuntimeHandle;
+use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
 pub enum RequestedObject<T: Send + 'static> {
@@ -10,10 +10,9 @@ pub enum RequestedObject<T: Send + 'static> {
 
 impl<T: Send + 'static> RequestedObject<T> {
     /// Create a new [`Self`] with the given future.
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn new<F>(runtime: &AsyncRuntimeHandle, func: F) -> Self
     where
-        F: std::future::Future<Output = T> + Send + 'static,
+        F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
         let (tx, rx) = bounded(1);
         let handle = Self::Pending(rx);
@@ -28,49 +27,13 @@ impl<T: Send + 'static> RequestedObject<T> {
 
     /// Create a new [`Self`] with the given future and automatically request a repaint of the UI
     /// when the future completes.
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn new_with_repaint<F>(
         runtime: &AsyncRuntimeHandle,
         egui_ctx: egui::Context,
         func: F,
     ) -> Self
     where
-        F: std::future::Future<Output = T> + Send + 'static,
-    {
-        Self::new(runtime, async move {
-            let result = func.await;
-            egui_ctx.request_repaint();
-            result
-        })
-    }
-
-    /// Create a new [`Self`] with the given future.
-    #[cfg(target_arch = "wasm32")]
-    pub fn new<F>(runtime: &AsyncRuntimeHandle, func: F) -> Self
-    where
-        F: std::future::Future<Output = T> + 'static,
-    {
-        let (tx, rx) = bounded(1);
-        let handle = Self::Pending(rx);
-
-        runtime.spawn_future(async move {
-            let result = func.await;
-            let _ = tx.send(result);
-        });
-
-        handle
-    }
-
-    /// Create a new [`Self`] with the given future and automatically request a repaint of the UI
-    /// when the future completes.
-    #[cfg(target_arch = "wasm32")]
-    pub fn new_with_repaint<F>(
-        runtime: &AsyncRuntimeHandle,
-        egui_ctx: egui::Context,
-        func: F,
-    ) -> Self
-    where
-        F: std::future::Future<Output = T> + 'static,
+        F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
         Self::new(runtime, async move {
             let result = func.await;
