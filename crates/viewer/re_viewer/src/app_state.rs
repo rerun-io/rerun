@@ -615,7 +615,7 @@ impl AppState {
             let time_ctrl = self.blueprint_cfg.time_ctrl.read();
             if time_ctrl.play_state() == PlayState::Following {
                 // Special-case just to make sure we include stuff added in this frame
-                LatestAtQuery::latest(*re_viewer_context::blueprint_timeline().name())
+                LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
             } else {
                 time_ctrl.current_query().clone()
             }

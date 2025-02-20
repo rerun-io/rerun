@@ -26,7 +26,7 @@ use re_chunk_store::{
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
-use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 

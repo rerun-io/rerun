@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use re_chunk::{Chunk, ChunkId, RowId};
+use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
 use re_log_types::example_components::{MyIndex, MyPoint};
 use re_log_types::{
@@ -262,14 +262,13 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     let timeline_wrong_name = TimelineName::new("lag_time");
-    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::log_time();
+    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_log_time = TimelineName::log_time();
 
     // empty frame_nr
     {
         let chunks = store.latest_at_relevant_chunks(
-            &LatestAtQuery::new(*timeline_frame_nr.name(), frame39),
+            &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
             MyIndex::name(),
         );
@@ -289,7 +288,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong entity path
     {
         let chunks = store.latest_at_relevant_chunks(
-            &LatestAtQuery::new(*timeline_frame_nr.name(), frame40),
+            &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),
         );
@@ -300,16 +299,6 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
-            &EntityPath::from("does/not/exist"),
-            MyIndex::name(),
-        );
-        assert!(chunks.is_empty());
-    }
-
-    // wrong timeline kind
-    {
-        let chunks = store.latest_at_relevant_chunks(
-            &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),
         );

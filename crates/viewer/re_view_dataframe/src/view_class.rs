@@ -4,9 +4,9 @@ use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
-use re_ui::{Help, UiExt};
+use re_ui::Help;
 use re_viewer_context::{
-    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt, ViewSystemExecutionError, ViewerContext,
 };
 

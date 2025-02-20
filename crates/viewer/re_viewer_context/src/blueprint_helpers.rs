@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use re_chunk::RowId;
+use re_chunk::{RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types::{
@@ -9,13 +9,13 @@ use re_types::{
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
 #[inline]
-pub fn blueprint_timeline() -> Timeline {
-    Timeline::new_sequence("blueprint")
+pub fn blueprint_timeline() -> TimelineName {
+    TimelineName::new("blueprint")
 }
 
 /// The timepoint to use when writing an update to the blueprint.
 pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> TimePoint {
-    let timeline = blueprint_timeline();
+    let timeline = Timeline::new_sequence(blueprint_timeline());
 
     let max_time = blueprint
         .time_histogram(timeline.name())

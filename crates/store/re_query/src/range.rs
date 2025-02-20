@@ -190,7 +190,7 @@ impl RangeCache {
 impl std::fmt::Debug for RangeCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            cache_key,
+            cache_key: _,
             chunks,
             pending_invalidations: _,
         } = self;

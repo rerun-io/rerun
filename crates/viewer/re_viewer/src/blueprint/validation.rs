@@ -1,7 +1,6 @@
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::Timeline;
 use re_types_core::Component;
 
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {

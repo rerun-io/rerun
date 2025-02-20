@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, Timeline, TimelineName};
+use re_log_types::{EntityPath, TimelineName};
 use re_types::View;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};

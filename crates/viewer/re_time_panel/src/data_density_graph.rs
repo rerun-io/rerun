@@ -10,7 +10,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt,  TimelineName};
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, TimelineName};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
@@ -483,10 +483,7 @@ pub fn build_density_graph<'a>(
                 &store.id(),
                 |chunks_per_timeline| {
                     let Some(info) = chunks_per_timeline
-                        .path_recursive_chunks_for_entity_and_timeline(
-                            &item.entity_path,
-                            &timeline,
-                        )
+                        .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, timeline)
                     else {
                         return Default::default();
                     };

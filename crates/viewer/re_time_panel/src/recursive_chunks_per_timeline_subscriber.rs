@@ -239,8 +239,8 @@ mod tests {
         // Remove only the t0 chunk on "parent/child"
         store.gc(&GarbageCollectionOptions {
             protected_time_ranges: [
-                (t0, ResolvedTimeRange::new(1, TimeInt::MAX)),
-                (t1, ResolvedTimeRange::EVERYTHING),
+                (*t0.name(), ResolvedTimeRange::new(1, TimeInt::MAX)),
+                (*t1.name(), ResolvedTimeRange::EVERYTHING),
             ]
             .into_iter()
             .collect(),

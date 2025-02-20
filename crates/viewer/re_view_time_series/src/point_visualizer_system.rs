@@ -259,7 +259,7 @@ impl SeriesPointSystem {
 
             // Determine per-series visibility flags.
             let mut series_visibility_flags: Vec<bool> = results
-                .iter_as(query.timeline(), SeriesVisible::name())
+                .iter_as(*query.timeline(), SeriesVisible::name())
                 .slice::<bool>()
                 .next()
                 .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
@@ -393,10 +393,7 @@ impl SeriesPointSystem {
 
                         let all_marker_sizes = all_marker_size_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk.iter_component_indices(
-                                    query.timeline(),
-                                    &MarkerSize::name()
-                                ),
+                                chunk.iter_component_indices(query.timeline(), &MarkerSize::name()),
                                 chunk.iter_slices::<f32>(MarkerSize::name())
                             )
                         });

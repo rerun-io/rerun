@@ -40,7 +40,7 @@ impl BlueprintUndoState {
     /// Default latest-at query
     #[inline]
     pub fn default_query() -> LatestAtQuery {
-        LatestAtQuery::latest(*blueprint_timeline().name())
+        LatestAtQuery::latest(blueprint_timeline())
     }
 
     /// How far back in time can we undo?
@@ -50,7 +50,7 @@ impl BlueprintUndoState {
 
     pub fn blueprint_query(&self) -> LatestAtQuery {
         if let Some(time) = self.current_time {
-            LatestAtQuery::new(*blueprint_timeline().name(), time)
+            LatestAtQuery::new(blueprint_timeline(), time)
         } else {
             Self::default_query()
         }
@@ -104,7 +104,7 @@ impl BlueprintUndoState {
 
             // Drop everything after the current timeline time
             let events = blueprint_db.drop_time_range(
-                blueprint_timeline().name(),
+                &blueprint_timeline(),
                 ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 
@@ -143,7 +143,7 @@ impl BlueprintUndoState {
 
 fn max_blueprint_time(blueprint_db: &EntityDb) -> TimeInt {
     blueprint_db
-        .time_histogram(blueprint_timeline().name())
+        .time_histogram(&blueprint_timeline())
         .and_then(|times| times.max_key())
         .map_or(TimeInt::ZERO, TimeInt::new_temporal)
 }

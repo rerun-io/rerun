@@ -1367,7 +1367,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // static
         {
@@ -1422,7 +1422,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
@@ -1455,7 +1455,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_range: Some(ResolvedTimeRange::new(30, 60)),
@@ -1488,7 +1488,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
@@ -1527,7 +1527,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // vanilla
         {
@@ -1600,7 +1600,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path: EntityPath = "this/that".into();
 
         // non-existing entity
@@ -1720,7 +1720,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // empty view
         {
@@ -1799,7 +1799,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Timeline::new_sequence("frame_nr");
+        let filtered_index = TimelineName::new("frame_nr");
 
         // empty selection
         {
@@ -1829,8 +1829,8 @@ mod tests {
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     ColumnSelector::Time(TimeColumnSelector::from("ATimeColumnThatDoesntExist")),
                 ]),
                 ..Default::default()
@@ -1898,16 +1898,16 @@ mod tests {
                 selection: Some(vec![
                     // NOTE: This will force a crash if the selected indexes vs. view indexes are
                     // improperly handled.
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -1945,7 +1945,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Timeline::new_sequence("frame_nr");
+        let filtered_index = TimelineName::new("frame_nr");
 
         // only components
         {
@@ -1960,7 +1960,7 @@ mod tests {
                     .collect(),
                 ),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector::from(*filtered_index.name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_time().name())),
                     ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_tick().name())),
                     //
@@ -2009,7 +2009,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // barebones
@@ -2075,7 +2075,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // basic
@@ -2273,7 +2273,7 @@ mod tests {
 
         let engine_guard = query_engine.engine.write_arc();
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // static
         let handle_static = tokio::spawn({

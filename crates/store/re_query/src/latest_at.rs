@@ -153,8 +153,7 @@ impl QueryCache {
         }
 
         for component_name in component_names {
-            let key =
-                QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -674,11 +673,7 @@ impl LatestAtCache {
                 chunk
                     .latest_at(query, component_name)
                     .into_unit()
-                    .and_then(|chunk| {
-                        chunk
-                            .index(&query.timeline())
-                            .map(|index| (index, chunk))
-                    })
+                    .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
             })
             .max_by_key(|(index, _chunk)| *index)?;
 

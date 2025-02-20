@@ -9,7 +9,7 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_component_ui::create_component_ui_registry;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::{EntityPath,  TimelineName};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
@@ -239,7 +239,7 @@ fn test_single_component_ui_as_list_item(
                     UiLayout::List,
                     // Note: recording and queries are only used for tooltips,
                     // which we are not testing here.
-                    &LatestAtQuery::latest(Timeline::log_time()),
+                    &LatestAtQuery::latest(TimelineName::log_time()),
                     ctx.recording(),
                     &EntityPath::root(),
                     test_case.component_name,
