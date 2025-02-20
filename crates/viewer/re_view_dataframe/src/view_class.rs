@@ -4,9 +4,9 @@ use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
-use re_ui::Help;
+use re_ui::{Help, UiExt};
 use re_viewer_context::{
-    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt, ViewSystemExecutionError, ViewerContext,
 };
 
@@ -114,7 +114,12 @@ Configure in the selection panel:
         let view_query = view_query::Query::from_blueprint(ctx, query.view_id);
 
         // Make sure we know which timeline to query or display an error message.
-        let timeline = view_query.timeline_name(ctx)?;
+        let timeline = view_query.timeline(ctx)?;
+
+        let Some(timeline) = timeline else {
+            timeline_not_found_ui(ctx, ui, query.view_id);
+            return Ok(());
+        };
 
         let query_engine = QueryEngine {
             engine: ctx.recording().storage_engine_arc(),
@@ -133,7 +138,7 @@ Configure in the selection panel:
 
         let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: Some(timeline),
+            filtered_index: Some(*timeline.name()),
             filtered_index_range: Some(view_query.filter_by_range()?),
             filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,
@@ -167,6 +172,34 @@ Configure in the selection panel:
 
         state.view_columns = Some(view_columns);
         Ok(())
+    }
+}
+
+fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
+    let full_view_rect = ui.available_rect_before_wrap();
+
+    egui::Frame::new()
+        .inner_margin(re_ui::DesignTokens::view_padding())
+        .show(ui, |ui| {
+            ui.warning_label("Unknown timeline");
+
+            ui.label(
+                "The timeline currently configured for this view does not exist in the current \
+                recording. Select another timeline in the view properties found in the selection \
+                panel.",
+            )
+        });
+
+    // select the view when clicked
+    if ui
+        .interact(
+            full_view_rect,
+            egui::Id::from("dataframe_view_empty").with(view_id),
+            egui::Sense::click(),
+        )
+        .clicked()
+    {
+        ctx.selection_state.set_selection(Item::View(view_id));
     }
 }
 
