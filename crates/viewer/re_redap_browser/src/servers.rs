@@ -152,7 +152,7 @@ impl RedapServers {
 
     /// Per-frame housekeeping.
     ///
-    /// - Process [`Command`]s from the queue.
+    /// - Process commands from the queue.
     /// - Load servers from `server_list`.
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle) {
