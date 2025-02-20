@@ -346,7 +346,7 @@ impl WebHandle {
     ///
     /// This does nothing if the timeline can't be found.
     #[wasm_bindgen]
-    pub fn set_active_timeline(&self, store_id: &str, timeline: &str) {
+    pub fn set_active_timeline(&self, store_id: &str, timeline_name: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -372,45 +372,37 @@ impl WebHandle {
 
         let Some(timeline) = recording
             .timelines()
-            .find(|t| t.name().as_str() == timeline)
+            .iter()
+            .find(|t| t.name().as_str() == timeline_name)
+            .copied()
         else {
-            re_log::warn!("Failed to find timeline {timeline} for {store_id}");
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
 
-        rec_cfg.time_ctrl.write().set_timeline(*timeline);
+        rec_cfg.time_ctrl.write().set_timeline(timeline);
 
         egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, store_id: &str, timeline: &str) -> Option<f64> {
+    pub fn get_time_for_timeline(&self, store_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let crate::App {
-            store_hub: Some(ref hub),
-            state,
-            ..
-        } = &*app
-        else {
-            return None;
-        };
 
         let store_id = re_log_types::StoreId::from_string(
             re_log_types::StoreKind::Recording,
             store_id.to_owned(),
         );
-        let recording = hub.store_bundle().get(&store_id)?;
-        let rec_cfg = state.recording_config(&store_id)?;
-        let timeline = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)?;
+        let rec_cfg = app.state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
-        time_ctrl.time_for_timeline(*timeline).map(|v| v.as_f64())
+        time_ctrl
+            .time_for_timeline(timeline_name.into())
+            .map(|v| v.as_f64())
     }
 
     #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, store_id: &str, timeline: &str, time: f64) {
+    pub fn set_time_for_timeline(&self, store_id: &str, timeline_name: &str, time: f64) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -435,21 +427,23 @@ impl WebHandle {
             recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
         let Some(timeline) = recording
             .timelines()
-            .find(|t| t.name().as_str() == timeline)
+            .iter()
+            .find(|t| t.name().as_str() == timeline_name)
+            .copied()
         else {
-            re_log::warn!("Failed to find timeline {timeline} for {store_id}");
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
 
         rec_cfg
             .time_ctrl
             .write()
-            .set_timeline_and_time(*timeline, time);
+            .set_timeline_and_time(timeline, time);
         egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, store_id: &str, timeline: &str) -> JsValue {
+    pub fn get_timeline_time_range(&self, store_id: &str, timeline_name: &str) -> JsValue {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return JsValue::null();
         };
@@ -468,14 +462,8 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return JsValue::null();
         };
-        let Some(timeline) = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)
-        else {
-            return JsValue::null();
-        };
 
-        let Some(time_range) = recording.time_range_for(timeline) else {
+        let Some(time_range) = recording.time_range_for(&timeline_name.into()) else {
             return JsValue::null();
         };
 
