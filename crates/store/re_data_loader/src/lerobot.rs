@@ -377,12 +377,13 @@ pub enum DType {
 ///
 /// The name metadata can consist of
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
+/// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
 /// - A list specific to motors (e.g., `{ "motors": ["motor_0", "motor_1", ...] }`).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Names {
     Motors { motors: Vec<String> },
-    List(Vec<String>),
+    List(NamesList),
 }
 
 impl Names {
@@ -390,8 +391,41 @@ impl Names {
     pub fn name_for_index(&self, index: usize) -> Option<&String> {
         match self {
             Self::Motors { motors } => motors.get(index),
-            Self::List(items) => items.get(index),
+            Self::List(NamesList(items)) => items.get(index),
         }
+    }
+}
+
+/// A wrapper struct that deserializes flat or nested lists of strings
+/// into a single flattened [`Vec`] of names for easy indexing.
+#[derive(Debug, Serialize)]
+pub struct NamesList(Vec<String>);
+
+impl<'de> Deserialize<'de> for NamesList {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if let serde_json::Value::Array(arr) = value {
+            if arr.is_empty() {
+                return Ok(Self(vec![]));
+            }
+            if let Some(first) = arr.first() {
+                if first.is_string() {
+                    let flat: Vec<String> = serde_json::from_value(serde_json::Value::Array(arr))
+                        .map_err(serde::de::Error::custom)?;
+                    return Ok(Self(flat));
+                } else if first.is_array() {
+                    let nested: Vec<Vec<String>> =
+                        serde_json::from_value(serde_json::Value::Array(arr))
+                            .map_err(serde::de::Error::custom)?;
+                    let flat = nested.into_iter().flatten().collect();
+                    return Ok(Self(flat));
+                }
+            }
+        }
+        Err(serde::de::Error::custom("Unsupported names format!"))
     }
 }
 
