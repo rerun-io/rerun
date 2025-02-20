@@ -22,7 +22,15 @@ pub enum SystemCommand {
     /// Clear everything that came from this source, and close the source.
     ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
+    /// Add a new receiver for log messages.
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
+
+    /// Add a new server to the redap browser.
+    AddRedapServer {
+        endpoint: re_uri::CatalogEndpoint,
+    },
+
+    ChangeDisplayMode(crate::DisplayMode),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
@@ -36,7 +44,7 @@ pub enum SystemCommand {
     /// To force using the heuristics, use [`Self::ClearActiveBlueprintAndEnableHeuristics`].
     ///
     /// UI note: because of the above ambiguity, controls for this command should only be enabled if
-    /// a default blueprint is set.
+    /// a default blueprint is set or the behavior is explicitly explained.
     ClearActiveBlueprint,
 
     /// Clear the active blueprint and enable heuristics.

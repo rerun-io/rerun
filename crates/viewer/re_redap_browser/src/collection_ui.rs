@@ -5,17 +5,15 @@ use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef;
-use re_grpc_client::redap;
 use re_log_types::{EntityPath, Timeline};
 use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
-use re_types::components::RecordingUri;
-use re_types_core::{arrow_helpers::as_array_ref, Component as _};
+use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
-use super::hub::{Command, RecordingCollection};
+use super::servers::{Command, RecordingCollection};
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -29,7 +27,7 @@ enum CollectionUiError {
 pub fn collection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    origin: &redap::Origin,
+    origin: &re_uri::Origin,
     collection: &RecordingCollection,
 ) -> Vec<Command> {
     let mut commands = vec![];
@@ -113,7 +111,7 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
     static COMPONENT_URI_DESCRIPTOR: once_cell::sync::Lazy<ComponentColumnDescriptor> =
         once_cell::sync::Lazy::new(|| ComponentColumnDescriptor {
             store_datatype: ArrowDataType::Utf8,
-            component_name: RecordingUri::name(),
+            component_name: "recording_uri".into(),
             entity_path: EntityPath::root(),
             archetype_name: None,
             archetype_field_name: None,
@@ -129,7 +127,7 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
 /// Convert a `SorbetBatch` to a `DisplayRecordBatch` and generate a `RecordingUri` column on the
 /// fly.
 fn catalog_sorbet_batch_to_display_record_batch(
-    origin: &redap::Origin,
+    origin: &re_uri::Origin,
     sorbet_batch: &SorbetBatch,
 ) -> Result<DisplayRecordBatch, CollectionUiError> {
     let rec_ids = sorbet_batch

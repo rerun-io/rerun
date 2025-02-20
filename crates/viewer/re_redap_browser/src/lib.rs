@@ -2,6 +2,6 @@
 //! it.
 
 mod collection_ui;
-mod hub;
+mod servers;
 
-pub use hub::CatalogHub;
+pub use servers::RedapServers;

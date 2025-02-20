@@ -4,10 +4,10 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
-use re_catalog_hub::CatalogHub;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
+use re_redap_browser::RedapServers;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
@@ -15,11 +15,10 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, PlayState, StoreContext, SystemCommand, SystemCommandSender, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
-use crate::app_state::DisplayMode;
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
@@ -205,8 +204,8 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
-    /// Interface for all catalogs
-    catalog_hub: CatalogHub,
+    /// Redap server catalogs and browser UI
+    redap_servers: RedapServers,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -422,7 +421,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            catalog_hub: CatalogHub::default(),
+            redap_servers: RedapServers::default(),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -576,6 +575,14 @@ impl App {
                 self.add_receiver(rx);
             }
 
+            SystemCommand::ChangeDisplayMode(display_mode) => {
+                self.state.display_mode = display_mode;
+            }
+            SystemCommand::AddRedapServer { endpoint } => {
+                self.redap_servers
+                    .fetch_catalog(&self.async_runtime, endpoint);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
@@ -589,8 +596,9 @@ impl App {
 
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { origin: url }) => {
-                        self.catalog_hub.fetch_catalog(&self.async_runtime, url);
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        self.redap_servers
+                            .fetch_catalog(&self.async_runtime, endpoint);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -852,6 +860,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearActiveBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprint);
+            }
             UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
@@ -880,10 +892,12 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
-                DisplayMode::Viewer | DisplayMode::RedapBrowser => {
+                DisplayMode::LocalRecordings | DisplayMode::RedapBrowser => {
                     self.state.display_mode = DisplayMode::ChunkStoreBrowser;
                 }
-                DisplayMode::ChunkStoreBrowser => self.state.display_mode = DisplayMode::Viewer,
+                DisplayMode::ChunkStoreBrowser => {
+                    self.state.display_mode = DisplayMode::LocalRecordings;
+                }
             },
 
             #[cfg(debug_assertions)]
@@ -1198,7 +1212,7 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.catalog_hub.on_frame_start();
+                        self.redap_servers.on_frame_start();
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1207,7 +1221,7 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_context,
-                            &self.catalog_hub,
+                            &self.redap_servers,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1733,8 +1747,9 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&self, origin: re_grpc_client::redap::Origin) {
-        self.catalog_hub.fetch_catalog(&self.async_runtime, origin);
+    pub fn fetch_catalog(&self, endpoint: re_uri::CatalogEndpoint) {
+        self.redap_servers
+            .fetch_catalog(&self.async_runtime, endpoint);
     }
 }
 

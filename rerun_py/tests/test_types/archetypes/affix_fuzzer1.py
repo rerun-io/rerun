@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
@@ -250,11 +251,50 @@ class AffixFuzzer1(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "fuzz1001": fuzz1001,
+            "fuzz1002": fuzz1002,
+            "fuzz1003": fuzz1003,
+            "fuzz1004": fuzz1004,
+            "fuzz1005": fuzz1005,
+            "fuzz1006": fuzz1006,
+            "fuzz1007": fuzz1007,
+            "fuzz1008": fuzz1008,
+            "fuzz1009": fuzz1009,
+            "fuzz1010": fuzz1010,
+            "fuzz1011": fuzz1011,
+            "fuzz1012": fuzz1012,
+            "fuzz1013": fuzz1013,
+            "fuzz1014": fuzz1014,
+            "fuzz1015": fuzz1015,
+            "fuzz1016": fuzz1016,
+            "fuzz1017": fuzz1017,
+            "fuzz1018": fuzz1018,
+            "fuzz1019": fuzz1019,
+            "fuzz1020": fuzz1020,
+            "fuzz1021": fuzz1021,
+            "fuzz1022": fuzz1022,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1
+                num_rows = shape[0] if len(shape) >= 1 else 1
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     fuzz1001: components.AffixFuzzer1Batch | None = field(

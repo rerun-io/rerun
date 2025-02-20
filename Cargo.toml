@@ -87,11 +87,12 @@ re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.23.0-
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.23.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.23.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.23.0-alpha.1", default-features = false }
+re_uri = { path = "crates/utils/re_uri", version = "=0.23.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/viewer:
 re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.23.0-alpha.1", default-features = false }
-re_catalog_hub = { path = "crates/viewer/re_catalog_hub", version = "=0.23.0-alpha.1", default-features = false }
+re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.23.0-alpha.1", default-features = false }
 re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.23.0-alpha.1", default-features = false }
 re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.23.0-alpha.1", default-features = false }
 re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.23.0-alpha.1", default-features = false }

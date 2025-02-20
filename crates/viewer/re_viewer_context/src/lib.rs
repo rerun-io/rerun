@@ -52,7 +52,7 @@ pub use self::{
     file_dialog::santitize_file_name,
     global_context::{
         command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-        ComponentUiTypes, GlobalContext, Item, SystemCommand, SystemCommandSender,
+        ComponentUiTypes, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender,
     },
     image_info::{ColormapWithRange, ImageInfo},
     maybe_mut_ref::MaybeMutRef,

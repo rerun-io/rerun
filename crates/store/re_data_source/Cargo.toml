@@ -34,6 +34,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
+re_uri.workspace = true
 
 anyhow.workspace = true
 itertools.workspace = true

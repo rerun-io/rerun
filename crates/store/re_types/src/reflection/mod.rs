@@ -710,14 +710,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RecordingUri as Component>::name(),
-            ComponentReflection {
-                docstring_md: "A recording URI (Uniform Resource Identifier).",
-                custom_placeholder: None,
-                datatype: RecordingUri::arrow_datatype(),
-            },
-        ),
-        (
             <Resolution as Component>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",

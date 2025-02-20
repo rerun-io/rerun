@@ -4,7 +4,7 @@ use ahash::HashMap;
 use parking_lot::Mutex;
 use tokio_stream::StreamExt as _;
 
-use re_grpc_client::{redap, StreamError, TonicStatusError};
+use re_grpc_client::{redap::client, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::remote_store::v0::QueryCatalogRequest;
 use re_sorbet::{BatchType, SorbetBatch};
@@ -13,7 +13,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 //TODO(ab): remove this in favor of an id
 pub struct CollectionHandle {
-    server_origin: redap::Origin,
+    server_origin: re_uri::Origin,
     collection_index: usize,
 }
 
@@ -40,9 +40,9 @@ pub struct RecordingCollection {
 /// All catalogs known to the viewer.
 // TODO(andreas,antoine): Eventually, collections are part of a catalog, meaning there is going to be multiple ones.
 #[derive(Default)]
-pub struct CatalogHub {
+pub struct RedapServers {
     // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
-    catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
+    catalogs: Arc<Mutex<HashMap<re_uri::Origin, Catalog>>>,
 
     // TODO(andreas,antoine): Keep track of in-flight requests.
     //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
@@ -56,14 +56,14 @@ pub enum Command {
     DeselectCollection,
 }
 
-impl CatalogHub {
+impl RedapServers {
     /// Asynchronously fetches a catalog from a URL and adds it to the hub.
     ///
     /// If this url was used before, it will refresh the existing catalog in the hub.
-    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, origin: redap::Origin) {
+    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, endpoint: re_uri::CatalogEndpoint) {
         let catalogs = self.catalogs.clone();
         runtime.spawn_future(async move {
-            let result = stream_catalog_async(origin, catalogs).await;
+            let result = stream_catalog_async(endpoint, catalogs).await;
             if let Err(err) = result {
                 // TODO(andreas,ab): Surface this in the UI in a better way.
                 re_log::error!("Failed to fetch catalog: {err}");
@@ -141,7 +141,7 @@ impl CatalogHub {
         }
     }
 
-    fn catalog_list_ui(&self, ui: &mut egui::Ui, origin: &redap::Origin, catalog: &Catalog) {
+    fn catalog_list_ui(&self, ui: &mut egui::Ui, origin: &re_uri::Origin, catalog: &Catalog) {
         if catalog.is_empty() {
             ui.list_item_flat_noninteractive(list_item::LabelContent::new("(empty)").italics(true));
         } else {
@@ -203,10 +203,10 @@ impl CatalogHub {
 }
 
 async fn stream_catalog_async(
-    origin: redap::Origin,
-    catalogs: Arc<Mutex<HashMap<redap::Origin, Catalog>>>,
+    endpoint: re_uri::CatalogEndpoint,
+    catalogs: Arc<Mutex<HashMap<re_uri::Origin, Catalog>>>,
 ) -> Result<(), StreamError> {
-    let mut client = origin.client().await?;
+    let mut client = client(endpoint.origin.clone()).await?;
 
     re_log::debug!("Fetching collection…");
 
@@ -240,7 +240,7 @@ async fn stream_catalog_async(
         .await?;
 
     //TODO(ab): ideally this is provided by the server
-    let collection_id = egui::Id::new(origin.clone()).with("__top_level_collection__");
+    let collection_id = egui::Id::new(endpoint.origin.clone()).with("__top_level_collection__");
     let catalog = Catalog {
         collections: vec![RecordingCollection {
             collection_id,
@@ -250,11 +250,11 @@ async fn stream_catalog_async(
         }],
     };
 
-    let previous_catalog = catalogs.lock().insert(origin.clone(), catalog);
+    let previous_catalog = catalogs.lock().insert(endpoint.origin.clone(), catalog);
     if previous_catalog.is_some() {
-        re_log::debug!("Updated catalog for {}.", origin.to_string());
+        re_log::debug!("Updated catalog for {}.", endpoint.origin.to_string());
     } else {
-        re_log::debug!("Fetched new catalog for {}.", origin.to_string());
+        re_log::debug!("Fetched new catalog for {}.", endpoint.origin.to_string());
     }
 
     Ok(())
