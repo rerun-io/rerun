@@ -257,6 +257,9 @@ message ListManifestsResponse {
 // The result might contain duplicated chunk IDs, it is the responsibility of the caller to deduplicate
 // them as needed.
 message QueryManifestRequest {
+    // Which catalog entry do we want to query the manifests of?
+    CatalogEntry entry = 1;
+
     // What resource are we querying the manifest for?
     rerun.common.v0.RecordingId resource_id = 100;
 
