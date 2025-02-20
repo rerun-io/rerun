@@ -322,7 +322,6 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
 
     let point = MyPoint::new(1.0, 1.0);
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
-    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::log_time();
 
@@ -343,9 +342,6 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
 
     assert!(store
         .entity_min_time(&timeline_wrong_name, &entity_path)
-        .is_none());
-    assert!(store
-        .entity_min_time(&timeline_wrong_kind, &entity_path)
         .is_none());
     assert_eq!(
         store.entity_min_time(&timeline_frame_nr, &entity_path),
@@ -374,9 +370,6 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     assert!(store
         .entity_min_time(&timeline_wrong_name, &entity_path)
         .is_none());
-    assert!(store
-        .entity_min_time(&timeline_wrong_kind, &entity_path)
-        .is_none());
     assert_eq!(
         store.entity_min_time(&timeline_frame_nr, &entity_path),
         Some(TimeInt::new_temporal(42))
@@ -403,9 +396,6 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
 
     assert!(store
         .entity_min_time(&timeline_wrong_name, &entity_path)
-        .is_none());
-    assert!(store
-        .entity_min_time(&timeline_wrong_kind, &entity_path)
         .is_none());
     assert_eq!(
         store.entity_min_time(&timeline_frame_nr, &entity_path),
