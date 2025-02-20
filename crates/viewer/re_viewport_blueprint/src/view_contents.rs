@@ -420,8 +420,9 @@ impl QueryExpressionEvaluator<'_> {
                     tree_prefix_only: !matches_filter,
                     property_overrides: PropertyOverrides {
                         resolved_component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
-                        recursive_path: self.recursive_override_base_path.join(entity_path),
-                        individual_path: self.individual_override_base_path.join(entity_path),
+                        recursive_override_path:
+                            self.recursive_override_base_path.join(entity_path),
+                        override_path: self.individual_override_base_path.join(entity_path),
                         query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
                     },
                 },

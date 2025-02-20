@@ -44,6 +44,7 @@ pub fn visible_time_range_ui_for_data_result(
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
 ) {
+    // TODO(#8557): Almost certainly this is wrong and should be regular override path.
     let override_path = data_result.recursive_override_path();
     let query_range = data_result.property_overrides.query_range.clone();
 

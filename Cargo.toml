@@ -349,9 +349,16 @@ zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because
 # ---------------------------------------------------------------------------------
 [profile]
 
+## Dev
+
 # Our dev profile has some optimizations turned on, as well as debug assertions.
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
+# See <https://github.com/rerun-io/rerun/pull/9094> for a thorough explanation of why.
+# This does not affect cfg(debug_assertions).
+# Use the `debugging` profile (see below) if you need debug symbols.
+debug = false
+
 [profile.dev.package.re_video]
 opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
 
@@ -360,30 +367,38 @@ opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
 # egui has a feature where if you hold down all modifiers keys on your keyboard and hover any UI widget,
 # you will see the backtrace to that widget, and we don't want to break that feature in dev builds.
 
-[profile.dev.build-override]
-debug = true # enable debug symbols for build scripts when building in dev (codegen backtraces!)
-
 # Optimize all dependencies even in debug builds (does not affect workspace packages):
 [profile.dev.package."*"]
 opt-level = 2
 
+
+## Release
 
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 
-[profile.bench]
-debug = true
+## Bench
 
+[profile.bench]
+debug = false
+
+
+## Debugging
 
 # Set up a `debugging` profile that turns of optimization of the workspace and select packages.
 # Note that the profile name `debug` is reserved.
 [profile.debugging]
 inherits = "dev"
 opt-level = 0
+debug = true
+
 [profile.debugging.package.egui]
 opt-level = 0 # we often debug egui via Rerun
+
+[profile.debugging.build-override]
+debug = true # enable debug symbols for build scripts
 
 
 # ---------------------------------------------------------------------------------
@@ -595,7 +610,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-18 - legend hover reports as hovered items
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-20 - everything is id identified, allowing for instance reading out hidden items reliable
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }

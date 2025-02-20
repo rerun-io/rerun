@@ -74,6 +74,16 @@ pub enum PlotSeriesKind {
 
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
+    pub instance_path: InstancePath,
+
+    /// Id used for this series in the egui plot view.
+    pub id: egui::Id,
+
+    /// Whether the individual series is visible.
+    ///
+    /// If this is false, [`PlotSeries::points`] is allowed to be empty.
+    pub visible: bool,
+
     /// Label of the series.
     pub label: String,
 
@@ -84,7 +94,6 @@ pub struct PlotSeries {
 
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
-    pub instance_path: InstancePath,
 
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: i64,

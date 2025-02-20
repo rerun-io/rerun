@@ -85,7 +85,7 @@ pub fn create_entity_add_info(
         let can_add: CanAddToView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
                 CanAddToView::Compatible {
-                    already_added: query_result.contains_entity(entity_path),
+                    already_added: query_result.result_for_entity(entity_path).is_some(),
                 }
             } else {
                 // TODO(#6321): This shouldn't necessarily prevent us from adding it.

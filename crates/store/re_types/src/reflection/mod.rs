@@ -750,6 +750,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SeriesVisible as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Like `Visible`, but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.",
+                custom_placeholder: None,
+                datatype: SeriesVisible::arrow_datatype(),
+            },
+        ),
+        (
             <ShowLabels as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
@@ -1747,9 +1755,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     }, ArchetypeFieldReflection { name : "name", display_name : "Name",
                     component_name : "rerun.components.Name".into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "aggregation_policy",
-                    display_name : "Aggregation policy", component_name :
-                    "rerun.components.AggregationPolicy".into(), docstring_md :
+                    false, }, ArchetypeFieldReflection { name : "visible_series",
+                    display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "aggregation_policy", display_name : "Aggregation policy",
+                    component_name : "rerun.components.AggregationPolicy".into(),
+                    docstring_md :
                     "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                     is_required : false, },
                 ],
@@ -1771,8 +1784,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "name", display_name : "Name",
                     component_name : "rerun.components.Name".into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "marker_size",
-                    display_name : "Marker size", component_name :
+                    false, }, ArchetypeFieldReflection { name : "visible_series",
+                    display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which point series are visible.\n\nIf not set, all point series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "marker_size", display_name : "Marker size", component_name :
                     "rerun.components.MarkerSize".into(), docstring_md :
                     "Size of the marker.", is_required : false, },
                 ],

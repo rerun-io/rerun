@@ -448,6 +448,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             let fill = colors[component].linear_multiply(0.5);
 
             BarChart::new(
+                "bar_chart",
                 histogram
                     .into_iter()
                     .enumerate()
