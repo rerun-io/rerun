@@ -167,7 +167,7 @@ pub struct TimeControl {
     /// Name of the timeline (e.g. `log_time`).
     timeline: ActiveTimeline,
 
-    states: BTreeMap<Timeline, TimeStateEntry>,
+    states: BTreeMap<TimelineName, TimeStateEntry>,
 
     /// If true, we are either in [`PlayState::Playing`] or [`PlayState::Following`].
     playing: bool,
@@ -224,7 +224,7 @@ impl TimeControl {
                 // then the user decides to switch timelines.
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
-                self.states.entry(*self.timeline).or_insert_with(|| {
+                self.states.entry(*self.timeline.name()).or_insert_with(|| {
                     TimeStateEntry::new(if self.following {
                         full_range.max()
                     } else {
@@ -238,7 +238,7 @@ impl TimeControl {
 
                 let state = self
                     .states
-                    .entry(*self.timeline)
+                    .entry(*self.timeline.name())
                     .or_insert_with(|| TimeStateEntry::new(full_range.min()));
 
                 if self.looping == Looping::Off && full_range.max() <= state.current.time {
@@ -281,7 +281,7 @@ impl TimeControl {
             }
             PlayState::Following => {
                 // Set the time to the max:
-                match self.states.entry(*self.timeline) {
+                match self.states.entry(*self.timeline.name()) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         entry.insert(TimeStateEntry::new(full_range.max()));
                     }
@@ -316,7 +316,7 @@ impl TimeControl {
             self.last_frame.timeline = Some(*self.timeline);
 
             let time = self
-                .time_for_timeline(*self.timeline)
+                .time_for_timeline(*self.timeline.name())
                 .unwrap_or(TimeReal::MIN);
 
             (callbacks.on_timelinechange)(*self.timeline, time);
@@ -377,7 +377,7 @@ impl TimeControl {
                         }
                     } else {
                         self.states.insert(
-                            *self.timeline,
+                            *self.timeline.name(),
                             TimeStateEntry::new(min(&timeline_stats.per_time)),
                         );
                     }
@@ -389,7 +389,7 @@ impl TimeControl {
 
                 if let Some(timeline_stats) = times_per_timeline.get(self.timeline.name()) {
                     // Set the time to the max:
-                    match self.states.entry(*self.timeline) {
+                    match self.states.entry(*self.timeline.name()) {
                         std::collections::btree_map::Entry::Vacant(entry) => {
                             entry.insert(TimeStateEntry::new(max(&timeline_stats.per_time)));
                         }
@@ -613,7 +613,7 @@ impl TimeControl {
     /// Set the current loop selection without enabling looping.
     pub fn set_loop_selection(&mut self, selection: ResolvedTimeRangeF) {
         self.states
-            .entry(*self.timeline)
+            .entry(*self.timeline.name())
             .or_insert_with(|| TimeStateEntry::new(selection.min))
             .current
             .loop_selection = Some(selection);
@@ -647,7 +647,7 @@ impl TimeControl {
         self.set_time(time);
     }
 
-    pub fn time_for_timeline(&self, timeline: Timeline) -> Option<TimeReal> {
+    pub fn time_for_timeline(&self, timeline: TimelineName) -> Option<TimeReal> {
         self.states.get(&timeline).map(|state| state.current.time)
     }
 
@@ -655,7 +655,7 @@ impl TimeControl {
         let time = time.into();
 
         self.states
-            .entry(timeline)
+            .entry(*timeline.name())
             .or_insert_with(|| TimeStateEntry::new(time))
             .current
             .time = time;
@@ -665,7 +665,7 @@ impl TimeControl {
         let time = time.into();
 
         self.states
-            .entry(*self.timeline)
+            .entry(*self.timeline.name())
             .or_insert_with(|| TimeStateEntry::new(time))
             .current
             .time = time;
@@ -681,7 +681,7 @@ impl TimeControl {
     /// The range of time we are currently zoomed in on.
     pub fn set_time_view(&mut self, view: TimeView) {
         self.states
-            .entry(*self.timeline)
+            .entry(*self.timeline.name())
             .or_insert_with(|| TimeStateEntry::new(view.min))
             .current
             .view = Some(view);
