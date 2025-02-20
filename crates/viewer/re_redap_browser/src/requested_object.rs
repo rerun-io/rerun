@@ -45,7 +45,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     /// Check if the future has completed and, if so, update our state to [`Self::Completed`].
     pub fn on_frame_start(&mut self) {
         let result = match self {
-            Self::Pending(rx) => rx.recv().ok(),
+            Self::Pending(rx) => rx.try_recv().ok(),
             Self::Completed(_) => None,
         };
 
