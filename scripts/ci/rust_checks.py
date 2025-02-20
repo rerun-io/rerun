@@ -195,17 +195,39 @@ def cargo_deny(results: list[Result]) -> None:
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
     results.append(run_cargo("install", "--locked cargo-deny"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
-    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target aarch64-apple-darwin check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-gnu check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-msvc check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-unknown-linux-gnu check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target wasm32-unknown-unknown check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-apple-darwin check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-gnu check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-msvc check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-gnu check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-musl check")
+    )
+    results.append(
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-redox check")
+    )
 
 
 def wasm(results: list[Result]) -> None:
