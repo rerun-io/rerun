@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
-use parking_lot::Mutex;
+use crossbeam_channel::{bounded, Receiver};
 
 use re_viewer_context::AsyncRuntimeHandle;
 
 /// A handle to an object that is requested asynchronously.
 pub enum RequestedObject<T: Send + 'static> {
-    Pending(Arc<Mutex<Option<T>>>),
+    Pending(Receiver<T>),
     Completed(T),
 }
 
@@ -16,12 +14,12 @@ impl<T: Send + 'static> RequestedObject<T> {
     where
         F: std::future::Future<Output = T> + Send + 'static,
     {
-        let result = Arc::new(Mutex::new(None));
-        let handle = Self::Pending(result.clone());
+        let (tx, rx) = bounded(1);
+        let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {
-            let r = func.await;
-            result.lock().replace(r);
+            let result = func.await;
+            let _ = tx.send(result);
             //TODO: refresh egui?
         });
 
@@ -31,7 +29,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     /// Check if the future has completed and, if so, update our state to [`Self::Completed`].
     pub fn on_frame_start(&mut self) {
         let result = match self {
-            Self::Pending(handle) => handle.lock().take(),
+            Self::Pending(rx) => rx.recv().ok(),
             Self::Completed(_) => None,
         };
 

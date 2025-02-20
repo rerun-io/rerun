@@ -36,6 +36,7 @@ re_uri.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
+crossbeam-channel.workspace = true
 egui.workspace = true
 egui_table.workspace = true
 once_cell.workspace = true
