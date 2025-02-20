@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use re_ui::{list_item, UiExt};
@@ -70,14 +70,6 @@ impl Server {
 
 /// All servers known to the viewer, and their catalog data.
 pub struct RedapServers {
-    /// The list of server.
-    ///
-    /// This is the only data persisted. Everything else being recreated on the fly.
-    server_list: BTreeSet<re_uri::Origin>,
-
-    /// The actual servers, populated from the server list if needed.
-    ///
-    /// Servers in `server_list` are automatically added to `server` by `on_frame_start`.
     servers: BTreeMap<re_uri::Origin, Server>,
 
     selected_collection: Option<CollectionId>,
@@ -94,7 +86,10 @@ impl serde::Serialize for RedapServers {
     where
         S: serde::Serializer,
     {
-        self.server_list.serialize(serializer)
+        self.servers
+            .keys()
+            .collect::<Vec<_>>()
+            .serialize(serializer)
     }
 }
 
@@ -103,16 +98,14 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     where
         D: serde::Deserializer<'de>,
     {
-        let server_list = BTreeSet::<re_uri::Origin>::deserialize(deserializer)?;
-        let (command_sender, command_receiver) = std::sync::mpsc::channel();
-        Ok(Self {
-            server_list,
-            servers: BTreeMap::new(),
-            selected_collection: None,
-            command_sender,
-            command_receiver,
-            add_server_modal_ui: Default::default(),
-        })
+        let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
+
+        let servers = Self::default();
+        for origin in origins {
+            let _ = servers.command_sender.send(Command::AddServer(origin));
+        }
+
+        Ok(servers)
     }
 }
 
@@ -121,7 +114,6 @@ impl Default for RedapServers {
         let (command_sender, command_receiver) = std::sync::mpsc::channel();
 
         Self {
-            server_list: Default::default(),
             servers: Default::default(),
             selected_collection: None,
             command_sender,
@@ -140,14 +132,8 @@ pub enum Command {
 
 impl RedapServers {
     /// Add a server to the hub.
-    pub fn add_server(&mut self, origin: re_uri::Origin) {
-        self.server_list.insert(origin);
-    }
-
-    /// Remove a server from the hub.
-    pub fn remove_server(&mut self, origin: &re_uri::Origin) {
-        self.server_list.remove(origin);
-        self.servers.remove(origin);
+    pub fn add_server(&self, origin: re_uri::Origin) {
+        let _ = self.command_sender.send(Command::AddServer(origin));
     }
 
     /// Per-frame housekeeping.
@@ -157,14 +143,7 @@ impl RedapServers {
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle) {
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(command);
-        }
-
-        for origin in &self.server_list {
-            if !self.servers.contains_key(origin) {
-                self.servers
-                    .insert(origin.clone(), Server::new(runtime, origin.clone()));
-            }
+            self.handle_command(runtime, command);
         }
 
         for server in self.servers.values_mut() {
@@ -172,7 +151,7 @@ impl RedapServers {
         }
     }
 
-    fn handle_command(&mut self, command: Command) {
+    fn handle_command(&mut self, runtime: &AsyncRuntimeHandle, command: Command) {
         match command {
             Command::SelectCollection(collection_handle) => {
                 self.selected_collection = Some(collection_handle);
@@ -180,9 +159,21 @@ impl RedapServers {
 
             Command::DeselectCollection => self.selected_collection = None,
 
-            Command::AddServer(origin) => self.add_server(origin),
+            Command::AddServer(origin) => {
+                if !self.servers.contains_key(&origin) {
+                    self.servers
+                        .insert(origin.clone(), Server::new(runtime, origin.clone()));
+                } else {
+                    re_log::warn!(
+                        "Tried to add pre-existing sever at {:?}",
+                        origin.to_string()
+                    );
+                }
+            }
 
-            Command::RemoveServer(origin) => self.remove_server(&origin),
+            Command::RemoveServer(origin) => {
+                self.servers.remove(&origin);
+            }
         }
     }
 

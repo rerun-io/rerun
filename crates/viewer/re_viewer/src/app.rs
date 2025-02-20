@@ -1739,7 +1739,7 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&mut self, endpoint: re_uri::CatalogEndpoint) {
+    pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
         self.state.redap_servers.add_server(endpoint.origin);
     }
 }
