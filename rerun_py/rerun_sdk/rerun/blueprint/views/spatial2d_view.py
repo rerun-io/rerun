@@ -79,7 +79,9 @@ class Spatial2DView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = None,
+        overrides: dict[
+            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
+        ] = None,
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike

@@ -74,7 +74,9 @@ class GraphView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = None,
+        overrides: dict[
+            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
+        ] = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         force_link: blueprint_archetypes.ForceLink | None = None,
         force_many_body: blueprint_archetypes.ForceManyBody | None = None,

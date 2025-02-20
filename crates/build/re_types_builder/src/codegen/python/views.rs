@@ -59,7 +59,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
     defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
-    overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = None,
+    overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = None,
     "#
     .to_owned();
 

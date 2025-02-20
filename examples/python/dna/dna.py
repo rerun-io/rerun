@@ -78,6 +78,7 @@ def main() -> None:
                 origin="/",
                 overrides={
                     "helix/structure/scaffolding/beads": [
+                        # TODO: visible time range override is.. special.
                         rrb.VisibleTimeRange(
                             "stable_time",
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),

@@ -43,10 +43,17 @@ class View:
         contents: ViewContentsLike,
         name: Utf8Like | None,
         visible: BoolLike | None = None,
+<<<<<<< HEAD
         properties: dict[str, AsComponents] | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] | None = None,
     ) -> None:
+=======
+        properties: dict[str, AsComponents] = {},
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = [],
+        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = {},
+    ):
+>>>>>>> 2e8b494065 (more annotations, convert all examples to use new defaults/overrides)
         """
         Construct a blueprint for a new view.
 

@@ -67,7 +67,9 @@ class MapView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
-        overrides: dict[EntityPathLike, list[AsComponents | Iterable[DescribedComponentBatch]]] = None,
+        overrides: dict[
+            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
+        ] = None,
         zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,
         background: blueprint_archetypes.MapBackground | blueprint_components.MapProviderLike | None = None,
     ) -> None:
