@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
+use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
@@ -2231,7 +2232,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(re_entity_db::Timeline, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, ComponentName, EntityPath, Timeline};
+use re_chunk::{Chunk, ComponentName, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 
@@ -237,7 +237,7 @@ impl ChunkStore {
     pub fn entity_stats_on_timeline(
         &self,
         entity_path: &EntityPath,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
@@ -288,7 +288,7 @@ impl ChunkStore {
     /// This ignores static events.
     pub fn num_temporal_events_for_component_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> u64 {
@@ -321,8 +321,8 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> u64 {
-        self.all_timelines()
-            .iter()
+        self.timelines()
+            .keys()
             .map(|timeline| {
                 self.num_temporal_events_for_component_on_timeline(
                     timeline,

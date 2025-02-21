@@ -18,7 +18,7 @@ use pyo3::{
 use tokio_stream::StreamExt;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, TimelineName};
 use re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
@@ -36,7 +36,7 @@ use re_protos::{
         SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
-use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
+use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
 
 use crate::dataframe::{
     ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
@@ -1179,7 +1179,7 @@ impl PyRemoteRecording {
 
         // TODO(jleibs): Need to get this from the remote schema
         //let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
-        let timeline = Timeline::new_sequence(index);
+        let timeline = TimelineName::new(index);
 
         let contents = Self::extract_contents_expr(contents)?;
 

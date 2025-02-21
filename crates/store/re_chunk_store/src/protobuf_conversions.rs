@@ -209,10 +209,10 @@ impl From<crate::QueryExpression> for re_protos::common::v0::Query {
             include_semantically_empty_columns: value.include_semantically_empty_columns,
             include_indicator_columns: value.include_indicator_columns,
             include_tombstone_columns: value.include_tombstone_columns,
-            filtered_index: value.filtered_index.map(|timeline| {
+            filtered_index: value.filtered_index.map(|index_name| {
                 re_protos::common::v0::IndexColumnSelector {
                     timeline: Some(re_protos::common::v0::Timeline {
-                        name: timeline.name().to_string(),
+                        name: index_name.to_string(),
                     }),
                 }
             }),

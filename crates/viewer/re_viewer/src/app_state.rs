@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use egui::{NumExt as _, Ui};
 
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
@@ -131,7 +132,7 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(re_entity_db::Timeline, ResolvedTimeRangeF)> {
+    ) -> Option<(TimelineName, ResolvedTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
         let rec_cfg = self.recording_configs.get(&rec_id)?;
 
@@ -139,7 +140,7 @@ impl AppState {
         let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .loop_selection()
-            .map(|q| (*time_ctrl.timeline(), q))
+            .map(|q| (*time_ctrl.timeline().name(), q))
     }
 
     #[allow(clippy::too_many_arguments)]

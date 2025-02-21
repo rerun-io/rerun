@@ -217,7 +217,7 @@ fn load_video(
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.clone(),
-                std::iter::once((video_timeline, time_column)).collect(),
+                std::iter::once((*video_timeline.name(), time_column)).collect(),
                 [
                     (
                         VideoFrameReference::indicator().descriptor.clone(),

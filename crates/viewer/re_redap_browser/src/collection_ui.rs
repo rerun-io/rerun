@@ -5,7 +5,7 @@ use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::{EntityPath, TimelineName};
 use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
@@ -226,7 +226,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     self.ctx,
                     ui,
                     &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                        Timeline::new_sequence("unknown"),
+                        TimelineName::new("unknown"),
                     ),
                     row_index,
                     None,

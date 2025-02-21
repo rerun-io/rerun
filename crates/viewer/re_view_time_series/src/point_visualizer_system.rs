@@ -249,7 +249,7 @@ impl SeriesPointSystem {
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|index| (index, ()))
             };
@@ -259,7 +259,7 @@ impl SeriesPointSystem {
 
             // Determine per-series visibility flags.
             let mut series_visibility_flags: Vec<bool> = results
-                .iter_as(query.timeline(), SeriesVisible::name())
+                .iter_as(*query.timeline(), SeriesVisible::name())
                 .slice::<bool>()
                 .next()
                 .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
@@ -272,7 +272,7 @@ impl SeriesPointSystem {
                 points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
                         debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
@@ -348,7 +348,7 @@ impl SeriesPointSystem {
 
                         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                                chunk.iter_component_indices(query.timeline(), &Color::name()),
                                 chunk.iter_slices::<u32>(Color::name())
                             )
                         });
@@ -393,8 +393,7 @@ impl SeriesPointSystem {
 
                         let all_marker_sizes = all_marker_size_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk
-                                    .iter_component_indices(&query.timeline(), &MarkerSize::name()),
+                                chunk.iter_component_indices(query.timeline(), &MarkerSize::name()),
                                 chunk.iter_slices::<f32>(MarkerSize::name())
                             )
                         });
@@ -454,7 +453,7 @@ impl SeriesPointSystem {
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
                                     chunk.iter_component_indices(
-                                        &query.timeline(),
+                                        query.timeline(),
                                         &MarkerShape::name(),
                                     )
                                 });

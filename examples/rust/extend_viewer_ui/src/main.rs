@@ -111,7 +111,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:
-    let timeline = re_log_types::Timeline::log_time();
+    let timeline = re_log_types::TimelineName::log_time();
 
     ui.separator();
 
@@ -131,7 +131,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
 fn entity_ui(
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
-    timeline: re_log_types::Timeline,
+    timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
@@ -151,7 +151,7 @@ fn entity_ui(
 fn component_ui(
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
-    timeline: re_log_types::Timeline,
+    timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
     component_name: re_types::ComponentName,
 ) {

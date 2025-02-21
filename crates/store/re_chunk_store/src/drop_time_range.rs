@@ -1,4 +1,4 @@
-use re_chunk::{ChunkId, Timeline};
+use re_chunk::{ChunkId, TimelineName};
 use re_log_types::ResolvedTimeRange;
 
 use crate::{ChunkStore, ChunkStoreEvent};
@@ -13,7 +13,7 @@ impl ChunkStore {
     /// Used to implement undo (erase the last event from the blueprint db).
     pub fn drop_time_range(
         &mut self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         drop_range: ResolvedTimeRange,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();

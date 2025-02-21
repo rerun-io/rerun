@@ -29,7 +29,7 @@ fn drop_time_range() -> anyhow::Result<()> {
 
         let num_events = |store: &ChunkStore| {
             store.num_temporal_events_for_component_on_timeline(
-                &timeline,
+                timeline.name(),
                 &entity_path,
                 MyColor::name(),
             )
@@ -65,16 +65,16 @@ fn drop_time_range() -> anyhow::Result<()> {
         assert_eq!(num_events(&store), 12);
 
         // Drop nothing:
-        store.drop_time_range(&timeline, ResolvedTimeRange::new(10, 100));
-        store.drop_time_range(&timeline, ResolvedTimeRange::new(-100, -10));
+        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(10, 100));
+        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(-100, -10));
         assert_eq!(num_events(&store), 12);
 
         // Drop stuff from the middle of the first chunk, and the start of the second:
-        store.drop_time_range(&timeline, ResolvedTimeRange::new(1, 2));
+        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(1, 2));
         assert_eq!(num_events(&store), 9);
 
         // Drop a bunch in the middle (including all of middle chunk):
-        store.drop_time_range(&timeline, ResolvedTimeRange::new(2, 5));
+        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(2, 5));
         assert_eq!(num_events(&store), 3);
     }
 

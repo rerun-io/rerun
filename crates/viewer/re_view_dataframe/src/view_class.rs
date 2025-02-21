@@ -138,7 +138,7 @@ Configure in the selection panel:
 
         let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: Some(timeline),
+            filtered_index: Some(*timeline.name()),
             filtered_index_range: Some(view_query.filter_by_range()?),
             filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,

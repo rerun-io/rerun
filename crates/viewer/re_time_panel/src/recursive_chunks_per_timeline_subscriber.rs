@@ -8,7 +8,7 @@ use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
-use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
@@ -42,7 +42,8 @@ pub struct EntityTimelineChunks {
 /// For each entity & timeline, keeps track of all its chunks and chunks of its children.
 #[derive(Default)]
 pub struct PathRecursiveChunksPerTimelineStoreSubscriber {
-    chunks_per_timeline_per_entity: IntMap<Timeline, IntMap<EntityPathHash, EntityTimelineChunks>>,
+    chunks_per_timeline_per_entity:
+        IntMap<TimelineName, IntMap<EntityPathHash, EntityTimelineChunks>>,
 }
 
 impl PathRecursiveChunksPerTimelineStoreSubscriber {
@@ -67,7 +68,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     pub fn path_recursive_chunks_for_entity_and_timeline(
         &self,
         entity_path: &EntityPath,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> Option<&EntityTimelineChunks> {
         self.chunks_per_timeline_per_entity
             .get(timeline)?
@@ -238,8 +239,8 @@ mod tests {
         // Remove only the t0 chunk on "parent/child"
         store.gc(&GarbageCollectionOptions {
             protected_time_ranges: [
-                (t0, ResolvedTimeRange::new(1, TimeInt::MAX)),
-                (t1, ResolvedTimeRange::EVERYTHING),
+                (*t0.name(), ResolvedTimeRange::new(1, TimeInt::MAX)),
+                (*t1.name(), ResolvedTimeRange::EVERYTHING),
             ]
             .into_iter()
             .collect(),

@@ -26,7 +26,7 @@ use re_chunk_store::{
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
-use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
@@ -876,13 +876,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not a sequence.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not a sequence.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -947,13 +947,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not temporal.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not temporal.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -999,13 +999,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not temporal.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not temporal.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -1338,7 +1338,7 @@ impl PyRecording {
         // Look up the type of the timeline
         let selector = TimeColumnSelector::from(index);
 
-        let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
+        let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
@@ -1347,7 +1347,7 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(timeline.timeline()),
+            filtered_index: Some(*time_column.timeline().name()),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,

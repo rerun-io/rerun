@@ -1,4 +1,4 @@
-use re_chunk::{Chunk, RangeQuery, RowId, Timeline};
+use re_chunk::{Chunk, RangeQuery, RowId, Timeline, TimelineName};
 use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
@@ -12,10 +12,7 @@ fn main() -> anyhow::Result<()> {
 
     eprintln!("Data:\n{chunk}");
 
-    let query = RangeQuery::new(
-        Timeline::new_sequence("frame"),
-        ResolvedTimeRange::EVERYTHING,
-    );
+    let query = RangeQuery::new(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
 
     // Find all relevant data for a query:
     let chunk = chunk.range(&query, MyPoint::name());
@@ -23,7 +20,7 @@ fn main() -> anyhow::Result<()> {
 
     // And then slice it as appropriate:
     let chunk = chunk
-        .timeline_sliced(Timeline::log_time())
+        .timeline_sliced(TimelineName::log_time())
         .component_sliced(MyPoint::name());
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");
 

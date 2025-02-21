@@ -14,7 +14,7 @@ pub use self::external::re_chunk_store::{
 #[doc(no_inline)]
 pub use self::external::re_log_types::{
     EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter, ResolvedTimeRange,
-    StoreKind, TimeInt, Timeline,
+    StoreKind, TimeInt, Timeline, TimelineName,
 };
 #[doc(no_inline)]
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};

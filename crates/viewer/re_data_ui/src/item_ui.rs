@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -176,7 +176,7 @@ pub fn instance_path_button(
 /// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
 /// _on the current timeline_.
 pub fn instance_path_icon(
-    timeline: &re_chunk_store::Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
@@ -335,7 +335,7 @@ pub fn instance_path_parts_buttons(
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     tree: &EntityTree,
     include_subtree: bool,
@@ -379,7 +379,6 @@ fn entity_tree_stats_ui(
         ui.label(format!(
             "{} rows on timeline '{timeline}'{subtree_caveat}",
             format_uint(total_stats.num_rows),
-            timeline = timeline.name()
         ));
     } else {
         ui.label(format!(
@@ -387,7 +386,6 @@ fn entity_tree_stats_ui(
             format_uint(total_stats.num_rows),
             format_uint(static_stats.num_rows),
             format_uint(timeline_stats.num_rows),
-            timeline = timeline.name()
         ));
     }
 
@@ -417,19 +415,17 @@ fn entity_tree_stats_ui(
                 // Fencepost adjustment:
                 bytes_per_time *= (num_temporal_rows - 1) as f64 / num_temporal_rows as f64;
 
-                data_rate = Some(match timeline.typ() {
+                let typ = db.timeline_type(timeline);
+
+                data_rate = Some(match typ {
                     re_log_types::TimeType::Time => {
                         let bytes_per_second = 1e9 * bytes_per_time;
 
-                        format!(
-                            "{}/s in '{}'",
-                            format_bytes(bytes_per_second),
-                            timeline.name()
-                        )
+                        format!("{}/s in '{}'", format_bytes(bytes_per_second), timeline)
                     }
 
                     re_log_types::TimeType::Sequence => {
-                        format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
                     }
                 });
             }
@@ -536,24 +532,24 @@ pub fn data_blueprint_button_to(
 pub fn time_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
     value: TimeInt,
 ) -> egui::Response {
     let is_selected = ctx
         .rec_cfg
         .time_ctrl
         .read()
-        .is_time_selected(timeline, value);
+        .is_time_selected(timeline_name, value);
 
-    let response = ui.selectable_label(
-        is_selected,
-        timeline.typ().format(value, ctx.app_options().time_zone),
-    );
+    let typ = ctx.recording().timeline_type(timeline_name);
+
+    let response = ui.selectable_label(is_selected, typ.format(value, ctx.app_options().time_zone));
     if response.clicked() {
+        let timeline = Timeline::new(*timeline_name, typ);
         ctx.rec_cfg
             .time_ctrl
             .write()
-            .set_timeline_and_time(*timeline, value);
+            .set_timeline_and_time(timeline, value);
         ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
@@ -562,25 +558,26 @@ pub fn time_button(
 pub fn timeline_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
 ) -> egui::Response {
-    timeline_button_to(ctx, ui, timeline.name().to_string(), timeline)
+    timeline_button_to(ctx, ui, timeline.to_string(), timeline)
 }
 
 pub fn timeline_button_to(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline() == timeline;
+    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline().name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
         let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        time_ctrl.set_timeline(*timeline);
+        let timeline = Timeline::new(*timeline_name, ctx.recording().timeline_type(timeline_name));
+        time_ctrl.set_timeline(timeline);
         time_ctrl.pause();
     }
     response
@@ -639,7 +636,9 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
+            let typ = db.timeline_type(&query.timeline());
+            let timeline = Timeline::new(query.timeline(), typ);
+            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats

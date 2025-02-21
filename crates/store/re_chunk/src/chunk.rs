@@ -13,7 +13,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
+use re_log_types::{
+    EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
+};
 use re_types_core::{
     ComponentDescriptor, ComponentName, DeserializationError, Loggable, SerializationError,
 };
@@ -205,7 +207,7 @@ pub struct Chunk {
     /// Each column must be the same length as `row_ids`.
     ///
     /// Empty if this is a static chunk.
-    pub(crate) timelines: IntMap<Timeline, TimeColumn>,
+    pub(crate) timelines: IntMap<TimelineName, TimeColumn>,
 
     /// A sparse `ListArray` for each component.
     ///
@@ -286,17 +288,17 @@ impl Chunk {
             && {
                 let timelines: IntMap<_, _> = timelines
                     .iter()
-                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
-                    .filter(|(timeline, _time_chunk)| {
-                        timeline.typ() != re_log_types::TimeType::Time
+                    .map(|(timeline, time_column)| (*timeline, time_column))
+                    .filter(|(_timeline, time_column)| {
+                        time_column.timeline.typ() == re_log_types::TimeType::Sequence
                     })
                     .collect();
                 let rhs_timelines: IntMap<_, _> = rhs
                     .timelines
                     .iter()
-                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
-                    .filter(|(timeline, _time_chunk)| {
-                        timeline.typ() != re_log_types::TimeType::Time
+                    .map(|(timeline, time_column)| (*timeline, time_column))
+                    .filter(|(_timeline, time_column)| {
+                        time_column.timeline.typ() == re_log_types::TimeType::Sequence
                     })
                     .collect();
                 timelines == rhs_timelines
@@ -413,15 +415,15 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<Timeline, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
+    ) -> IntMap<TimelineName, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
     {
         re_tracing::profile_function!();
 
         self.timelines
             .iter()
-            .map(|(&timeline, time_column)| {
+            .map(|(timeline_name, time_column)| {
                 (
-                    timeline,
+                    *timeline_name,
                     time_column.time_range_per_component(&self.components),
                 )
             })
@@ -457,7 +459,7 @@ impl Chunk {
     /// the returned vector is guaranteed to be unique).
     pub fn num_events_cumulative_per_unique_time(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
@@ -724,7 +726,7 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: FixedSizeBinaryArray,
-        timelines: IntMap<Timeline, TimeColumn>,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let mut chunk = Self {
@@ -758,7 +760,7 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: &[RowId],
-        timelines: IntMap<Timeline, TimeColumn>,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
@@ -776,7 +778,7 @@ impl Chunk {
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
-        timelines: IntMap<Timeline, TimeColumn>,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let count = components
@@ -857,7 +859,7 @@ impl Chunk {
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines
-            .insert(chunk_timeline.timeline, chunk_timeline);
+            .insert(*chunk_timeline.timeline.name(), chunk_timeline);
         self.sanity_check()
     }
 }
@@ -1171,7 +1173,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn timelines(&self) -> &IntMap<Timeline, TimeColumn> {
+    pub fn timelines(&self) -> &IntMap<TimelineName, TimeColumn> {
         &self.timelines
     }
 
@@ -1198,8 +1200,8 @@ impl Chunk {
     #[inline]
     pub fn timepoint_max(&self) -> TimePoint {
         self.timelines
-            .iter()
-            .map(|(timeline, info)| (*timeline, info.time_range.max()))
+            .values()
+            .map(|info| (info.timeline, info.time_range.max()))
             .collect()
     }
 }
@@ -1435,13 +1437,13 @@ impl Chunk {
         }
 
         // Timelines
-        for (timeline, time_column) in timelines {
+        for (timeline_name, time_column) in timelines {
             if time_column.times.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs.\
-                         Found {} row IDs but {} timestamps for timeline {:?}",
-                        row_ids.len(), time_column.times.len(), timeline.name(),
+                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
+                         Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
+                        row_ids.len(), time_column.times.len(),
                     ),
                 });
             }
@@ -1470,7 +1472,7 @@ impl Chunk {
                 if list_array.len() != row_ids.len() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs.\
+                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
                             row_ids.len(), list_array.len(),
                         ),

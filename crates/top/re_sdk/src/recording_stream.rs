@@ -1052,8 +1052,8 @@ impl RecordingStream {
 
         let indexes = indexes
             .into_iter()
-            .map(|timeline| (*timeline.timeline(), timeline))
-            .collect::<IntMap<_, _>>();
+            .map(|col| (*col.timeline().name(), col))
+            .collect();
 
         let components: ChunkComponents = columns
             .into_iter()
@@ -2286,6 +2286,7 @@ impl RecordingStream {
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
+            // TODO(#9084): no need to clear two timelines
             ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_sequence(timeline));
             ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_temporal(timeline));
         };

@@ -104,7 +104,7 @@ impl TextLogSystem {
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints(&Text::name()));
 
-        let timeline = query.timeline();
+        let timeline = *query.timeline();
         let all_texts = results.iter_as(timeline, Text::name());
         let all_levels = results.iter_as(timeline, TextLogLevel::name());
         let all_colors = results.iter_as(timeline, Color::name());

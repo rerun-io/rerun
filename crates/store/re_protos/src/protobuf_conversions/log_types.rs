@@ -84,16 +84,16 @@ impl TryFrom<crate::common::v0::IndexRange> for re_log_types::ResolvedTimeRange 
     }
 }
 
-impl From<crate::common::v0::Timeline> for re_log_types::Timeline {
+impl From<crate::common::v0::Timeline> for re_log_types::TimelineName {
     fn from(value: crate::common::v0::Timeline) -> Self {
-        // TODO(cmc): QueryExpression::filtered_index gotta be a selector
-        #[allow(clippy::match_same_arms)]
-        match value.name.as_str() {
-            "log_time" => Self::new_temporal(value.name),
-            "log_tick" => Self::new_sequence(value.name),
-            "frame" => Self::new_sequence(value.name),
-            "frame_nr" => Self::new_sequence(value.name),
-            _ => Self::new_temporal(value.name),
+        Self::new(&value.name)
+    }
+}
+
+impl From<re_log_types::TimelineName> for crate::common::v0::Timeline {
+    fn from(value: re_log_types::TimelineName) -> Self {
+        Self {
+            name: value.to_string(),
         }
     }
 }
@@ -106,19 +106,15 @@ impl From<re_log_types::Timeline> for crate::common::v0::Timeline {
     }
 }
 
-impl TryFrom<crate::common::v0::IndexColumnSelector> for re_log_types::Timeline {
+impl TryFrom<crate::common::v0::IndexColumnSelector> for re_log_types::TimelineName {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v0::IndexColumnSelector) -> Result<Self, Self::Error> {
-        let timeline = value
-            .timeline
-            .ok_or(missing_field!(
-                crate::common::v0::IndexColumnSelector,
-                "timeline"
-            ))?
-            .into();
-
-        Ok(timeline)
+        let timeline = value.timeline.ok_or(missing_field!(
+            crate::common::v0::IndexColumnSelector,
+            "timeline"
+        ))?;
+        Ok(timeline.into())
     }
 }
 
@@ -550,12 +546,12 @@ mod tests {
 
     #[test]
     fn index_column_selector_conversion() {
-        let timeline = re_log_types::Timeline::new_temporal("log_time");
+        let timeline = re_log_types::TimelineName::log_time();
         let proto_index_column_selector: crate::common::v0::IndexColumnSelector =
             crate::common::v0::IndexColumnSelector {
                 timeline: Some(timeline.into()),
             };
-        let timeline2: re_log_types::Timeline = proto_index_column_selector.try_into().unwrap();
+        let timeline2: re_log_types::TimelineName = proto_index_column_selector.try_into().unwrap();
         assert_eq!(timeline, timeline2);
     }
 

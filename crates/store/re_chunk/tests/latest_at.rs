@@ -1,7 +1,7 @@
 use arrow::datatypes::DataType as ArrowDatatype;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, LatestAtQuery, RowId, TimePoint, Timeline};
+use re_chunk::{Chunk, LatestAtQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
@@ -60,7 +60,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 2);
+        let query = LatestAtQuery::new(TimelineName::new("frame"), 2);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -82,7 +82,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 4);
+        let query = LatestAtQuery::new(TimelineName::new("frame"), 4);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -124,7 +124,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 6);
+        let query = LatestAtQuery::new(TimelineName::new("frame"), 6);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -210,7 +210,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = LatestAtQuery::new(Timeline::log_time(), 1000);
+        let query = LatestAtQuery::new(TimelineName::log_time(), 1000);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -232,7 +232,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(Timeline::log_time(), 1050);
+        let query = LatestAtQuery::new(TimelineName::log_time(), 1050);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -274,7 +274,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(Timeline::log_time(), 1100);
+        let query = LatestAtQuery::new(TimelineName::log_time(), 1100);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -349,7 +349,7 @@ fn static_sorted() -> anyhow::Result<()> {
         .build()?;
 
     for frame_nr in [2, 4, 6] {
-        let query = LatestAtQuery::new(Timeline::new_sequence("frame"), frame_nr);
+        let query = LatestAtQuery::new(TimelineName::new("frame"), frame_nr);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -424,7 +424,7 @@ fn static_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     for log_time in [1000, 1050, 1100] {
-        let query = LatestAtQuery::new(Timeline::log_time(), log_time);
+        let query = LatestAtQuery::new(TimelineName::log_time(), log_time);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
