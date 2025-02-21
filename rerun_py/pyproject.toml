@@ -23,6 +23,7 @@ description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
 requires-python = ">=3.8"
+version = "0.22.1"
 
 [[project.authors]]
 email = "opensource@rerun.io"

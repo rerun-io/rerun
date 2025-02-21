@@ -21,7 +21,7 @@ channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
@@ -368,6 +368,9 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 # around that and executes `rerun` from the system shell within the context of the pixi environment.
 rerun-from-path = "rerun"
 
+[feature.examples-tasks]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
+
 [feature.examples-tasks.tasks]
 
 # Dedicated alias for building the python bindings for the `examples` environment.
@@ -462,12 +465,12 @@ jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other 
 mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1.*"
-numpy = ">=1.23,<2"
+numpy = ">=2"
 prettier = "3.2.5.*"
 pyarrow = "18.0.0.*"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
-python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
+python = "==3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.3.5.*"
 semver = ">=2.13,<2.14"
 taplo = "=0.9.1"
@@ -524,7 +527,7 @@ ghp-import = "==2.1.0" # for CI documentation handling
 
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 
 [feature.python-dev.dependencies]
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
@@ -535,7 +538,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 #
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
-numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-dev.activation]
@@ -568,44 +571,52 @@ mike = "==1.1.2"
 setuptools = ">75"
 sphobjinv = "==2.3.1"
 
+[feature.py-test-deps]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
+
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.2.2" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
+
+[feature.wheel-test]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
 opencv = ">4.6"
-numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.17.0"
-rerun-notebook = "==0.17.0"
+rerun-sdk = "==0.22.1"
+rerun-notebook = "==0.22.1"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
 # Ideally we would could remove`linux-aarch64` from here, but it breaks other things.
 # See: https://github.com/prefix-dev/pixi/issues/1051
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
 macos = "12.0" # needed for scipy
 
 [feature.examples-common.dependencies]
-python = "=3.11"
+python = "==3.11"
 
 # TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
 pyproj = ">=3.7.0"
+umap-learn = "==0.5.7"
+
 
 [feature.examples-common.pypi-dependencies]
 # External deps
@@ -614,6 +625,9 @@ polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
+
+torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
+transformers = "==4.49.0"
 
 # Rerun libs
 
@@ -662,11 +676,6 @@ gesture_detection = { path = "examples/python/gesture_detection", editable = tru
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 
 [feature.examples-common.target.osx-arm64.pypi-dependencies]
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
-
-[feature.examples-common.target.osx-64.pypi-dependencies]
 face_tracking = { path = "examples/python/face_tracking", editable = true }
 gesture_detection = { path = "examples/python/gesture_detection", editable = true }
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
