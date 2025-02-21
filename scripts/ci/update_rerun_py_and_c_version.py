@@ -39,7 +39,7 @@ def set_rerun_py_version(init_path: Path, version: semver.VersionInfo) -> None:
     else:
         version_info_items.append("None")
 
-    version_info_line = f'__version_info__ = ({", ".join(version_info_items)})\n'
+    version_info_line = f"__version_info__ = ({', '.join(version_info_items)})\n"
 
     with init_path.open() as f:
         lines = f.readlines()

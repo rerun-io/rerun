@@ -70,7 +70,7 @@ class Example:
 
     def __post_init__(self) -> None:
         self.name = self.path.name
-        pyproject_data = tomli.loads(Path(self.path / "pyproject.toml").read_text())
+        pyproject_data = tomli.loads(Path(self.path / "pyproject.toml").read_text(encoding="utf-8"))
         self.standard_metadata = StandardMetadata.from_pyproject(pyproject_data, self.path)
         self.rerun_metadata = RerunMetadata.from_pyproject(pyproject_data)
 

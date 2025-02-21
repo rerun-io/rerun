@@ -156,7 +156,7 @@ class Layout:
                 elif detections:
                     for index, detection in enumerate(detections):
                         path_text = f"recording://page_{self.page_number}/Image/{layout_type.type.title()}/{name.title()}/Detections/{index}"
-                        self.recovery += f' [{detection["text"]}]({path_text})'  # Log details (text)
+                        self.recovery += f" [{detection['text']}]({path_text})"  # Log details (text)
         else:
             logging.warning(f"Invalid layout type detected: {layout_type}")
 
