@@ -8,7 +8,6 @@ use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
-use re_redap_browser::RedapServers;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
@@ -204,9 +203,6 @@ pub struct App {
 
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
-
-    /// Redap server catalogs and browser UI
-    redap_servers: RedapServers,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -422,7 +418,6 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            redap_servers: RedapServers::default(),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -580,8 +575,7 @@ impl App {
                 self.state.display_mode = display_mode;
             }
             SystemCommand::AddRedapServer { endpoint } => {
-                self.redap_servers
-                    .fetch_catalog(&self.async_runtime, endpoint);
+                self.state.redap_servers.add_server(endpoint.origin);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -598,8 +592,7 @@ impl App {
                 match data_source.stream(Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                        self.redap_servers
-                            .fetch_catalog(&self.async_runtime, endpoint);
+                        self.state.redap_servers.add_server(endpoint.origin);
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1213,7 +1206,9 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.redap_servers.on_frame_start();
+                        self.state
+                            .redap_servers
+                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1222,7 +1217,6 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_context,
-                            &self.redap_servers,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1748,9 +1742,8 @@ impl App {
         }
     }
 
-    pub fn fetch_catalog(&self, endpoint: re_uri::CatalogEndpoint) {
-        self.redap_servers
-            .fetch_catalog(&self.async_runtime, endpoint);
+    pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
+        self.state.redap_servers.add_server(endpoint.origin);
     }
 }
 

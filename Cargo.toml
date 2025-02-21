@@ -183,6 +183,7 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
+crossbeam-channel = "0.5"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes

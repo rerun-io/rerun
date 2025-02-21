@@ -1,7 +1,8 @@
-use crate::FileContents;
 use re_log::debug;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+
+use crate::FileContents;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;

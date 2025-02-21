@@ -13,7 +13,9 @@ use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
-use super::servers::{Command, RecordingCollection};
+use super::servers::Command;
+use crate::collections::Collection;
+use crate::context::Context;
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -25,24 +27,23 @@ enum CollectionUiError {
 }
 
 pub fn collection_ui(
-    ctx: &ViewerContext<'_>,
+    viewer_ctx: &ViewerContext<'_>,
+    ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
-    collection: &RecordingCollection,
-) -> Vec<Command> {
-    let mut commands = vec![];
-
+    collection: &Collection,
+) {
     let sorbet_schema = {
         let Some(sorbet_batch) = collection.collection.first() else {
             ui.label(egui::RichText::new("This collection is empty").italics());
-            return commands;
+            return;
         };
 
         sorbet_batch.sorbet_schema()
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    let table_id_salt = collection.collection_id.with("__collection_table__");
+    let table_id_salt = egui::Id::new(collection.collection_id).with("__collection_table__");
 
     let num_rows = collection
         .collection
@@ -69,19 +70,19 @@ pub fn collection_ui(
         Err(err) => {
             //TODO(ab): better error handling?
             ui.error_label(err.to_string());
-            return commands;
+            return;
         }
     };
 
     let mut table_delegate = CollectionTableDelegate {
-        ctx,
+        ctx: viewer_ctx,
         display_record_batches: &display_record_batches,
         selected_columns: &columns,
     };
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
         if ui.button("Close").clicked() {
-            commands.push(Command::DeselectCollection);
+            let _ = ctx.command_sender.send(Command::DeselectCollection);
         }
 
         egui_table::Table::new()
@@ -102,8 +103,6 @@ pub fn collection_ui(
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
     });
-
-    commands
 }
 
 /// Descriptor for the generated `RecordingUri` component.
