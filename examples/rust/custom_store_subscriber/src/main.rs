@@ -14,8 +14,8 @@ use std::collections::BTreeMap;
 
 use rerun::{
     external::{
-        anyhow, re_build_info, re_chunk::TimelineName, re_chunk_store, re_log,
-        re_log_types::ResolvedTimeRange,
+        anyhow, re_build_info, re_chunk_store, re_log,
+        re_log_types::{ResolvedTimeRange, TimelineName},
     },
     time::TimeInt,
     ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,

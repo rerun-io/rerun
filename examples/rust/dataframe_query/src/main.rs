@@ -3,8 +3,8 @@
 use itertools::Itertools;
 
 use rerun::{
-    dataframe::{EntityPathFilter, QueryEngine, QueryExpression, SparseFillStrategy},
-    external::{arrow, re_chunk::TimelineName, re_format_arrow::format_record_batch},
+    dataframe::{EntityPathFilter, QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
+    external::{arrow, re_format_arrow::format_record_batch},
     ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 

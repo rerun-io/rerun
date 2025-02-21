@@ -1,8 +1,8 @@
 //! Query and display the first 10 rows of a recording.
 
 use rerun::{
-    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy},
-    external::{re_chunk::TimelineName, re_format_arrow::format_record_batch},
+    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
+    external::re_format_arrow::format_record_batch,
     ChunkStoreConfig, VersionPolicy,
 };
 
