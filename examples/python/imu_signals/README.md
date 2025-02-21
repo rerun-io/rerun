@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "IMU Signals"
+title = "IMU signals"
 tags = ["Plots"]
 description = "Log multi dimensional signals under a single entity."
 thumbnail_dimensions = [480, 480]
