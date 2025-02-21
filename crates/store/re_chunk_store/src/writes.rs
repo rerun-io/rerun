@@ -373,7 +373,8 @@ impl ChunkStore {
             if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ) {
                 if old_typ != new_typ {
                     re_log::warn_once!(
-                        "Index column '{name}' changed type from {old_typ:?} to {new_typ:?}"
+                        "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
+                        Rerun does not support using different types for the same timeline.",
                     );
                 }
             }

@@ -57,7 +57,8 @@ impl TimePoint {
                 && existing_timeline.typ() != timeline.typ()
             {
                 re_log::warn_once!(
-                    "Timeline {:?} changed type from {:?} to {:?}",
+                    "Timeline {:?} changed type from {:?} to {:?}. \
+                     Rerun does not support using different types for the same timeline.",
                     timeline.name(),
                     existing_timeline.typ(),
                     timeline.typ()
