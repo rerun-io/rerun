@@ -51,7 +51,7 @@ def _setup_rerun() -> None:
         rrb.Horizontal(
             rrb.Vertical(
                 rrb.TimeSeriesView(
-                    origin="/gyroscope",
+                    origin="gyroscope",
                     name="Gyroscope",
                     overrides={
                         "/gyroscope": [
@@ -61,7 +61,7 @@ def _setup_rerun() -> None:
                     },
                 ),
                 rrb.TimeSeriesView(
-                    origin="/accelerometer",
+                    origin="accelerometer",
                     name="Accelerometer",
                     overrides={
                         "/accelerometer": [
