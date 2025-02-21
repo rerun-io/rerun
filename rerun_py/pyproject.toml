@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "maturin"
-requires = ["maturin>=1.5.1"]
+requires = ["maturin>=1.8.1"]
 
 [project]
 classifiers = [
@@ -23,6 +23,7 @@ description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
 requires-python = ">=3.8"
+dynamic = ["version"]
 
 [[project.authors]]
 email = "opensource@rerun.io"
