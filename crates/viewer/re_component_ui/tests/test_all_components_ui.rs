@@ -9,7 +9,7 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_component_ui::create_component_ui_registry;
-use re_log_types::{EntityPath,  TimelineName};
+use re_log_types::{EntityPath, TimelineName};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
