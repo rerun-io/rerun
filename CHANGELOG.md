@@ -1,8 +1,47 @@
 # Rerun changelog
 
+<!-- Can't compare 0.21.1 with HEAD -->
+## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD)
+
+## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Bugfixes - 2025-02-20
+
+A small release addressing bugs and polishing rough edges.
+
+### 🛠️ Note on 0.20.0 release
+
+An issue with the 0.20.0 release led to incorrect artifacts being published, causing a few minor changes to be missing from those artifacts. The correct version has always been available on crates.io, PyPI, Conda, and other distribution channels, so no action is needed if you installed from these sources.
+
+### 🤖 Native loading for LeRobot datasets
+We're gradually rolling out support for native loading of LeRobot datasets. It’s not fully feature-complete yet, there are tons of variations in these datasets, so it’ll take a bit of time to cover all the edge cases. More improvements and features are planned for the 0.23 release, so expect things to get smoother and more robust soon.
+
+If you run into any issues, let us know! Your feedback helps us iron out bugs and improve the experience faster.
+
+https://github.com/user-attachments/assets/4b6d7e8c-02c6-43c9-be66-dcdbcf782cbd
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Don't use `np.float_` since it was removed in numpy 2.0 [#9037](https://github.com/rerun-io/rerun/pull/9037)
+
+#### 🪳 Bug fixes
+- Never drop blueprint data from the WS server's message buffer [#8977](https://github.com/rerun-io/rerun/pull/8977) (thanks [@DerpDays](https://github.com/DerpDays)!)
+- Fix bug leading to swizzled lerobot data in dataloader [#9000](https://github.com/rerun-io/rerun/pull/9000)
+- Fix Arrows2D draw order having no effect [#9054](https://github.com/rerun-io/rerun/pull/9054)
+- Fix non-final releases creating final-release git tags [#9085](https://github.com/rerun-io/rerun/pull/9085)
+
+#### 🌁 Viewer improvements
+- Infer entity paths from LeRobot dataset feature metadata [#8981](https://github.com/rerun-io/rerun/pull/8981)
+- Log task descriptions for each LeRobot dataset episode [#9028](https://github.com/rerun-io/rerun/pull/9028)
+- Load lerobot dataset on separate IO thread [#9027](https://github.com/rerun-io/rerun/pull/9027)
+
+#### 🧑‍🏫 Examples
+- Improve `image_column_updates` python example [#9065](https://github.com/rerun-io/rerun/pull/9065)
+
+#### 🖼 UI improvements
+- Fix link in text log view help text [#8963](https://github.com/rerun-io/rerun/pull/8963)
+
 
 ## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
-
 
 The new entity filtering:
 
@@ -138,6 +177,7 @@ Check the [🧳 Migration guide](https://rerun.io/docs/reference/migration/migra
 - Clickable URLs in named components / `AnyValues` [#8864](https://github.com/rerun-io/rerun/pull/8864)
 - Implement range selection with shift-click in the time panel [#8870](https://github.com/rerun-io/rerun/pull/8870)
 - Improve look of bar charts slightly [#8875](https://github.com/rerun-io/rerun/pull/8875)
+- Improved help view [#8947](https://github.com/rerun-io/rerun/pull/8947)
 
 #### 🕸️ Web
 - Add JS timeline control and callback APIs [#8673](https://github.com/rerun-io/rerun/pull/8673)

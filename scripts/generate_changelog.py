@@ -294,7 +294,7 @@ def main() -> None:
 
     print()
 
-    # NOTE: we inentionally add TODO:s with names below, which the CI will not be happy about. Hence the # NOLINT suffixes
+    # NOTE: we intentionally add TODO:s with names below, which the CI will not be happy about. Hence the # NOLINT suffixes
     print("TODO: add link to release video")  # NOLINT
     print()
     print("📖 Release blogpost: TODO: add link")  # NOLINT

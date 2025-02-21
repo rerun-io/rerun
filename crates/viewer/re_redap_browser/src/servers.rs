@@ -1,94 +1,205 @@
-use std::sync::Arc;
+use std::collections::BTreeMap;
+use std::sync::mpsc::{Receiver, Sender};
 
-use ahash::HashMap;
-use parking_lot::Mutex;
-use tokio_stream::StreamExt as _;
-
-use re_grpc_client::{redap::client, StreamError, TonicStatusError};
-use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::remote_store::v0::QueryCatalogRequest;
-use re_sorbet::{BatchType, SorbetBatch};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-//TODO(ab): remove this in favor of an id
-pub struct CollectionHandle {
-    server_origin: re_uri::Origin,
-    collection_index: usize,
+use crate::add_server_modal::AddServerModal;
+use crate::collections::{Collection, CollectionId, Collections};
+use crate::context::Context;
+
+struct Server {
+    origin: re_uri::Origin,
+
+    collections: Collections,
 }
 
-/// An individual catalog.
-pub struct Catalog {
-    collections: Vec<RecordingCollection>,
-}
+impl Server {
+    fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
+        //let default_catalog = FetchCollectionTask::new(runtime, origin.clone());
 
-impl Catalog {
-    fn is_empty(&self) -> bool {
-        self.collections.is_empty()
+        let mut collections = Collections::default();
+
+        //TODO(ab): For now, we just auto-download the default collection
+        collections.add(runtime, egui_ctx, origin.clone());
+
+        Self {
+            origin,
+            collections,
+        }
+    }
+
+    fn on_frame_start(&mut self) {
+        self.collections.on_frame_start();
+    }
+
+    fn find_collection(&self, collection_id: CollectionId) -> Option<&Collection> {
+        self.collections.find(collection_id)
+    }
+
+    fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        let content = list_item::LabelContent::new(self.origin.to_string())
+            .with_buttons(|ui| {
+                let response = ui
+                    .small_icon_button(&re_ui::icons::REMOVE)
+                    .on_hover_text("Remove server");
+
+                if response.clicked() {
+                    let _ = ctx
+                        .command_sender
+                        .send(Command::RemoveServer(self.origin.clone()));
+                }
+
+                response
+            })
+            .always_show_buttons(true);
+
+        ui.list_item()
+            .interactive(false)
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new(&self.origin).with("server_item"),
+                true,
+                content,
+                |ui| {
+                    self.collections.panel_ui(ctx, ui);
+                },
+            );
     }
 }
 
-/// An individual collection of recordings within a catalog.
-pub struct RecordingCollection {
-    pub collection_id: egui::Id,
+/// All servers known to the viewer, and their catalog data.
+pub struct RedapServers {
+    servers: BTreeMap<re_uri::Origin, Server>,
 
-    pub name: String,
+    selected_collection: Option<CollectionId>,
 
-    pub collection: Vec<SorbetBatch>,
+    // message queue for commands
+    command_sender: Sender<Command>,
+    command_receiver: Receiver<Command>,
+
+    add_server_modal_ui: AddServerModal,
 }
 
-/// All catalogs known to the viewer.
-// TODO(andreas,antoine): Eventually, collections are part of a catalog, meaning there is going to be multiple ones.
-#[derive(Default)]
-pub struct RedapServers {
-    // TODO(andreas,antoine): One of those Urls is probably going to be a local catalog.
-    catalogs: Arc<Mutex<HashMap<re_uri::Origin, Catalog>>>,
+impl serde::Serialize for RedapServers {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.servers
+            .keys()
+            .collect::<Vec<_>>()
+            .serialize(serializer)
+    }
+}
 
-    // TODO(andreas,antoine): Keep track of in-flight requests.
-    //in_flight_requests: HashMap<Uri, Future<Result<RecordingCollection, Error>>>,
-    selected_collection: Option<CollectionHandle>,
+impl<'de> serde::Deserialize<'de> for RedapServers {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
-    command_queue: Arc<Mutex<Vec<Command>>>,
+        let servers = Self::default();
+
+        // We cannot create `Server` right away, because we need an async handle and an
+        // `egui::Context` for that, so we just queue commands to be processed early next frame.
+        for origin in origins {
+            let _ = servers.command_sender.send(Command::AddServer(origin));
+        }
+
+        Ok(servers)
+    }
+}
+
+impl Default for RedapServers {
+    fn default() -> Self {
+        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+
+        Self {
+            servers: Default::default(),
+            selected_collection: None,
+            command_sender,
+            command_receiver,
+            add_server_modal_ui: Default::default(),
+        }
+    }
 }
 
 pub enum Command {
-    SelectCollection(CollectionHandle),
+    SelectCollection(CollectionId),
     DeselectCollection,
+    AddServer(re_uri::Origin),
+    RemoveServer(re_uri::Origin),
 }
 
 impl RedapServers {
-    /// Asynchronously fetches a catalog from a URL and adds it to the hub.
-    ///
-    /// If this url was used before, it will refresh the existing catalog in the hub.
-    pub fn fetch_catalog(&self, runtime: &AsyncRuntimeHandle, endpoint: re_uri::CatalogEndpoint) {
-        let catalogs = self.catalogs.clone();
-        runtime.spawn_future(async move {
-            let result = stream_catalog_async(endpoint, catalogs).await;
-            if let Err(err) = result {
-                // TODO(andreas,ab): Surface this in the UI in a better way.
-                re_log::error!("Failed to fetch catalog: {err}");
-            }
-        });
+    /// Add a server to the hub.
+    pub fn add_server(&self, origin: re_uri::Origin) {
+        let _ = self.command_sender.send(Command::AddServer(origin));
     }
 
-    /// Process any pending commands
-    pub fn on_frame_start(&mut self) {
-        for command in self.command_queue.lock().drain(..) {
-            match command {
-                Command::SelectCollection(collection_handle) => {
-                    self.selected_collection = Some(collection_handle);
-                }
+    /// Per-frame housekeeping.
+    ///
+    /// - Process commands from the queue.
+    /// - Update all servers.
+    pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        while let Ok(command) = self.command_receiver.try_recv() {
+            self.handle_command(runtime, egui_ctx, command);
+        }
 
-                Command::DeselectCollection => self.selected_collection = None,
+        for server in self.servers.values_mut() {
+            server.on_frame_start();
+        }
+    }
+
+    fn handle_command(
+        &mut self,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        command: Command,
+    ) {
+        match command {
+            Command::SelectCollection(collection_handle) => {
+                self.selected_collection = Some(collection_handle);
+            }
+
+            Command::DeselectCollection => self.selected_collection = None,
+
+            Command::AddServer(origin) => {
+                if !self.servers.contains_key(&origin) {
+                    self.servers.insert(
+                        origin.clone(),
+                        Server::new(runtime, egui_ctx, origin.clone()),
+                    );
+                } else {
+                    re_log::warn!(
+                        "Tried to add pre-existing sever at {:?}",
+                        origin.to_string()
+                    );
+                }
+            }
+
+            Command::RemoveServer(origin) => {
+                self.servers.remove(&origin);
             }
         }
     }
 
-    pub fn server_panel_ui(&self, ui: &mut egui::Ui) {
+    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
         ui.panel_content(|ui| {
-            ui.panel_title_bar(
+            ui.panel_title_bar_with_buttons(
                 "Servers",
                 Some("These are the currently connected Redap servers."),
+                |ui| {
+                    if ui
+                        .small_icon_button(&re_ui::icons::ADD)
+                        .on_hover_text("Add a server")
+                        .clicked()
+                    {
+                        self.add_server_modal_ui.open();
+                    }
+                },
             );
         });
 
@@ -104,158 +215,57 @@ impl RedapServers {
             });
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.catalogs.lock().is_empty()
-    }
-
-    pub fn is_collection_selected(&self) -> bool {
-        self.selected_collection
-            .as_ref()
-            .map(|handle| self.validate_handle(handle))
-            .unwrap_or(false)
-    }
-
-    fn validate_handle(&self, handle: &CollectionHandle) -> bool {
-        let catalogs = self.catalogs.lock();
-        if let Some(catalog) = catalogs.get(&handle.server_origin) {
-            return catalog.collections.get(handle.collection_index).is_some();
-        }
-
-        false
-    }
-
-    pub fn server_list_ui(&self, ui: &mut egui::Ui) {
-        for (origin, catalog) in self.catalogs.lock().iter() {
-            let content = list_item::LabelContent::new(origin.to_string());
-            ui.list_item()
-                .interactive(false)
-                .show_hierarchical_with_children(
-                    ui,
-                    egui::Id::new(origin).with("server_item"),
-                    true,
-                    content,
-                    |ui| {
-                        self.catalog_list_ui(ui, origin, catalog);
-                    },
-                );
-        }
-    }
-
-    fn catalog_list_ui(&self, ui: &mut egui::Ui, origin: &re_uri::Origin, catalog: &Catalog) {
-        if catalog.is_empty() {
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new("(empty)").italics(true));
-        } else {
-            for (index, collection) in catalog.collections.iter().enumerate() {
-                let is_selected =
-                    if let Some(selected_collection) = self.selected_collection.as_ref() {
-                        selected_collection.server_origin == *origin
-                            && selected_collection.collection_index == index
-                    } else {
-                        false
-                    };
-
-                let content = list_item::LabelContent::new(&collection.name);
-                let response = ui.list_item().selected(is_selected).show_flat(ui, content);
-
-                if response.clicked() {
-                    self.command_queue
-                        .lock()
-                        .push(Command::SelectCollection(CollectionHandle {
-                            server_origin: origin.clone(),
-                            collection_index: index,
-                        }));
-                }
+    fn server_list_ui(&self, ui: &mut egui::Ui) {
+        self.with_ctx(|ctx| {
+            for server in self.servers.values() {
+                server.panel_ui(ctx, ui);
             }
-        }
-
-        // deselect when clicking in empty space
-        let empty_space_response = ui.allocate_response(ui.available_size(), egui::Sense::click());
-
-        // clear selection upon clicking the empty space
-        if empty_space_response.clicked() {
-            self.command_queue.lock().push(Command::DeselectCollection);
-        }
+        });
     }
 
-    pub fn ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        self.add_server_modal_ui(ui);
+
         //TODO(ab): we should display something even if no catalog is currently selected.
 
         if let Some(selected_collection) = self.selected_collection.as_ref() {
-            let catalogs = self.catalogs.lock();
-            if let Some(catalog) = catalogs.get(&selected_collection.server_origin) {
-                if let Some(collection) = catalog
-                    .collections
-                    .get(selected_collection.collection_index)
-                {
-                    let mut commands = super::collection_ui::collection_ui(
-                        ctx,
-                        ui,
-                        &selected_collection.server_origin,
-                        collection,
-                    );
-                    if !commands.is_empty() {
-                        self.command_queue.lock().extend(commands.drain(..));
-                    }
+            for server in self.servers.values() {
+                let collection = server.find_collection(*selected_collection);
+
+                if let Some(collection) = collection {
+                    self.with_ctx(|ctx| {
+                        super::collection_ui::collection_ui(
+                            viewer_ctx,
+                            ctx,
+                            ui,
+                            &server.origin,
+                            collection,
+                        );
+                    });
+
+                    return;
                 }
             }
         }
     }
-}
 
-async fn stream_catalog_async(
-    endpoint: re_uri::CatalogEndpoint,
-    catalogs: Arc<Mutex<HashMap<re_uri::Origin, Catalog>>>,
-) -> Result<(), StreamError> {
-    let mut client = client(endpoint.origin.clone()).await?;
+    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+        //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
+        let ctx = Context {
+            command_sender: &self.command_sender,
+            selected_collection: &self.selected_collection,
+        };
 
-    re_log::debug!("Fetching collection…");
-
-    let catalog_query_response = client
-        .query_catalog(QueryCatalogRequest {
-            column_projection: None, // fetch all columns
-            filter: None,            // fetch all rows
-        })
-        .await
-        .map_err(TonicStatusError)?;
-
-    let sorbet_batches = catalog_query_response
-        .into_inner()
-        .map(|streaming_result| {
-            streaming_result
-                .and_then(|result| {
-                    result
-                        .decode()
-                        .map_err(|err| tonic::Status::internal(err.to_string()))
-                })
-                .map_err(TonicStatusError)
-                .map_err(StreamError::from)
-        })
-        .map(|record_batch| {
-            record_batch.and_then(|record_batch| {
-                SorbetBatch::try_from_record_batch(&record_batch, BatchType::Dataframe)
-                    .map_err(Into::into)
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .await?;
-
-    //TODO(ab): ideally this is provided by the server
-    let collection_id = egui::Id::new(endpoint.origin.clone()).with("__top_level_collection__");
-    let catalog = Catalog {
-        collections: vec![RecordingCollection {
-            collection_id,
-            //TODO(ab): this should be provided by the server
-            name: "default".to_owned(),
-            collection: sorbet_batches,
-        }],
-    };
-
-    let previous_catalog = catalogs.lock().insert(endpoint.origin.clone(), catalog);
-    if previous_catalog.is_some() {
-        re_log::debug!("Updated catalog for {}.", endpoint.origin.to_string());
-    } else {
-        re_log::debug!("Fetched new catalog for {}.", endpoint.origin.to_string());
+        self.add_server_modal_ui.ui(&ctx, ui);
     }
 
-    Ok(())
+    #[inline]
+    fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
+        let ctx = Context {
+            command_sender: &self.command_sender,
+            selected_collection: &self.selected_collection,
+        };
+
+        func(&ctx)
+    }
 }

@@ -445,6 +445,9 @@ impl ::prost::Name for ListManifestsResponse {
 /// them as needed.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestRequest {
+    /// Which catalog entry do we want to query the manifests of?
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
     /// What resource are we querying the manifest for?
     #[prost(message, optional, tag = "100")]
     pub resource_id: ::core::option::Option<super::super::common::v0::RecordingId>,
