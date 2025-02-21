@@ -250,6 +250,38 @@ impl TimeType {
             Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
         }
     }
+
+    /// Returns an array with the appropriate datatype, using `None` for [`TimeInt::STATIC`].
+    pub fn make_arrow_array_from_time_ints(
+        self,
+        times: impl Iterator<Item = TimeInt>,
+    ) -> arrow::array::ArrayRef {
+        match self {
+            Self::Time => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::TimestampNanosecondArray>(),
+            ),
+
+            Self::Sequence => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::Int64Array>(),
+            ),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
