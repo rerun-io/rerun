@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import os
-import pandas as pd
 import pathlib
-import requests
 import tarfile
 
+import pandas as pd
+import requests
 import rerun as rr
 from rerun import blueprint as rrb
 
@@ -70,7 +72,7 @@ def _setup_rerun() -> None:
                 ),
             ),
             rrb.Spatial3DView(origin="/", name="World position"),
-            column_shares=[0.3, 0.7],
+            column_shares=[0.45, 0.55],
         )
     )
 
