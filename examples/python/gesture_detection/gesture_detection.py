@@ -35,7 +35,7 @@ SAMPLE_VIDEO_URL = "https://storage.googleapis.com/rerun-example-datasets/hand_g
 
 # Emojis from https://github.com/googlefonts/noto-emoji/tree/main
 GESTURE_URL = (
-    "https://raw.githubusercontent.com/googlefonts/noto-emoji/9cde38ef5ee6f090ce23f9035e494cb390a2b051/png" "/128/"
+    "https://raw.githubusercontent.com/googlefonts/noto-emoji/9cde38ef5ee6f090ce23f9035e494cb390a2b051/png/128/"
 )
 # Mapping of gesture categories to corresponding emojis
 GESTURE_PICTURES = {

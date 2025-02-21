@@ -460,8 +460,7 @@ def main() -> None:
         type=int,
         default=1,
         help=(
-            "Max number of faces detected by the landmark model "
-            "(temporal smoothing is applied only for a value of 1)."
+            "Max number of faces detected by the landmark model (temporal smoothing is applied only for a value of 1)."
         ),
     )
     parser.add_argument("--static", action="store_true", help="If set, logs everything as static")

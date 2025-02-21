@@ -370,7 +370,7 @@ def check_invalid_links(content: str, errors: list[Error]) -> None:
 
 def check_file(path: str) -> str | None:
     errors: list[Error] = []
-    content = Path(path).read_text()
+    content = Path(path).read_text(encoding="utf-8")
 
     check_picture_elements(content, errors)
     check_video_elements(content, errors)

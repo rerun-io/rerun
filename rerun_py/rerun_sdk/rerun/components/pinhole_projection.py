@@ -23,7 +23,6 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     Image coordinates from camera view coordinates.
 
     Example:
-    -------
     ```text
     1496.1     0.0  980.5
        0.0  1496.1  744.5

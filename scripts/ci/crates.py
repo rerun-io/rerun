@@ -329,7 +329,7 @@ def bump_dependency_versions(
 def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
     ctx = Context()
 
-    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
 
@@ -365,10 +365,10 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
 
     # Save after bumping all versions
     if not dry_run:
-        with Path("Cargo.toml").open("w") as f:
+        with Path("Cargo.toml").open("w", encoding="utf-8") as f:
             tomlkit.dump(root, f)
         for name, crate in crates.items():
-            with Path(f"{crate.path}/Cargo.toml").open("w") as f:
+            with Path(f"{crate.path}/Cargo.toml").open("w", encoding="utf-8") as f:
                 tomlkit.dump(crate.manifest, f)
     cargo("update --workspace", dry_run=dry_run)
     if shutil.which("taplo") is not None:
@@ -492,7 +492,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
 def publish(dry_run: bool, token: str) -> None:
     ctx = Context()
 
-    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
     version: str = root["workspace"]["package"]["version"]
     print("Collecting publishable crates…")
     crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
@@ -567,7 +567,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
             raise Exception("Failed to get latest published version for `rerun` crate")
         current_version = VersionInfo.parse(latest_published_version)
     else:
-        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
         current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
 
     return current_version
