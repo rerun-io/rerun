@@ -537,7 +537,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 #
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
-numpy = ">=2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-dev.activation]
@@ -589,7 +589,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
 opencv = ">4.6"
-numpy = ">=2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-pypi.pypi-dependencies]
