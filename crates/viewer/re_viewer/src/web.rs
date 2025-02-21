@@ -370,12 +370,7 @@ impl WebHandle {
         let rec_cfg =
             recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
 
-        let Some(timeline) = recording
-            .timelines()
-            .iter()
-            .find(|t| t.name().as_str() == timeline_name)
-            .copied()
-        else {
+        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
@@ -425,12 +420,7 @@ impl WebHandle {
         };
         let rec_cfg =
             recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
-        let Some(timeline) = recording
-            .timelines()
-            .iter()
-            .find(|t| t.name().as_str() == timeline_name)
-            .copied()
-        else {
+        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
