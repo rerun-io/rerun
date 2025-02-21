@@ -78,8 +78,8 @@ def compare(
     before_header: str,
     after_header: str,
 ) -> None:
-    previous = json.loads(Path(previous_path).read_text())
-    current = json.loads(Path(current_path).read_text())
+    previous = json.loads(Path(previous_path).read_text(encoding="utf-8"))
+    current = json.loads(Path(current_path).read_text(encoding="utf-8"))
 
     entries = {}
     for entry in current:

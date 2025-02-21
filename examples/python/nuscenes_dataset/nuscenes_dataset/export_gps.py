@@ -73,9 +73,9 @@ def derive_latlon(location: str, pose: dict[str, Sequence[float]]) -> tuple[floa
     Latitude and longitude coordinates in degrees.
 
     """
-    assert (
-        location in REFERENCE_COORDINATES.keys()
-    ), f"Error: The given location: {location}, has no available reference."
+    assert location in REFERENCE_COORDINATES.keys(), (
+        f"Error: The given location: {location}, has no available reference."
+    )
 
     reference_lat, reference_lon = REFERENCE_COORDINATES[location]
     x, y = pose["translation"][:2]
