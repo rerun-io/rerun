@@ -170,7 +170,7 @@ impl RowsDisplayData {
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
-                    time_column_desc.timeline_name() == query_timeline
+                    time_column_desc.timeline_name() == *query_timeline
                 }
                 ColumnDescriptor::Component(_) => false,
             })
@@ -284,9 +284,9 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
-                        ColumnDescriptor::Time(desc) => (desc.timeline_name() != &filtered_index)
+                        ColumnDescriptor::Time(desc) => (desc.timeline_name() != filtered_index)
                             .then(|| HideColumnAction::HideTimeColumn {
-                                timeline_name: *desc.timeline_name(),
+                                timeline_name: desc.timeline_name(),
                             }),
 
                         ColumnDescriptor::Component(desc) => {

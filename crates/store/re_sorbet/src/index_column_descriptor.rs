@@ -72,8 +72,8 @@ impl IndexColumnDescriptor {
     }
 
     #[inline]
-    pub fn timeline_name(&self) -> &TimelineName {
-        self.timeline.name()
+    pub fn timeline_name(&self) -> TimelineName {
+        *self.timeline.name()
     }
 
     #[inline]

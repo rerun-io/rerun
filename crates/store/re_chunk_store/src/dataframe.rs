@@ -104,7 +104,7 @@ impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
-            timeline: *desc.timeline_name(),
+            timeline: desc.timeline_name(),
         }
     }
 }
