@@ -10,14 +10,14 @@
 //! $ cargo r -p objectron -- --connect
 //! ````
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use rerun::{
     external::{
         anyhow, re_build_info, re_chunk_store, re_log,
         re_log_types::{ResolvedTimeRange, TimelineName},
     },
-    time::TimeInt,
+    time::{TimeInt, TimeType},
     ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,
 };
 
@@ -151,6 +151,7 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
 #[derive(Default, Debug, PartialEq, Eq)]
 struct TimeRangesPerEntity {
     times: BTreeMap<EntityPath, BTreeMap<TimelineName, BTreeMap<TimeInt, u64>>>,
+    time_column_times: HashMap<TimelineName, TimeType>,
 }
 
 impl ChunkStoreSubscriber for TimeRangesPerEntity {
@@ -169,6 +170,10 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
             for (timeline, time_column) in event.chunk.timelines() {
+                // Remember the type of the time column:
+                self.time_column_times
+                    .insert(*timeline, time_column.timeline().typ());
+
                 for time in time_column.times() {
                     // update counters
                     let per_timeline = self
@@ -205,7 +210,8 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
                         .last_key_value()
                         .map_or(TimeInt::MAX, |(time, _)| *time),
                 );
-                println!("  {timeline}: {time_range:?}");
+                let time_type = self.time_column_times[timeline];
+                println!("  {timeline}: {}", time_type.format_range_utc(time_range));
             }
         }
     }
