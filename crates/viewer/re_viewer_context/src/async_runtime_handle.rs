@@ -1,3 +1,15 @@
+#[cfg(not(target_arch = "wasm32"))]
+pub trait WasmNotSend: Send {}
+
+#[cfg(target_arch = "wasm32")]
+pub trait WasmNotSend {}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Send> WasmNotSend for T {}
+
+#[cfg(target_arch = "wasm32")]
+impl<T> WasmNotSend for T {}
+
 #[derive(Debug, thiserror::Error)]
 pub enum AsyncRuntimeError {
     /// Tokio returned an error.
@@ -48,7 +60,7 @@ impl AsyncRuntimeHandle {
     #[expect(clippy::unused_self)]
     pub fn spawn_future<F>(&self, future: F)
     where
-        F: std::future::Future<Output = ()> + 'static,
+        F: std::future::Future<Output = ()> + WasmNotSend + 'static,
     {
         wasm_bindgen_futures::spawn_local(future);
     }
@@ -56,7 +68,7 @@ impl AsyncRuntimeHandle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn spawn_future<F>(&self, future: F)
     where
-        F: std::future::Future<Output = ()> + 'static + Send,
+        F: std::future::Future<Output = ()> + WasmNotSend + 'static,
     {
         self.tokio.spawn(future);
     }

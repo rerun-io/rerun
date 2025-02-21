@@ -15,7 +15,9 @@ pub use self::{
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Scheme {
     Rerun,
     RerunHttp,
@@ -76,7 +78,9 @@ impl TryFrom<&str> for Scheme {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct Origin {
     pub scheme: Scheme,
     pub host: url::Host<String>,

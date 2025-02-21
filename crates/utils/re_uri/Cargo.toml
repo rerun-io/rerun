@@ -15,5 +15,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+serde.workspace = true
 thiserror.workspace = true
-url.workspace = true
+url = { workspace = true, features = ["serde"] }
