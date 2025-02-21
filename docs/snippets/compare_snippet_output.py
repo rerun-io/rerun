@@ -95,7 +95,7 @@ def main() -> None:
     elif args.no_py_build:
         print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
-        build_python(build_env)
+        build_python_sdk(build_env)
 
     if args.no_cpp:
         pass  # No need to build the C++ SDK
@@ -104,10 +104,10 @@ def main() -> None:
             "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!"
         )
     else:
-        build_cpp()
+        build_cpp_snippets()
 
     # Always build rust since we use it as the baseline for comparison.
-    build_rust(build_env, args.release, args.target, args.target_dir)
+    build_rust_snippets(build_env, args.release, args.target, args.target_dir)
 
     examples = []
     if len(args.example) > 0:
@@ -193,7 +193,7 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         assert False, f"Unknown language: {language}"
 
 
-def build_rust(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):
+def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
@@ -212,7 +212,7 @@ def build_rust(build_env: dict[str, str], release: bool, target: str | None, tar
     print("")
 
 
-def build_python(build_env: dict[str, str]):
+def build_python_sdk(build_env: dict[str, str]):
     print("----------------------------------------------------------")
     print("Building rerun-sdk for Python…")
     start_time = time.time()
@@ -222,7 +222,7 @@ def build_python(build_env: dict[str, str]):
     print("")
 
 
-def build_cpp():
+def build_cpp_snippets():
     print("----------------------------------------------------------")
     print("Build rerun_c & rerun_prebuilt_cpp…")
     start_time = time.time()
