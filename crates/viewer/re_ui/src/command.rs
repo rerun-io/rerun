@@ -483,7 +483,7 @@ impl UICommand {
 
         if response.clicked() {
             command_sender.send_ui(self);
-            ui.close_menu();
+            ui.close();
         }
 
         response
