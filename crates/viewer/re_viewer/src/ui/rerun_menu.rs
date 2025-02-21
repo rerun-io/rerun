@@ -1,6 +1,7 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::NumExt as _;
+use egui::containers::menu::MenuConfig;
+use egui::{NumExt as _, PopupCloseBehavior};
 
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
@@ -98,17 +99,19 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
+        egui::containers::menu::SubMenuButton::new("Debug")
+            .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+            .ui(ui, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
-            ui.label("egui debug options:");
-            ui.weak(format!(
-                "pixels_per_point: {:?}",
-                ui.ctx().pixels_per_point()
-            ));
-            egui_debug_options_ui(ui);
-        });
+                ui.label("egui debug options:");
+                ui.weak(format!(
+                    "pixels_per_point: {:?}",
+                    ui.ctx().pixels_per_point()
+                ));
+                egui_debug_options_ui(ui);
+            });
 
         ui.add_space(SPACING);
 
@@ -201,7 +204,7 @@ impl App {
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender.send_ui(UICommand::SaveRecording);
                 }
 
@@ -218,7 +221,7 @@ impl App {
                     )
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender
                         .send_ui(UICommand::SaveRecordingSelection);
                 }
@@ -387,7 +390,7 @@ fn debug_menu_options_ui(
                 .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-            ui.close_menu();
+            ui.close();
         }
     }
 
