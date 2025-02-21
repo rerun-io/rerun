@@ -337,7 +337,7 @@ impl ChunkStoreSubscriber for QueryCache {
                         for (component_desc, time_range) in per_desc {
                             let key = QueryCacheKey::new(
                                 chunk.entity_path().clone(),
-                                *timeline.name(),
+                                timeline,
                                 component_name,
                             );
 

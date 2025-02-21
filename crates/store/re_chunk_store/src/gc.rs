@@ -471,8 +471,7 @@ impl ChunkStore {
                 .or_default();
 
             for (timeline, time_range_per_component) in chunk.time_range_per_component() {
-                let chunk_ids_to_be_removed =
-                    chunk_ids_to_be_removed.entry(*timeline.name()).or_default();
+                let chunk_ids_to_be_removed = chunk_ids_to_be_removed.entry(timeline).or_default();
 
                 for (component_name, per_desc) in time_range_per_component {
                     for (_component_desc, time_range) in per_desc {

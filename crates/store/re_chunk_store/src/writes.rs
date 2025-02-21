@@ -264,9 +264,8 @@ impl ChunkStore {
                 for (timeline, time_range_per_component) in
                     chunk_or_compacted.time_range_per_component()
                 {
-                    let temporal_chunk_ids_per_component = temporal_chunk_ids_per_timeline
-                        .entry(*timeline.name())
-                        .or_default();
+                    let temporal_chunk_ids_per_component =
+                        temporal_chunk_ids_per_timeline.entry(timeline).or_default();
 
                     for (component_name, per_desc) in time_range_per_component {
                         for (_component_desc, time_range) in per_desc {
@@ -493,7 +492,7 @@ impl ChunkStore {
 
         for (timeline, time_range_per_component) in chunk.time_range_per_component() {
             let Some(temporal_chunk_ids_per_component) =
-                temporal_chunk_ids_per_timeline.get(timeline.name())
+                temporal_chunk_ids_per_timeline.get(&timeline)
             else {
                 continue;
             };
