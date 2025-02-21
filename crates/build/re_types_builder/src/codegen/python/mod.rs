@@ -1397,9 +1397,9 @@ fn quote_array_method_from_obj(
     let field_name = &obj.fields[0].name;
     unindent(&format!(
         "
-        def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+        def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype)
+            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
