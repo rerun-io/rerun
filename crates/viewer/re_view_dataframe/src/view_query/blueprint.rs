@@ -41,12 +41,7 @@ impl Query {
     ) -> Result<Option<Timeline>, ViewSystemExecutionError> {
         let timeline_name = self.timeline_name(ctx)?;
 
-        Ok(ctx
-            .recording()
-            .timelines()
-            .iter()
-            .find(|&timeline| timeline.name() == &timeline_name)
-            .copied())
+        Ok(ctx.recording().timelines().get(&timeline_name).copied())
     }
 
     /// Save the timeline to the one specified.

@@ -258,13 +258,8 @@ impl EntityDb {
         self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
-    pub fn timelines(&self) -> Vec<Timeline> {
-        self.storage_engine()
-            .store()
-            .timelines()
-            .values()
-            .copied()
-            .collect()
+    pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
+        self.storage_engine().store().timelines()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {

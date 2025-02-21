@@ -255,8 +255,8 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.recording().timelines() {
-            col_timelines.entry(*timeline.name()).or_insert(true);
+        for &timeline in ctx.recording().timelines().keys() {
+            col_timelines.entry(timeline).or_insert(true);
         }
 
         for level in entries.iter().filter_map(|te| te.level.as_ref()) {
