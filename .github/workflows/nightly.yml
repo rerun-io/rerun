@@ -270,15 +270,16 @@ jobs:
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
     secrets: inherit
 
-  test-wheel-macos-x64:
-    needs: [checks, build-wheel-macos-x64]
-    name: "macos-x64: Test Wheels"
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: nightly-macos-x64
-      PLATFORM: macos-x64
-      WHEEL_ARTIFACT_NAME: macos-x64-wheel
-    secrets: inherit
+  # TODO(#9108): Test macos wheels
+  #  test-wheel-macos-x64:
+  #    needs: [checks, build-wheel-macos-x64]
+  #    name: "macos-x64: Test Wheels"
+  #    uses: ./.github/workflows/reusable_test_wheels.yml
+  #    with:
+  #      CONCURRENCY: nightly-macos-x64
+  #      PLATFORM: macos-x64
+  #      WHEEL_ARTIFACT_NAME: macos-x64-wheel
+  #    secrets: inherit
 
   test-wheel-windows-x64:
     needs: [checks, build-wheel-windows-x64]

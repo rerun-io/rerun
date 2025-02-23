@@ -35,9 +35,9 @@ class Range1D(Range1DExt):
 
     range: npt.NDArray[np.float64] = field(converter=to_np_float64)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Range1DExt in range1d_ext.py
-        return np.asarray(self.range, dtype=dtype)
+        return np.asarray(self.range, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

@@ -44,13 +44,13 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
     if isinstance(tensor, np.ndarray):
         return tensor
     if isinstance(tensor, PILImage.Image):
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
     try:
         # Make available to the cpu
         return tensor.numpy(force=True)  # type: ignore[union-attr, no-any-return]
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class ImageExt:

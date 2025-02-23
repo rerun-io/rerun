@@ -41,9 +41,9 @@ class Plane3D(Plane3DExt):
 
     xyzd: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
-        return np.asarray(self.xyzd, dtype=dtype)
+        return np.asarray(self.xyzd, dtype=dtype, copy=copy)
 
 
 Plane3DLike = Plane3D

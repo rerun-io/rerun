@@ -35,9 +35,9 @@ class Vec2D(Vec2DExt):
 
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec2DExt in vec2d_ext.py
-        return np.asarray(self.xy, dtype=dtype)
+        return np.asarray(self.xy, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

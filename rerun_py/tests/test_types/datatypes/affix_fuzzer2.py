@@ -31,9 +31,9 @@ class AffixFuzzer2:
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
-        return np.asarray(self.single_float_optional, dtype=dtype)
+        return np.asarray(self.single_float_optional, dtype=dtype, copy=copy)
 
 
 AffixFuzzer2Like = AffixFuzzer2

@@ -398,17 +398,20 @@ class ComponentColumn:
         if "Indicator" in component_batch.component_descriptor().component_name:
             if lengths is None:
                 # Indicator component, no lengths -> zero-sized batches by default
-                self.lengths = np.zeros(len(component_batch.as_arrow_array()))
+                self.lengths = np.zeros(len(component_batch.as_arrow_array()), dtype=np.int32)
             else:
                 # Normal component, lengths specified -> respect outer length, but enforce zero-sized batches still
-                self.lengths = np.zeros(len(np.array(lengths)))
+                self.lengths = np.zeros(len(np.array(lengths)), dtype=np.int32)
         else:
             if lengths is None:
                 # Normal component, no lengths -> unit-sized batches by default
-                self.lengths = np.ones(len(component_batch.as_arrow_array()))
+                self.lengths = np.ones(len(component_batch.as_arrow_array()), dtype=np.int32)
             else:
                 # Normal component, lengths specified -> follow instructions
-                self.lengths = np.array(lengths)
+                lengths = np.array(lengths)
+                if lengths.ndim != 1:
+                    raise ValueError("Lengths must be a 1D array.")
+                self.lengths = lengths.flatten().astype(np.int32)
 
     def component_descriptor(self) -> ComponentDescriptor:
         """

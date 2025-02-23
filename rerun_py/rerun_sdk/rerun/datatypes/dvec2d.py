@@ -35,9 +35,9 @@ class DVec2D(DVec2DExt):
 
     xy: npt.NDArray[np.float64] = field(converter=to_np_float64)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of DVec2DExt in dvec2d_ext.py
-        return np.asarray(self.xy, dtype=dtype)
+        return np.asarray(self.xy, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

@@ -43,9 +43,9 @@ class Rgba32(Rgba32Ext):
         converter=Rgba32Ext.rgba__field_converter_override,  # type: ignore[misc]
     )
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Rgba32Ext in rgba32_ext.py
-        return np.asarray(self.rgba, dtype=dtype)
+        return np.asarray(self.rgba, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.rgba)

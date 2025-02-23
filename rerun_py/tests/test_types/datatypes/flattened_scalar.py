@@ -28,9 +28,9 @@ class FlattenedScalar:
 
     value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
-        return np.asarray(self.value, dtype=dtype)
+        return np.asarray(self.value, dtype=dtype, copy=copy)
 
     def __float__(self) -> float:
         return float(self.value)

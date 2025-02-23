@@ -47,9 +47,9 @@ class VideoTimestamp:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of VideoTimestampExt in video_timestamp_ext.py
-        return np.asarray(self.timestamp_ns, dtype=dtype)
+        return np.asarray(self.timestamp_ns, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.timestamp_ns)

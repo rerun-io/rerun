@@ -34,9 +34,9 @@ class UVec4D:
 
     xyzw: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec4DExt in uvec4d_ext.py
-        return np.asarray(self.xyzw, dtype=dtype)
+        return np.asarray(self.xyzw, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:
