@@ -17,7 +17,7 @@ use re_protos::{
     },
 };
 
-use crate::{spawn_future, StreamError, TonicStatusError, MAX_DECODING_MESSAGE_SIZE};
+use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
 pub enum Command {
     SetLoopSelection {
@@ -153,7 +153,7 @@ pub async fn stream_recording_async(
 
     re_log::debug!("Fetching catalog data for {}…", endpoint.recording_id);
 
-    let resp = client
+    let catalog_chunk_stream = client
         .query_catalog(QueryCatalogRequest {
             column_projection: None, // fetch all columns
             filter: Some(CatalogFilter {
@@ -162,9 +162,10 @@ pub async fn stream_recording_async(
                 }],
             }),
         })
-        .await
-        .map_err(TonicStatusError)?
-        .into_inner()
+        .await?
+        .into_inner();
+
+    let catalog_chunks = catalog_chunk_stream
         .map(|resp| {
             resp.and_then(|r| {
                 r.decode()
@@ -172,26 +173,26 @@ pub async fn stream_recording_async(
             })
         })
         .collect::<Result<Vec<_>, tonic::Status>>()
-        .await
-        .map_err(TonicStatusError)?;
+        .await?;
 
-    if resp.len() != 1 || resp[0].num_rows() != 1 {
+    if catalog_chunks.len() != 1 || catalog_chunks[0].num_rows() != 1 {
         return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "expected exactly one recording with id {}, got {}",
                 endpoint.recording_id,
-                resp.len()
+                catalog_chunks.len()
             ),
         }));
     }
 
-    let store_info = store_info_from_catalog_chunk(&resp[0].clone(), &endpoint.recording_id)?;
+    let store_info =
+        store_info_from_catalog_chunk(&catalog_chunks[0].clone(), &endpoint.recording_id)?;
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Fetching {}…", endpoint.recording_id);
 
-    let mut resp = if let Some(time_range) = &endpoint.time_range {
-        let chunk_ids = client
+    let mut chunk_stream = if let Some(time_range) = &endpoint.time_range {
+        let chunk_id_stream = client
             .get_chunk_ids(GetChunkIdsRequest {
                 recording_id: Some(RecordingId {
                     id: endpoint.recording_id.clone(),
@@ -208,12 +209,11 @@ pub async fn stream_recording_async(
                     .into(),
                 ),
             })
-            .await
-            .map_err(TonicStatusError)?
-            .into_inner()
+            .await?
+            .into_inner();
+        let chunk_ids = chunk_id_stream
             .collect::<Result<Vec<_>, tonic::Status>>()
-            .await
-            .map_err(TonicStatusError)?
+            .await?
             .into_iter()
             .flat_map(|r| r.chunk_ids)
             .collect::<Vec<_>>();
@@ -225,8 +225,7 @@ pub async fn stream_recording_async(
                 }),
                 chunk_ids,
             })
-            .await
-            .map_err(TonicStatusError)?
+            .await?
             .into_inner()
     } else {
         client
@@ -235,8 +234,7 @@ pub async fn stream_recording_async(
                     id: endpoint.recording_id.clone(),
                 }),
             })
-            .await
-            .map_err(TonicStatusError)?
+            .await?
             .into_inner()
     }
     .map(|resp| {
@@ -260,8 +258,8 @@ pub async fn stream_recording_async(
         return Ok(());
     }
 
-    while let Some(result) = resp.next().await {
-        let batch = result.map_err(TonicStatusError)?;
+    while let Some(result) = chunk_stream.next().await {
+        let batch = result?;
         let chunk = Chunk::from_record_batch(&batch)?;
 
         if tx

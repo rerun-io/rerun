@@ -29,6 +29,12 @@ impl std::fmt::Display for TonicStatusError {
     }
 }
 
+impl From<tonic::Status> for TonicStatusError {
+    fn from(value: tonic::Status) -> Self {
+        Self(value)
+    }
+}
+
 impl std::error::Error for TonicStatusError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.0.source()
@@ -62,6 +68,12 @@ pub enum StreamError {
 
     #[error(transparent)]
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
+}
+
+impl From<tonic::Status> for StreamError {
+    fn from(value: tonic::Status) -> Self {
+        Self::TonicStatus(value.into())
+    }
 }
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
