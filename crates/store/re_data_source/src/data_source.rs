@@ -276,15 +276,11 @@ impl DataSource {
                     endpoint.origin
                 );
 
-                let url = endpoint.origin.as_url();
+                let url = endpoint.to_string();
 
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RerunGrpcStream {
-                        url: endpoint.to_string(),
-                    },
-                    re_smart_channel::SmartChannelSource::RerunGrpcStream {
-                        url: endpoint.to_string(),
-                    },
+                    re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
