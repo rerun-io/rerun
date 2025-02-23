@@ -201,7 +201,7 @@ pub async fn stream_recording_async(
                 }),
                 time_range: Some(
                     re_log_types::ResolvedTimeRange::new(
-                        // min.floor()..min.cel() should cover the entire requested range
+                        // min.floor()..min.ceil() should cover the entire requested range
                         time_range.range.min.floor(),
                         time_range.range.max.ceil(),
                     )
