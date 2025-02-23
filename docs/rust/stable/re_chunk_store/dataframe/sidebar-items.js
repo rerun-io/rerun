@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ColumnSelector","SparseFillStrategy"],"struct":["ComponentColumnSelector","QueryExpression","TimeColumnSelector","ViewContentsSelector"],"type":["Index","IndexRange","IndexValue"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["backproject_radius_scale_ui","blueprint_ui","colormap_props_ui","depth_from_world_scale_ui","depth_props_ui","entity_props_ui","has_data_section","list_existing_data_blueprints","pinhole_props_ui","space_view_button","transform3d_visualization_ui","what_is_selected_ui"],"struct":["SelectionPanel"]};

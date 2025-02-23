@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SlotKind"],"fn":["slotted_edges"],"struct":["Slot","SlotId"]};

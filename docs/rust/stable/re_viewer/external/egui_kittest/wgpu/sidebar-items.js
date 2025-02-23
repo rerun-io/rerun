@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_render_state","default_wgpu_setup"],"struct":["WgpuTestRenderer"]};

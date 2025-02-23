@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["follow_path","follow_path_or_panic","get_alias","global_path_value","load_color_table","parse_color","parse_px"],"struct":["DesignTokens","Typography"]};

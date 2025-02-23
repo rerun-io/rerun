@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["affix_fuzzer1","affix_fuzzer2","affix_fuzzer3","affix_fuzzer4"],"struct":["AffixFuzzer1","AffixFuzzer2","AffixFuzzer3","AffixFuzzer4"]};

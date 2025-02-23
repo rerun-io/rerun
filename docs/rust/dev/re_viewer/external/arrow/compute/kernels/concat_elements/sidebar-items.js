@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["concat_element_binary","concat_elements_bytes","concat_elements_dyn","concat_elements_utf8","concat_elements_utf8_many"]};

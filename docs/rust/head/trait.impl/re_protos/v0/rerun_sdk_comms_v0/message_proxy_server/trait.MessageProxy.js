@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"re_grpc_server":[["impl <a class=\"trait\" href=\"re_protos/v0/rerun_sdk_comms_v0/message_proxy_server/trait.MessageProxy.html\" title=\"trait re_protos::v0::rerun_sdk_comms_v0::message_proxy_server::MessageProxy\">MessageProxy</a> for <a class=\"struct\" href=\"re_grpc_server/struct.MessageProxy.html\" title=\"struct re_grpc_server::MessageProxy\">MessageProxy</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

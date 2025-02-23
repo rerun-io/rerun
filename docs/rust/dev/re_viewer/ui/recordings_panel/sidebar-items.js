@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_button_ui","app_and_its_recordings_ui","loading_receivers_ui","recording_list_ui","recordings_panel_ui"]};

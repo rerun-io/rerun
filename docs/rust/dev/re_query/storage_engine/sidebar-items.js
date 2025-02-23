@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["StorageEngine","StorageEngineArcReadGuard","StorageEngineArcWriteGuard","StorageEngineReadGuard","StorageEngineWriteGuard"],"trait":["StorageEngineLike"]};
