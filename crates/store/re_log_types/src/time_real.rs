@@ -55,6 +55,16 @@ impl TimeReal {
     pub fn abs(self) -> Self {
         Self(self.0.saturating_abs())
     }
+
+    #[inline]
+    pub fn from_seconds(v: f64) -> Self {
+        Self::from(v * 1_000_000_000f64)
+    }
+
+    #[inline]
+    pub fn as_secs_f64(self) -> f64 {
+        self.as_f64() / 1_000_000_000f64
+    }
 }
 
 // ---------------

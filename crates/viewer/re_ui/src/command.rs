@@ -86,6 +86,8 @@ pub enum UICommand {
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
 
+    CopyTimeRangeLink,
+
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGl,
@@ -250,6 +252,12 @@ impl UICommand {
                 "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
             ),
 
+
+            Self::CopyTimeRangeLink => (
+                "Copy link to selected time range",
+                "Copy a link to the part of the active recording within the loop selection bounds."
+            ),
+
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => (
                 "Restart with WebGL",
@@ -371,6 +379,8 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => smallvec![],
+
+            Self::CopyTimeRangeLink => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],

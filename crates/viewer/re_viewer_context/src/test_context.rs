@@ -466,7 +466,8 @@ impl TestContext {
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings => handled = false,
+                | SystemCommand::CloseAllRecordings
+                | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

@@ -12,7 +12,6 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
@@ -256,6 +255,7 @@ impl App {
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         tokio_runtime: AsyncRuntimeHandle,
+        command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -311,7 +311,7 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(&creation_context.egui_ctx, screenshot_path);
         }
 
-        let (command_sender, command_receiver) = command_channel();
+        let (command_sender, command_receiver) = command_channel;
 
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
@@ -589,7 +589,20 @@ impl App {
                     egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
                 });
 
-                match data_source.stream(Some(waker)) {
+                let command_sender = self.command_sender.clone();
+                let on_cmd = Box::new(move |cmd| match cmd {
+                    re_data_source::DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                        rec_id: recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
+                match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
                         self.state.redap_servers.add_server(endpoint.origin);
@@ -669,6 +682,19 @@ impl App {
             SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                 if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
                     rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
+            }
+
+            SystemCommand::SetLoopSelection {
+                rec_id,
+                timeline,
+                time_range,
+            } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    let mut guard = rec_cfg.time_ctrl.write();
+                    guard.set_timeline(timeline);
+                    guard.set_loop_selection(time_range);
+                    guard.set_looping(re_viewer_context::Looping::Selection);
                 }
             }
 
@@ -997,6 +1023,10 @@ impl App {
                 }
             }
 
+            UICommand::CopyTimeRangeLink => {
+                self.run_copy_time_range_link_command(store_context);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGl => {
                 if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
@@ -1090,6 +1120,40 @@ impl App {
             .success(format!("Copied {direct_link:?} to clipboard"));
 
         Some(())
+    }
+
+    fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            return;
+        };
+
+        let base_url = match &entity_db.data_source {
+            Some(SmartChannelSource::RerunGrpcStream { url }) => url,
+            // not a recording endpoint
+            _ => return,
+        };
+
+        let rec_id = entity_db.store_id();
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
+            return;
+        };
+        let time_ctrl = rec_cfg.time_ctrl.get_mut();
+
+        let Some(range) = time_ctrl.loop_selection() else {
+            // no loop selection
+            return;
+        };
+
+        let time_range = re_uri::TimeRange {
+            timeline: time_ctrl.timeline().clone(),
+            range,
+        };
+
+        let url = format!("{base_url}?time_range={time_range}");
+
+        self.egui_ctx.copy_text(url.clone());
+        self.notifications
+            .success(format!("Copied {url:?} to clipboard"));
     }
 
     fn memory_panel_ui(

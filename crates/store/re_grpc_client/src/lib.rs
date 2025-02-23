@@ -64,6 +64,12 @@ pub enum StreamError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

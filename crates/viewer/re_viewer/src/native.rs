@@ -1,6 +1,6 @@
 use re_capabilities::MainThreadToken;
 use re_log_types::LogMsg;
-use re_viewer_context::AsyncRuntimeHandle;
+use re_viewer_context::{command_channel, AsyncRuntimeHandle};
 
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
@@ -109,6 +109,7 @@ pub fn run_native_viewer_with_messages(
                 startup_options,
                 cc,
                 async_runtime,
+                command_channel(),
             );
             app.add_receiver(rx);
             Box::new(app)

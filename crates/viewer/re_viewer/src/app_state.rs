@@ -774,7 +774,20 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                         open_url.url.clone(),
                     );
 
-                    match data_source.stream(None) {
+                    let command_sender = ctx.command_sender().clone();
+                    let on_cmd = Box::new(move |cmd| match cmd {
+                        re_data_source::DataSourceCommand::SetLoopSelection {
+                            recording_id,
+                            timeline,
+                            time_range,
+                        } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                            rec_id: recording_id,
+                            timeline,
+                            time_range,
+                        }),
+                    });
+
+                    match data_source.stream(on_cmd, None) {
                         Ok(re_data_source::StreamSource::LogMessages(rx)) => {
                             ctx.command_sender()
                                 .send_system(SystemCommand::AddReceiver(rx));
