@@ -71,12 +71,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
     parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
-    # We don't allow skipping Rust - it is what we compate to at the moment
+    # We don't allow skipping Rust - it is what we compare to at the moment.
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
         action="store_true",
-        help="Skip cmake configure and ahead of time build for rerun_c & rerun_cpp",
+        help="Skip cmake configure and ahead of time build for rerun_c & rerun_prebuilt_cpp",
     )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
@@ -95,26 +95,19 @@ def main() -> None:
     elif args.no_py_build:
         print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
-        print("----------------------------------------------------------")
-        print("Building rerun-sdk for Python…")
-        start_time = time.time()
-        run(["pixi", "run", "py-build", "--quiet"], env=build_env)
-        elapsed = time.time() - start_time
-        print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
-        print("")
+        build_python_sdk(build_env)
 
     if args.no_cpp:
         pass  # No need to build the C++ SDK
     elif args.no_cpp_build:
-        print("Skipping cmake configure & build for rerun_c & rerun_cpp - assuming it is already built and up-to-date!")
+        print(
+            "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!"
+        )
     else:
-        print("----------------------------------------------------------")
-        print("Build rerun_c & rerun_cpp…")
-        start_time = time.time()
-        run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"])
-        elapsed = time.time() - start_time
-        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
-        print("")
+        build_cpp_snippets()
+
+    # Always build rust since we use it as the baseline for comparison.
+    build_rust_snippets(build_env, args.release, args.target, args.target_dir)
 
     examples = []
     if len(args.example) > 0:
@@ -143,20 +136,13 @@ def main() -> None:
     if not args.no_py:
         active_languages.append("py")
 
-    # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    if not args.no_cpp:
-        print(f"Running {len(examples)} C++ examples…")
-        for example in examples:
-            if "cpp" not in example.opt_out_entirely() and "cpp" in active_languages:
-                run_example(example, "cpp", args)
-
-    print(f"Running {len(examples)} Rust and Python examples…")
+    print(f"Running {len(examples)} C++, Rust and Python examples…")
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
             example_opt_out_entirely = example.opt_out_entirely()
             for language in active_languages:
-                if language in example_opt_out_entirely or language == "cpp":  # cpp already processed in series.
+                if language in example_opt_out_entirely:
                     continue
                 job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)
@@ -195,16 +181,55 @@ def main() -> None:
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_cpp(example)
+        cpp_output_path = run_prebuilt_cpp(example)
         check_non_empty_rrd(cpp_output_path)
     elif language == "py":
         python_output_path = run_python(example)
         check_non_empty_rrd(python_output_path)
     elif language == "rust":
-        rust_output_path = run_rust(example, args.release, args.target, args.target_dir)
+        rust_output_path = run_prebuilt_rust(example, args.release, args.target, args.target_dir)
         check_non_empty_rrd(rust_output_path)
     else:
         assert False, f"Unknown language: {language}"
+
+
+def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):
+    print("----------------------------------------------------------")
+    print("Building snippets for Rust…")
+
+    cmd = ["cargo", "build", "--quiet", "-p", "snippets"]
+    if target is not None:
+        cmd += ["--target", target]
+    if target_dir is not None:
+        cmd += ["--target-dir", target_dir]
+    if release:
+        cmd += ["--release"]
+
+    start_time = time.time()
+    run(cmd, env=build_env, timeout=12000)
+    elapsed = time.time() - start_time
+    print(f"Snippets built in {elapsed:.1f} seconds")
+    print("")
+
+
+def build_python_sdk(build_env: dict[str, str]):
+    print("----------------------------------------------------------")
+    print("Building rerun-sdk for Python…")
+    start_time = time.time()
+    run(["pixi", "run", "py-build", "--quiet"], env=build_env, timeout=12000)
+    elapsed = time.time() - start_time
+    print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
+    print("")
+
+
+def build_cpp_snippets():
+    print("----------------------------------------------------------")
+    print("Build rerun_c & rerun_prebuilt_cpp…")
+    start_time = time.time()
+    run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"], timeout=12000)
+    elapsed = time.time() - start_time
+    print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
+    print("")
 
 
 def run_python(example: Example) -> str:
@@ -224,36 +249,35 @@ def run_python(example: Example) -> str:
     return output_path
 
 
-def run_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_prebuilt_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = example.output_path("rust")
 
-    cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
+    extension = ".exe" if os.name == "nt" else ""
 
-    if target is not None:
-        cmd += ["--target", target]
+    if target_dir is None:
+        mode = "release" if release else "debug"
+        if target is not None:
+            target_dir = f"./target/{target}/{mode}/snippets"
+        else:
+            target_dir = f"./target/{mode}/snippets"
 
-    if target_dir is not None:
-        cmd += ["--target-dir", target_dir]
-
-    if release:
-        cmd += ["--release"]
-
-    cmd += ["--", example.name]
+    cmd = [f"{target_dir}{extension}"]
+    cmd += [example.name]
     cmd += example.extra_args()
 
     env = roundtrip_env(save_path=output_path)
-    run(cmd, env=env, timeout=12000)
+    run(cmd, env=env, timeout=30)
 
     return output_path
 
 
-def run_cpp(example: Example) -> str:
+def run_prebuilt_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
     cmd = [f"./build/debug/docs/snippets/{example.name}{extension}"] + example.extra_args()
     env = roundtrip_env(save_path=output_path)
-    run(cmd, env=env, timeout=12000)
+    run(cmd, env=env, timeout=30)
 
     return output_path
 
