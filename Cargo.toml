@@ -238,6 +238,7 @@ parking_lot = "0.12"
 parquet = { version = "53.4", default-features = false }
 paste = "1.0"
 pathdiff = "0.2"
+percent-encoding = "2.3"
 pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
