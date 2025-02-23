@@ -1077,17 +1077,15 @@ impl App {
         }
     }
 
+    /// Retrieve the link to the current viewer.
     #[cfg(target_arch = "wasm32")]
-    fn run_copy_direct_link_command(
-        &mut self,
-        store_context: Option<&StoreContext<'_>>,
-    ) -> Option<()> {
-        use crate::web_tools::JsResultExt as _;
-
-        let location = web_sys::window()?.location();
-        let origin = location.origin().ok_or_log_js_error_once()?;
-        let host = location.host().ok_or_log_js_error_once()?;
-        let pathname = location.pathname().ok_or_log_js_error_once()?;
+    fn get_viewer_url(&self) -> Result<String, wasm_bindgen::JsValue> {
+        let location = web_sys::window()
+            .ok_or_else(|| "failed to get window".to_owned())?
+            .location();
+        let origin = location.origin()?;
+        let host = location.host()?;
+        let pathname = location.pathname()?;
 
         let hosted_viewer_path = if self.build_info.is_final() {
             // final release, use version tag
@@ -1098,13 +1096,24 @@ impl App {
         };
 
         // links to `app.rerun.io` can be made into permanent links:
-        let href = if host == "app.rerun.io" {
+        let url = if host == "app.rerun.io" {
             format!("https://app.rerun.io/{hosted_viewer_path}")
         } else if host == "rerun.io" && pathname.starts_with("/viewer") {
             format!("https://rerun.io/viewer/{hosted_viewer_path}")
         } else {
             format!("{origin}{pathname}")
         };
+
+        Ok(url)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn run_copy_direct_link_command(
+        &mut self,
+        store_context: Option<&StoreContext<'_>>,
+    ) -> Option<()> {
+        use crate::web_tools::JsResultExt;
+        let href = self.get_viewer_url().ok_or_log_js_error()?;
 
         let direct_link = match store_context
             .map(|ctx| ctx.recording)
@@ -1123,22 +1132,26 @@ impl App {
 
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            re_log::warn!("Could not copy time range link: No active recording");
             return;
         };
 
         let Some(SmartChannelSource::RerunGrpcStream { url: base_url }) = &entity_db.data_source
         else {
+            re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
         };
 
         let rec_id = entity_db.store_id();
         let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
+            re_log::warn!("Could not copy time range link: Failed to get recording config");
             return;
         };
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let Some(range) = time_ctrl.loop_selection() else {
             // no loop selection
+            re_log::warn!("Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop");
             return;
         };
 
@@ -1147,6 +1160,35 @@ impl App {
             range,
         };
 
+        // On web we can produce a link to the web viewer,
+        // which can be used to share the time range.
+        //
+        // On native we only produce a link to the time range
+        // which can be passed to `rerun-cli`.
+        #[cfg(target_arch = "wasm32")]
+        let url = {
+            use crate::web_tools::JsResultExt;
+            let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
+                // error was logged already
+                return;
+            };
+
+            let time_range_url = format!("{base_url}?time_range={time_range}");
+            // %-encode the time range URL, because it's a url-within-a-url.
+            // This results in VERY ugly links.
+            // TOOD(jan): Tweak the asciiset used here.
+            //            Alternatively, use a better (shorter, simpler) format
+            //            for linking to recordings that isn't a full url and
+            //            can actually exist in a query value.
+            let url_query = percent_encoding::utf8_percent_encode(
+                &time_range_url,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+
+            format!("{viewer_url}?url={url_query}")
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
         let url = format!("{base_url}?time_range={time_range}");
 
         self.egui_ctx.copy_text(url.clone());
