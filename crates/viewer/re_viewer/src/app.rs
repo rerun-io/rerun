@@ -1126,10 +1126,9 @@ impl App {
             return;
         };
 
-        let base_url = match &entity_db.data_source {
-            Some(SmartChannelSource::RerunGrpcStream { url }) => url,
-            // not a recording endpoint
-            _ => return,
+        let Some(SmartChannelSource::RerunGrpcStream { url: base_url }) = &entity_db.data_source
+        else {
+            return;
         };
 
         let rec_id = entity_db.store_id();
@@ -1144,7 +1143,7 @@ impl App {
         };
 
         let time_range = re_uri::TimeRange {
-            timeline: time_ctrl.timeline().clone(),
+            timeline: *time_ctrl.timeline(),
             range,
         };
 
