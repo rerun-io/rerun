@@ -1196,7 +1196,7 @@ impl App {
             let time_range_url = format!("{base_url}?time_range={time_range}");
             // %-encode the time range URL, because it's a url-within-a-url.
             // This results in VERY ugly links.
-            // TOOD(jan): Tweak the asciiset used here.
+            // TODO(jan): Tweak the asciiset used here.
             //            Alternatively, use a better (shorter, simpler) format
             //            for linking to recordings that isn't a full url and
             //            can actually exist in a query value.
