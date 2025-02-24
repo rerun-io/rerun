@@ -386,6 +386,40 @@ mod tests {
     }
 
     #[test]
+    fn test_recording_url_time_range_temporal_only_one_suffix_to_address() {
+        for url in [
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10..20s",
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20",
+        ] {
+            let address: RedapUri = url.try_into().unwrap();
+
+            let RedapUri::Recording(RecordingEndpoint {
+                origin,
+                recording_id,
+                time_range,
+            }) = address
+            else {
+                panic!("Expected recording");
+            };
+
+            assert_eq!(origin.scheme, Scheme::Rerun);
+            assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+            assert_eq!(origin.port, 1234);
+            assert_eq!(recording_id, "12345");
+            assert_eq!(
+                time_range,
+                Some(TimeRange {
+                    timeline: re_log_types::Timeline::new_temporal("timeline"),
+                    range: re_log_types::ResolvedTimeRangeF::new(
+                        re_log_types::TimeReal::from_seconds(10.0),
+                        re_log_types::TimeReal::from_seconds(20.0)
+                    )
+                })
+            );
+        }
+    }
+
+    #[test]
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
         let address: RedapUri = url.try_into().unwrap();
