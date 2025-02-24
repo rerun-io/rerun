@@ -359,7 +359,7 @@ impl EntityData {
 
             // Always have descendent of the view origin first.
             children.sort_by_key(|child| {
-                let put_first = child.entity_path.starts_with(&view_origin);
+                let put_first = child.entity_path.starts_with(view_origin);
                 !put_first
             });
 
