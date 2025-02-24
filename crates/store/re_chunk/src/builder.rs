@@ -2,7 +2,7 @@ use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
@@ -17,7 +17,7 @@ pub struct ChunkBuilder {
     entity_path: EntityPath,
 
     row_ids: Vec<RowId>,
-    timelines: IntMap<Timeline, TimeColumnBuilder>,
+    timelines: IntMap<TimelineName, TimeColumnBuilder>,
     components: IntMap<ComponentDescriptor, Vec<Option<ArrayRef>>>,
 }
 
@@ -74,9 +74,9 @@ impl ChunkBuilder {
 
         for (timeline, time) in timepoint.into() {
             self.timelines
-                .entry(timeline)
+                .entry(*timeline.name())
                 .or_insert_with(|| TimeColumn::builder(timeline))
-                .with_row(time);
+                .with_row(timeline.typ(), time);
         }
 
         for (component_name, array) in components {
@@ -387,8 +387,17 @@ impl TimeColumnBuilder {
 
     /// Add a row's worth of time data using the given timestamp.
     #[inline]
-    pub fn with_row(&mut self, time: TimeInt) -> &mut Self {
-        let Self { timeline: _, times } = self;
+    pub fn with_row(&mut self, typ: TimeType, time: TimeInt) -> &mut Self {
+        let Self { timeline, times } = self;
+
+        if timeline.typ() != typ {
+            re_log::warn_once!(
+                "Mixing {:?} and {:?} in the same time column '{}'",
+                typ,
+                timeline.typ(),
+                timeline.name()
+            );
+        }
 
         times.push(time.as_i64());
 

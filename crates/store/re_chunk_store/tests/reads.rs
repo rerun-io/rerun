@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::ArrayRef;
 
 use itertools::Itertools;
-use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
 };
@@ -256,7 +256,7 @@ fn latest_at() -> anyhow::Result<()> {
 
     let assert_latest_components =
         |frame_nr: TimeInt, rows: &[(ComponentDescriptor, Option<RowId>)]| {
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let timeline_frame_nr = TimelineName::new("frame_nr");
 
             for (component_desc, expected_row_id) in rows {
                 let row_id = query_latest_array(
@@ -316,7 +316,7 @@ fn latest_at() -> anyhow::Result<()> {
     {
         let assert_latest_chunk =
             |store: &ChunkStore, frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-                let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+                let timeline_frame_nr = TimelineName::new("frame_nr");
 
                 let mut chunk_ids = store
                     .latest_at_relevant_chunks_for_all_components(
@@ -427,7 +427,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
         &store,
         &entity_path,
         &MyIndex::descriptor(),
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
     )
     .map(|(_data_time, row_id, _array)| row_id);
 
@@ -436,7 +436,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     // Component-less APIs
     {
         let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let timeline_frame_nr = TimelineName::new("frame_nr");
 
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
@@ -587,7 +587,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         (frame7, row_id1_7),       //
         (TimeInt::MAX, row_id1_7), //
     ] {
-        let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), at);
+        let query = LatestAtQuery::new(TimelineName::new("frame_nr"), at);
         eprintln!("{} @ {query:?}", MyPoint::descriptor());
         let row_id = query_latest_array(&store, &entity_path, &MyPoint::descriptor(), &query)
             .map(|(_data_time, row_id, _array)| row_id);
@@ -597,7 +597,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
     // Component-less APIs
     {
         let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let timeline_frame_nr = TimelineName::new("frame_nr");
 
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
@@ -778,7 +778,7 @@ fn range() -> anyhow::Result<()> {
         |time_range: ResolvedTimeRange,
          component_desc: ComponentDescriptor,
          row_ids_at_times: &[(TimeInt, RowId)]| {
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let timeline_frame_nr = TimelineName::new("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let results =
@@ -895,7 +895,7 @@ fn range() -> anyhow::Result<()> {
     {
         let assert_range_chunk =
             |time_range: ResolvedTimeRange, mut expected_chunk_ids: Vec<ChunkId>| {
-                let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+                let timeline_frame_nr = TimelineName::new("frame_nr");
 
                 eprintln!("--- {time_range:?} ---");
                 let mut chunk_ids = store
@@ -1071,7 +1071,7 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
 
     let assert_range_chunk = |time_range: ResolvedTimeRange,
                               mut expected_chunk_ids: Vec<ChunkId>| {
-        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_frame_nr = TimelineName::new("frame_nr");
 
         eprintln!("--- {time_range:?} ---");
         let mut chunk_ids = store

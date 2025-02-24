@@ -39,7 +39,7 @@ fn simple_query() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
     let expected_compound_index = (TimeInt::new_temporal(123), row_id2);
     let expected_points = &points1;
     let expected_colors = &colors2;
@@ -85,7 +85,7 @@ fn static_query() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
     let expected_compound_index = (TimeInt::new_temporal(123), row_id1);
     let expected_points = &points;
     let expected_colors = &colors;
@@ -315,14 +315,14 @@ fn invalidation() {
     let frame_124 = build_frame_nr(124);
 
     test_invalidation(
-        LatestAtQuery::new(frame_123.0, frame_123.1),
+        LatestAtQuery::new(*frame_123.0.name(), frame_123.1),
         [frame_123].into(),
         [frame_122].into(),
         [frame_124].into(),
     );
 
     test_invalidation(
-        LatestAtQuery::new(frame_123.0, frame_123.1),
+        LatestAtQuery::new(*frame_123.0.name(), frame_123.1),
         [frame_123].into(),
         static_,
         [frame_124].into(),
@@ -378,7 +378,7 @@ fn invalidation_of_future_optionals() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id1);
     let expected_points = &points;
     let expected_colors = &[];
@@ -400,7 +400,7 @@ fn invalidation_of_future_optionals() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(2), row_id2);
     let expected_points = &points;
     let expected_colors = &colors;
@@ -422,7 +422,7 @@ fn invalidation_of_future_optionals() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(3), row_id3);
     let expected_points = &points;
     let expected_colors = &colors;
@@ -444,7 +444,7 @@ fn invalidation_of_future_optionals() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(3), row_id4);
     let expected_points = &points;
     let expected_colors = &colors;
@@ -481,7 +481,7 @@ fn static_invalidation() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id1);
     let expected_points = &points;
     let expected_colors = &[];
@@ -503,7 +503,7 @@ fn static_invalidation() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id2);
     let expected_points = &points;
     let expected_colors = &colors;
@@ -525,7 +525,7 @@ fn static_invalidation() {
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
-    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let query = re_chunk_store::LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id3);
     let expected_points = &points;
     let expected_colors = &colors;

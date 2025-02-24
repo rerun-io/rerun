@@ -16,12 +16,9 @@ pub(crate) fn edit_timeline_name(
         let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(current_value.as_str())
             .show_ui(ui, |ui| {
-                for timeline in ctx.recording().timelines() {
-                    let response = ui.selectable_value(
-                        &mut current_value,
-                        *timeline.name(),
-                        timeline.name().as_str(),
-                    );
+                for &timeline in ctx.recording().timelines().keys() {
+                    let response =
+                        ui.selectable_value(&mut current_value, timeline, timeline.as_str());
 
                     changed |= response.changed();
                 }

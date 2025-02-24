@@ -61,7 +61,7 @@ impl ChunkUi {
         let chunk = match &self.sort_column.column {
             ChunkColumn::RowId => self.chunk.clone(),
             ChunkColumn::Timeline(timeline) => {
-                Arc::new(self.chunk.sorted_by_timeline_if_unsorted(timeline))
+                Arc::new(self.chunk.sorted_by_timeline_if_unsorted(timeline.name()))
             }
         };
 

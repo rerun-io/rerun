@@ -1,10 +1,36 @@
+use std::ops::Deref;
+
 use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
+    ///
+    /// This uniquely identifies a timeline.
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct TimelineName;
 );
+
+impl TimelineName {
+    /// The log time timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
+    /// which point the data was logged (according to the client's wall-clock).
+    #[inline]
+    pub fn log_time() -> Self {
+        Self::new("log_time")
+    }
+
+    /// The log tick timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the logging tick at
+    /// which point the data was logged.
+    /// The logging tick is monotically incremented each time the client calls one of the logging
+    /// methods on a `RecordingStream`.
+    #[inline]
+    pub fn log_tick() -> Self {
+        Self::new("log_tick")
+    }
+}
 
 // ----------------------------------------------------------------------------
 
@@ -63,7 +89,7 @@ impl Timeline {
     /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
-        Self::new("log_time", TimeType::Time)
+        Self::new(TimelineName::log_time(), TimeType::Time)
     }
 
     /// The log tick timeline to which all API functions will always log.
@@ -74,7 +100,7 @@ impl Timeline {
     /// methods on a `RecordingStream`.
     #[inline]
     pub fn log_tick() -> Self {
-        Self::new("log_tick", TimeType::Sequence)
+        Self::new(TimelineName::log_tick(), TimeType::Sequence)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
@@ -84,11 +110,7 @@ impl Timeline {
         time_range: &ResolvedTimeRange,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
-        format!(
-            "{}..={}",
-            self.typ.format(time_range.min(), time_zone_for_timestamps),
-            self.typ.format(time_range.max(), time_zone_for_timestamps),
-        )
+        self.typ.format_range(*time_range, time_zone_for_timestamps)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
@@ -106,6 +128,13 @@ impl Timeline {
 
 impl nohash_hasher::IsEnabled for Timeline {}
 
+impl re_byte_size::SizeBytes for TimelineName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl re_byte_size::SizeBytes for Timeline {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -119,5 +148,23 @@ impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.name.hash() ^ self.typ.hash());
+    }
+}
+
+// TODO(#9084): Remove this crutch
+impl std::borrow::Borrow<TimelineName> for Timeline {
+    #[inline]
+    fn borrow(&self) -> &TimelineName {
+        &self.name
+    }
+}
+
+// TODO(#9084): Remove this crutch
+impl Deref for Timeline {
+    type Target = TimelineName;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.name
     }
 }

@@ -470,7 +470,7 @@ pyarrow = "18.0.0.*"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.3.5.*"
+ruff = "0.9.6.*"
 semver = ">=2.13,<2.14"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
@@ -492,7 +492,7 @@ parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
-maturin = "1.5.1.*"
+maturin = "1.8.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"

@@ -116,7 +116,7 @@ def parse_function_signature(node: Any) -> APIDef:
 
 def load_stub_signatures(pyi_file: Path) -> TotalSignature:
     """Use parso to parse the .pyi file and convert function and class signatures into inspect.Signature objects."""
-    pyi_code = Path(pyi_file).read_text()
+    pyi_code = Path(pyi_file).read_text(encoding="utf-8")
     tree = parso.parse(pyi_code)
 
     signatures: TotalSignature = {}

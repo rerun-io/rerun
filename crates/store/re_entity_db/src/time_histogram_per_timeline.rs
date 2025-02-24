@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
+use re_chunk::TimelineName;
 use re_chunk_store::ChunkStoreDiffKind;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
-use re_log_types::Timeline;
 
 // ---
 
@@ -16,7 +16,7 @@ pub type TimeHistogram = re_int_histogram::Int64Histogram;
 #[derive(Default)]
 pub struct TimeHistogramPerTimeline {
     /// When do we have data? Ignores static data.
-    times: BTreeMap<Timeline, TimeHistogram>,
+    times: BTreeMap<TimelineName, TimeHistogram>,
 
     /// Extra bookkeeping used to seed any timelines that include static msgs.
     num_static_messages: u64,
@@ -34,22 +34,22 @@ impl TimeHistogramPerTimeline {
     }
 
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
         self.times.keys()
     }
 
     #[inline]
-    pub fn get(&self, timeline: &Timeline) -> Option<&TimeHistogram> {
+    pub fn get(&self, timeline: &TimelineName) -> Option<&TimeHistogram> {
         self.times.get(timeline)
     }
 
     #[inline]
-    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
+    pub fn has_timeline(&self, timeline: &TimelineName) -> bool {
         self.times.contains_key(timeline)
     }
 
     #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeHistogram)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TimelineName, &TimeHistogram)> {
         self.times.iter()
     }
 
@@ -63,7 +63,7 @@ impl TimeHistogramPerTimeline {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
-    pub fn add(&mut self, times_per_timeline: &[(Timeline, &[i64])], n: u32) {
+    pub fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
         if times_per_timeline.is_empty() {
@@ -79,8 +79,8 @@ impl TimeHistogramPerTimeline {
                     u64::MAX
                 });
         } else {
-            for &(timeline, times) in times_per_timeline {
-                let histogram = self.times.entry(timeline).or_default();
+            for &(timeline_name, times) in times_per_timeline {
+                let histogram = self.times.entry(timeline_name).or_default();
                 for &time in times {
                     histogram.increment(time, n);
                 }
@@ -88,7 +88,7 @@ impl TimeHistogramPerTimeline {
         }
     }
 
-    pub fn remove(&mut self, times_per_timeline: &[(Timeline, &[i64])], n: u32) {
+    pub fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
         if times_per_timeline.is_empty() {
@@ -105,13 +105,13 @@ impl TimeHistogramPerTimeline {
                     u64::MIN
                 });
         } else {
-            for &(timeline, times) in times_per_timeline {
-                if let Some(histo) = self.times.get_mut(&timeline) {
+            for &(timeline_name, times) in times_per_timeline {
+                if let Some(histo) = self.times.get_mut(&timeline_name) {
                     for &time in times {
                         histo.decrement(time, n);
                     }
                     if histo.is_empty() {
-                        self.times.remove(&timeline);
+                        self.times.remove(&timeline_name);
                     }
                 }
             }
@@ -146,7 +146,7 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
                 .chunk
                 .timelines()
                 .iter()
-                .map(|(&timeline, time_column)| (timeline, time_column.times_raw()))
+                .map(|(&timeline_name, time_column)| (timeline_name, time_column.times_raw()))
                 .collect_vec();
             match event.kind {
                 ChunkStoreDiffKind::Addition => {

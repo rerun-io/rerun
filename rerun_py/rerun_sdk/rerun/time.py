@@ -20,6 +20,10 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
+    This function marks the timeline as being of a _squential_ type.
+    You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
+    on the same timeline, as that will produce undefined behavior.
+
     Parameters
     ----------
     timeline : str
@@ -58,6 +62,10 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
     since unix epoch.
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
+
+    This function marks the timeline as being of a _temporal_ type.
+    You should not use the sequential function [`rerun.set_time_sequence`][]
+    on the same timeline, as that will produce undefined behavior.
 
     Parameters
     ----------
@@ -98,6 +106,10 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
     unix epoch.
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
+
+    This function marks the timeline as being of a _temporal_ type.
+    You should not use the sequential function [`rerun.set_time_sequence`][]
+    on the same timeline, as that will produce undefined behavior.
 
     Parameters
     ----------

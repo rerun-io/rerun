@@ -10,7 +10,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
     archetypes::{self},
     components::{self},
@@ -43,7 +43,7 @@ pub struct TransformCacheStoreSubscriber {
     /// All components related to pinholes (i.e. [`components::PinholeProjection`] and [`components::ViewCoordinates`]).
     pinhole_components: IntSet<ComponentName>,
 
-    per_timeline: HashMap<Timeline, CachedTransformsForTimeline>,
+    per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
 }
 
@@ -122,7 +122,7 @@ pub struct CachedTransformsForTimeline {
 }
 
 impl CachedTransformsForTimeline {
-    fn new(timeline: &Timeline, static_transforms: &Self) -> Self {
+    fn new(timeline: &TimelineName, static_transforms: &Self) -> Self {
         Self {
             // It's crucial to take over any invalidated transform events from the static timeline,
             // otherwise we'd miss any pending static transforms that should ALSO be added to this timeline.
@@ -178,7 +178,7 @@ type PinholeProjectionMap = BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>
 pub struct TransformsForEntity {
     // Is None if this is about the "static timeline".
     #[cfg(debug_assertions)]
-    timeline: Option<Timeline>,
+    timeline: Option<TimelineName>,
 
     tree_transforms: BTreeMap<TimeInt, Affine3A>,
 
@@ -209,7 +209,7 @@ impl CachedTransformsForTimeline {
 impl TransformsForEntity {
     fn new(
         entity_path: &EntityPath,
-        _timeline: Timeline,
+        _timeline: TimelineName,
         recursive_clears: &IntMap<EntityPathHash, Vec<TimeInt>>,
         static_timeline: &CachedTransformsForTimeline,
     ) -> Self {
@@ -245,7 +245,7 @@ impl TransformsForEntity {
         result
     }
 
-    fn new_for_new_empty_timeline(_timeline: Timeline, static_timeline_entry: &Self) -> Self {
+    fn new_for_new_empty_timeline(_timeline: TimelineName, static_timeline_entry: &Self) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
@@ -343,7 +343,7 @@ impl TransformCacheStoreSubscriber {
     ///
     /// Returns `None` if the timeline doesn't have any transforms at all.
     #[inline]
-    pub fn transforms_for_timeline(&self, timeline: Timeline) -> &CachedTransformsForTimeline {
+    pub fn transforms_for_timeline(&self, timeline: TimelineName) -> &CachedTransformsForTimeline {
         self.per_timeline
             .get(&timeline)
             .unwrap_or(&self.static_timeline)
@@ -376,7 +376,7 @@ impl TransformCacheStoreSubscriber {
             // Technically this doesn't query static components but rather just what's at the beginning of this arbitrary timeline,
             // but it's the most convenient way to the data we want.
             let query = LatestAtQuery::new(
-                Timeline::new_sequence(
+                TimelineName::new(
                     "placeholder timeline (only actually interested in static components)",
                 ),
                 TimeInt::MIN,
@@ -968,7 +968,7 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
-    use re_log_types::TimePoint;
+    use re_log_types::{TimePoint, Timeline};
     use re_types::{archetypes, Loggable, SerializedComponentBatch};
 
     use super::*;
@@ -1090,7 +1090,7 @@ mod tests {
 
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
-            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+            let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             assert!(transforms_per_timeline
                 .entity_transforms(&EntityPath::from("without_transform"))
                 .is_none());
@@ -1100,7 +1100,7 @@ mod tests {
             let transforms = transforms_per_timeline
                 .entity_transforms(&EntityPath::from("with_transform"))
                 .unwrap();
-            assert_eq!(transforms.timeline, Some(timeline));
+            assert_eq!(transforms.timeline, Some(*timeline.name()));
             assert_eq!(transforms.tree_transforms.len(), 1);
             assert_eq!(transforms.pose_transforms, None);
             assert_eq!(transforms.pinhole_projections, None);
@@ -1150,23 +1150,27 @@ mod tests {
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
-                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
 
                 assert_eq!(
-                    transforms
-                        .latest_at_tree_transform(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(
+                        *timeline.name(),
+                        TimeInt::MIN
+                    )),
                     glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
                 );
                 assert_eq!(
-                    transforms
-                        .latest_at_tree_transform(&LatestAtQuery::new(timeline, TimeInt::MIN)),
-                    transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 0)),
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(
+                        *timeline.name(),
+                        TimeInt::MIN
+                    )),
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), 0)),
                 );
                 assert_eq!(
-                    transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                    transforms.latest_at_tree_transform(&LatestAtQuery::new(*timeline.name(), 1)),
                     glam::Affine3A::from_scale_rotation_translation(
                         glam::Vec3::new(123.0, 234.0, 345.0),
                         glam::Quat::IDENTITY,
@@ -1176,13 +1180,13 @@ mod tests {
 
                 // Timelines that the cache has never seen should still have the static transform.
                 let transforms_per_timeline =
-                    cache.transforms_for_timeline(Timeline::new_sequence("other"));
+                    cache.transforms_for_timeline(TimelineName::new("other"));
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
                 assert_eq!(
                     transforms.latest_at_tree_transform(&LatestAtQuery::new(
-                        Timeline::new_sequence("other"),
+                        TimelineName::new("other"),
                         123
                     )),
                     glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
@@ -1233,26 +1237,30 @@ mod tests {
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
-                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
 
                 assert_eq!(
-                    transforms
-                        .latest_at_instance_poses(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    transforms.latest_at_instance_poses(&LatestAtQuery::new(
+                        *timeline.name(),
+                        TimeInt::MIN
+                    )),
                     &[
                         glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                         glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
                     ]
                 );
                 assert_eq!(
-                    transforms
-                        .latest_at_instance_poses(&LatestAtQuery::new(timeline, TimeInt::MIN)),
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 0)),
+                    transforms.latest_at_instance_poses(&LatestAtQuery::new(
+                        *timeline.name(),
+                        TimeInt::MIN
+                    )),
+                    transforms.latest_at_instance_poses(&LatestAtQuery::new(*timeline.name(), 0)),
                 );
                 assert_eq!(
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 1)),
+                    transforms.latest_at_instance_poses(&LatestAtQuery::new(*timeline.name(), 1)),
                     &[
                         glam::Affine3A::from_scale_rotation_translation(
                             glam::Vec3::new(10.0, 20.0, 30.0),
@@ -1269,13 +1277,13 @@ mod tests {
 
                 // Timelines that the cache has never seen should still have the static poses.
                 let transforms_per_timeline =
-                    cache.transforms_for_timeline(Timeline::new_sequence("other"));
+                    cache.transforms_for_timeline(TimelineName::new("other"));
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
                 assert_eq!(
                     transforms.latest_at_instance_poses(&LatestAtQuery::new(
-                        Timeline::new_sequence("other"),
+                        TimelineName::new("other"),
                         123
                     )),
                     &[
@@ -1338,24 +1346,26 @@ mod tests {
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
-                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
 
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    transforms
+                        .latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                     Some(&ResolvedPinholeProjection {
                         image_from_camera: image_from_camera_final,
                         view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                     })
                 );
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 0)),
+                    transforms
+                        .latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 0)),
                 );
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                     Some(&ResolvedPinholeProjection {
                         image_from_camera: image_from_camera_final,
                         view_coordinates: components::ViewCoordinates::BLU,
@@ -1364,12 +1374,12 @@ mod tests {
 
                 // Timelines that the cache has never seen should still have the static pinhole.
                 let transforms_per_timeline =
-                    cache.transforms_for_timeline(Timeline::new_sequence("other"));
+                    cache.transforms_for_timeline(TimelineName::new("other"));
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 123)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 123)),
                     Some(&ResolvedPinholeProjection {
                         image_from_camera: image_from_camera_final,
                         view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
@@ -1425,23 +1435,25 @@ mod tests {
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
-                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
 
                 // There's view coordinates, but that doesn't show up.
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    transforms
+                        .latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
                     None
                 );
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 0)),
+                    transforms
+                        .latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), TimeInt::MIN)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 0)),
                 );
                 // Once we get a pinhole camera, the view coordinates should be there.
                 assert_eq!(
-                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(*timeline.name(), 1)),
                     Some(&ResolvedPinholeProjection {
                         image_from_camera,
                         view_coordinates: components::ViewCoordinates::BLU,
@@ -1484,26 +1496,27 @@ mod tests {
 
         // Check that the transform cache has the expected transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline_name = *timeline.name();
             cache.apply_all_updates(&entity_db);
-            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
             let transforms = transforms_per_timeline
                 .entity_transforms(&EntityPath::from("my_entity"))
                 .unwrap();
 
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 0)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 0)),
                 glam::Affine3A::IDENTITY
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 1)),
                 glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 2)),
                 glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 3)),
                 glam::Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(1.0, 2.0, 3.0),
                     glam::Quat::IDENTITY,
@@ -1511,15 +1524,15 @@ mod tests {
                 )
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 4)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 4)),
                 glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0))
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 5)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 5)),
                 glam::Affine3A::IDENTITY
             );
             assert_eq!(
-                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 123)),
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline_name, 123)),
                 glam::Affine3A::IDENTITY
             );
         });
@@ -1575,6 +1588,7 @@ mod tests {
 
         // Check that the transform cache has the expected transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
             let transforms = transforms_per_timeline
@@ -1671,6 +1685,7 @@ mod tests {
 
         // Check that the transform cache has the expected transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
             let transforms = transforms_per_timeline
@@ -1737,6 +1752,7 @@ mod tests {
 
         // Check that the transform cache has the expected transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
             let transforms = transforms_per_timeline
@@ -1768,6 +1784,7 @@ mod tests {
 
         // Check that the transform cache has the expected changed transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
             let transforms = transforms_per_timeline
@@ -1842,6 +1859,7 @@ mod tests {
             }
 
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+                let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
                 let transforms = transforms_per_timeline.entity_transforms(&path).unwrap();
@@ -1918,6 +1936,7 @@ mod tests {
             }
 
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+                let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
 
@@ -1975,7 +1994,7 @@ mod tests {
 
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
             assert!(
-                cache.transforms_for_timeline(timeline).per_entity
+                cache.transforms_for_timeline(*timeline.name()).per_entity
                     == cache.static_timeline.per_entity
             );
         });

@@ -3,7 +3,9 @@ use std::sync::Arc;
 use arrow::array::ArrayRef;
 use rand::Rng as _;
 
-use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint};
+use re_chunk::{
+    Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
+};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -11,7 +13,7 @@ use re_chunk_store::{
 use re_log_types::{
     build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, ResolvedTimeRange, Time, TimeType, Timeline,
+    EntityPath, ResolvedTimeRange, Time,
 };
 use re_types::testing::build_some_large_structs;
 use re_types_core::Component as _;
@@ -174,7 +176,7 @@ fn simple_static() -> anyhow::Result<()> {
     });
 
     let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, RowId)]| {
-        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_frame_nr = TimelineName::new("frame_nr");
 
         for (component_name, expected_row_id) in rows {
             let (_data_time, row_id, _array) = query_latest_array(
@@ -262,7 +264,7 @@ fn protected() -> anyhow::Result<()> {
     });
 
     let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, Option<RowId>)]| {
-        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_frame_nr = TimelineName::new("frame_nr");
 
         for (component_name, expected_row_id) in rows {
             let row_id = query_latest_array(
@@ -378,11 +380,8 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 
     fn protect_time_range(time_range: ResolvedTimeRange) -> GarbageCollectionOptions {
         GarbageCollectionOptions {
-            protected_time_ranges: std::iter::once((
-                Timeline::new_sequence("frame_nr"),
-                time_range,
-            ))
-            .collect(),
+            protected_time_ranges: std::iter::once((TimelineName::new("frame_nr"), time_range))
+                .collect(),
             ..GarbageCollectionOptions::gc_everything()
         }
     }
@@ -471,26 +470,26 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     assert_latest_value(
         &store,
         &entity_path1,
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
         Some(row_id3),
     );
     assert_latest_value(
         &store,
         &entity_path1,
-        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::log_time(), TimeInt::MAX),
         Some(row_id3),
     );
 
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
         Some(row_id4),
     );
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::log_time(), TimeInt::MAX),
         Some(row_id4),
     );
 
@@ -506,26 +505,26 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     assert_latest_value(
         &store,
         &entity_path1,
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
         None,
     );
     assert_latest_value(
         &store,
         &entity_path1,
-        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::log_time(), TimeInt::MAX),
         None,
     );
 
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
         Some(row_id4),
     );
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::log_time(), TimeInt::MAX),
         Some(row_id4),
     );
 
@@ -540,13 +539,13 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
         None,
     );
     assert_latest_value(
         &store,
         &entity_path2,
-        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::log_time(), TimeInt::MAX),
         None,
     );
 

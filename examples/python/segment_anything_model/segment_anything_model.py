@@ -153,7 +153,7 @@ def main() -> None:
         action="store",
         default="vit_b",
         choices=MODEL_URLS.keys(),
-        help="Which model to use." "(See: https://github.com/facebookresearch/segment-anything#model-checkpoints)",
+        help="Which model to use.(See: https://github.com/facebookresearch/segment-anything#model-checkpoints)",
     )
     parser.add_argument(
         "--device",

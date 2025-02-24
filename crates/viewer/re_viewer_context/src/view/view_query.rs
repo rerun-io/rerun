@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use re_chunk::TimelineName;
 use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityPath, TimeInt, Timeline};
+use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
 use re_types::ComponentName;
 
@@ -269,7 +270,7 @@ pub struct ViewQuery<'s> {
     pub per_visualizer_data_results: PerSystemDataResults<'s>,
 
     /// The timeline we're on.
-    pub timeline: Timeline,
+    pub timeline: TimelineName,
 
     /// The time on the timeline we're currently at.
     pub latest_at: TimeInt,
