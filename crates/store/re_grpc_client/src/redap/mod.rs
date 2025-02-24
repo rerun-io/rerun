@@ -273,6 +273,14 @@ pub async fn stream_recording_async(
         return Ok(());
     }
 
+    if let Some(time_range) = endpoint.time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
+            timeline: time_range.timeline,
+            time_range: time_range.range,
+        });
+    }
+
     while let Some(result) = chunk_stream.next().await {
         let batch = result?;
         let chunk = Chunk::from_record_batch(&batch)?;
@@ -288,14 +296,6 @@ pub async fn stream_recording_async(
         if let Some(on_msg) = &on_msg {
             on_msg();
         }
-    }
-
-    if let Some(time_range) = endpoint.time_range {
-        on_cmd(Command::SetLoopSelection {
-            recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
-            timeline: time_range.timeline,
-            time_range: time_range.range,
-        });
     }
 
     Ok(())
