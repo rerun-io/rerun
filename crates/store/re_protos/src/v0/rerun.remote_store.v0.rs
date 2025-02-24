@@ -21,14 +21,17 @@ impl ::prost::Name for DataframePart {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunkIdsRequest {
-    /// recording id from which we're want to fetch the chunk ids
+    /// which catalog entry do we want to fetch the chunk ids from
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// recording id from which we're want to fetch the chunk ids
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
     /// timeline for which we specify the time range
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "3")]
     pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
     /// time range for which we want to fetch the chunk ids
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "4")]
     pub time_range: ::core::option::Option<super::super::common::v0::TimeRange>,
 }
 impl ::prost::Name for GetChunkIdsRequest {
@@ -59,11 +62,14 @@ impl ::prost::Name for GetChunkIdsResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksRequest {
-    /// recording id from which we're want to fetch the chunk ids
+    /// which catalog entry do we want to fetch the chunks from
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// recording id from which we're want to fetch the chunk ids
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
     /// batch of chunk ids for which we want to stream back chunks
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v0::Tuid>,
 }
 impl ::prost::Name for GetChunksRequest {
@@ -859,7 +865,11 @@ impl ::prost::Name for QueryCatalogResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
+    /// which catalog entry do we want to fetch the recording from
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// recording id from which we're want to fetch the recording
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
 }
 impl ::prost::Name for FetchRecordingRequest {

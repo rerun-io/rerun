@@ -74,12 +74,14 @@ message DataframePart {
 // ---------------- GetChunkIds ------------------
 
 message GetChunkIdsRequest {
+    // which catalog entry do we want to fetch the chunk ids from
+    CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk ids
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // timeline for which we specify the time range
-    rerun.common.v0.IndexColumnSelector time_index = 2;
+    rerun.common.v0.IndexColumnSelector time_index = 3;
     // time range for which we want to fetch the chunk ids
-    rerun.common.v0.TimeRange time_range = 3;
+    rerun.common.v0.TimeRange time_range = 4;
 }
 
 message GetChunkIdsResponse {
@@ -90,10 +92,12 @@ message GetChunkIdsResponse {
 // ---------------- GetChunk ---------------------
 
 message GetChunksRequest {
+    // which catalog entry do we want to fetch the chunks from
+    CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk ids
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // batch of chunk ids for which we want to stream back chunks
-    repeated rerun.common.v0.Tuid chunk_ids = 2;
+    repeated rerun.common.v0.Tuid chunk_ids = 3;
 }
 
 // ---------------- CreateIndex ------------------
@@ -471,7 +475,10 @@ enum RecordingType {
 // ----------------- FetchRecording -----------------
 
 message FetchRecordingRequest {
-    rerun.common.v0.RecordingId recording_id = 1;
+    // which catalog entry do we want to fetch the recording from
+    CatalogEntry entry = 1;
+    // recording id from which we're want to fetch the recording
+    rerun.common.v0.RecordingId recording_id = 2;
 }
 
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now

@@ -1,5 +1,5 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
+use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, CatalogEntry};
 use re_uri::{Origin, RecordingEndpoint};
 use tokio_stream::StreamExt as _;
 
@@ -197,6 +197,9 @@ pub async fn stream_recording_async(
 
     let mut resp = client
         .fetch_recording(FetchRecordingRequest {
+            entry: Some(CatalogEntry {
+                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+            }),
             recording_id: Some(RecordingId {
                 id: endpoint.recording_id.clone(),
             }),
