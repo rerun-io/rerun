@@ -82,6 +82,7 @@ fn add_entities_ui(
     let mut hierarchy = Default::default();
     let mut hierarchy_highlights = Default::default();
     let entity_data = EntityData::from_entity_tree_and_filter(
+        &view.space_origin,
         tree,
         filter_matcher,
         &mut hierarchy,
@@ -145,7 +146,6 @@ fn add_entities_tree_ui(
             default_open,
             item_content,
             |ui| {
-                //TODO: sort ok?
                 for children in &entity_data.children {
                     add_entities_tree_ui(
                         ctx,
@@ -288,6 +288,7 @@ pub struct EntityData {
 
 impl EntityData {
     pub fn from_entity_tree_and_filter(
+        view_origin: &EntityPath,
         entity_tree: &EntityTree,
         filter_matcher: &FilterMatcher,
         hierarchy: &mut Vec<String>,
@@ -342,11 +343,12 @@ impl EntityData {
                 children: vec![],
             }
         } else {
-            let children = entity_tree
+            let mut children = entity_tree
                 .children
                 .values()
                 .filter_map(|sub_tree| {
                     Self::from_entity_tree_and_filter(
+                        view_origin,
                         sub_tree,
                         filter_matcher,
                         hierarchy,
@@ -354,6 +356,12 @@ impl EntityData {
                     )
                 })
                 .collect_vec();
+
+            // Always have descendent of the view origin first.
+            children.sort_by_key(|child| {
+                let put_first = child.entity_path.starts_with(&view_origin);
+                !put_first
+            });
 
             let is_this_a_match = !children.is_empty();
 
