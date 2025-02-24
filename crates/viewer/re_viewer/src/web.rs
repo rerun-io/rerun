@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::{command_channel, AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
+use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
