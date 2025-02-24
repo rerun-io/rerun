@@ -714,7 +714,6 @@ fn create_app(
         startup_options,
         cc,
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
-        command_channel(),
     );
 
     if enable_history {

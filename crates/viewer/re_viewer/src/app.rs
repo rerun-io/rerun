@@ -11,6 +11,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
+    command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
@@ -246,8 +247,27 @@ pub struct App {
 }
 
 impl App {
-    /// Create a viewer that receives new log messages over time
     pub fn new(
+        main_thread_token: MainThreadToken,
+        build_info: re_build_info::BuildInfo,
+        app_env: &crate::AppEnvironment,
+        startup_options: StartupOptions,
+        creation_context: &eframe::CreationContext<'_>,
+        tokio_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        Self::with_commands(
+            main_thread_token,
+            build_info,
+            app_env,
+            startup_options,
+            creation_context,
+            tokio_runtime,
+            command_channel(),
+        )
+    }
+
+    /// Create a viewer that receives new log messages over time
+    pub fn with_commands(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,

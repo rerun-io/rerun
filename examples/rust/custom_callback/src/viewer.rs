@@ -64,7 +64,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 startup_options,
                 cc,
                 AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
-                command_channel(),
             );
 
             rerun_app.add_receiver(rx);
