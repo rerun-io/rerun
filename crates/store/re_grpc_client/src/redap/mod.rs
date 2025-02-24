@@ -84,17 +84,32 @@ pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, Co
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ConnectionError> {
+    use std::net::Ipv4Addr;
+
     use tonic::transport::Endpoint;
 
     let http_url = origin.as_url();
 
     match Endpoint::new(http_url)?
-        .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+        .tls_config(
+            tonic::transport::ClientTlsConfig::new()
+                .with_enabled_roots()
+                .assume_http2(true),
+        )?
         .connect()
         .await
     {
         Ok(channel) => Ok(channel),
         Err(original_error) => {
+            if ![
+                url::Host::Domain("localhost".to_owned()),
+                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+            ]
+            .contains(&origin.host)
+            {
+                return Err(ConnectionError::Tonic(original_error));
+            }
+
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
             // a more meaningful error message.
