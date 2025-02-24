@@ -101,6 +101,9 @@ pub enum SystemCommand {
         timeline: re_chunk::Timeline,
     },
 
+    /// Set the loop selection for the given timeline.
+    ///
+    /// This also sets the active timeline and activates the loop selection.
     SetLoopSelection {
         rec_id: StoreId,
         timeline: Timeline,
