@@ -228,6 +228,16 @@ pub struct RecordBatchFormatOpts {
     pub include_metadata: bool,
 }
 
+impl Default for RecordBatchFormatOpts {
+    fn default() -> Self {
+        Self {
+            transposed: false,
+            width: None,
+            include_metadata: true,
+        }
+    }
+}
+
 /// Nicely format this record batch in a way that fits the terminal.
 pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
     format_record_batch_with_width(batch, None)
