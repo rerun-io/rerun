@@ -80,7 +80,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
         }
 
         LogMsg::ArrowMsg(_row_id, arrow_msg) => {
-            let chunk =
+            let mut chunk =
                 re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).context("corrupt chunk")?;
 
             print!(
@@ -105,9 +105,25 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
                     .join(" ");
                 println!("columns: [{column_descriptors}]",);
             } else if verbose == 2 {
-                println!("\n{}", chunk.drop_all_rows()); // headers only
+                chunk = chunk.drop_all_rows();
+
+                let options = re_format_arrow::RecordBatchFormatOpts {
+                    transposed: true,
+                    ..Default::default()
+                };
+                println!(
+                    "\n{}\n",
+                    re_format_arrow::format_record_batch_opts(&chunk, &options)
+                );
             } else {
-                println!("\n{chunk}");
+                let options = re_format_arrow::RecordBatchFormatOpts {
+                    transposed: false, // TODO(emilk): add cli option for this
+                    ..Default::default()
+                };
+                println!(
+                    "\n{}\n",
+                    re_format_arrow::format_record_batch_opts(&chunk, &options)
+                );
             }
         }
 

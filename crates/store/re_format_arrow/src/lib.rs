@@ -217,6 +217,8 @@ pub struct RecordBatchFormatOpts {
     /// If `true`, the dataframe will be transposed on its diagonal axis.
     ///
     /// This is particularly useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
+    ///
+    /// Setting this to `true` will also disable all per-column metadata.
     pub transposed: bool,
 
     /// If specified, displays the dataframe with the given fixed width.
