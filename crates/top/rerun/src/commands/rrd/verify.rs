@@ -1,4 +1,4 @@
-use anyhow::Context as _;
+use std::collections::HashSet;
 
 use arrow::array::AsArray;
 use re_log_types::LogMsg;
@@ -16,7 +16,7 @@ pub struct VerifyCommand {
 
 impl VerifyCommand {
     pub fn run(&self) -> anyhow::Result<()> {
-        let reflection = re_types::reflection::generate_reflection()?;
+        let mut verifier = Verifier::new()?;
 
         let Self { path_to_input_rrds } = self;
 
@@ -26,60 +26,96 @@ impl VerifyCommand {
 
         let mut log_msg_count = 0;
         for res in rx {
-            verify_log_msg(&reflection, res?)?;
+            verifier.verify_log_msg(res?);
             log_msg_count += 1;
         }
 
-        eprintln!("{log_msg_count} chunks verified successfully.");
-
-        Ok(())
+        if verifier.errors.is_empty() {
+            eprintln!("{log_msg_count} chunks verified successfully.");
+            Ok(())
+        } else {
+            for err in &verifier.errors {
+                eprintln!("{err}");
+            }
+            Err(anyhow::anyhow!(
+                "Verification failed with {} errors",
+                verifier.errors.len()
+            ))
+        }
     }
 }
 
-fn verify_log_msg(reflection: &Reflection, msg: LogMsg) -> anyhow::Result<()> {
-    match msg {
-        LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => {}
-
-        LogMsg::ArrowMsg(_store_id, arrow_msg) => {
-            verify_record_batch(reflection, &arrow_msg.batch)?;
-        }
-    }
-    Ok(())
+struct Verifier {
+    reflection: Reflection,
+    errors: HashSet<String>,
 }
 
-fn verify_record_batch(
-    reflection: &Reflection,
-    batch: &arrow::array::RecordBatch,
-) -> anyhow::Result<()> {
-    let chunk_batch = re_sorbet::ChunkBatch::try_from(batch)?;
+impl Verifier {
+    fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            reflection: re_types::reflection::generate_reflection()?,
+            errors: HashSet::new(),
+        })
+    }
 
-    for (component_descriptor, column) in chunk_batch.component_columns() {
-        let component_name = component_descriptor.component_name;
+    fn verify_log_msg(&mut self, msg: LogMsg) {
+        match msg {
+            LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => {}
 
-        if component_name.is_indicator_component() {
-            continue; // Lacks reflection
+            LogMsg::ArrowMsg(_store_id, arrow_msg) => {
+                self.verify_record_batch(&arrow_msg.batch);
+            }
         }
+    }
 
-        let component_reflection = reflection
+    fn verify_record_batch(&mut self, batch: &arrow::array::RecordBatch) {
+        match re_sorbet::ChunkBatch::try_from(batch) {
+            Ok(chunk_batch) => self.verify_chunk_batch(&chunk_batch),
+            Err(err) => {
+                self.errors
+                    .insert(format!("Failed to parse batch: {err:?}"));
+            }
+        }
+    }
+
+    fn verify_chunk_batch(&mut self, chunk_batch: &re_sorbet::ChunkBatch) {
+        for (component_descriptor, column) in chunk_batch.component_columns() {
+            let component_name = component_descriptor.component_name;
+
+            if component_name.is_indicator_component() {
+                continue; // Lacks reflection
+            }
+
+            if let Err(err) = self.verify_component_column(component_name, column) {
+                self.errors.insert(format!(
+                    "Failed to deserialize column {component_name:?}: {err:?}"
+                ));
+            }
+        }
+    }
+
+    fn verify_component_column(
+        &self,
+        component_name: re_sdk::ComponentName,
+        column: &dyn arrow::array::Array,
+    ) -> anyhow::Result<()> {
+        let component_reflection = self
+            .reflection
             .components
             .get(&component_name)
-            .ok_or_else(|| anyhow::anyhow!("Unknown component: {component_name:?}"))?;
+            .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
         let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
-            anyhow::anyhow!(
-                "Expected list array, found {:?} (ComponentName: {component_name:?})",
-                column.data_type()
-            )
+            anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
         })?;
 
         assert_eq!(column.len() + 1, list_array.offsets().len());
 
         for i in 0..column.len() {
             let cell = list_array.value(i);
-            (component_reflection.verify_arrow_array)(cell.as_ref())
-                .with_context(|| format!("ComponentName: {component_name:?}"))?;
+            (component_reflection.verify_arrow_array)(cell.as_ref())?;
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
