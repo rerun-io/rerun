@@ -12,7 +12,7 @@ Before reading this document, you might want to familiarize yourself with the [R
 
 ## Operating modes
 
-The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve` & `save`.
+The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve_web` & `save`.
 
 All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
 
