@@ -82,6 +82,10 @@ fn icon_data() -> egui::IconData {
     }
 }
 
+#[deprecated(
+    since = "0.23.0",
+    note = "Use `run_native_app` instead and add a receiver to the app."
+)]
 pub fn run_native_viewer_with_messages(
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,

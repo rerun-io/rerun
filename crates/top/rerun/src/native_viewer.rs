@@ -6,6 +6,10 @@ use re_viewer::external::eframe;
 ///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
+#[deprecated(
+    since = "0.23.0",
+    note = "Use `re_viewer::run_native_app` instead and add a receiver to the app."
+)]
 pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> eframe::Result {
     if msgs.is_empty() {
         re_log::debug!("Empty array of msgs - call to show() ignored");
