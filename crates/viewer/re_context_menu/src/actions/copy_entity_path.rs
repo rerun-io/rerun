@@ -21,8 +21,8 @@ impl ContextMenuAction for CopyEntityPathToClipboard {
         }
     }
 
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        if _ctx.selection.len() == 1 {
+    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
+        if ctx.selection.len() == 1 {
             "Copy entity path".to_owned()
         } else {
             "Copy entity paths".to_owned()
