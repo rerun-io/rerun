@@ -72,8 +72,7 @@ impl Verifier {
         match re_sorbet::ChunkBatch::try_from(batch) {
             Ok(chunk_batch) => self.verify_chunk_batch(&chunk_batch),
             Err(err) => {
-                self.errors
-                    .insert(format!("Failed to parse batch: {err:?}"));
+                self.errors.insert(format!("Failed to parse batch: {err}"));
             }
         }
     }
@@ -88,7 +87,7 @@ impl Verifier {
 
             if let Err(err) = self.verify_component_column(component_name, column) {
                 self.errors.insert(format!(
-                    "Failed to deserialize column {component_name:?}: {err:?}"
+                    "Failed to deserialize column {component_name:?}: {err}"
                 ));
             }
         }
