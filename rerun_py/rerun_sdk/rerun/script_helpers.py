@@ -112,7 +112,7 @@ def script_setup(
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default URL.
-        rec.connect(args.url, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.connect_grpc(args.url, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
         rec.save(args.save, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif not args.headless:
