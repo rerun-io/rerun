@@ -1,5 +1,4 @@
 use re_grpc_client::message_proxy;
-use re_log::debug;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
