@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package rerun.remote_store.v0;
+
+import "google/protobuf/timestamp.proto";
+
+// A collection in the catalog
+message Collection {
+    enum StorageEngine {
+        LANCE_DB = 0;
+    }
+
+    string id = 1;
+    string name = 2;
+    StorageEngine storage_engine = 3;
+    repeated string index_ids = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+}

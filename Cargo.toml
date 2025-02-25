@@ -249,6 +249,7 @@ proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
 prost = "0.13.3"
 prost-build = "0.13.3"
+prost-types = "0.13.5"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.22.5"
