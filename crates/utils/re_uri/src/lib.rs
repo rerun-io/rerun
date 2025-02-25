@@ -506,10 +506,12 @@ mod tests {
         let url = "rerun://localhost:51234/proxy";
         let address: Result<RedapUri, _> = url.try_into();
 
-        let expected = RedapUri::Proxy(Origin {
-            scheme: Scheme::Rerun,
-            host: url::Host::Domain("localhost".to_owned()),
-            port: 51234,
+        let expected = RedapUri::Proxy(ProxyEndpoint {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
         });
 
         assert_eq!(address.unwrap(), expected);
