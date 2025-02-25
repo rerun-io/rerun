@@ -41,7 +41,7 @@ pub fn stream_from_redap(
         re_smart_channel::SmartMessageSource::RerunGrpcStream {
             url: endpoint.to_string(),
         },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+        re_smart_channel::SmartChannelSource::RedapGrpcStream {
             url: endpoint.to_string(),
         },
     );

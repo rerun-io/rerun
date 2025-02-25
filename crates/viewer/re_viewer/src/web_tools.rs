@@ -97,26 +97,16 @@ enum EndpointCategory {
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
         if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
-            return Self::RerunGrpcStream(endpoint);
+            return Self::RerunGrpcStream(uri);
         }
 
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
-        } else if uri.starts_with("temp:") {
-            // TODO(#8761): URL prefix
-            Self::MessageProxy(uri)
         } else {
-            // If this is something like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::info!("Assuming gRPC endpoint");
-            if uri.contains("://") {
-                Self::MessageProxy(uri)
-            } else {
-                // TODO(jan): this should be `https` if it's not localhost or same-origin
-                Self::MessageProxy(format!("http://{uri}"))
-            }
+            // TODO: What should we do here?
+            unimplemented!()
         }
     }
 }
@@ -166,10 +156,9 @@ pub fn url_to_receiver(
             anyhow::bail!("Catalogs are not supported yet")
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => {
-            re_grpc_client::message_proxy::read::stream(&endpoint, Some(ui_waker))
-                .map_err(|err| err.into())
-        }
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+        ),
 
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`

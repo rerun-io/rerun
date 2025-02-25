@@ -60,7 +60,9 @@ impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::RedapGrpcStream { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ }
+            | Self::RedapGrpcStream { url }
+            | Self::MessageProxy { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -73,9 +75,10 @@ impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
-            Self::RrdHttpStream { .. } | Self::JsChannel { .. } | Self::RerunGrpcStream { .. } => {
-                true
-            }
+            Self::RrdHttpStream { .. }
+            | Self::JsChannel { .. }
+            | Self::RedapGrpcStream { .. }
+            | Self::MessageProxy { .. } => true,
         }
     }
 }

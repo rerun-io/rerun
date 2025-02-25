@@ -60,10 +60,11 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::RerunGrpcStream { url } => format!("Loading {url}…"),
+            | SmartChannelSource::RedapGrpcStream { url } => format!("Loading {url}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
+            | SmartChannelSource::MessageProxy { .. }
             | SmartChannelSource::Sdk
             | SmartChannelSource::Stdin => {
                 // These show up in the top panel - see `top_panel.rs`.
@@ -89,7 +90,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                     resp
                 }),
             );
-            if let SmartChannelSource::RerunGrpcStream { .. } = source.as_ref() {
+            if let SmartChannelSource::MessageProxy { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
         }

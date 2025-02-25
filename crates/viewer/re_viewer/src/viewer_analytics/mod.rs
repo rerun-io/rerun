@@ -95,7 +95,9 @@ impl ViewerAnalytics {
                 return;
             };
 
-            analytics.record(event::open_recording(&self.app_env, entity_db));
+            if let Some(event) = event::open_recording(&self.app_env, entity_db) {
+                analytics.record(event);
+            }
         }
 
         #[cfg(not(feature = "analytics"))]

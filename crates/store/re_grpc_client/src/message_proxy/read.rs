@@ -17,7 +17,7 @@ pub fn stream(
     let url = format!("{endpoint}");
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream { url },
+        re_smart_channel::SmartChannelSource::MessageProxy { url },
     );
 
     crate::spawn_future(async move {

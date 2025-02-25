@@ -241,7 +241,7 @@ pub fn spawn_with_recv(
         re_smart_channel::SmartMessageSource::MessageProxy {
             url: format!("rerun+http://{addr}"),
         },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+        re_smart_channel::SmartChannelSource::MessageProxy {
             url: format!("rerun+http://{addr}"),
         },
     );

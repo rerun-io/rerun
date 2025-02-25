@@ -569,13 +569,13 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. },
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
-                    | SmartChannelSource::RerunGrpcStream { .. }
+                    | SmartChannelSource::RedapGrpcStream { .. }
+                    | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
                 });
             }
@@ -1156,7 +1156,7 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RerunGrpcStream { url: base_url }) = &entity_db.data_source
+        let Some(SmartChannelSource::RedapGrpcStream { url: base_url }) = &entity_db.data_source
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1723,7 +1723,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RerunGrpcStream { .. }
+                | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
