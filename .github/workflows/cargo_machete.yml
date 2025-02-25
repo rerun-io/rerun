@@ -16,5 +16,5 @@ jobs:
 
       - name: Machete
         run: |
-          cargo install cargo-machete@v0.7.0 --locked
+          cargo install cargo-machete@0.7.0 --locked
           cargo machete
