@@ -1,4 +1,3 @@
-use core::error;
 use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
@@ -22,7 +21,6 @@ use re_log_types::{
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
-use re_uri::RedapUri;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 

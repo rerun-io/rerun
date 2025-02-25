@@ -104,18 +104,13 @@ impl DataSource {
         }
 
         if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
-            debug!("Recognized gRPC endpoint: {:?}", endpoint);
             return Self::GrpcRerunStream(endpoint);
         }
 
-        if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
-            }
-        } else {
-            // TODO: Handle this path
-            unimplemented!()
+        // by default, we just assume an rrd over http
+        Self::RrdHttpUrl {
+            url: uri,
+            follow: false,
         }
     }
 
