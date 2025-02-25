@@ -240,6 +240,9 @@ pub struct ComponentReflection {
 
     /// Datatype of the component.
     pub datatype: arrow::datatypes::DataType,
+
+    /// Checks that the given Arrow array can be deserialized into a collection of [`Self`]s.
+    pub verify_arrow_array: fn(&dyn arrow::array::Array) -> crate::DeserializationResult<()>,
 }
 
 /// Runtime reflection about archetypes.
