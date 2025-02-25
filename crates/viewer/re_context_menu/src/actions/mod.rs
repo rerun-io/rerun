@@ -1,12 +1,14 @@
-pub(super) mod add_container;
-pub(super) mod add_entities_to_new_view;
-pub(super) mod add_view;
-pub(super) mod clone_view;
-pub(super) mod collapse_expand_all;
-pub(super) mod move_contents_to_new_container;
-pub(super) mod remove;
-pub(super) mod show_hide;
+pub mod add_container;
+pub mod add_entities_to_new_view;
+pub mod add_view;
+pub mod clone_view;
+pub mod collapse_expand_all;
+pub mod move_contents_to_new_container;
+pub mod remove;
+pub mod show_hide;
 
+mod copy_entity_path;
 mod screenshot_action;
 
+pub use copy_entity_path::CopyEntityPathToClipboard;
 pub use screenshot_action::ScreenshotAction;
