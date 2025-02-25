@@ -143,7 +143,6 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
         re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "grpc",
         // vvv spawn(), connect() vvv
-        re_smart_channel::SmartChannelSource::MessageProxy { .. } => "temp", // TODO(#8761): URL prefix
         re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
         re_smart_channel::SmartChannelSource::JsChannel { .. } => "javascript", // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => "sdk",                     // show()

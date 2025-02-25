@@ -88,25 +88,16 @@ enum EndpointCategory {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    RedapRecording(re_uri::RecordingEndpoint),
-
-    /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/catalog`
-    RedapCatalog(re_uri::CatalogEndpoint),
+    RerunGrpcStream(re_uri::RedapUri),
 
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
-
-    /// A stream of messages over gRPC, relayed from the SDK.
-    MessageProxy(String),
 }
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        match re_uri::RedapUri::try_from(uri.as_ref()) {
-            Ok(re_uri::RedapUri::Recording(endpoint)) => return Self::RedapRecording(endpoint),
-            Ok(re_uri::RedapUri::Catalog(endpoint)) => return Self::RedapCatalog(endpoint),
-            Ok(re_uri::RedapUri::Proxy(_origin)) => return Self::MessageProxy(uri),
-            Err(_) => {} // Not a Rerun URI,
+        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+            return Self::RerunGrpcStream(endpoint);
         }
 
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
@@ -151,7 +142,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RedapRecording(endpoint) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -170,9 +161,14 @@ pub fn url_to_receiver(
             ))
         }
 
-        EndpointCategory::RedapCatalog(_endpoint) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(_endpoint)) => {
             // TODO(grtlr): Implement catalog support
             anyhow::bail!("Catalogs are not supported yet")
+        }
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => {
+            re_grpc_client::message_proxy::read::stream(&endpoint, Some(ui_waker))
+                .map_err(|err| err.into())
         }
 
         EndpointCategory::WebEventListener(url) => {
@@ -207,11 +203,6 @@ pub fn url_to_receiver(
                 }
             }));
             Ok(rx)
-        }
-
-        EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(&url, Some(ui_waker))
-                .map_err(|err| err.into())
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::Origin;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyEndpoint {
     pub origin: Origin,
 }

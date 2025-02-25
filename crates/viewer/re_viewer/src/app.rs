@@ -570,13 +570,12 @@ impl App {
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
                     SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. } => false,
+                    | SmartChannelSource::RrdHttpStream { .. },
 
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
-                    | SmartChannelSource::MessageProxy { .. }
+                    | SmartChannelSource::RerunGrpcStream { .. }
                     | SmartChannelSource::Stdin => true,
                 });
             }

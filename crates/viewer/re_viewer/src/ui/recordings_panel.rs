@@ -65,7 +65,6 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
-            | re_smart_channel::SmartChannelSource::MessageProxy { .. }
             | SmartChannelSource::Stdin => {
                 // These show up in the top panel - see `top_panel.rs`.
                 continue;
@@ -90,7 +89,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                     resp
                 }),
             );
-            if let SmartChannelSource::MessageProxy { .. } = source.as_ref() {
+            if let SmartChannelSource::RerunGrpcStream { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
         }

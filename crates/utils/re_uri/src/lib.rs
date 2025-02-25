@@ -215,7 +215,7 @@ impl std::fmt::Display for Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),

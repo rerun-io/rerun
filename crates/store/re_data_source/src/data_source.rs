@@ -2,6 +2,7 @@ use re_grpc_client::message_proxy;
 use re_log::debug;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+use re_uri::CatalogEndpoint;
 
 use crate::FileContents;
 
@@ -31,14 +32,8 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A recording on a Rerun dataplatform server, over `rerun://` gRPC interface.
-    RedapRecordingEndpoint(re_uri::RecordingEndpoint),
-
-    /// A catalog on a Rerun dataplatform server, over `rerun://` gRPC interface.
-    RedapCatalogEndpoint(re_uri::CatalogEndpoint),
-
-    /// A stream of messages over gRPC, relayed from the SDK.
-    RedapProxyEndpoint(re_uri::ProxyEndpoint),
+    /// A `rerun://` URI pointing to a recording or catalog.
+    GrpcRerunStream(re_uri::RedapUri),
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -109,21 +104,10 @@ impl DataSource {
             }
         }
 
-        match re_uri::RedapUri::try_from(uri.as_str()) {
-            Ok(re_uri::RedapUri::Recording(endpoint)) => {
-                debug!("Recognized recording endpoint: {:?}", endpoint);
-                return Self::RedapRecordingEndpoint(endpoint);
-            }
-            Ok(re_uri::RedapUri::Catalog(endpoint)) => {
-                debug!("Recognized catalog endpoint: {:?}", endpoint);
-                return Self::RedapCatalogEndpoint(endpoint);
-            }
-            Ok(re_uri::RedapUri::Proxy(endpoint)) => {
-                debug!("Recognized proxy endpoint: {:?}", endpoint);
-                return Self::RedapProxyEndpoint(endpoint);
-            }
-            Err(_) => {} // Not a Rerun URI,
-        };
+        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
+            debug!("Recognized gRPC endpoint: {:?}", endpoint);
+            return Self::GrpcRerunStream(endpoint);
+        }
 
         if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::RrdHttpUrl {
@@ -144,8 +128,7 @@ impl DataSource {
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            Self::RedapCatalogEndpoint { .. } | Self::RedapRecordingEndpoint { .. } => None, // TODO(jleibs): This needs to come from the server.
-            Self::RedapProxyEndpoint { .. } => None,
+            Self::GrpcRerunStream { .. } => None,
         }
     }
 
@@ -253,7 +236,7 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RedapRecordingEndpoint(endpoint) => {
+            Self::GrpcRerunStream(re_uri::RedapUri::Recording(endpoint)) => {
                 re_log::debug!(
                     "Loading recording `{}` from `{}`…",
                     endpoint.recording_id,
@@ -293,11 +276,13 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RedapCatalogEndpoint(endpoint) => Ok(StreamSource::CatalogData { endpoint }),
+            Self::GrpcRerunStream(re_uri::RedapUri::Catalog(endpoint)) => {
+                Ok(StreamSource::CatalogData { endpoint })
+            }
 
-            Self::RedapProxyEndpoint(endpoint) => Ok(StreamSource::LogMessages(
-                message_proxy::stream(endpoint, on_msg),
-            )),
+            Self::GrpcRerunStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+                StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
+            ),
         }
     }
 }

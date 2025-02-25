@@ -50,17 +50,17 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    RerunGrpcStream {
-        // TODO(grtlr): We should use the `re_uri::RedapUri` here, but that does not implement `Hash`, ...
-        url: String,
-    },
+    RedapGrpcStream { url: String },
+
+    /// The data is streaming in via a message proxy.
+    MessageProxy { url: String },
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::RerunGrpcStream { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } | Self::RedapGrpcStream { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),

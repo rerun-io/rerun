@@ -239,10 +239,10 @@ pub fn spawn_with_recv(
 ) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("http://{addr}"),
+            url: format!("rerun+http://{addr}"),
         },
-        re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("http://{addr}"),
+        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+            url: format!("rerun+http://{addr}"),
         },
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
