@@ -941,6 +941,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base32"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "022dfe9eb35f19ebbcb51e0b40a5ab759f46ad60cadf7297e0bd085afb50e076"
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6686,6 +6692,7 @@ dependencies = [
 name = "re_tuid"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "base32",
  "bytemuck",
  "criterion",
  "document-features",

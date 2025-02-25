@@ -12,6 +12,8 @@
 ///
 /// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
 /// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
+///
+/// TUIDs are encoded using Crockford's Base32, e.g. `30HM4C0CBY634YKV99Q5MDWTRG`.
 #[repr(C, align(1))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(
@@ -42,20 +44,12 @@ impl Tuid {
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
-/// Formats the [`Tuid`] as a hex string.
+/// Formats the [`Tuid`] using [Crockford's Base32](https://en.wikipedia.org/wiki/Base32#Crockford's_Base32).
 ///
-/// The format uses upper case for the first 16 hex digits, and lower case for the last 16 hex digits.
-/// This is to make it easily distinguished from other hex strings.
-///
-/// Example: `182342300C5F8C327a7b4a6e5a379ac4`
+/// Example: `30HM4C0CBY634YKV99Q5MDWTRG`
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:016X}{:016x}",
-            self.nanoseconds_since_epoch(),
-            self.inc()
-        )
+        base32::encode(base32::Alphabet::Crockford, &self.as_bytes()).fmt(f)
     }
 }
 
@@ -63,13 +57,20 @@ impl std::str::FromStr for Tuid {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(bytes) = base32::decode(base32::Alphabet::Crockford, s) {
+            if let Ok(sixteen_bytes) = bytes.try_into() {
+                return Ok(Self::from_bytes(sixteen_bytes));
+            }
+        }
+
+        // May be using the legacy hex encoding (pre 2025-02-25)
         u128::from_str_radix(s, 16).map(Self::from_u128)
     }
 }
 
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(f, "{self}")
     }
 }
 
@@ -149,6 +150,11 @@ impl Tuid {
     #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
+    }
+
+    #[inline]
+    pub fn from_bytes(bytes: [u8; 16]) -> Self {
+        Self::from_u128(u128::from_be_bytes(bytes))
     }
 
     /// Returns most significant byte first (big endian).
@@ -308,7 +314,18 @@ fn test_tuid_size_and_alignment() {
 fn test_tuid_formatting() {
     assert_eq!(
         Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4).to_string(),
-        "182342300C5F8C327a7b4a6e5a379ac4"
+        "30HM4C0CBY634YKV99Q5MDWTRG"
+    );
+}
+
+#[test]
+fn test_tuid_parsing() {
+    let expected = Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4);
+    assert_eq!("30HM4C0CBY634YKV99Q5MDWTRG".parse(), Ok(expected));
+    assert_eq!(
+        "182342300C5F8C327a7b4a6e5a379ac4".parse(),
+        Ok(expected),
+        "Old format should still work"
     );
 }
 

@@ -32,6 +32,7 @@ serde = ["dep:serde"]
 [dependencies]
 re_byte_size.workspace = true
 
+base32.workspace = true
 document-features.workspace = true
 getrandom.workspace = true
 once_cell.workspace = true
