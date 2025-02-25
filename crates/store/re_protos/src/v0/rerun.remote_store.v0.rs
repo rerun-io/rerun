@@ -6,40 +6,12 @@ pub struct Collection {
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "collection::StorageEngine", tag = "3")]
-    pub storage_engine: i32,
-    #[prost(string, repeated, tag = "4")]
+    #[prost(string, repeated, tag = "3")]
     pub index_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "4")]
     pub created_at: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag = "5")]
     pub updated_at: ::core::option::Option<::prost_types::Timestamp>,
-}
-/// Nested message and enum types in `Collection`.
-pub mod collection {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum StorageEngine {
-        LanceDb = 0,
-    }
-    impl StorageEngine {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::LanceDb => "LANCE_DB",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "LANCE_DB" => Some(Self::LanceDb),
-                _ => None,
-            }
-        }
-    }
 }
 impl ::prost::Name for Collection {
     const NAME: &'static str = "Collection";
@@ -83,6 +55,7 @@ impl ::prost::Name for FindCollectionRequest {
         "/rerun.remote_store.v0.FindCollectionRequest".into()
     }
 }
+/// Returns matching collection, if there is exactly one match
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindCollectionResponse {
     #[prost(message, optional, tag = "1")]
@@ -113,6 +86,7 @@ impl ::prost::Name for FindCollectionsRequest {
         "/rerun.remote_store.v0.FindCollectionsRequest".into()
     }
 }
+/// Contains zero or more matching collections
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FindCollectionsResponse {
     #[prost(message, repeated, tag = "1")]
