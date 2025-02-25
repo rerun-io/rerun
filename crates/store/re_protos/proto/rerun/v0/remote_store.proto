@@ -2,9 +2,15 @@ syntax = "proto3";
 
 package rerun.remote_store.v0;
 
+import "rerun/v0/collection_ops.proto";
 import "rerun/v0/common.proto";
 
 service StorageNode {
+    // Collection APIs
+
+    rpc FindCollection(FindCollectionRequest) returns (FindCollectionResponse);
+    rpc FindCollections(FindCollectionsRequest) returns (FindCollectionsResponse);
+
     // Data APIs
 
     rpc Query(QueryRequest) returns (stream DataframePart) {}

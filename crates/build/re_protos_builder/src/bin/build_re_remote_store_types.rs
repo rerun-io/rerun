@@ -28,7 +28,7 @@ fn main() {
 
     let definitions_dir_path = workspace_dir.join(PROTOS_DIR);
     let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V0_RUST_DIR);
-    let proto_paths = std::fs::read_dir(definitions_dir_path.join(INPUT_V0_DIR))
+    let mut proto_paths = std::fs::read_dir(definitions_dir_path.join(INPUT_V0_DIR))
         .unwrap()
         .map(|v| {
             v.unwrap()
@@ -38,6 +38,7 @@ fn main() {
                 .to_owned()
         })
         .collect::<Vec<_>>();
+    proto_paths.sort();
 
     re_log::info!(
         definitions=?definitions_dir_path,
