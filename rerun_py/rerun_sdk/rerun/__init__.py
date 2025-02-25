@@ -215,6 +215,7 @@ def _init_recording_stream() -> None:
         [
             binary_stream,
             connect,
+            connect_grpc,
             save,
             stdout,
             disconnect,
