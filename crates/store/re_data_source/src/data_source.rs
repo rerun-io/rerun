@@ -31,7 +31,7 @@ pub enum DataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording or catalog.
-    GrpcRerunStream(re_uri::RedapUri),
+    RerunGrpcStream(re_uri::RedapUri),
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -103,7 +103,7 @@ impl DataSource {
         }
 
         if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
-            return Self::GrpcRerunStream(endpoint);
+            return Self::RerunGrpcStream(endpoint);
         }
 
         // by default, we just assume an rrd over http
@@ -121,7 +121,7 @@ impl DataSource {
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            Self::GrpcRerunStream { .. } => None,
+            Self::RerunGrpcStream { .. } => None,
         }
     }
 
@@ -229,7 +229,7 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::GrpcRerunStream(re_uri::RedapUri::Recording(endpoint)) => {
+            Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
                 re_log::debug!(
                     "Loading recording `{}` from `{}`…",
                     endpoint.recording_id,
@@ -269,11 +269,11 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::GrpcRerunStream(re_uri::RedapUri::Catalog(endpoint)) => {
+            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
                 Ok(StreamSource::CatalogData { endpoint })
             }
 
-            Self::GrpcRerunStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
                 StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
             ),
         }
@@ -330,10 +330,13 @@ fn test_data_source_from_uri() {
         "www.foo.zip/blueprint.rbl",
     ];
     let grpc = [
-        "http://foo.zip",
-        "https://foo.zip",
-        "http://127.0.0.1:9876",
-        "https://redap.rerun.io",
+        "rerun://foo.zip",
+        "rerun+http://foo.zip",
+        "rerun+https://foo.zip",
+        "rerun://127.0.0.1:9876",
+        "rerun+http://127.0.0.1:9876",
+        "rerun://redap.rerun.io",
+        "rerun+https://redap.rerun.io",
     ];
 
     let file_source = FileSource::DragAndDrop {
@@ -365,7 +368,7 @@ fn test_data_source_from_uri() {
     for uri in grpc {
         if !matches!(
             DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::RedapProxyEndpoint { .. }
+            DataSource::RerunGrpcStream { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as MessageProxy");
             failed = true;
