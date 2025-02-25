@@ -333,7 +333,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
+    ///     .connect_tcp_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[deprecated(since = "0.23.0", note = "use connect_grpc() instead")]
@@ -701,7 +701,7 @@ impl RecordingStreamBuilder {
 ///
 /// The underlying [`LogSink`] of a [`RecordingStream`] can be changed at any point during its
 /// lifetime by calling [`RecordingStream::set_sink`] or one of the higher level helpers
-/// ([`RecordingStream::connect`], [`RecordingStream::memory`],
+/// ([`RecordingStream::connect_grpc`], [`RecordingStream::memory`],
 /// [`RecordingStream::save`], [`RecordingStream::disconnect`]).
 ///
 /// See [`RecordingStream::set_sink`] for more information.
