@@ -701,7 +701,7 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::MessageProxy { url } = data_sources[0].clone() {
+            if let DataSource::RedapProxyEndpoint { url } = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a gRPC address.
                 // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
@@ -841,9 +841,9 @@ fn run_impl(
             let open_browser = args.web_viewer;
 
             let url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
-                format!("temp://localhost:{}", server_addr.port())
+                format!("rerun+http://localhost:{}/proxy", server_addr.port())
             } else {
-                format!("temp://{server_addr}")
+                format!("rerun+http://{server_addr}/proxy")
             };
 
             // This is the server that serves the Wasm+HTML:

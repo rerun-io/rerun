@@ -1,3 +1,4 @@
+use re_grpc_client::message_proxy;
 use re_log::debug;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
@@ -37,7 +38,7 @@ pub enum DataSource {
     RedapCatalogEndpoint(re_uri::CatalogEndpoint),
 
     /// A stream of messages over gRPC, relayed from the SDK.
-    MessageProxy { url: String },
+    RedapProxyEndpoint(re_uri::ProxyEndpoint),
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -52,7 +53,7 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, mut uri: String) -> Self {
+    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -117,38 +118,21 @@ impl DataSource {
                 debug!("Recognized catalog endpoint: {:?}", endpoint);
                 return Self::RedapCatalogEndpoint(endpoint);
             }
-            Ok(re_uri::RedapUri::Proxy(proxy)) => {
-                return Self::MessageProxy {
-                    url: proxy.as_url(),
-                }
+            Ok(re_uri::RedapUri::Proxy(endpoint)) => {
+                debug!("Recognized proxy endpoint: {:?}", endpoint);
+                return Self::RedapProxyEndpoint(endpoint);
             }
             Err(_) => {} // Not a Rerun URI,
         };
 
-        if (uri.starts_with("http://") || uri.starts_with("https://"))
-            && (uri.ends_with(".rrd") || uri.ends_with(".rbl"))
-        {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
-            }
-        } else if uri.starts_with("http://") || uri.starts_with("https://") {
-            Self::MessageProxy { url: uri }
-        } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
+        if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::RrdHttpUrl {
                 url: uri,
                 follow: false,
             }
         } else {
-            // If this is something like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::debug!("Assuming gRPC endpoint");
-            if !uri.contains("://") {
-                // TODO(jan): this should be `https` if it's not localhost, anything hosted over public network
-                //            should be going through https, anyway.
-                uri = format!("http://{uri}");
-            }
-            Self::MessageProxy { url: uri }
+            // TODO: Handle this path
+            unimplemented!()
         }
     }
 
@@ -161,7 +145,7 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
             Self::RedapCatalogEndpoint { .. } | Self::RedapRecordingEndpoint { .. } => None, // TODO(jleibs): This needs to come from the server.
-            Self::MessageProxy { .. } => None,
+            Self::RedapProxyEndpoint { .. } => None,
         }
     }
 
@@ -311,9 +295,9 @@ impl DataSource {
 
             Self::RedapCatalogEndpoint(endpoint) => Ok(StreamSource::CatalogData { endpoint }),
 
-            Self::MessageProxy { url } => re_grpc_client::message_proxy::stream(&url, on_msg)
-                .map_err(|err| err.into())
-                .map(StreamSource::LogMessages),
+            Self::RedapProxyEndpoint(endpoint) => Ok(StreamSource::LogMessages(
+                message_proxy::stream(endpoint, on_msg),
+            )),
         }
     }
 }
@@ -403,7 +387,7 @@ fn test_data_source_from_uri() {
     for uri in grpc {
         if !matches!(
             DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::MessageProxy { .. }
+            DataSource::RedapProxyEndpoint { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as MessageProxy");
             failed = true;

@@ -8,7 +8,7 @@ mod endpoints;
 mod error;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, recording::RecordingEndpoint},
+    endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
 };
 
@@ -221,7 +221,7 @@ pub enum RedapUri {
     Catalog(CatalogEndpoint),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
-    Proxy(Origin),
+    Proxy(ProxyEndpoint),
 }
 
 impl std::fmt::Display for RedapUri {
@@ -229,7 +229,7 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
-            Self::Proxy(origin) => write!(f, "{origin}/proxy",),
+            Self::Proxy(endpoint) => write!(f, "{endpoint}",),
         }
     }
 }
@@ -260,7 +260,7 @@ impl TryFrom<&str> for RedapUri {
                 (*recording_id).to_owned(),
                 time_range.transpose()?,
             ))),
-            ["proxy"] => Ok(Self::Proxy(origin)),
+            ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
             ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }

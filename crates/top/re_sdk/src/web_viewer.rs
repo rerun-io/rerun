@@ -73,9 +73,9 @@ impl WebViewerSink {
 
         let viewer_url =
             if grpc_server_addr.ip().is_unspecified() || grpc_server_addr.ip().is_loopback() {
-                format!("{http_web_viewer_url}?url=temp://localhost:{grpc_port}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://localhost:{grpc_port}")
             } else {
-                format!("{http_web_viewer_url}?url=temp://{grpc_server_addr}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}")
             };
 
         re_log::info!("Hosting a web-viewer at {viewer_url}");
@@ -137,10 +137,9 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    // TODO(#8761): URL prefix
     /// The url from which a spawned webviewer should source
     ///
-    /// This url could be a hosted RRD file or a `temp://` url to a running gRPC server.
+    /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
     pub source_url: Option<String>,
 
