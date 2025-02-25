@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
-use arrow::array::AsArray;
+use arrow::array::AsArray as _;
+
 use re_log_types::LogMsg;
 use re_types::reflection::Reflection;
 
@@ -25,8 +26,8 @@ impl VerifyCommand {
         let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
         let mut log_msg_count = 0;
-        for res in rx {
-            verifier.verify_log_msg(res?);
+        for (source, res) in rx {
+            verifier.verify_log_msg(&source.to_string(), res?);
             log_msg_count += 1;
         }
 
@@ -58,26 +59,27 @@ impl Verifier {
         })
     }
 
-    fn verify_log_msg(&mut self, msg: LogMsg) {
+    fn verify_log_msg(&mut self, source: &str, msg: LogMsg) {
         match msg {
             LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => {}
 
             LogMsg::ArrowMsg(_store_id, arrow_msg) => {
-                self.verify_record_batch(&arrow_msg.batch);
+                self.verify_record_batch(source, &arrow_msg.batch);
             }
         }
     }
 
-    fn verify_record_batch(&mut self, batch: &arrow::array::RecordBatch) {
+    fn verify_record_batch(&mut self, source: &str, batch: &arrow::array::RecordBatch) {
         match re_sorbet::ChunkBatch::try_from(batch) {
-            Ok(chunk_batch) => self.verify_chunk_batch(&chunk_batch),
+            Ok(chunk_batch) => self.verify_chunk_batch(source, &chunk_batch),
             Err(err) => {
-                self.errors.insert(format!("Failed to parse batch: {err}"));
+                self.errors
+                    .insert(format!("{source}: Failed to parse batch: {err}"));
             }
         }
     }
 
-    fn verify_chunk_batch(&mut self, chunk_batch: &re_sorbet::ChunkBatch) {
+    fn verify_chunk_batch(&mut self, source: &str, chunk_batch: &re_sorbet::ChunkBatch) {
         for (component_descriptor, column) in chunk_batch.component_columns() {
             let component_name = component_descriptor.component_name;
 
@@ -87,7 +89,7 @@ impl Verifier {
 
             if let Err(err) = self.verify_component_column(component_name, column) {
                 self.errors.insert(format!(
-                    "Failed to deserialize column {component_name:?}: {err}"
+                    "{source}: Failed to deserialize column {component_name:?}: {err}"
                 ));
             }
         }

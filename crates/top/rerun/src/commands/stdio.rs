@@ -9,6 +9,20 @@ use re_log_types::LogMsg;
 
 // ---
 
+pub enum InputSource {
+    Stdin,
+    File(PathBuf),
+}
+
+impl std::fmt::Display for InputSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stdin => write!(f, "stdin"),
+            Self::File(path) => write!(f, "{path:?}"),
+        }
+    }
+}
+
 /// Asynchronously decodes potentially multiplexed RRD streams from the given `paths`, or standard
 /// input if none are specified.
 ///
@@ -26,7 +40,7 @@ pub fn read_rrd_streams_from_file_or_stdin(
     version_policy: re_log_encoding::VersionPolicy,
     paths: &[String],
 ) -> (
-    channel::Receiver<anyhow::Result<LogMsg>>,
+    channel::Receiver<(InputSource, anyhow::Result<LogMsg>)>,
     channel::Receiver<u64>,
 ) {
     let path_to_input_rrds = paths.iter().map(PathBuf::from).collect_vec();
@@ -53,14 +67,14 @@ pub fn read_rrd_streams_from_file_or_stdin(
                 {
                     Ok(decoder) => decoder,
                     Err(err) => {
-                        tx.send(Err(err)).ok();
+                        tx.send((InputSource::Stdin, Err(err))).ok();
                         return;
                     }
                 };
 
                 for res in &mut decoder {
                     let res = res.context("couldn't decode message from stdin -- skipping");
-                    tx.send(res).ok();
+                    tx.send((InputSource::Stdin, res)).ok();
                 }
 
                 size_bytes += decoder.size_bytes();
@@ -73,7 +87,8 @@ pub fn read_rrd_streams_from_file_or_stdin(
                     {
                         Ok(file) => file,
                         Err(err) => {
-                            tx.send(Err(err)).ok();
+                            tx.send((InputSource::File(rrd_path.clone()), Err(err)))
+                                .ok();
                             continue;
                         }
                     };
@@ -84,7 +99,8 @@ pub fn read_rrd_streams_from_file_or_stdin(
                         {
                             Ok(decoder) => decoder,
                             Err(err) => {
-                                tx.send(Err(err)).ok();
+                                tx.send((InputSource::File(rrd_path.clone()), Err(err)))
+                                    .ok();
                                 continue;
                             }
                         };
@@ -93,7 +109,7 @@ pub fn read_rrd_streams_from_file_or_stdin(
                         let res = res.context("decode rrd message").with_context(|| {
                             format!("couldn't decode message {rrd_path:?} -- skipping")
                         });
-                        tx.send(res).ok();
+                        tx.send((InputSource::File(rrd_path.clone()), res)).ok();
                     }
 
                     size_bytes += decoder.size_bytes();
