@@ -598,13 +598,13 @@ fn connect_grpc(
     };
 
     use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
+    let url = url.unwrap_or_else(|| format!("rerun+http://127.0.0.1:{DEFAULT_SERVER_PORT}/proxy"));
     let re_uri::RedapUri::Proxy(endpoint) = url
-        .unwrap_or_else(|| format!("rerun+http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
         .parse::<re_uri::RedapUri>()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
     else {
         return Err(PyRuntimeError::new_err(format!(
-            "invalid endpoint, expected {:?}",
+            "invalid endpoint {url:?}, expected {:?}",
             "/proxy"
         )));
     };

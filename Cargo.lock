@@ -6549,6 +6549,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "percent-encoding",
  "rand",
  "re_build_info",
  "re_build_tools",

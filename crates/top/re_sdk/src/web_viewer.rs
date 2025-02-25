@@ -210,6 +210,12 @@ impl WebViewerConfig {
         };
 
         if let Some(source_url) = source_url {
+            // TODO(jan): remove after we change to `rerun-http`
+            let source_url = source_url.to_string();
+            let source_url = percent_encoding::utf8_percent_encode(
+                &source_url,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
             append_argument(format!("url={source_url}"));
         }
         if let Some(force_graphics) = force_wgpu_backend {

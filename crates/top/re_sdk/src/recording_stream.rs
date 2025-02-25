@@ -1738,7 +1738,10 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
         self.connect_grpc_opts(
-            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            format!(
+                "rerun+http://127.0.0.1:{}",
+                re_grpc_server::DEFAULT_SERVER_PORT
+            ),
             crate::default_flush_timeout(),
         )
     }
