@@ -604,7 +604,7 @@ fn connect_grpc(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
     else {
         return Err(PyRuntimeError::new_err(format!(
-            "invalid endpoint {url:?}, expected {:?}",
+            "invalid endpoint {url:?}, expected {:?} as path",
             "/proxy"
         )));
     };
