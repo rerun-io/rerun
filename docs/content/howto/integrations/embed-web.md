@@ -17,7 +17,7 @@ To implement this, fill in the placeholders:
 - `RRD_URL` - The URL of the recording to display in the viewer.
 - `RERUN_VERSION` - The version of the Rerun SDK used to generate the recording.
 
-The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API (e.g. `ws://localhost:4321`).
+The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API (e.g. `rerun+http://localhost:4321/proxy`).
 
 For instance:
 

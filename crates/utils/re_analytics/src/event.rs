@@ -371,11 +371,11 @@ mod tests {
 
         // Local domains
         assert_eq!(
-            extract_root_domain("http://localhost:9090/?url=ws://localhost:9877"),
+            extract_root_domain("http://localhost:9090/?url=http%2Brerun://localhost:9877"),
             None
         );
         assert_eq!(
-            extract_root_domain("http://127.0.0.1:9090/?url=ws://localhost:9877"),
+            extract_root_domain("http://127.0.0.1:9090/?url=http%2Brerun://localhost:9877"),
             None
         );
 

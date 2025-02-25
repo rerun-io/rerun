@@ -64,7 +64,7 @@ Examples:
         rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
-        rerun ws://localhost:9877
+        rerun rerun+http://localhost:9877/proxy
 
     Listen for incoming TCP connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
