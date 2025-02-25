@@ -309,7 +309,7 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
+    /// See also [`Self::connect_tcp_opts`] if you wish to configure the TCP connection.
     ///
     /// ## Example
     ///
@@ -348,7 +348,7 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    /// See also [`Self::connect_grpc_opts`] if you wish to configure the connection.
     ///
     /// ## Example
     ///
@@ -1700,38 +1700,10 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
-    ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect(&self) {
-        self.connect_grpc().expect("failed to connect via gRPC");
-    }
-
-    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect_opts(&self, addr: std::net::SocketAddr, flush_timeout: Option<Duration>) {
-        let _ = flush_timeout;
-        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"), flush_timeout)
-            .expect("failed to connect via gRPC");
-    }
-
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
     /// the specified address.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    /// See also [`Self::connect_grpc_opts`] if you wish to configure the connection.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
