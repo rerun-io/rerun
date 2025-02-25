@@ -7,8 +7,6 @@
 mod endpoints;
 mod error;
 
-use std::str::FromStr;
-
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
@@ -236,7 +234,7 @@ impl std::fmt::Display for RedapUri {
     }
 }
 
-impl FromStr for RedapUri {
+impl std::str::FromStr for RedapUri {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {

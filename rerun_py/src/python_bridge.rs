@@ -599,15 +599,9 @@ fn connect_grpc(
 
     use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
     let url = url.unwrap_or_else(|| format!("rerun+http://127.0.0.1:{DEFAULT_SERVER_PORT}/proxy"));
-    let re_uri::RedapUri::Proxy(endpoint) = url
-        .parse::<re_uri::RedapUri>()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-    else {
-        return Err(PyRuntimeError::new_err(format!(
-            "invalid endpoint {url:?}, expected {:?} as path",
-            "/proxy"
-        )));
-    };
+    let endpoint = url
+        .parse::<re_uri::ProxyEndpoint>()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");

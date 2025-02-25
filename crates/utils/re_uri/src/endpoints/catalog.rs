@@ -16,3 +16,19 @@ impl CatalogEndpoint {
         Self { origin }
     }
 }
+
+impl std::str::FromStr for CatalogEndpoint {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match crate::RedapUri::from_str(s)? {
+            crate::RedapUri::Catalog(endpoint) => Ok(endpoint),
+            crate::RedapUri::Recording(endpoint) => {
+                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
+            }
+            crate::RedapUri::Proxy(endpoint) => {
+                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
+            }
+        }
+    }
+}
