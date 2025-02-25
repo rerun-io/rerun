@@ -49,7 +49,7 @@ impl WebViewerSink {
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
             re_smart_channel::SmartMessageSource::MessageProxy {
-                url: format!("http://{grpc_server_addr}"),
+                url: format!("rerun+http://{grpc_server_addr}/proxy"),
             },
             re_smart_channel::SmartChannelSource::Sdk,
         );
