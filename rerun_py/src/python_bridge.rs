@@ -597,8 +597,7 @@ fn connect_grpc(
         return Ok(());
     };
 
-    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url.unwrap_or_else(|| format!("rerun+http://127.0.0.1:{DEFAULT_SERVER_PORT}/proxy"));
+    let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
     let endpoint = url
         .parse::<re_uri::ProxyEndpoint>()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

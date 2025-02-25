@@ -517,7 +517,7 @@ impl RecordingStreamBuilder {
             return Ok(RecordingStream::disabled());
         }
 
-        let url = format!("http://{}", opts.connect_addr());
+        let url = format!("rerun+http://{}", opts.connect_addr());
 
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
@@ -1724,7 +1724,7 @@ impl RecordingStream {
     #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
     pub fn connect_opts(&self, addr: std::net::SocketAddr, flush_timeout: Option<Duration>) {
         let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
+        self.connect_grpc_opts(format!("rerun+http://{addr}"), flush_timeout)
             .expect("failed to connect via gRPC");
     }
 
@@ -1827,7 +1827,10 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(format!("http://{}", opts.connect_addr()), flush_timeout)?;
+        self.connect_grpc_opts(
+            format!("rerun+http://{}", opts.connect_addr()),
+            flush_timeout,
+        )?;
 
         Ok(())
     }

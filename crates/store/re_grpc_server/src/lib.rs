@@ -68,7 +68,7 @@ async fn serve_impl(
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
 
-    re_log::info!("Listening for gRPC connections on http://{addr}");
+    re_log::info!("Listening for gRPC connections on {addr}");
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
