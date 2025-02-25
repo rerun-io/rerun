@@ -56,8 +56,13 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith("http"):
-        addr = f"http://{addr}"
+    if addr is not None:
+        if not addr.startswith("http"):
+            addr = f"http://{addr}"
+        if addr.startswith("http"):
+            addr = f"rerun+{addr}"
+        if not addr.endswith("/proxy"):
+            addr = f"{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
@@ -101,8 +106,13 @@ def connect_tcp(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith("http"):
-        addr = f"http://{addr}"
+    if addr is not None:
+        if not addr.startswith("http"):
+            addr = f"http://{addr}"
+        if addr.startswith("http"):
+            addr = f"rerun+{addr}"
+        if not addr.endswith("/proxy"):
+            addr = f"{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
@@ -521,7 +531,7 @@ def spawn(
 
     if connect:
         connect_grpc(
-            f"http://127.0.0.1:{port}",
+            f"rerun+http://127.0.0.1:{port}/proxy",
             recording=recording,  # NOLINT
             default_blueprint=default_blueprint,
         )
