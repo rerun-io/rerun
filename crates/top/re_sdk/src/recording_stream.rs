@@ -1,3 +1,4 @@
+use core::error;
 use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
@@ -21,6 +22,7 @@ use re_log_types::{
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
+use re_uri::RedapUri;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -90,7 +92,11 @@ pub enum RecordingStreamError {
 
     /// Invalid gRPC server address.
     #[error(transparent)]
-    InvalidGrpcUrl(#[from] re_grpc_client::message_proxy::read::InvalidMessageProxyUrl),
+    UriError(#[from] re_uri::Error),
+
+    /// Invalid endpoint
+    #[error("not a `/proxy` endpoint")]
+    NotAProxyEndpoint,
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -310,26 +316,10 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.20.0", note = "use connect_grpc() instead")]
-    pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc()
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_tcp()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
+    #[deprecated(since = "0.23.0", note = "use connect_grpc() instead")]
     pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc()
     }
@@ -348,37 +338,13 @@ impl RecordingStreamBuilder {
     ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    #[deprecated(since = "0.20.0", note = "use connect_tcp_opts() instead")]
-    pub fn connect_opts(
-        self,
-        addr: std::net::SocketAddr,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
-        let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
+    #[deprecated(since = "0.23.0", note = "use connect_grpc() instead")]
     pub fn connect_tcp_opts(
         self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
+        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"), flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -394,7 +360,10 @@ impl RecordingStreamBuilder {
     /// ```
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc_opts(
-            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            format!(
+                "rerun+http://127.0.0.1:{}/proxy",
+                re_grpc_server::DEFAULT_SERVER_PORT
+            ),
             crate::default_flush_timeout(),
         )
     }
@@ -410,7 +379,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_grpc_opts("http://127.0.0.1:9876", re_sdk::default_flush_timeout())?;
+    ///     .connect_grpc_opts("rerun+http://127.0.0.1:9876/proxy", re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc_opts(
@@ -420,13 +389,16 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
+            let url: String = url.into();
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                return Err(RecordingStreamError::NotAProxyEndpoint);
+            };
+
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::GrpcSink::new(
-                    url.into().parse()?,
-                    flush_timeout,
-                )),
+                Box::new(crate::log_sink::GrpcSink::new(endpoint, flush_timeout)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -1793,7 +1765,12 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let sink = crate::log_sink::GrpcSink::new(url.into().parse()?, flush_timeout);
+        let url: String = url.into();
+        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
+            return Err(RecordingStreamError::NotAProxyEndpoint);
+        };
+
+        let sink = crate::log_sink::GrpcSink::new(endpoint, flush_timeout);
 
         self.set_sink(Box::new(sink));
         Ok(())

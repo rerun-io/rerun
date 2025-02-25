@@ -6564,6 +6564,7 @@ dependencies = [
  "re_memory",
  "re_smart_channel",
  "re_types_core",
+ "re_uri",
  "re_web_viewer_server",
  "similar-asserts",
  "thiserror 1.0.65",

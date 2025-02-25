@@ -121,17 +121,10 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RerunGrpcStream {
-        /// Should include `rerun://` prefix.
-        url: String,
-    },
+    RerunGrpcStream { url: String },
 
     /// A stream of messages over message proxy gRPC interface.
-    MessageProxy {
-        // TODO(#8761): URL prefix
-        /// Should include `temp://` prefix.
-        url: String,
-    },
+    MessageProxy { url: String },
 }
 
 impl std::fmt::Display for SmartMessageSource {

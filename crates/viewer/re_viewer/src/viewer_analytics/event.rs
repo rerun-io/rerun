@@ -138,7 +138,7 @@ pub fn open_recording(
         }
     });
 
-    let Some(data_source) = entity_db.data_source.as_ref().map(|v| match v {
+    let data_source = entity_db.data_source.as_ref().map(|v| match v {
         re_smart_channel::SmartChannelSource::File(_) => Some("file"), // .rrd, .png, .glb, …
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => Some("http"),
         // TODO(grtlr): Differentiate between `recording` and `catalog`
@@ -150,9 +150,7 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => Some("sdk"),                     // show()
         re_smart_channel::SmartChannelSource::Stdin => Some("stdin"),
-    }) else {
-        return None;
-    };
+    })?;
 
     Some(OpenRecording {
         url: app_env.url().cloned(),
