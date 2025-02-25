@@ -57,12 +57,7 @@ def connect(
 
     """
     if addr is not None:
-        if not addr.startswith("http"):
-            addr = f"http://{addr}"
-        if addr.startswith("http"):
-            addr = f"rerun+{addr}"
-        if not addr.endswith("/proxy"):
-            addr = f"{addr}/proxy"
+        addr = f"rerun+http://{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
@@ -107,12 +102,7 @@ def connect_tcp(
 
     """
     if addr is not None:
-        if not addr.startswith("http"):
-            addr = f"http://{addr}"
-        if addr.startswith("http"):
-            addr = f"rerun+{addr}"
-        if not addr.endswith("/proxy"):
-            addr = f"{addr}/proxy"
+        addr = f"rerun+http://{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
