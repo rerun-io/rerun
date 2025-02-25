@@ -212,7 +212,7 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RecordBatchFormatOpts {
     /// If `true`, the dataframe will be transposed on its diagonal axis.
     ///
@@ -400,9 +400,6 @@ fn format_dataframe(
 
         let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
-        if formatters.is_empty() || num_rows == 0 {
-            return table;
-        }
         for row in 0..num_rows {
             let cells: Vec<_> = formatters
                 .iter()
