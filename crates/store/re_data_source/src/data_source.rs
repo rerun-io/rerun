@@ -174,9 +174,12 @@ impl DataSource {
     /// Will do minimal checks (e.g. that the file exists), for synchronous errors,
     /// but the loading is done in a background task.
     ///
+    /// `on_cmd` is used to respond to UI commands.
+    ///
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
@@ -273,15 +276,29 @@ impl DataSource {
                     endpoint.origin
                 );
 
-                let url = endpoint.origin.as_url();
+                let url = endpoint.to_string();
 
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
                     re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
                 );
+
+                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
+                    re_grpc_client::redap::Command::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => on_cmd(DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
                 spawn_future(async move {
                     if let Err(err) =
-                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_msg).await
+                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_cmd, on_msg)
+                            .await
                     {
                         re_log::warn!(
                             "Error while streaming {url}: {}",
@@ -299,6 +316,14 @@ impl DataSource {
                 .map(StreamSource::LogMessages),
         }
     }
+}
+
+pub enum DataSourceCommand {
+    SetLoopSelection {
+        recording_id: re_log_types::StoreId,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRangeF,
+    },
 }
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this

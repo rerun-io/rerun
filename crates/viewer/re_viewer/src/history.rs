@@ -169,9 +169,13 @@ fn handle_popstate(
     let follow_if_http = false;
     for url in &entry.urls {
         // we continue in case of errors because some receivers may be valid
-        let Some(receiver) =
-            url_to_receiver(egui_ctx.clone(), follow_if_http, url.clone()).ok_or_log_error()
-        else {
+        let Some(receiver) = url_to_receiver(
+            egui_ctx.clone(),
+            follow_if_http,
+            url.clone(),
+            command_sender.clone(),
+        )
+        .ok_or_log_error() else {
             continue;
         };
 

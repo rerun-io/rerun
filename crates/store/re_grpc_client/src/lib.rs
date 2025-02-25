@@ -29,6 +29,12 @@ impl std::fmt::Display for TonicStatusError {
     }
 }
 
+impl From<tonic::Status> for TonicStatusError {
+    fn from(value: tonic::Status) -> Self {
+        Self(value)
+    }
+}
+
 impl std::error::Error for TonicStatusError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.0.source()
@@ -64,6 +70,18 @@ pub enum StreamError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
+impl From<tonic::Status> for StreamError {
+    fn from(value: tonic::Status) -> Self {
+        Self::TonicStatus(value.into())
+    }
+}
+
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

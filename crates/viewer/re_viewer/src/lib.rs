@@ -29,7 +29,10 @@ pub use app::{App, StartupOptions};
 
 pub use re_capabilities::MainThreadToken;
 
-pub use re_viewer_context::AsyncRuntimeHandle;
+pub use re_viewer_context::{
+    command_channel, AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand,
+    SystemCommandSender,
+};
 
 pub mod external {
     pub use {eframe, egui};

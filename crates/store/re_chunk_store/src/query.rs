@@ -602,7 +602,7 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        if include_static {
+        let chunks = if include_static {
             let empty = Default::default();
             let static_chunks_per_component = self
                 .static_chunk_ids_per_entity
@@ -636,13 +636,17 @@ impl ChunkStore {
                 .filter_map(|temporal_chunk_ids_per_time| {
                     self.latest_at(query, temporal_chunk_ids_per_time)
                 })
-                .flatten()
-                // The latest_at queries may yield duplicate chunks, and it's unlikely
-                // anyone will use this without also deduplicating first.
-                .unique_by(|chunk| chunk.id());
+                .flatten();
 
-            static_chunks.chain(temporal_chunks).collect_vec()
+            static_chunks
+                .chain(temporal_chunks)
+                // Deduplicate before passing it along.
+                // Both temporal and static chunk "sets" here may have duplicates in them,
+                // so we de-duplicate them together to reduce the number of allocations.
+                .unique_by(|chunk| chunk.id())
+                .collect_vec()
         } else {
+            // This cannot yield duplicates by definition.
             self.temporal_chunk_ids_per_entity
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline| {
@@ -652,7 +656,11 @@ impl ChunkStore {
                     self.latest_at(query, temporal_chunk_ids_per_time)
                 })
                 .unwrap_or_default()
-        }
+        };
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
     }
 
     fn latest_at(
@@ -826,13 +834,18 @@ impl ChunkStore {
                         .into_iter()
                         .flatten(),
                 )
-                .into_iter()
-                // The range query may yield duplicate chunks, and it's unlikely
-                // anyone will use this without deduplicating first.
-                .unique_by(|chunk| chunk.id());
+                .into_iter();
 
-            Either::Left(static_chunks.chain(temporal_chunks))
+            Either::Left(
+                static_chunks
+                    .chain(temporal_chunks)
+                    // Deduplicate before passing it along.
+                    // Both temporal and static chunk "sets" here may have duplicates in them,
+                    // so we de-duplicate them together to reduce the number of allocations.
+                    .unique_by(|chunk| chunk.id()),
+            )
         } else {
+            // This cannot yield duplicates by definition.
             Either::Right(
                 self.range(
                     query,
@@ -849,7 +862,7 @@ impl ChunkStore {
         // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
         // need to make sure that the resulting chunks' global time ranges intersect with the
         // time range of the query itself.
-        chunks
+        let chunks = chunks
             .into_iter()
             .filter(|chunk| {
                 chunk
@@ -857,7 +870,11 @@ impl ChunkStore {
                     .get(query.timeline())
                     .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
             })
-            .collect_vec()
+            .collect_vec();
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
     }
 
     fn range<'a>(

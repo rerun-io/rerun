@@ -686,6 +686,9 @@ fn run_impl(
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
+    #[allow(unused_variables)]
+    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+
     // Where do we get the data from?
     let mut catalog_endpoints: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
@@ -717,17 +720,34 @@ fn run_impl(
             }
         }
 
-        // We may need to spawn tasks from this point on:
+        let command_sender = command_sender.clone();
+        let on_cmd = Box::new(move |cmd| {
+            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            match cmd {
+                re_data_source::DataSourceCommand::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            }
+        });
+
         let mut rxs = data_sources
             .into_iter()
-            .filter_map(|data_source| match data_source.stream(None) {
-                Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
-                Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                    catalog_endpoints.push(endpoint);
-                    None
-                }
-                Err(err) => Some(Err(err)),
-            })
+            .filter_map(
+                |data_source| match data_source.stream(on_cmd.clone(), None) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        catalog_endpoints.push(endpoint);
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                },
+            )
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -887,13 +907,14 @@ fn run_impl(
             return re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
-                    let mut app = re_viewer::App::new(
+                    let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
                         &call_source.app_env(),
                         startup_options,
                         cc,
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        (command_sender, command_receiver),
                     );
                     for rx in rxs {
                         app.add_receiver(rx);

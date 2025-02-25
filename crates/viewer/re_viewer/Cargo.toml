@@ -125,6 +125,7 @@ wgpu.workspace = true
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
+percent-encoding.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true
