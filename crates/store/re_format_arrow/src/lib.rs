@@ -238,7 +238,7 @@ pub fn format_record_batch_opts(
     batch: &arrow::array::RecordBatch,
     opts: &RecordBatchFormatOpts,
 ) -> Table {
-    format_dataframe(
+    format_dataframe_with_metadata(
         &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
         &batch.schema_ref().fields,
         batch.columns(),
@@ -254,7 +254,7 @@ pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
 ) -> Table {
-    format_dataframe(
+    format_dataframe_with_metadata(
         &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
         &batch.schema_ref().fields,
         batch.columns(),
@@ -266,18 +266,65 @@ pub fn format_record_batch_with_width(
     )
 }
 
-fn format_dataframe(
+fn format_dataframe_with_metadata(
     metadata: &Metadata,
     fields: &Fields,
     columns: &[ArrayRef],
     opts: &RecordBatchFormatOpts,
 ) -> Table {
+    let &RecordBatchFormatOpts {
+        transposed: _,
+        width,
+        include_metadata,
+    } = opts;
+
+    let (num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
+
+    if include_metadata && !metadata.is_empty() {
+        let mut outer_table = Table::new();
+        outer_table.load_preset(presets::UTF8_FULL);
+
+        if let Some(width) = width {
+            outer_table.set_width(width as _);
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+        } else {
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        }
+
+        outer_table.add_row({
+            let mut row = Row::new();
+            row.add_cell(Cell::new(format!(
+                "METADATA:\n{}",
+                DisplayMetadata {
+                    prefix: "* ",
+                    metadata: metadata.clone()
+                }
+            )));
+            row
+        });
+
+        outer_table.add_row(vec![table.trim_fmt()]);
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        outer_table.set_constraints(
+            std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(num_columns),
+        );
+        outer_table
+    } else {
+        table
+    }
+}
+
+fn format_dataframe_without_metadata(
+    fields: &Fields,
+    columns: &[ArrayRef],
+    opts: &RecordBatchFormatOpts,
+) -> (usize, Table) {
     const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
 
     let &RecordBatchFormatOpts {
         transposed,
         width,
-        include_metadata,
+        include_metadata: _,
     } = opts;
 
     let mut table = Table::new();
@@ -309,12 +356,6 @@ fn format_dataframe(
         // resource_id       resource_1         resource_2         resource_3         resource_4
         // manifest_url      resource_1_url     resource_2_url     resource_3_url     resource_4_url
         // ```
-
-        let num_rows = columns.len();
-
-        if formatters.is_empty() || num_rows == 0 {
-            return table;
-        }
 
         let mut headers = fields
             .iter()
@@ -419,36 +460,5 @@ fn format_dataframe(
         );
     }
 
-    if include_metadata && !metadata.is_empty() {
-        let mut outer_table = Table::new();
-        outer_table.load_preset(presets::UTF8_FULL);
-
-        if let Some(width) = width {
-            outer_table.set_width(width as _);
-            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
-        } else {
-            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
-        }
-
-        outer_table.add_row({
-            let mut row = Row::new();
-            row.add_cell(Cell::new(format!(
-                "METADATA:\n{}",
-                DisplayMetadata {
-                    prefix: "* ",
-                    metadata: metadata.clone()
-                }
-            )));
-            row
-        });
-
-        outer_table.add_row(vec![table.trim_fmt()]);
-        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
-        outer_table.set_constraints(
-            std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(num_columns),
-        );
-        outer_table
-    } else {
-        table
-    }
+    (num_columns, table)
 }
