@@ -40,6 +40,15 @@ impl SorbetBatch {
 
         Ok(Self { schema, batch })
     }
+
+    /// Returns self but with all rows removed.
+    #[must_use]
+    pub fn drop_all_rows(self) -> Self {
+        Self {
+            schema: self.schema.clone(),
+            batch: self.batch.slice(0, 0),
+        }
+    }
 }
 
 impl SorbetBatch {
