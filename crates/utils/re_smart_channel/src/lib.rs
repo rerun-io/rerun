@@ -51,14 +51,7 @@ pub enum SmartChannelSource {
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
     RerunGrpcStream {
-        /// Should include `rerun://` prefix.
-        url: String,
-    },
-
-    /// A stream of messages over message proxy gRPC interface.
-    MessageProxy {
-        // TODO(#8761): URL prefix
-        /// Should include `temp://` prefix.
+        // TODO(grtlr): We should use the `re_uri::RedapUri` here, but that does not implement `Hash`, ...
         url: String,
     },
 }
@@ -71,7 +64,6 @@ impl std::fmt::Display for SmartChannelSource {
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
-            Self::MessageProxy { url } => write!(f, "gRPC server: {url}"),
             Self::Stdin => "Standard input".fmt(f),
         }
     }
@@ -81,10 +73,9 @@ impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
-            Self::RrdHttpStream { .. }
-            | Self::JsChannel { .. }
-            | Self::RerunGrpcStream { .. }
-            | Self::MessageProxy { .. } => true,
+            Self::RrdHttpStream { .. } | Self::JsChannel { .. } | Self::RerunGrpcStream { .. } => {
+                true
+            }
         }
     }
 }
