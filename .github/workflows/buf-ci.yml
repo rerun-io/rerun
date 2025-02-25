@@ -1,0 +1,22 @@
+name: Protobuf Buf Linter
+on:
+  push:
+    paths:
+      - '**/*.proto'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - '**/*.proto'
+  delete:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  buf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          input: crates/store/re_protos/proto/buf.yaml
+          pr_comment: false

@@ -1,0 +1,25 @@
+# https://buf.build/docs/configuration/v1/buf-yaml/
+version: v1
+name: ""
+deps: []
+build:
+  excludes: [".pixi", "target", "target_ra", "target_wasm"]
+lint:
+  use:
+    - STANDARD
+  except: []
+  ignore: []
+  ignore_only: {}
+  allow_comment_ignores: false
+  enum_zero_value_suffix: _UNSPECIFIED
+  rpc_allow_same_request_response: false
+  rpc_allow_google_protobuf_empty_requests: false
+  rpc_allow_google_protobuf_empty_responses: false
+  service_suffix: Service
+breaking:
+  use:
+    - FILE
+  except: []
+  ignore: []
+  ignore_only: {}
+  ignore_unstable_packages: false
