@@ -101,6 +101,12 @@ jobs:
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
 
+      - name: .rrd backwards compatibility
+        # We don't yet guarantee backwards compatibility, but we at least check it
+        # so that we _know_ if/when we break it.
+        # See tests/assets/rrd/README.md for more
+        run: pixi run rerun rrd verify tests/assets/rrd/*.rrd
+
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
     name: Test on ${{ matrix.name }}
