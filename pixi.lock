@@ -30328,8 +30328,8 @@ packages:
   - watchfiles ; extra == 'dev'
 - pypi: rerun_notebook
   name: rerun-notebook
-  version: 0.23.0a1+dev
-  sha256: 7deb8b26f0bf6a1498e5a246c59e909a0e465f8c95a358ae3bd45630710057d2
+  version: 0.23.0a1+b77f90e
+  sha256: 831ef9193d89b9c674e3789438d5425e84edee579fa049a459e72e4a00ce12e9
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -30404,7 +30404,7 @@ packages:
   requires_python: '>=3.8,<3.13'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.23.0a1+dev
+  version: 0.23.0a1+b77f90e
   sha256: 9c955da2e3a851835dfa11e2e36df2759e9b848cc8d38b0417843af387afda86
   requires_dist:
   - attrs>=23.1.0
@@ -30541,8 +30541,6 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - __glibc >=2.17
-  arch: x86_64
-  platform: linux
   license: MIT
   license_family: MIT
   purls:
@@ -30560,8 +30558,6 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - __glibc >=2.17
-  arch: aarch64
-  platform: linux
   license: MIT
   license_family: MIT
   purls:
@@ -30578,8 +30574,6 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - __osx >=10.13
-  arch: x86_64
-  platform: osx
   license: MIT
   license_family: MIT
   purls:
@@ -30597,8 +30591,6 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - __osx >=11.0
-  arch: arm64
-  platform: osx
   license: MIT
   license_family: MIT
   purls:
@@ -30614,8 +30606,6 @@ packages:
   - ucrt >=10.0.20348.0
   - vc >=14.2,<15
   - vc14_runtime >=14.29.30139
-  arch: x86_64
-  platform: win
   license: MIT
   license_family: MIT
   purls:
