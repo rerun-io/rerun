@@ -433,7 +433,7 @@ fn format_dataframe(
         outer_table.add_row({
             let mut row = Row::new();
             row.add_cell(Cell::new(format!(
-                "CHUNK METADATA:\n{}",
+                "METADATA:\n{}",
                 DisplayMetadata {
                     prefix: "* ",
                     metadata: metadata.clone()
