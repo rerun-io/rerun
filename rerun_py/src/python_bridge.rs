@@ -598,10 +598,16 @@ fn connect_grpc(
     };
 
     use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url
-        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
-        .parse::<re_grpc_client::MessageProxyUrl>()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let re_uri::RedapUri::Proxy(endpoint) = url
+        .unwrap_or_else(|| format!("rerun+http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
+        .parse::<re_uri::RedapUri>()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+    else {
+        return Err(PyRuntimeError::new_err(format!(
+            "invalid endpoint, expected {:?}",
+            "/proxy"
+        )));
+    };
 
     if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
@@ -610,7 +616,7 @@ fn connect_grpc(
 
     py.allow_threads(|| {
         let sink = re_sdk::sink::GrpcSink::new(
-            url,
+            endpoint,
             flush_timeout_sec.map(std::time::Duration::from_secs_f32),
         );
 

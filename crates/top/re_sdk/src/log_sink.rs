@@ -348,7 +348,7 @@ impl GrpcSink {
     /// ### Example
     ///
     /// ```ignore
-    /// GrpcSink::new("http+rerun://127.0.0.1:9434/proxy");
+    /// GrpcSink::new("rerun+http://127.0.0.1:9434/proxy");
     /// ```
     #[inline]
     pub fn new(endpoint: re_uri::ProxyEndpoint, flush_timeout: Option<Duration>) -> Self {
