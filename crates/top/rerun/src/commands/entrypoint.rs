@@ -873,11 +873,9 @@ fn run_impl(
         Ok(())
     } else if is_another_server_running {
         // Another viewer is already running on the specified address
-        let url = format!("http://{server_addr}/proxy");
-        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
-            anyhow::bail!("expected `/proxy` endpoint");
-        };
-        re_log::info!(%url, "Another viewer is already running, streaming data to it.");
+        let endpoint: re_uri::ProxyEndpoint =
+            format!("rerun+http://{server_addr}/proxy").parse()?;
+        re_log::info!(%endpoint, "Another viewer is already running, streaming data to it.");
 
         // This spawns its own single-threaded runtime on a separate thread,
         // no need to `rt.enter()`:
