@@ -123,7 +123,9 @@ pub enum OptionsError {
     UnknownCompression(u8),
 
     // TODO(jan): Remove this at some point, realistically 1-2 releases after 0.23
-    #[error("Attempted to use the removed MsgPack serializer, which is no longer supported")]
+    #[error(
+        "You are trying to load an old .rrd file that's not supported by this version of Rerun."
+    )]
     RemovedMsgPackSerializer,
 
     #[error("Unknown serializer: {0}")]
