@@ -1,4 +1,5 @@
 use re_log_types::LogMsg;
+use re_uri::ProxyEndpoint;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 // ----------------------------------------------------------------------------
@@ -141,7 +142,7 @@ pub struct WebViewerConfig {
     ///
     /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<String>,
+    pub source_url: Option<ProxyEndpoint>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///

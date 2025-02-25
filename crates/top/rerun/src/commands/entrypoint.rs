@@ -701,14 +701,16 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RedapProxyEndpoint { url } = data_sources[0].clone() {
+            if let DataSource::GrpcRerunStream(re_uri::RedapUri::Proxy(endpoint)) =
+                data_sources[0].clone()
+            {
                 // Special case! We are connecting a web-viewer to a gRPC address.
                 // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(url),
+                    source_url: Some(endpoint),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -752,8 +754,12 @@ fn run_impl(
 
         #[cfg(feature = "server")]
         if let Some(url) = args.connect {
-            let url = url.unwrap_or_else(|| format!("http://{server_addr}"));
-            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(&url, None)?;
+            let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
+            };
+            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
             rxs.push(rx);
         } else {
             // Check if there is already a viewer running and if so, send the data to it.
@@ -846,11 +852,16 @@ fn run_impl(
                 format!("rerun+http://{server_addr}/proxy")
             };
 
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
+            };
+
             // This is the server that serves the Wasm+HTML:
             WebViewerConfig {
                 bind_ip: args.bind.to_string(),
                 web_port: args.web_viewer_port,
-                source_url: Some(url),
+                source_url: Some(endpoint),
                 force_wgpu_backend: args.renderer,
                 video_decoder: args.video_decoder,
                 open_browser,
@@ -862,14 +873,15 @@ fn run_impl(
         Ok(())
     } else if is_another_server_running {
         // Another viewer is already running on the specified address
-        let url = format!("http://{server_addr}")
-            .parse()
-            .expect("should always be valid");
+        let url = format!("http://{server_addr}/proxy");
+        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
+            anyhow::bail!("expected `/proxy` endpoint");
+        };
         re_log::info!(%url, "Another viewer is already running, streaming data to it.");
 
         // This spawns its own single-threaded runtime on a separate thread,
         // no need to `rt.enter()`:
-        let sink = re_sdk::sink::GrpcSink::new(url, crate::default_flush_timeout());
+        let sink = re_sdk::sink::GrpcSink::new(endpoint, crate::default_flush_timeout());
 
         for rx in rxs {
             while rx.is_connected() {

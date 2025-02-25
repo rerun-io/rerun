@@ -81,6 +81,7 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
+// TODO(#9134): Unify with `re_data_source::DataSource`.
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///
@@ -100,13 +101,11 @@ impl EndpointCategory {
             return Self::RerunGrpcStream(uri);
         }
 
-        if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri)
-        } else if uri.starts_with("web_event:") {
+        if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
         } else {
-            // TODO: What should we do here?
-            unimplemented!()
+            // if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
+            Self::HttpRrd(uri)
         }
     }
 }
