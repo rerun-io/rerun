@@ -280,37 +280,19 @@ fn format_dataframe(
         include_metadata,
     } = opts;
 
-    let mut outer_table = Table::new();
-    outer_table.load_preset(presets::UTF8_FULL);
-
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
 
     if let Some(width) = width {
-        outer_table.set_width(width as _);
-        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
         table.set_width(width as _);
         table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
     } else {
-        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
         table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
     }
 
     let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array))
         .collect_vec();
-
-    outer_table.add_row({
-        let mut row = Row::new();
-        row.add_cell(Cell::new(format!(
-            "CHUNK METADATA:\n{}",
-            DisplayMetadata {
-                prefix: "* ",
-                metadata: metadata.clone()
-            }
-        )));
-        row
-    });
 
     let num_columns = if transposed {
         // Turns:
@@ -437,7 +419,29 @@ fn format_dataframe(
         );
     }
 
-    if include_metadata {
+    if include_metadata && !metadata.is_empty() {
+        let mut outer_table = Table::new();
+        outer_table.load_preset(presets::UTF8_FULL);
+
+        if let Some(width) = width {
+            outer_table.set_width(width as _);
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+        } else {
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        }
+
+        outer_table.add_row({
+            let mut row = Row::new();
+            row.add_cell(Cell::new(format!(
+                "CHUNK METADATA:\n{}",
+                DisplayMetadata {
+                    prefix: "* ",
+                    metadata: metadata.clone()
+                }
+            )));
+            row
+        });
+
         outer_table.add_row(vec![table.trim_fmt()]);
         outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
         outer_table.set_constraints(
