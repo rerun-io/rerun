@@ -809,6 +809,9 @@ impl PyStorageNodeClient {
             let mut resp = self
                 .client
                 .fetch_recording(FetchRecordingRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) #9116 */
+                    }),
                     recording_id: Some(RecordingId { id: id.to_owned() }),
                 })
                 .await
