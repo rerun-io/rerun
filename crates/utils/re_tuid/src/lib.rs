@@ -69,7 +69,7 @@ impl std::str::FromStr for Tuid {
 
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(f, "{self}")
     }
 }
 
