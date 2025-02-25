@@ -108,7 +108,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
                 chunk = chunk.drop_all_rows();
 
                 let options = re_format_arrow::RecordBatchFormatOpts {
-                    transposed: true,
+                    transposed: false, // TODO(emilk): have transposed default to true when we can also include per-column metadata
                     ..Default::default()
                 };
                 println!(
