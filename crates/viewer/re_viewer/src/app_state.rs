@@ -225,8 +225,8 @@ impl AppState {
             )),
         );
 
-        if let Some(callbacks) = callbacks {
-            if let SelectionChange::SelectionChanged(selection) = selection_change {
+        if let SelectionChange::SelectionChanged(selection) = selection_change {
+            if let Some(callbacks) = callbacks {
                 callbacks.on_selection_change(selection);
             }
         }

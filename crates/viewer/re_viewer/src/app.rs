@@ -150,6 +150,9 @@ impl Default for StartupOptions {
             timeline_options: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
+            callbacks: Default::default(),
+
+            #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
 
             panel_state_overrides: Default::default(),
@@ -428,12 +431,30 @@ impl App {
         #[cfg(target_arch = "wasm32")]
         let callbacks = {
             use crate::web_tools::string_from_js_value;
+            use crate::web_tools::JsResultExt as _;
             use std::rc::Rc;
             use wasm_bindgen::JsValue;
 
             startup_options.callbacks.clone().map(|opts| Callbacks {
-                on_selection_change: Rc::new(move |item_collection_json| {
+                on_selection_change: Rc::new(move |item_collection| {
                     // Express the collection as a flat list of item + context tuples.
+                    let array = js_sys::Array::new_with_length(item_collection.len() as u32);
+                    for (i, (item, context)) in item_collection.iter().enumerate() {
+                        #[derive(serde::Serialize)]
+                        struct ItemCollectionEntry<'a> {
+                            item: &'a re_viewer_context::Item,
+                            context: &'a Option<re_viewer_context::ItemContext>,
+                        }
+                        let Some(value) =
+                            serde_wasm_bindgen::to_value(&ItemCollectionEntry { item, context })
+                                .map_err(|v| v.into())
+                                .ok_or_log_js_error()
+                        else {
+                            continue;
+                        };
+                        array.set(i as u32, value);
+                    }
+                    opts.on_selection_change.call1(&array).ok_or_log_js_error();
                 }),
             })
         };
