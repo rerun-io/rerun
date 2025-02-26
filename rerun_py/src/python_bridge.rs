@@ -30,6 +30,16 @@ use re_web_viewer_server::WebViewerServerPort;
 
 // --- FFI ---
 
+trait PyRuntimeErrorExt {
+    fn wrap(err: impl std::error::Error, message: impl std::fmt::Display) -> pyo3::PyErr;
+}
+
+impl PyRuntimeErrorExt for PyRuntimeError {
+    fn wrap(err: impl std::error::Error, message: impl std::fmt::Display) -> pyo3::PyErr {
+        Self::new_err(format!("{message}: {err}"))
+    }
+}
+
 use once_cell::sync::{Lazy, OnceCell};
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
@@ -597,11 +607,10 @@ fn connect_grpc(
         return Ok(());
     };
 
-    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
-    let url = url
-        .unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"))
-        .parse::<re_grpc_client::MessageProxyUrl>()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
+    let endpoint = url
+        .parse::<re_uri::ProxyEndpoint>()
+        .map_err(|err| PyRuntimeError::wrap(err, format!("invalid endpoint {url:?}")))?;
 
     if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
@@ -610,7 +619,7 @@ fn connect_grpc(
 
     py.allow_threads(|| {
         let sink = re_sdk::sink::GrpcSink::new(
-            url,
+            endpoint,
             flush_timeout_sec.map(std::time::Duration::from_secs_f32),
         );
 

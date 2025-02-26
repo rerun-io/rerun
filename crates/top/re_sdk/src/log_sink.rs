@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use parking_lot::Mutex;
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
-use re_grpc_client::message_proxy::MessageProxyUrl;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
@@ -349,16 +348,16 @@ impl GrpcSink {
     /// ### Example
     ///
     /// ```ignore
-    /// GrpcSink::new("http://127.0.0.1:9434");
+    /// GrpcSink::new("rerun+http://127.0.0.1:9434/proxy");
     /// ```
     #[inline]
-    pub fn new(url: MessageProxyUrl, flush_timeout: Option<Duration>) -> Self {
+    pub fn new(endpoint: re_uri::ProxyEndpoint, flush_timeout: Option<Duration>) -> Self {
         let options = Options {
             flush_timeout,
             ..Default::default()
         };
         Self {
-            client: MessageProxyClient::new(url, options),
+            client: MessageProxyClient::new(endpoint, options),
         }
     }
 }

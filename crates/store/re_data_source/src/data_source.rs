@@ -1,4 +1,4 @@
-use re_log::debug;
+use re_grpc_client::message_proxy;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
@@ -30,14 +30,8 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A recording on a Rerun dataplatform server, over `rerun://` gRPC interface.
-    RedapRecordingEndpoint(re_uri::RecordingEndpoint),
-
-    /// A catalog on a Rerun dataplatform server, over `rerun://` gRPC interface.
-    RedapCatalogEndpoint(re_uri::CatalogEndpoint),
-
-    /// A stream of messages over gRPC, relayed from the SDK.
-    MessageProxy { url: String },
+    /// A `rerun://` URI pointing to a recording or catalog.
+    RerunGrpcStream(re_uri::RedapUri),
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -52,7 +46,7 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, mut uri: String) -> Self {
+    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -108,47 +102,14 @@ impl DataSource {
             }
         }
 
-        match re_uri::RedapUri::try_from(uri.as_str()) {
-            Ok(re_uri::RedapUri::Recording(endpoint)) => {
-                debug!("Recognized recording endpoint: {:?}", endpoint);
-                return Self::RedapRecordingEndpoint(endpoint);
-            }
-            Ok(re_uri::RedapUri::Catalog(endpoint)) => {
-                debug!("Recognized catalog endpoint: {:?}", endpoint);
-                return Self::RedapCatalogEndpoint(endpoint);
-            }
-            Ok(re_uri::RedapUri::Proxy(proxy)) => {
-                return Self::MessageProxy {
-                    url: proxy.as_url(),
-                }
-            }
-            Err(_) => {} // Not a Rerun URI,
-        };
+        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
+            return Self::RerunGrpcStream(endpoint);
+        }
 
-        if (uri.starts_with("http://") || uri.starts_with("https://"))
-            && (uri.ends_with(".rrd") || uri.ends_with(".rbl"))
-        {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
-            }
-        } else if uri.starts_with("http://") || uri.starts_with("https://") {
-            Self::MessageProxy { url: uri }
-        } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
-            }
-        } else {
-            // If this is something like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::debug!("Assuming gRPC endpoint");
-            if !uri.contains("://") {
-                // TODO(jan): this should be `https` if it's not localhost, anything hosted over public network
-                //            should be going through https, anyway.
-                uri = format!("http://{uri}");
-            }
-            Self::MessageProxy { url: uri }
+        // by default, we just assume an rrd over http
+        Self::RrdHttpUrl {
+            url: uri,
+            follow: false,
         }
     }
 
@@ -160,8 +121,7 @@ impl DataSource {
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            Self::RedapCatalogEndpoint { .. } | Self::RedapRecordingEndpoint { .. } => None, // TODO(jleibs): This needs to come from the server.
-            Self::MessageProxy { .. } => None,
+            Self::RerunGrpcStream { .. } => None,
         }
     }
 
@@ -269,7 +229,7 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RedapRecordingEndpoint(endpoint) => {
+            Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
                 re_log::debug!(
                     "Loading recording `{}` from `{}`…",
                     endpoint.recording_id,
@@ -280,7 +240,7 @@ impl DataSource {
 
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
-                    re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url: url.clone() },
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
@@ -309,11 +269,13 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RedapCatalogEndpoint(endpoint) => Ok(StreamSource::CatalogData { endpoint }),
+            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
+                Ok(StreamSource::CatalogData { endpoint })
+            }
 
-            Self::MessageProxy { url } => re_grpc_client::message_proxy::stream(&url, on_msg)
-                .map_err(|err| err.into())
-                .map(StreamSource::LogMessages),
+            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+                StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
+            ),
         }
     }
 }
@@ -368,10 +330,13 @@ fn test_data_source_from_uri() {
         "www.foo.zip/blueprint.rbl",
     ];
     let grpc = [
-        "http://foo.zip",
-        "https://foo.zip",
-        "http://127.0.0.1:9876",
-        "https://redap.rerun.io",
+        "rerun://foo.zip",
+        "rerun+http://foo.zip",
+        "rerun+https://foo.zip",
+        "rerun://127.0.0.1:9876",
+        "rerun+http://127.0.0.1:9876",
+        "rerun://redap.rerun.io",
+        "rerun+https://redap.rerun.io",
     ];
 
     let file_source = FileSource::DragAndDrop {
@@ -403,7 +368,7 @@ fn test_data_source_from_uri() {
     for uri in grpc {
         if !matches!(
             DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::MessageProxy { .. }
+            DataSource::RerunGrpcStream { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as MessageProxy");
             failed = true;
