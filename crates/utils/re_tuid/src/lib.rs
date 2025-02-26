@@ -151,6 +151,11 @@ impl Tuid {
         ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
     }
 
+    #[inline]
+    pub fn from_bytes(bytes: [u8; 16]) -> Self {
+        Self::from_u128(u128::from_be_bytes(bytes))
+    }
+
     /// Returns most significant byte first (big endian).
     #[inline]
     pub fn as_bytes(&self) -> [u8; 16] {
