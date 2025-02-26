@@ -274,6 +274,10 @@ impl ArchetypeReflection {
     pub fn required_fields(&self) -> impl Iterator<Item = &ArchetypeFieldReflection> {
         self.fields.iter().filter(|field| field.is_required)
     }
+
+    pub fn get_field(&self, field_name: &str) -> Option<&ArchetypeFieldReflection> {
+        self.fields.iter().find(|field| field.name == field_name)
+    }
 }
 
 /// Additional information about an archetype's field.

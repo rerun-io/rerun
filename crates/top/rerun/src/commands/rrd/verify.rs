@@ -81,15 +81,10 @@ impl Verifier {
 
     fn verify_chunk_batch(&mut self, source: &str, chunk_batch: &re_sorbet::ChunkBatch) {
         for (component_descriptor, column) in chunk_batch.component_columns() {
-            let component_name = component_descriptor.component_name;
-
-            if component_name.is_indicator_component() {
-                continue; // Lacks reflection
-            }
-
-            if let Err(err) = self.verify_component_column(component_name, column) {
+            if let Err(err) = self.verify_component_column(component_descriptor, column) {
                 self.errors.insert(format!(
-                    "{source}: Failed to deserialize column {component_name:?}: {err}"
+                    "{source}: Failed to deserialize column {}: {err}",
+                    component_descriptor.component_name
                 ));
             }
         }
@@ -97,24 +92,68 @@ impl Verifier {
 
     fn verify_component_column(
         &self,
-        component_name: re_sdk::ComponentName,
+        component_descriptor: &re_sorbet::ComponentColumnDescriptor,
         column: &dyn arrow::array::Array,
     ) -> anyhow::Result<()> {
-        let component_reflection = self
-            .reflection
-            .components
-            .get(&component_name)
-            .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
+        let re_sorbet::ComponentColumnDescriptor {
+            component_name,
+            archetype_name,
+            archetype_field_name,
+            ..
+        } = component_descriptor;
 
-        let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
-            anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
-        })?;
+        if component_name.is_indicator_component() {
+            return Ok(()); // Lacks reflection
+        }
 
-        assert_eq!(column.len() + 1, list_array.offsets().len());
+        {
+            // Verify data
+            let component_reflection = self
+                .reflection
+                .components
+                .get(component_name)
+                .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
-        for i in 0..column.len() {
-            let cell = list_array.value(i);
-            (component_reflection.verify_arrow_array)(cell.as_ref())?;
+            let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
+                anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
+            })?;
+
+            assert_eq!(column.len() + 1, list_array.offsets().len());
+
+            for i in 0..column.len() {
+                let cell = list_array.value(i);
+                (component_reflection.verify_arrow_array)(cell.as_ref())?;
+            }
+        }
+
+        if let Some(archetype_name) = archetype_name {
+            // Verify archetype.
+            // We may want to have a flag to allow some of this?
+            let archetype_reflection = self
+                .reflection
+                .archetypes
+                .get(archetype_name)
+                .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
+
+            if let Some(archetype_field_name) = archetype_field_name {
+                // Verify archetype field.
+                // We may want to have a flag to allow some of this?
+                let archetype_field_reflection = archetype_reflection
+                    .get_field(archetype_field_name)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {:?}",
+                            archetype_reflection.fields.iter().map(|field| field.name)
+                        )
+                    })?;
+
+                let expected_component_name = &archetype_field_reflection.component_name;
+                if component_name != expected_component_name {
+                    return Err(anyhow::anyhow!(
+                        "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
+                    ));
+                }
+            }
         }
 
         Ok(())
