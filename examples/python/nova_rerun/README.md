@@ -97,7 +97,7 @@ if __name__ == "__main__":
 -   **Continuous monitoring mode**
     Stream live robot states and keep an eye on actual motion in real time.
 
-<img width="100%" src="https://github.com/user-attachments/assets/b42b7ac8-f142-4b65-9fd8-22b020ce753e" />
+<img width="100%" alt="trajectory" src="https://github.com/user-attachments/assets/617dd2c5-ea51-472d-84d5-77aa25f6c2b6" />
 
 ### Usage Examples
 
@@ -159,3 +159,5 @@ await bridge.log_actions(actions)
 ### More Examples
 
 Check out the [examples folder](https://github.com/wandelbotsgmbh/wandelbots-nova/tree/main/nova_rerun_bridge/examples) for more detailed usage scenarios (e.g., advanced collision scene management, streaming multiple robots simultaneously, etc.).
+
+<img width="100%" src="https://github.com/user-attachments/assets/b42b7ac8-f142-4b65-9fd8-22b020ce753e" />
