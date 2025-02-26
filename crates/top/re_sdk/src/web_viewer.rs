@@ -74,9 +74,9 @@ impl WebViewerSink {
 
         let viewer_url =
             if grpc_server_addr.ip().is_unspecified() || grpc_server_addr.ip().is_loopback() {
-                format!("{http_web_viewer_url}?url=rerun%2Bhttp://localhost:{grpc_port}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://localhost:{grpc_port}/proxy")
             } else {
-                format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}/proxy")
             };
 
         re_log::info!("Hosting a web-viewer at {viewer_url}");
