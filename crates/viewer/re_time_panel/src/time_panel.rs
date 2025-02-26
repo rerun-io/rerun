@@ -336,6 +336,12 @@ impl TimePanel {
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
+        // Right clicking anywhere on free space the collapsed panel, shows a context menu.
+        ui.allocate_response(ui.max_rect().size(), egui::Sense::click())
+            .context_menu(|ui| {
+                copy_time_properties_context_menu(ui, time_ctrl, None);
+            });
+
         if ui.max_rect().width() < 600.0 && has_more_than_one_time_point {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
@@ -1631,6 +1637,36 @@ fn interact_with_streams_rect(
     response
 }
 
+/// Context menu that shows up when interacting with the streams rect.
+fn copy_time_properties_context_menu(
+    ui: &mut egui::Ui,
+    time_ctrl: &TimeControl,
+    hovered_time: Option<TimeReal>,
+) {
+    if let Some(time) = hovered_time {
+        if ui.button("Copy hovered timestamp").clicked() {
+            let time = format!("{}", time.floor().as_i64());
+            re_log::info!("Copied hovered timestamp: {}", time);
+            ui.ctx().copy_text(time);
+            ui.close_menu();
+        };
+    } else if let Some(time) = time_ctrl.time_int() {
+        if ui.button("Copy current timestamp").clicked() {
+            let time = format!("{}", time.as_i64());
+            re_log::info!("Copied current timestamp: {}", time);
+            ui.ctx().copy_text(time);
+            ui.close_menu();
+        };
+    }
+
+    if ui.button("Copy current timeline name").clicked() {
+        let timeline = format!("{}", time_ctrl.timeline().name());
+        re_log::info!("Copied current timeline: {}", timeline);
+        ui.ctx().copy_text(timeline);
+        ui.close_menu();
+    }
+}
+
 /// A vertical line that shows the current time.
 fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
@@ -1723,9 +1759,11 @@ fn time_marker_ui(
             egui::Sense::click(),
         );
 
+        let hovered_time = time_ranges_ui.time_from_x_f32(pointer_pos.x);
+
         if !is_hovering_the_loop_selection {
             let mut set_time_to_pointer = || {
-                if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                if let Some(time) = hovered_time {
                     let time = time_ranges_ui.clamp_time(time);
                     time_ctrl.set_time(time);
                     time_ctrl.pause();
@@ -1749,5 +1787,8 @@ fn time_marker_ui(
                 }
             }
         }
+
+        time_area_response
+            .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
 }
