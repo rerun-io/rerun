@@ -310,7 +310,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 return self.next();
             }
 
-            re_log::debug!("Reached end of stream, iterator complete");
+            re_log::trace!("Reached end of stream, iterator complete");
             return None;
         };
 
