@@ -88,14 +88,14 @@ if __name__ == "__main__":
 
 ### Features
 
--   Real-time 3D robot visualization
-    See a [list of supported robots](https://wandelbotsgmbh.github.io/wandelbots-js-react-components/?path=/story/3d-view-robot-supported-models--abb-1010-037-15).
--   Trajectory playback and analysis
+-   **Real-time 3D robot visualization**
+    See a [list of supported robots](https://wandelbotsgmbh.github.io/wandelbots-js-react-components/?path=/story/3d-view-robot-supported-models--abb-1010-037-15) and get real-time playback of robot movements.
+-   **Trajectory playback and analysis**
     Easily log trajectories and visualize them in the Rerun viewer.
--   Collision scene visualization
-    Inspect collision objects and plan safe paths.
--   Continuous monitoring mode
-    Stream real-time robot states and visualize them on the fly.
+-   **Collision scene visualization**
+    Inspect collision objects, plan safe paths, and avoid unexpected contact points.
+-   **Continuous monitoring mode**
+    Stream live robot states and keep an eye on actual motion in real time.
 
 <img width="100%" src="https://github.com/user-attachments/assets/b42b7ac8-f142-4b65-9fd8-22b020ce753e" />
 
