@@ -34,21 +34,20 @@ pub struct Collections {
 }
 
 impl Collections {
-    pub fn add(
+    pub fn fetch(
         &mut self,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) {
-        //TODO(ab): should we return error if the requested collection already exists? Or maybe just
-        // query it again.
-        self.collections.entry(origin.clone()).or_insert_with(|| {
+        self.collections.insert(
+            origin.clone(),
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
                 stream_catalog_async(origin),
-            )
-        });
+            ),
+        );
     }
 
     /// Convert all completed queries into proper collections.
