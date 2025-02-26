@@ -887,6 +887,8 @@ impl ChunkStore {
 
         temporal_chunk_ids_per_times
             .map(|temporal_chunk_ids_per_time| {
+                // TODO: why is this done here though?
+                // TODO: also this does not seem to do what the doc says?? is there a test for this?
                 // See `RangeQueryOptions::include_extended_bounds` for more information.
                 let query_min = if query.options().include_extended_bounds {
                     re_log_types::TimeInt::new_temporal(
