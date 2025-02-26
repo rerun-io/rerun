@@ -42,13 +42,16 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 
 use once_cell::sync::{Lazy, OnceCell};
 
+use crate::dataframe::PyRecording;
+
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
 // data and joining a bunch of threads) can end up running at any time depending on what the
 // Python GC is doing, which obviously leads to very bad things :tm:.
 //
 // TODO(#2116): drop unused recordings
-fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>> {
+pub(crate) fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>>
+{
     static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<HashMap<StoreId, RecordingStream>>> =
         OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
@@ -79,7 +82,7 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
+pub(crate) static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
     Lazy::new(crossbeam::channel::unbounded);
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
@@ -172,6 +175,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -345,7 +349,7 @@ fn shutdown(py: Python<'_>) {
 
 #[pyclass(frozen)]
 #[derive(Clone)]
-struct PyRecordingStream(RecordingStream);
+pub(crate) struct PyRecordingStream(pub(crate) RecordingStream);
 
 #[pymethods]
 impl PyRecordingStream {
@@ -1341,6 +1345,22 @@ fn send_blueprint(
     }
 }
 
+/// Send a recording to the given recording stream.
+// TODO(gijsd): Figure out naming for the recording stream parameter, it's called `recording` everywhere else.
+#[pyfunction]
+#[pyo3(signature = (recording, stream = None))]
+fn send_recording(recording: &PyRecording, stream: Option<&PyRecordingStream>) {
+    let Some(stream) = get_data_recording(stream) else {
+        return;
+    };
+
+    // TODO(gijsd): Overwrite store info here, since we want to replace it with the info from the recording we're sending
+
+    for chunk in recording.store.read().iter_chunks() {
+        stream.send_chunk((**chunk).clone());
+    }
+}
+
 // --- Misc ---
 
 /// Return a verbose version string.
@@ -1471,7 +1491,7 @@ fn send_recording_start_time_nanos(
 
 // --- Helpers ---
 
-fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+pub(crate) fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     let py_version = py.version_info();
     re_log_types::PythonVersion {
         major: py_version.major,
