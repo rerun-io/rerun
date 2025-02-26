@@ -173,6 +173,6 @@ unindent = { workspace = true, optional = true }
 re_build_tools.workspace = true
 
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 # We only depend on re_video so we can enable extra features for it
 ignored = ["re_video"]
