@@ -50,6 +50,10 @@ class ViewerWidget {
     );
     model.on("change:_recording_id", this.on_set_recording_id);
 
+    this.viewer.on("selectionchange", () => {
+      model.send("selectionchange");
+    });
+
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
 

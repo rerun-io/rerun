@@ -92,12 +92,17 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._data_queue = []
 
+        self._asdf = False
+
         if panel_states:
             self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
+            else:
+                self._asdf = True
+                print("==EVENT==", content, buffers)
 
         self.on_msg(handle_msg)
 
