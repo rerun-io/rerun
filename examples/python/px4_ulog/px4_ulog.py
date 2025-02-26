@@ -144,8 +144,9 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_px4_log")
 
     if args.uuid is not None:
-        # TODO: download
+        data = download_with_progress(f"https://review.px4.io/download?log={args.uuid}", "ulog file")
         file_path = DATASET_DIR / f"{args.uuid}.ulg"
+        file_path.write_bytes(data.read())
     else:
         file_path = ULOG_FILE_PATH
         if not file_path.exists():
