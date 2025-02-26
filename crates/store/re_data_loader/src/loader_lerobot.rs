@@ -160,7 +160,12 @@ fn prepare_episode_chunks(
     store_ids
 }
 
-fn load_episode(
+/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
+///
+/// This function processes an episode from the dataset by extracting the relevant data columns and
+/// converting them into appropriate Rerun data structures. It handles different types of data
+/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
+pub fn load_episode(
     dataset: &LeRobotDataset,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
