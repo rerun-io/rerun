@@ -1,59 +1,118 @@
 <!--[metadata]
 title = "Nova Bridge"
+source = "https://github.com/wandelbotsgmbh/wandelbots-nova"
 tags = ["3D", "Robot"]
 thumbnail = "https://github.com/user-attachments/assets/526a3cff-3d27-4963-8d7b-e7cd98a758f9"
 thumbnail_dimensions = [480, 480]
 -->
 
-[Wandelbots Nova](https://www.wandelbots.com/) is a robot-agnostic operating system that enables programming and controlling various industrial robots through a unified interface. This example demonstrates how to use Nova and Rerun to visualize robot trajectories and real-time states for any supported industrial robot.
+A visualization extension for [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) that enables real-time 3D visualization of robot trajectories using [rerun.io](https://rerun.io).
 
 https://github.com/user-attachments/assets/4b18a6b6-b946-45af-9ade-614ca9d321a6
 
-## Used Rerun types
-
-[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
-
 ## Background
 
-[Wandelbots Nova](https://www.wandelbots.com/) is a platform for robot programming and control that provides a unified interface for industrial six-axis robots across different manufacturers. It combines modern development tools (Python, JavaScript APIs) with an AI-driven approach to robot control and motion planning.
+[Wandelbots Nova](https://www.wandelbots.com/) is a robot-agnostic platform for programming and controlling industrial six-axis robots across different manufacturers through a unified API. It combines modern development tools (Python, JavaScript APIs) with an AI-driven approach to robot control and motion planning, enabling developers to build applications like gluing, grinding, welding, and palletizing without worrying about underlying hardware differences.
 
-The platform enables developers to program industrial applications like gluing, grinding, welding, and palletizing through a consistent API, regardless of the underlying robot hardware. This example demonstrates how to use Rerun to visualize and analyze these capabilities through:
+This example demonstrates how to use Rerun to visualize and analyze Nova’s capabilities through:
 
 -   Trajectory visualization and motion planning
 -   Robot state monitoring and digital twin visualization
 -   Collision scene inspection, avoidance and validation
 -   Motion timing and performance analysis
 
-## Logging and visualizing with Rerun
-
-### Setting up the bridge
+### Run the code
 
 To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and apply for a instance and access token at [wandelbots.com](https://www.wandelbots.com/).
 
 ```bash
-poetry install wandelbots-nova --extras "nova-rerun-bridge"
-
-# Download the required models
-poetry run download-models
+uv run main.py
+poetry run download-models # Download the required models
 ```
 
-The example creates a bridge between Nova and rerun:
+The example demonstrates how to use Wandelbots Nova with Rerun for visualizing planned robot trajectories.
 
 ```python
 from nova_rerun_bridge import NovaRerunBridge
 from nova import Nova
+from nova import api
+from nova.actions import jnt, ptp
+from nova.types import Pose
+import asyncio
 
-nova = Nova(
-    host="https://your-instance.wandelbots.io",
-    access_token="your-access-token"
-)
-bridge = NovaRerunBridge(nova)
+async def main():
+  # Connect to your Nova instance (or use .env file)
+  nova = Nova(
+      host="https://your-instance.wandelbots.io",
+      access_token="your-access-token"
+  )
+  bridge = NovaRerunBridge(nova)
 
-# Setup default visualization blueprint
-await bridge.setup_blueprint()
+  # Setup visualization
+  await bridge.setup_blueprint()
+
+  # Setup robot
+  cell = nova.cell()
+  controller = await cell.ensure_virtual_robot_controller(
+      "ur",
+      api.models.VirtualControllerTypes.UNIVERSALROBOTS_MINUS_UR10E,
+      api.models.Manufacturer.UNIVERSALROBOTS,
+  )
+
+  # Connect to the controller and activate motion groups
+  async with controller[0] as motion_group:
+      home_joints = await motion_group.joints()
+      tcp_names = await motion_group.tcp_names()
+      tcp = tcp_names[0]
+
+      # Get current TCP pose and offset it slightly along the x-axis
+      current_pose = await motion_group.tcp_pose(tcp)
+      target_pose = current_pose @ Pose((1, 0, 0, 0, 0, 0))
+
+      actions = [
+          jnt(home_joints),
+          ptp(target_pose),
+          jnt(home_joints),
+      ]
+
+      # Plan trajectory
+      joint_trajectory = await motion_group.plan(actions, tcp)
+
+      # Log a trajectory
+      await bridge.log_trajectory(joint_trajectory, tcp, motion_group)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-### Collision free movements
+```python
+uv run main.py
+```
+
+### Features
+
+-   Real-time 3D robot visualization
+    See a [list of supported robots](https://wandelbotsgmbh.github.io/wandelbots-js-react-components/?path=/story/3d-view-robot-supported-models--abb-1010-037-15).
+-   Trajectory playback and analysis
+    Easily log trajectories and visualize them in the Rerun viewer.
+-   Collision scene visualization
+    Inspect collision objects and plan safe paths.
+-   Continuous monitoring mode
+    Stream real-time robot states and visualize them on the fly.
+
+### Usage Examples
+
+Below are some common usage patterns. For more detailed examples, see the [example repository.](https://github.com/wandelbotsgmbh/wandelbots-nova/tree/main/nova_rerun_bridge/examples)
+
+#### Basic Motion Logging
+
+```python
+# Log a pre-planned trajectory
+await bridge.log_trajectory(joint_trajectory, tcp, motion_group)
+```
+
+#### Collision free movements
 
 Apart from the usual movement commands like `point to point`, `joint point to point`, `linear` and `circular` the plattform also supports collision free movements. You need to setup a collision scene beforehand and pass it to the action.
 
@@ -66,28 +125,17 @@ actions = [
     )
 ]
 
-trajectory_plan_combined = await motion_group.plan(
+trajectory = await motion_group.plan(
     actions,
-    tcp=tcp,
-    start_joint_position=joint_trajectory.joint_positions[-1].joints,
+    tcp=tcp
 )
-await bridge.log_actions(welding_actions)
+await bridge.log_actions(actions)
 await bridge.log_trajectory(trajectory_plan_combined, tcp, motion_group)
 ```
 
 https://github.com/user-attachments/assets/6372e614-80c1-4804-bac7-b9b8b29da533
 
-### Logging robot trajectories
-
-Once configured, you can easily log planned trajectories:
-
-```python
-# Plan and log a trajectory
-joint_trajectory = await motion_group.plan(actions, tcp)
-await bridge.log_trajectory(joint_trajectory, tcp, motion_group)
-```
-
-### Real-time robot state streaming
+#### Real-time robot state streaming
 
 The bridge also supports continuous monitoring of robot states:
 
@@ -95,6 +143,21 @@ The bridge also supports continuous monitoring of robot states:
 # Start streaming robot state
 await bridge.start_streaming(motion_group)
 
+# ... do something with your robot ...
+
 # Stop streaming all robot states
 await bridge.stop_streaming()
 ```
+
+#### Log Actions
+
+If you’d like to log the planned actions themselves:
+
+```python
+# Log planned actions
+await bridge.log_actions(actions)
+```
+
+### More Examples
+
+Check out the [examples folder](https://github.com/wandelbotsgmbh/wandelbots-nova/tree/main/nova_rerun_bridge/examples) for more detailed usage scenarios (e.g., advanced collision scene management, streaming multiple robots simultaneously, etc.).

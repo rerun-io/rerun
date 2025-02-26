@@ -21,9 +21,19 @@ from wandelbots_api_client.models import (
 )
 
 
-async def build_collision_world(
-    nova: Nova, cell_name: str, robot_setup: models.OptimizerSetup
-) -> str:
+DESCRIPTION = """
+# Nova rerun bridge
+[Wandelbots Nova](https://www.wandelbots.com/) is a robot-agnostic operating system that
+enables programming and controlling various industrial robots through a unified interface.
+This example demonstrates how to use Nova and Rerun to visualize robot trajectories and
+real-time states for any supported industrial robot.
+
+More examples can be found
+[on GitHub](https://github.com/wandelbotsgmbh/wandelbots-nova).
+""".strip()
+
+
+async def build_collision_world(nova: Nova, cell_name: str, robot_setup: models.OptimizerSetup) -> str:
     collision_api = nova._api_client.store_collision_components_api
     scene_api = nova._api_client.store_collision_scenes_api
 
@@ -32,15 +42,11 @@ async def build_collision_world(
         shape=models.ColliderShape(models.Sphere2(radius=100, shape_type="sphere")),
         pose=models.Pose2(position=[-100, -500, 200]),
     )
-    await collision_api.store_collider(
-        cell=cell_name, collider="annoying_obstacle", collider2=sphere_collider
-    )
+    await collision_api.store_collider(cell=cell_name, collider="annoying_obstacle", collider2=sphere_collider)
 
     # define TCP collider geometry
     tool_collider = models.Collider(
-        shape=models.ColliderShape(
-            models.Box2(size_x=100, size_y=100, size_z=100, shape_type="box", box_type="FULL")
-        )
+        shape=models.ColliderShape(models.Box2(size_x=100, size_y=100, size_z=100, shape_type="box", box_type="FULL"))
     )
     await collision_api.store_collision_tool(
         cell=cell_name, tool="tool_box", request_body={"tool_collider": tool_collider}
@@ -64,9 +70,7 @@ async def build_collision_world(
         },
     )
     scene_id = "collision_scene"
-    await scene_api.store_collision_scene(
-        cell_name, scene_id, models.CollisionSceneAssembly(scene=scene)
-    )
+    await scene_api.store_collision_scene(cell_name, scene_id, models.CollisionSceneAssembly(scene=scene))
     return scene_id
 
 
@@ -74,6 +78,7 @@ async def test():
     async with Nova() as nova, NovaRerunBridge(nova) as bridge:
         await bridge.setup_blueprint()
 
+        rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
         cell = nova.cell()
         controller = await cell.ensure_virtual_robot_controller(
             "ur5",
@@ -90,9 +95,7 @@ async def test():
                 name="mounting",
                 reference_uid="",
                 position=Vector3d(x=0, y=0, z=0),
-                rotation=RotationAngles(
-                    angles=[0, 0, 0], type=RotationAngleTypes.EULER_ANGLES_EXTRINSIC_XYZ
-                ),
+                rotation=RotationAngles(angles=[0, 0, 0], type=RotationAngleTypes.EULER_ANGLES_EXTRINSIC_XYZ),
             ),
         )
 
@@ -130,9 +133,7 @@ async def test():
                 await bridge.log_trajectory(e.error.joint_trajectory, tcp, motion_group)
                 await bridge.log_error_feedback(e.error.error_feedback)
 
-            rr.log(
-                "motion/target_", rr.Points3D([[-500, -400, 200]], radii=[10], colors=[(0, 255, 0)])
-            )
+            rr.log("motion/target_", rr.Points3D([[-500, -400, 200]], radii=[10], colors=[(0, 255, 0)]))
 
             # Use default planner to move to the left of the sphere
             # -> this will collide
@@ -155,9 +156,7 @@ async def test():
 
             # Plan collision free PTP motion around the sphere
             scene_api = nova._api_client.store_collision_scenes_api
-            collision_scene = await scene_api.get_stored_collision_scene(
-                cell="cell", scene=collision_scene_id
-            )
+            collision_scene = await scene_api.get_stored_collision_scene(cell="cell", scene=collision_scene_id)
 
             welding_actions = [
                 collision_free(
