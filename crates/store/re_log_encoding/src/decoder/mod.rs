@@ -189,6 +189,15 @@ impl<R: std::io::Read> Decoder<R> {
         })
     }
 
+    pub fn new_with_options(options: EncodingOptions, version: CrateVersion, read: R) -> Self {
+        Self {
+            version,
+            options,
+            read: Reader::Raw(read),
+            size_bytes: FileHeader::SIZE as _,
+        }
+    }
+
     /// Instantiates a new concatenated decoder.
     ///
     /// This will gracefully handle concatenated RRD streams (i.e. streams of bytes where multiple

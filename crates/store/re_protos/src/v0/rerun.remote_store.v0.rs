@@ -19,45 +19,30 @@ impl ::prost::Name for DataframePart {
         "/rerun.remote_store.v0.DataframePart".into()
     }
 }
+/// GetChunksRange is a streaming API that allows to fetch chunks within a time range
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunkIdsRequest {
-    /// which catalog entry do we want to fetch the chunk ids from
+pub struct GetChunksRangeRequest {
+    /// which catalog entry do we want to fetch the chunks from
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<CatalogEntry>,
-    /// recording id from which we're want to fetch the chunk ids
+    /// recording id from which we're want to fetch the chunk
     #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
     /// timeline for which we specify the time range
     #[prost(message, optional, tag = "3")]
     pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
-    /// time range for which we want to fetch the chunk ids
+    /// time range for which we want to fetch the chunks
     #[prost(message, optional, tag = "4")]
     pub time_range: ::core::option::Option<super::super::common::v0::TimeRange>,
 }
-impl ::prost::Name for GetChunkIdsRequest {
-    const NAME: &'static str = "GetChunkIdsRequest";
+impl ::prost::Name for GetChunksRangeRequest {
+    const NAME: &'static str = "GetChunksRangeRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetChunkIdsRequest".into()
+        "rerun.remote_store.v0.GetChunksRangeRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetChunkIdsRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunkIdsResponse {
-    /// a batch of chunk ids for chunks that are within the specified time range
-    #[prost(message, repeated, tag = "1")]
-    pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v0::Tuid>,
-}
-impl ::prost::Name for GetChunkIdsResponse {
-    const NAME: &'static str = "GetChunkIdsResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetChunkIdsResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetChunkIdsResponse".into()
+        "/rerun.remote_store.v0.GetChunksRangeRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1188,27 +1173,6 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn get_chunk_ids(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetChunkIdsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::GetChunkIdsResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/GetChunkIds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
-                "GetChunkIds",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         pub async fn get_chunks(
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
@@ -1227,6 +1191,27 @@ pub mod storage_node_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
                 "GetChunks",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        pub async fn get_chunks_range(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetChunksRangeRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::super::super::common::v0::RerunChunk>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/GetChunksRange",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "GetChunksRange",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -1482,15 +1467,6 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::ReIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
-        /// Server streaming response type for the GetChunkIds method.
-        type GetChunkIdsStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::GetChunkIdsResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        async fn get_chunk_ids(
-            &self,
-            request: tonic::Request<super::GetChunkIdsRequest>,
-        ) -> std::result::Result<tonic::Response<Self::GetChunkIdsStream>, tonic::Status>;
         /// Server streaming response type for the GetChunks method.
         type GetChunksStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<
@@ -1503,6 +1479,18 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Server streaming response type for the GetChunksRange method.
+        type GetChunksRangeStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<
+                    super::super::super::common::v0::RerunChunk,
+                    tonic::Status,
+                >,
+            > + std::marker::Send
+            + 'static;
+        async fn get_chunks_range(
+            &self,
+            request: tonic::Request<super::GetChunksRangeRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetChunksRangeStream>, tonic::Status>;
         /// Server streaming response type for the SearchIndex method.
         type SearchIndexStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
@@ -1810,50 +1798,6 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/GetChunkIds" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetChunkIdsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::ServerStreamingService<super::GetChunkIdsRequest>
-                        for GetChunkIdsSvc<T>
-                    {
-                        type Response = super::GetChunkIdsResponse;
-                        type ResponseStream = T::GetChunkIdsStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetChunkIdsRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as StorageNode>::get_chunk_ids(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetChunkIdsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/rerun.remote_store.v0.StorageNode/GetChunks" => {
                     #[allow(non_camel_case_types)]
                     struct GetChunksSvc<T: StorageNode>(pub Arc<T>);
@@ -1883,6 +1827,50 @@ pub mod storage_node_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetChunksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/GetChunksRange" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetChunksRangeSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::ServerStreamingService<super::GetChunksRangeRequest>
+                        for GetChunksRangeSvc<T>
+                    {
+                        type Response = super::super::super::common::v0::RerunChunk;
+                        type ResponseStream = T::GetChunksRangeStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetChunksRangeRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::get_chunks_range(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetChunksRangeSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
