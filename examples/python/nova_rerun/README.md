@@ -99,7 +99,6 @@ if __name__ == "__main__":
 
 <img width="100%" src="https://github.com/user-attachments/assets/b42b7ac8-f142-4b65-9fd8-22b020ce753e" />
 
-
 ### Usage Examples
 
 Below are some common usage patterns. For more detailed examples, see the [example repository.](https://github.com/wandelbotsgmbh/wandelbots-nova/tree/main/nova_rerun_bridge/examples)
