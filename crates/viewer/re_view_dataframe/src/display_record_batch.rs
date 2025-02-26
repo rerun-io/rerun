@@ -10,10 +10,12 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
+use std::hash::{DefaultHasher, Hash, Hasher};
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
+use re_data_ui::EntityDataUi as _;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
@@ -150,6 +152,53 @@ impl ComponentData {
             } else {
                 data
             };
+
+            if component_name.as_str() == "rerun.components.Blob" {
+                let arr =
+                    re_arrow_util::arrays_to_list_array_opt(&[Some(&data_to_display)]).unwrap();
+                let blob = re_types::components::Blob::from_arrow(&arr).unwrap();
+                let blob = &blob[0];
+
+                fn hash_u8_array_to_u128(data: &[u8]) -> u128 {
+                    let mut hasher = DefaultHasher::new();
+                    data.hash(&mut hasher);
+                    let hash = hasher.finish();
+                    u128::from(hash) | (u128::from(hash) << 64)
+                }
+
+                let hash = hash_u8_array_to_u128(blob.0.as_slice());
+                let row_id = re_chunk_store::RowId::from_u128(hash);
+
+                let image = ctx
+                    .store_context
+                    .caches
+                    .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
+                        c.entry(row_id, blob, None)
+                    })
+                    .unwrap();
+
+                re_data_ui::image_preview_ui(
+                    ctx,
+                    ui,
+                    UiLayout::List,
+                    latest_at_query,
+                    entity_path,
+                    &image,
+                    None,
+                );
+
+                // blob.entity_data_ui(
+                //     ctx,
+                //     ui,
+                //     UiLayout::List,
+                //     entity_path,
+                //     Some(row_id),
+                //     latest_at_query,
+                //     ctx.recording(),
+                // );
+
+                return;
+            }
 
             ctx.component_ui_registry().ui_raw(
                 ctx,
