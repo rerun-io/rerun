@@ -102,11 +102,14 @@ impl Verifier {
             ..
         } = component_descriptor;
 
-        if component_name.is_indicator_component() {
-            return Ok(()); // Lacks reflection
+        if !component_name.full_name().starts_with("rerun.") {
+            re_log::debug_once!("Ignoring non-Rerun component {component_name:?}");
+            return Ok(());
         }
 
-        {
+        if component_name.is_indicator_component() {
+            // Lacks reflection and data
+        } else {
             // Verify data
             let component_reflection = self
                 .reflection
@@ -127,18 +130,19 @@ impl Verifier {
         }
 
         if let Some(archetype_name) = archetype_name {
-            // Verify archetype.
-            // We may want to have a flag to allow some of this?
-            let archetype_reflection = self
-                .reflection
-                .archetypes
-                .get(archetype_name)
-                .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
-
-            if let Some(archetype_field_name) = archetype_field_name {
-                // Verify archetype field.
+            if archetype_name.full_name().starts_with("rerun.") {
+                // Verify archetype.
                 // We may want to have a flag to allow some of this?
-                let archetype_field_reflection = archetype_reflection
+                let archetype_reflection = self
+                    .reflection
+                    .archetypes
+                    .get(archetype_name)
+                    .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
+
+                if let Some(archetype_field_name) = archetype_field_name {
+                    // Verify archetype field.
+                    // We may want to have a flag to allow some of this?
+                    let archetype_field_reflection = archetype_reflection
                     .get_field(archetype_field_name)
                     .ok_or_else(|| {
                         anyhow::anyhow!(
@@ -147,12 +151,15 @@ impl Verifier {
                         )
                     })?;
 
-                let expected_component_name = &archetype_field_reflection.component_name;
-                if component_name != expected_component_name {
-                    return Err(anyhow::anyhow!(
+                    let expected_component_name = &archetype_field_reflection.component_name;
+                    if component_name != expected_component_name {
+                        return Err(anyhow::anyhow!(
                         "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
                     ));
+                    }
                 }
+            } else {
+                re_log::debug_once!("Ignoring non-Rerun archetype {archetype_name:?}");
             }
         }
 
