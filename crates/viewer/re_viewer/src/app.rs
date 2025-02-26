@@ -23,6 +23,7 @@ use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
+    callback::Callbacks,
     AppState,
 };
 // ----------------------------------------------------------------------------
@@ -87,8 +88,14 @@ pub struct StartupOptions {
     ///
     /// This field isn't used directly, but is propagated to all recording configs
     /// when they are created.
+    // TODO(jan, andreas): make this non-wasm
     #[cfg(target_arch = "wasm32")]
     pub timeline_options: Option<crate::web::TimelineOptions>,
+
+    /// Interaction between JS and the viewer.
+    // TODO(jan, andreas): make this non-wasm, and merge with above.
+    #[cfg(target_arch = "wasm32")]
+    pub callbacks: Option<crate::web::Callbacks>,
 
     /// Fullscreen is handled by JS on web.
     ///
@@ -236,7 +243,13 @@ pub struct App {
     ///
     /// This field isn't used directly, but is propagated to all recording configs
     /// when they are created.
+    // TODO(andreas/jan): Meld into `callbacks` below.
     pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
+
+    /// Interaction between JS and the viewer.
+    ///
+    /// This allows to signal the viewer to trigger on certain events.
+    pub callbacks: Option<Callbacks>,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -412,6 +425,22 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let timeline_callbacks = None;
 
+        #[cfg(target_arch = "wasm32")]
+        let callbacks = {
+            use crate::web_tools::string_from_js_value;
+            use std::rc::Rc;
+            use wasm_bindgen::JsValue;
+
+            startup_options.callbacks.clone().map(|opts| Callbacks {
+                on_selection_change: Rc::new(move |item_collection_json| {
+                    // Express the collection as a flat list of item + context tuples.
+                }),
+            })
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let callbacks = None;
+
         Self {
             main_thread_token,
             build_info,
@@ -463,6 +492,7 @@ impl App {
             reflection,
 
             timeline_callbacks,
+            callbacks,
             async_runtime: tokio_runtime,
         }
     }
@@ -1352,6 +1382,7 @@ impl App {
                             },
                             is_history_enabled,
                             self.timeline_callbacks.as_ref(),
+                            self.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
                     }

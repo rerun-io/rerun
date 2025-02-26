@@ -576,11 +576,19 @@ pub struct AppOptions {
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
     timeline: Option<TimelineOptions>,
+    callbacks: Option<Callbacks>,
     fullscreen: Option<FullscreenOptions>,
     enable_history: Option<bool>,
 
     notebook: Option<bool>,
     persist: Option<bool>,
+}
+
+// Keep in sync with the `Callbacks` interface in `rerun_js/web-viewer/index.ts`
+#[derive(Clone, Deserialize)]
+pub struct Callbacks {
+    /// Fired when an item in the UI is selected.
+    pub on_selection_change: Callback,
 }
 
 // Keep in sync with the `TimelineOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -648,6 +656,7 @@ fn create_app(
         hide_welcome_screen,
         panel_state_overrides,
         timeline,
+        callbacks,
         fullscreen,
         enable_history,
 
@@ -678,6 +687,7 @@ fn create_app(
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
         timeline_options: timeline.clone(),
+        callbacks: callbacks.clone(),
         fullscreen_options: fullscreen.clone(),
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
