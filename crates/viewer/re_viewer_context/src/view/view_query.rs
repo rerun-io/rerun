@@ -49,7 +49,6 @@ pub struct PropertyOverrides {
     /// for properties that apply recursively.
     ///
     /// Recursive overrides are currently only used for visibility.
-    // TODO(#8557): Plus some confusion around time ranges.
     pub recursive_override_path: EntityPath,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
