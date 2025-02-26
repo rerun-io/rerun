@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Nova Bridge"
 tags = ["3D", "Robot"]
-thumbnail = "https://static.rerun.io/nova-bridge/xyz123/480w.png"
+thumbnail = "https://github.com/user-attachments/assets/526a3cff-3d27-4963-8d7b-e7cd98a758f9"
 thumbnail_dimensions = [480, 480]
 -->
 
