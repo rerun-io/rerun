@@ -81,9 +81,17 @@ pub fn collection_ui(
     };
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
-        if ui.button("Close").clicked() {
-            let _ = ctx.command_sender.send(Command::DeselectCollection);
-        }
+        ui.horizontal(|ui| {
+            if ui.button("Close").clicked() {
+                let _ = ctx.command_sender.send(Command::DeselectCollection);
+            }
+
+            if ui.button("Refresh").clicked() {
+                let _ = ctx
+                    .command_sender
+                    .send(Command::RefreshCollection(origin.clone()));
+            }
+        });
 
         egui_table::Table::new()
             .id_salt(table_id_salt)

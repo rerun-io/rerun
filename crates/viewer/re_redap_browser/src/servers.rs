@@ -21,12 +21,22 @@ impl Server {
         let mut collections = Collections::default();
 
         //TODO(ab): For now, we just auto-download the default collection
-        collections.add(runtime, egui_ctx, origin.clone());
+        collections.add_or_refresh(runtime, egui_ctx, origin.clone());
 
         Self {
             origin,
             collections,
         }
+    }
+
+    //TODO(ab): this should take a collection id in the future
+    fn refresh_default_collection(
+        &mut self,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+    ) {
+        self.collections
+            .add_or_refresh(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
@@ -131,6 +141,7 @@ pub enum Command {
     DeselectCollection,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
+    RefreshCollection(re_uri::Origin),
 }
 
 impl RedapServers {
@@ -182,6 +193,12 @@ impl RedapServers {
 
             Command::RemoveServer(origin) => {
                 self.servers.remove(&origin);
+            }
+
+            Command::RefreshCollection(origin) => {
+                self.servers.entry(origin).and_modify(|server| {
+                    server.refresh_default_collection(runtime, egui_ctx);
+                });
             }
         }
     }
