@@ -34,7 +34,7 @@ pub struct Collections {
 }
 
 impl Collections {
-    pub fn add_or_refresh(
+    pub fn fetch(
         &mut self,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,

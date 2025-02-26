@@ -21,7 +21,7 @@ impl Server {
         let mut collections = Collections::default();
 
         //TODO(ab): For now, we just auto-download the default collection
-        collections.add_or_refresh(runtime, egui_ctx, origin.clone());
+        collections.fetch(runtime, egui_ctx, origin.clone());
 
         Self {
             origin,
@@ -36,7 +36,7 @@ impl Server {
         egui_ctx: &egui::Context,
     ) {
         self.collections
-            .add_or_refresh(runtime, egui_ctx, self.origin.clone());
+            .fetch(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
