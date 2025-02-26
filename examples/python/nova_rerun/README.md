@@ -26,8 +26,8 @@ This example demonstrates how to use Rerun to visualize and analyze Nova’s cap
 To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and apply for a instance and access token at [wandelbots.com](https://www.wandelbots.com/).
 
 ```bash
+uv run download-models # Download the required models
 uv run main.py
-poetry run download-models # Download the required models
 ```
 
 The example demonstrates how to use Wandelbots Nova with Rerun for visualizing planned robot trajectories.
@@ -84,10 +84,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-```python
-uv run main.py
 ```
 
 ### Features
