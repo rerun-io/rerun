@@ -596,6 +596,7 @@ impl App {
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
                 self.state.display_mode = DisplayMode::RedapBrowser;
+                self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -625,7 +626,8 @@ impl App {
                 match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                        self.state.redap_servers.add_server(endpoint.origin);
+                        self.command_sender
+                            .send_system(SystemCommand::AddRedapServer { endpoint });
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -925,6 +927,11 @@ impl App {
             }
             UICommand::ToggleBlueprintPanel => {
                 app_blueprint.toggle_blueprint_panel(&self.command_sender);
+            }
+            UICommand::ExpandBlueprintPanel => {
+                if !app_blueprint.blueprint_panel_state().is_expanded() {
+                    app_blueprint.toggle_blueprint_panel(&self.command_sender);
+                }
             }
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
@@ -1868,7 +1875,8 @@ impl App {
     }
 
     pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
-        self.state.redap_servers.add_server(endpoint.origin);
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer { endpoint });
     }
 }
 
