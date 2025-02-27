@@ -23,7 +23,7 @@ This example demonstrates how to use Rerun to visualize and analyze NOVA capabil
 
 ### Run the code
 
-To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and access to our NOVA platform.
+To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and access to the Wandelbots NOVA platform.
 
 Apply at: [wandelbots.com/contact](https://www.wandelbots.com/contact).
 
