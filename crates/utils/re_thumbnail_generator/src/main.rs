@@ -118,6 +118,14 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
         ctx.save_blueprint_component(&property_path, &visible_time_range_list);
 
+        let radius_override_entity_path = view_id.as_entity_path().join(&EntityPath::from(
+            "ViewContents/individual_overrides/vehicle_local_position/pos",
+        ));
+        ctx.save_blueprint_component(
+            &radius_override_entity_path,
+            &[re_types::components::Radius::new_ui_points(10.0)],
+        );
+
         view_id
     })
 }
