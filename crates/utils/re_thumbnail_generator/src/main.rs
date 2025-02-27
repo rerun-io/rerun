@@ -47,46 +47,38 @@ fn main() {
     //CAUTION: that must be AFTER the timeline is set
     let view_id = setup_blueprint(&mut context);
 
-    let mut harness = context
-        .setup_kittest_for_rendering()
-        .with_step_dt(0.1)
-        .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
+    let mut harness = context.setup_kittest_for_rendering().build(|ctx| {
+        re_ui::apply_style_and_install_loaders(ctx);
 
-            egui::CentralPanel::default().show(ctx, |ui| {
-                context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(ViewType::identifier());
+        egui::CentralPanel::default().show(ctx, |ui| {
+            context.run(ctx, |ctx| {
+                let view_class = ctx
+                    .view_class_registry()
+                    .get_class_or_log_error(ViewType::identifier());
 
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
+                let view_blueprint = ViewBlueprint::try_from_db(
+                    view_id,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                )
+                .expect("we just created that view");
 
-                    let mut view_states = context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
+                let mut view_states = context.view_states.lock();
+                let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
+                let (view_query, system_execution_output) =
+                    re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
 
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                context.handle_system_commands();
+                view_class
+                    .ui(ctx, ui, view_state, &view_query, system_execution_output)
+                    .expect("failed to run graph view ui");
             });
+
+            context.handle_system_commands();
         });
+    });
 
-    for i in 1..5 {
-        harness.run_ok();
-        thread::sleep(Duration::from_secs(1))
-    }
-
-    dbg!(harness.node());
+    // Center the view by simulating double clicks
     harness.get_by_role(Role::Unknown).simulate_click();
     harness.step();
     harness.get_by_role(Role::Unknown).simulate_click();
