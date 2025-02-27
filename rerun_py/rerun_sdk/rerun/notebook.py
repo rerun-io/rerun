@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
     try:
-        from rerun_notebook import ViewerCallbacks
+        from rerun_notebook import ViewerCallbacks as ViewerCallbacks
     except ImportError:
         pass
 
