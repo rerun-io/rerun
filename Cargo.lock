@@ -6037,6 +6037,7 @@ dependencies = [
  "re_ui",
  "re_video",
  "re_viewer_context",
+ "rexif",
  "unindent",
 ]
 
@@ -7642,6 +7643,12 @@ dependencies = [
  "tiny-skia",
  "usvg",
 ]
+
+[[package]]
+name = "rexif"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be932047c168919c8d5af065b16fa7d4bd24835ffa256bf0cf1ff463f91c15df"
 
 [[package]]
 name = "rfd"
