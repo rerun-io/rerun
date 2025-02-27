@@ -178,13 +178,12 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(
+        if let Some(rx) = url_to_receiver(
             app.egui_ctx.clone(),
             follow_if_http,
             url.to_owned(),
             app.command_sender.clone(),
-        );
-        if let Some(rx) = rx.ok_or_log_error() {
+        ) {
             app.add_receiver(rx);
         }
     }
@@ -710,9 +709,7 @@ fn create_app(
                 follow_if_http,
                 url,
                 app.command_sender.clone(),
-            )
-            .ok_or_log_error()
-            {
+            ) {
                 app.command_sender
                     .send_system(SystemCommand::AddReceiver(receiver));
             }
