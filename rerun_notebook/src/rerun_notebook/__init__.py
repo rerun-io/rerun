@@ -56,6 +56,12 @@ class ViewerCallbacks(ABC):
     def on_selection_change(self, selection: list[SelectionItem]):
         pass
 
+    def on_timeline_change(self, timeline: str, time: float):
+        pass
+
+    def on_time_update(self, time: float):
+        pass
+
 
 @dataclass
 class EntityPathSelection:
@@ -138,17 +144,23 @@ class Viewer(anywidget.AnyWidget):
         if panel_states:
             self.update_panel_states(panel_states)
 
-        self._print_buffer = []
-
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
             elif not isinstance(content, str) and "event" in content:
                 if content["event"] == "selectionchange":
                     selection = [_selection_item_from_json(item) for item in content["payload"]]
-                    self._print_buffer.append(["selection", selection])
                     for callback in self._callbacks:
                         callback.on_selection_change(selection)
+                elif content["event"] == "timelinechange":
+                    timeline = content["payload"]["timeline"]
+                    time = content["payload"]["time"]
+                    for callback in self._callbacks:
+                        callback.on_timeline_change(timeline, time)
+                elif content["event"] == "timeupdate":
+                    time = content["payload"]
+                    for callback in self._callbacks:
+                        callback.on_time_update(time)
 
         self.on_msg(handle_msg)
 

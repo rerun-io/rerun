@@ -56,6 +56,18 @@ class ViewerWidget {
         payload: items,
       });
     });
+    this.viewer.on("timelinechange", (timeline, time) => {
+      model.send({
+        event: "timelinechange",
+        payload: { timeline, time },
+      });
+    });
+    this.viewer.on("timeupdate", (time) => {
+      model.send({
+        event: "timeupdate",
+        payload: time,
+      });
+    });
 
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
