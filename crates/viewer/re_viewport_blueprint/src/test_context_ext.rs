@@ -27,6 +27,8 @@ impl TestContextExt for TestContext {
     /// on the current content of the recording store.
     ///
     /// Important pre-requisite:
+    /// - The current timeline must already be set to the timeline of interest, because some
+    ///   updates are timeline-dependant (in particular those related to visible time rane).
     /// - The view classes used by view must be already registered (see
     ///   [`TestContext::register_view_class`]).
     /// - The data store must be already populated for the views to have any content (see, e.g.,
