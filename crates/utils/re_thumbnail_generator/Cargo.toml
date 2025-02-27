@@ -1,0 +1,26 @@
+[package]
+name = "re_thumbnail_generator"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+re_entity_db.workspace = true
+re_log_encoding.workspace = true
+re_log_types.workspace = true
+re_smart_channel.workspace = true
+re_view_spatial.workspace = true
+re_viewer_context = { workspace = true, features = ["testing"]}
+re_viewport_blueprint = { workspace = true, features = ["testing"]}
+re_data_source.workspace = true
+re_ui.workspace = true
+egui.workspace = true
+re_viewport.workspace = true
+
+[lints]
+workspace = true

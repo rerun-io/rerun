@@ -6643,6 +6643,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_thumbnail_generator"
+version = "0.23.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "re_data_source",
+ "re_entity_db",
+ "re_log_encoding",
+ "re_log_types",
+ "re_smart_channel",
+ "re_ui",
+ "re_view_spatial",
+ "re_viewer_context",
+ "re_viewport",
+ "re_viewport_blueprint",
+]
+
+[[package]]
 name = "re_time_panel"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
