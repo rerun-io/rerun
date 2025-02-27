@@ -12,7 +12,7 @@ https://vimeo.com/1060763904?autoplay=1&loop=1&autopause=0&background=1&muted=1&
 
 ## Background
 
-[Wandelbots Nova](https://www.wandelbots.com/) is a robot-agnostic platform for programming and controlling industrial six-axis robots across different manufacturers through a unified API. It combines modern development tools (Python, JavaScript APIs) with an AI-driven approach to robot control and motion planning, enabling developers to build applications like gluing, grinding, welding, and palletizing without worrying about underlying hardware differences.
+[Wandelbots Nova](https://www.wandelbots.com/) is an agnostic robot operating system that enables developers to virtually plan their industrial six-axis robot fleet, as well as to program, control and operate your robots on the shopfloor - all independent on the robot brand and through a unified API. It combines modern development tools (Python, JavaScript APIs) with an AI-driven approach to robot control and motion planning, enabling developers to build applications like gluing, grinding, welding, and palletizing without worrying about underlying hardware differences. The holistic software offers a variety of tools to create unique automation solutions along the whole automation process.
 
 This example demonstrates how to use Rerun to visualize and analyze Nova’s capabilities through:
 
@@ -23,7 +23,9 @@ This example demonstrates how to use Rerun to visualize and analyze Nova’s cap
 
 ### Run the code
 
-To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and apply for a instance and access token at [wandelbots.com](https://www.wandelbots.com/).
+To use the bridge you need to install the [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) package and access to our Nova platform.
+
+Apply at: [wandelbots.com/contact](https://www.wandelbots.com/contact).
 
 ```bash
 uv run download-models # Download the required models
