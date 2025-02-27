@@ -8,6 +8,7 @@ import rerun_bindings as bindings
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
+from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
 
