@@ -342,7 +342,7 @@ impl TestContext {
             blueprint_cfg: &Default::default(),
             selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            focused_item: &*focused_item,
+            focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
