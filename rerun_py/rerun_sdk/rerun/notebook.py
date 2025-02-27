@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
+    try:
+        from rerun_notebook import ViewerCallbacks
+    except ImportError:
+        pass
+
 from rerun import bindings
 
 from .recording_stream import RecordingStream, get_data_recording
@@ -309,6 +314,9 @@ class Viewer:
             time = None
 
         self._viewer.set_time_ctrl(timeline, time, play)
+
+    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        self._viewer.register_callbacks(callbacks)
 
 
 def notebook_show(
