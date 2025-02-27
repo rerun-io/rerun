@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import time
+from abc import ABC, abstractmethod
 from typing import Any, Literal, Mapping
 
 import anywidget
@@ -50,6 +51,11 @@ else:
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
+class ViewerCallbacks(ABC):
+    def on_selection_change(self, selection):
+        pass
+
+
 class Viewer(anywidget.AnyWidget):
     _esm = ESM_MOD
     _css = CSS_PATH
@@ -76,6 +82,8 @@ class Viewer(anywidget.AnyWidget):
     ).tag(sync=True)
     _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
+    _callbacks: list[ViewerCallbacks] = []
+
     def __init__(
         self,
         *,
@@ -92,8 +100,6 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._data_queue = []
 
-        self._asdf = False
-
         if panel_states:
             self.update_panel_states(panel_states)
 
@@ -101,8 +107,10 @@ class Viewer(anywidget.AnyWidget):
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
             else:
-                self._asdf = True
-                print("==EVENT==", content, buffers)
+                if isinstance(content, str) and content == "selectionchange":
+                    for callback in self._callbacks:
+                        # TODO(jan): pass in the actual data
+                        callback.on_selection_change("data")
 
         self.on_msg(handle_msg)
 
@@ -152,3 +160,7 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
 
     def set_active_recording(self, recording_id: str) -> None:
         self._recording_id = recording_id
+
+    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        # TODO(jan): maybe allow unregister by making this a map instead
+        self._callbacks.append(callbacks)
