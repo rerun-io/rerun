@@ -130,7 +130,9 @@ pub fn render_image(
     let space_from_pixel = space_from_points * points_from_pixels;
 
     let resolution_in_pixel = viewport_resolution_in_pixels(viewport, pixels_per_point);
-    anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return Ok(()); // Nothing to do here
+    }
 
     let camera_position_space = space_from_ui.transform_pos(viewport.min);
 
