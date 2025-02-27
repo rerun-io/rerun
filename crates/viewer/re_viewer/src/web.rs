@@ -184,7 +184,7 @@ impl WebHandle {
             url.to_owned(),
             app.command_sender.clone(),
         );
-        if let Some(rx) = rx.ok_or_log_error() {
+        if let Some(rx) = rx.ok_or_log_error().flatten() {
             app.add_receiver(rx);
         }
     }
@@ -712,6 +712,7 @@ fn create_app(
                 app.command_sender.clone(),
             )
             .ok_or_log_error()
+            .flatten()
             {
                 app.command_sender
                     .send_system(SystemCommand::AddReceiver(receiver));

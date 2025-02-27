@@ -595,6 +595,7 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
+                self.state.display_mode = DisplayMode::RedapBrowser;
             }
 
             SystemCommand::LoadDataSource(data_source) => {

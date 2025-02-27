@@ -175,7 +175,8 @@ fn handle_popstate(
             url.clone(),
             command_sender.clone(),
         )
-        .ok_or_log_error() else {
+        .ok_or_log_error()
+        .flatten() else {
             continue;
         };
 
