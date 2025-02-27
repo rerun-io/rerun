@@ -1,3 +1,4 @@
+use egui::accesskit::Role;
 use re_data_source::{DataSource, StreamSource};
 use re_entity_db::StoreBundle;
 use re_log_encoding::VersionPolicy;
@@ -5,6 +6,7 @@ use re_log_types::external::re_types_core::Archetype;
 use re_log_types::{FileSource, LogMsg, StoreKind, TimeReal, Timeline};
 use re_smart_channel::{SmartMessage, SmartMessagePayload};
 use re_view_spatial::{SpatialView2D, SpatialView3D};
+use re_viewer_context::external::egui_kittest::kittest::Queryable;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass, ViewId};
 use re_viewport::external::re_types;
@@ -49,41 +51,50 @@ fn main() {
     //     .write()
     //     .set_time(TimeReal::MAX);
 
-    let mut harness = context.setup_kittest_for_rendering().build(|ctx| {
-        re_ui::apply_style_and_install_loaders(ctx);
+    let mut harness = context
+        .setup_kittest_for_rendering()
+        .with_step_dt(0.1)
+        .build(|ctx| {
+            re_ui::apply_style_and_install_loaders(ctx);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            context.run(ctx, |ctx| {
-                let view_class = ctx
-                    .view_class_registry()
-                    .get_class_or_log_error(ViewType::identifier());
+            egui::CentralPanel::default().show(ctx, |ui| {
+                context.run(ctx, |ctx| {
+                    let view_class = ctx
+                        .view_class_registry()
+                        .get_class_or_log_error(ViewType::identifier());
 
-                let view_blueprint = ViewBlueprint::try_from_db(
-                    view_id,
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                )
-                .expect("we just created that view");
+                    let view_blueprint = ViewBlueprint::try_from_db(
+                        view_id,
+                        ctx.store_context.blueprint,
+                        ctx.blueprint_query,
+                    )
+                    .expect("we just created that view");
 
-                let mut view_states = context.view_states.lock();
-                let view_state = view_states.get_mut_or_create(view_id, view_class);
+                    let mut view_states = context.view_states.lock();
+                    let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-                let (view_query, system_execution_output) =
-                    re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
+                    let (view_query, system_execution_output) =
+                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
 
-                view_class
-                    .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                    .expect("failed to run graph view ui");
+                    view_class
+                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
+                        .expect("failed to run graph view ui");
+                });
+
+                context.handle_system_commands();
             });
-
-            context.handle_system_commands();
         });
-    });
 
     for i in 1..5 {
         harness.run_ok();
         thread::sleep(Duration::from_secs(1))
     }
+
+    dbg!(harness.node());
+    harness.get_by_role(Role::Unknown).simulate_click();
+    harness.step();
+    harness.get_by_role(Role::Unknown).simulate_click();
+    harness.step();
 
     let image = harness.render().expect("Failed to render");
 
