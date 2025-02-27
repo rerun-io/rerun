@@ -13,7 +13,7 @@ import pyarrow as pa
 rrd_path = Path("episode_1.rrd")
 img_path = Path("thumb.png")
 
-subprocess.run("cargo run -p re_viewer --bin thumbnail_generator --features re_viewer_context/testing --features re_viewport_blueprint/testing {} {}".format(rrd_path, img_path), shell=True)
+subprocess.run("cargo run -p re_thumbnail_generator {} {}".format(rrd_path, img_path), shell=True)
 
 img = rr.EncodedImage(path=img_path)
 
