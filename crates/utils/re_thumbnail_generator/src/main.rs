@@ -3,7 +3,7 @@ use re_data_source::{DataSource, StreamSource};
 use re_entity_db::StoreBundle;
 use re_log_encoding::VersionPolicy;
 use re_log_types::external::re_types_core::Archetype;
-use re_log_types::{FileSource, LogMsg, StoreKind, TimeReal, Timeline};
+use re_log_types::{EntityPath, FileSource, LogMsg, StoreKind, TimeReal, Timeline};
 use re_smart_channel::{SmartMessage, SmartMessagePayload};
 use re_view_spatial::{SpatialView2D, SpatialView3D};
 use re_viewer_context::external::egui_kittest::kittest::Queryable;
@@ -38,18 +38,14 @@ fn main() {
         .find(|db| db.store_id().kind == StoreKind::Recording)
         .expect("No recording found");
 
-    let view_id = setup_blueprint(&mut context);
+    context
+        .recording_config
+        .time_ctrl
+        .write()
+        .set_timeline(Timeline::new_temporal("timestamp"));
 
-    // context
-    //     .recording_config
-    //     .time_ctrl
-    //     .write()
-    //     .set_timeline(Timeline::new_temporal("frame_index"));
-    // context
-    //     .recording_config
-    //     .time_ctrl
-    //     .write()
-    //     .set_time(TimeReal::MAX);
+    //CAUTION: that must be AFTER the timeline is set
+    let view_id = setup_blueprint(&mut context);
 
     let mut harness = context
         .setup_kittest_for_rendering()
@@ -104,19 +100,15 @@ fn main() {
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint = ViewBlueprint::new(
             ViewType::identifier(),
-            RecommendedView::new_single_entity("vehicle_local_pos/pos".into()),
+            RecommendedView::new_single_entity("vehicle_local_position/pos".into()),
         );
 
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-        view_id
-    });
-
-    test_context.run_once_in_egui_central_panel(|ctx, _| {
         let visible_time_range_list = vec![re_types::blueprint::components::VisibleTimeRange(
             re_types::datatypes::VisibleTimeRange {
                 timeline: "timestamp".into(),
@@ -133,7 +125,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         );
 
         ctx.save_blueprint_component(&property_path, &visible_time_range_list);
-    });
 
-    view_id
+        view_id
+    })
 }
