@@ -480,7 +480,9 @@ impl ViewClass for TimeSeriesView {
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
                 all_plot_series
                     .iter()
-                    .map(|series| series.instance_path.entity_path.clone()),
+                    .map(|series| series.instance_path.entity_path.clone())
+                    // `short_names_with_disambiguation` expects no duplicate entities
+                    .collect::<nohash_hasher::IntSet<_>>(),
             );
 
             if state.is_dragging_time_cursor {

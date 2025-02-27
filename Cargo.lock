@@ -7107,6 +7107,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "itertools 0.13.0",
+ "nohash-hasher",
  "rayon",
  "re_chunk_store",
  "re_format",
