@@ -436,19 +436,13 @@ impl App {
             use wasm_bindgen::JsValue;
 
             startup_options.callbacks.clone().map(|opts| Callbacks {
-                on_selection_change: Rc::new(move |item_collection| {
+                on_selection_change: Rc::new(move |selection| {
                     // Express the collection as a flat list of item + context tuples.
-                    let array = js_sys::Array::new_with_length(item_collection.len() as u32);
-                    for (i, (item, context)) in item_collection.iter().enumerate() {
-                        #[derive(serde::Serialize)]
-                        struct ItemCollectionEntry<'a> {
-                            item: &'a re_viewer_context::Item,
-                            context: &'a Option<re_viewer_context::ItemContext>,
-                        }
-                        let Some(value) =
-                            serde_wasm_bindgen::to_value(&ItemCollectionEntry { item, context })
-                                .map_err(|v| v.into())
-                                .ok_or_log_js_error()
+                    let array = js_sys::Array::new_with_length(selection.len() as u32);
+                    for (i, item) in selection.into_iter().enumerate() {
+                        let Some(value) = serde_wasm_bindgen::to_value(&item)
+                            .map_err(|v| v.into())
+                            .ok_or_log_js_error()
                         else {
                             continue;
                         };

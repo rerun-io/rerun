@@ -112,18 +112,7 @@ export interface AppOptions extends WebViewerOptions {
   enable_history?: boolean;
 }
 
-interface Item {}
-
-interface ItemContext {}
-
-interface ItemCollectionEntry {
-  item: Item;
-  context?: ItemContext;
-}
-
-interface Callbacks {
-  on_selection_change: (items: Array<ItemCollectionEntry>) => {};
-}
+type CallbackItem = { type: "entity_path"; entity_path: string };
 
 interface TimelineOptions {
   on_timelinechange: (timeline: string, time: number) => void;
@@ -146,7 +135,7 @@ interface WebViewerEvents {
   play: void;
   pause: void;
 
-  selectionchange: [ItemCollectionEntry[]];
+  selectionchange: [CallbackItem[]];
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -236,7 +225,7 @@ export class WebViewer {
     };
 
     const callbacks = {
-      on_selection_change: (items: ItemCollectionEntry[]) => {
+      on_selection_change: (items: CallbackItem[]) => {
         this.#dispatch_event("selectionchange", items);
       },
     };

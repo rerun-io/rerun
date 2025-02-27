@@ -5,7 +5,8 @@ import logging
 import os
 import pathlib
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
+from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
 import anywidget
@@ -52,8 +53,38 @@ else:
 
 
 class ViewerCallbacks(ABC):
-    def on_selection_change(self, selection):
+    def on_selection_change(self, selection: list[SelectionItem]):
         pass
+
+
+@dataclass
+class EntityPathSelection:
+    @property
+    def kind(self) -> Literal["entity_path"]:
+        return "entity_path"
+
+    entity_path: str
+
+
+# @dataclass
+# class ViewSelection:
+#     @property
+#     def kind(self) -> Literal["view"]:
+#         return "view"
+
+#     view_id: str
+
+
+SelectionItem = EntityPathSelection  # | ViewSelection
+
+
+def _selection_item_from_json(json: Any) -> SelectionItem:
+    if json["type"] == "entity_path":
+        return EntityPathSelection(entity_path=json["entity_path"])
+    else:
+        raise NotImplementedError(f"selection item kind {json[type]} is not handled")
+    # elif json["type"] == "view":
+    #     return ViewSelection
 
 
 class Viewer(anywidget.AnyWidget):
@@ -100,17 +131,24 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._data_queue = []
 
+        from ipywidgets import widgets
+
+        self._output = widgets.Output()
+
         if panel_states:
             self.update_panel_states(panel_states)
+
+        self._print_buffer = []
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
-            else:
-                if isinstance(content, str) and content == "selectionchange":
+            elif not isinstance(content, str) and "event" in content:
+                if content["event"] == "selectionchange":
+                    selection = [_selection_item_from_json(item) for item in content["payload"]]
+                    self._print_buffer.append(["selection", selection])
                     for callback in self._callbacks:
-                        # TODO(jan): pass in the actual data
-                        callback.on_selection_change("data")
+                        callback.on_selection_change(selection)
 
         self.on_msg(handle_msg)
 
