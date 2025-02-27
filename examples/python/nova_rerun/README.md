@@ -8,7 +8,7 @@ thumbnail_dimensions = [480, 480]
 
 A visualization extension for [wandelbots-nova](https://github.com/wandelbotsgmbh/wandelbots-nova) that enables real-time 3D visualization of robot trajectories using [rerun.io](https://rerun.io).
 
-https://github.com/user-attachments/assets/4b18a6b6-b946-45af-9ade-614ca9d321a6
+https://vimeo.com/1060763904?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:7627
 
 ## Background
 
@@ -134,7 +134,7 @@ await bridge.log_actions(actions)
 await bridge.log_trajectory(trajectory_plan_combined, tcp, motion_group)
 ```
 
-https://github.com/user-attachments/assets/6372e614-80c1-4804-bac7-b9b8b29da533
+https://vimeo.com/1060763933?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:7627
 
 #### Real-time robot state streaming
 
