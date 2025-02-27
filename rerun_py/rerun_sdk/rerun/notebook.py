@@ -8,14 +8,15 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
-    try:
-        from rerun_notebook import (
-            EntityPathSelection as EntityPathSelection,
-            SelectionItem as SelectionItem,
-            ViewerCallbacks as ViewerCallbacks,
-        )
-    except ImportError:
-        pass
+
+try:
+    from rerun_notebook import (
+        EntityPathSelection as EntityPathSelection,
+        SelectionItem as SelectionItem,
+        ViewerCallbacks as ViewerCallbacks,
+    )
+except ImportError:
+    pass
 
 from rerun import bindings
 
