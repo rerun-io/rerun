@@ -88,8 +88,9 @@ impl Verifier {
         for (component_descriptor, column) in chunk_batch.component_columns() {
             if let Err(err) = self.verify_component_column(component_descriptor, column) {
                 self.errors.insert(format!(
-                    "{source}: Failed to deserialize column {}: {err}",
-                    component_descriptor.component_name
+                    "{source}: Failed to deserialize column {}: {}",
+                    component_descriptor.component_name,
+                    re_error::format(err)
                 ));
             }
         }
