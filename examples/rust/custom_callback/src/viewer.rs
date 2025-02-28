@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut native_options = re_viewer::native::eframe_options(None);
     native_options.viewport = native_options
         .viewport
-        .with_app_id("rerun_custom_callback_example");
+        .with_app_id("rerun_example_custom_callback");
 
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My Custom Callback".to_owned());

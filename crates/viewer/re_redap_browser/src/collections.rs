@@ -3,7 +3,7 @@ use tokio_stream::StreamExt as _;
 
 use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::remote_store::v0::QueryCatalogRequest;
+use re_protos::remote_store::v0::{CatalogEntry, QueryCatalogRequest};
 use re_sorbet::{BatchType, SorbetBatch};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -34,21 +34,20 @@ pub struct Collections {
 }
 
 impl Collections {
-    pub fn add(
+    pub fn fetch(
         &mut self,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) {
-        //TODO(ab): should we return error if the requested collection already exists? Or maybe just
-        // query it again.
-        self.collections.entry(origin.clone()).or_insert_with(|| {
+        self.collections.insert(
+            origin.clone(),
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
                 stream_catalog_async(origin),
-            )
-        });
+            ),
+        );
     }
 
     /// Convert all completed queries into proper collections.
@@ -108,6 +107,9 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
 
     let catalog_query_response = client
         .query_catalog(QueryCatalogRequest {
+            entry: Some(CatalogEntry {
+                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+            }),
             column_projection: None, // fetch all columns
             filter: None,            // fetch all rows
         })

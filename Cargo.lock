@@ -5316,9 +5316,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.13.3"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b0487d90e047de87f984913713b85c601c05609aad5b0df4b4573fbf69aa13f"
+checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -5347,9 +5347,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.13.3"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9552f850d5f0964a4e4d0bf306459ac29323ddfbae05e35a7c0d35cb0803cc5"
+checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
  "itertools 0.13.0",
@@ -5360,9 +5360,9 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.13.3"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4759aa0d3a6232fb8dbdb97b61de2c20047c68aca932c7ed76da9d788508d670"
+checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
 dependencies = [
  "prost",
 ]
@@ -6354,6 +6354,7 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "prost",
+ "prost-types",
  "re_build_info",
  "re_byte_size",
  "re_log_types",
@@ -6549,6 +6550,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "percent-encoding",
  "rand",
  "re_build_info",
  "re_build_tools",
@@ -6564,6 +6566,7 @@ dependencies = [
  "re_memory",
  "re_smart_channel",
  "re_types_core",
+ "re_uri",
  "re_web_viewer_server",
  "similar-asserts",
  "thiserror 1.0.65",
@@ -7104,6 +7107,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "itertools 0.13.0",
+ "nohash-hasher",
  "rayon",
  "re_chunk_store",
  "re_format",
@@ -7535,6 +7539,7 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_types",
+ "re_uri",
  "re_video",
  "re_viewer",
  "re_viewer_context",
@@ -7615,6 +7620,7 @@ dependencies = [
  "re_protos",
  "re_sdk",
  "re_sorbet",
+ "re_uri",
  "re_video",
  "re_web_viewer_server",
  "tokio",

@@ -567,7 +567,7 @@ fn rr_recording_stream_connect_impl(
     let stream = recording_stream(stream)?;
 
     let tcp_addr = tcp_addr.as_str("tcp_addr")?;
-    let tcp_addr = tcp_addr.parse().map_err(|err| {
+    let tcp_addr: std::net::SocketAddr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
             &format!("Failed to parse tcp address {tcp_addr:?}: {err}"),
@@ -579,8 +579,10 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
-    #[expect(deprecated)] // Will be removed once `connect` is removed.
-    stream.connect_opts(tcp_addr, flush_timeout);
+
+    stream
+        .connect_grpc_opts(format!("rerun+http://{tcp_addr}/proxy"), flush_timeout)
+        .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
 
     Ok(())
 }

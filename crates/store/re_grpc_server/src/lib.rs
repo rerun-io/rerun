@@ -68,7 +68,7 @@ async fn serve_impl(
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
 
-    re_log::info!("Listening for gRPC connections on http://{addr}");
+    re_log::info!("Listening for gRPC connections on {addr}");
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
@@ -239,10 +239,10 @@ pub fn spawn_with_recv(
 ) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("http://{addr}"),
+            url: format!("rerun+http://{addr}/proxy"),
         },
         re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("http://{addr}"),
+            url: format!("rerun+http://{addr}/proxy"),
         },
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);

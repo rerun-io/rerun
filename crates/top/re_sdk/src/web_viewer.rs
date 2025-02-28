@@ -1,4 +1,5 @@
 use re_log_types::LogMsg;
+use re_uri::ProxyEndpoint;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 // ----------------------------------------------------------------------------
@@ -48,7 +49,7 @@ impl WebViewerSink {
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
             re_smart_channel::SmartMessageSource::MessageProxy {
-                url: format!("http://{grpc_server_addr}"),
+                url: format!("rerun+http://{grpc_server_addr}/proxy"),
             },
             re_smart_channel::SmartChannelSource::Sdk,
         );
@@ -73,9 +74,9 @@ impl WebViewerSink {
 
         let viewer_url =
             if grpc_server_addr.ip().is_unspecified() || grpc_server_addr.ip().is_loopback() {
-                format!("{http_web_viewer_url}?url=temp://localhost:{grpc_port}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://localhost:{grpc_port}/proxy")
             } else {
-                format!("{http_web_viewer_url}?url=temp://{grpc_server_addr}")
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}/proxy")
             };
 
         re_log::info!("Hosting a web-viewer at {viewer_url}");
@@ -137,12 +138,11 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    // TODO(#8761): URL prefix
     /// The url from which a spawned webviewer should source
     ///
-    /// This url could be a hosted RRD file or a `temp://` url to a running gRPC server.
+    /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<String>,
+    pub source_url: Option<ProxyEndpoint>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -210,6 +210,12 @@ impl WebViewerConfig {
         };
 
         if let Some(source_url) = source_url {
+            // TODO(jan): remove after we change to `rerun-http`
+            let source_url = source_url.to_string();
+            let source_url = percent_encoding::utf8_percent_encode(
+                &source_url,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
             append_argument(format!("url={source_url}"));
         }
         if let Some(force_graphics) = force_wgpu_backend {

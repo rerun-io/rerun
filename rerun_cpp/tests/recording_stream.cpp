@@ -399,7 +399,7 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
 }
 
 SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
-    const char* url = "http://127.0.0.1:9876";
+    const char* url = "rerun+http://127.0.0.1:9876/proxy";
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
         test_logging_to_grpc_connection(url, stream);

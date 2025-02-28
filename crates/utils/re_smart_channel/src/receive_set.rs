@@ -52,17 +52,9 @@ impl<T: Send> ReceiveSet<T> {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `uri`
-            SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-            SmartChannelSource::MessageProxy { url } => {
-                fn strip_prefix(s: &str) -> &str {
-                    // TODO(#8761): URL prefix
-                    s.strip_prefix("http")
-                        .or_else(|| s.strip_prefix("temp"))
-                        .unwrap_or(s)
-                }
-
-                strip_prefix(url) != strip_prefix(uri)
-            }
+            SmartChannelSource::RrdHttpStream { url, .. }
+            | SmartChannelSource::RedapGrpcStream { url }
+            | SmartChannelSource::MessageProxy { url } => url != uri,
             _ => true,
         });
     }
@@ -82,14 +74,6 @@ impl<T: Send> ReceiveSet<T> {
     /// This gets updated after calling one of the `recv` methods.
     pub fn is_connected(&self) -> bool {
         !self.is_empty()
-    }
-
-    /// Does this viewer accept inbound gRPC connections?
-    pub fn accepts_grpc_connections(&self) -> bool {
-        re_tracing::profile_function!();
-        self.sources()
-            .iter()
-            .any(|s| matches!(**s, SmartChannelSource::MessageProxy { .. }))
     }
 
     /// No connected receivers?

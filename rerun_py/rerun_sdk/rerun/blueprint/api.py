@@ -691,7 +691,7 @@ class Blueprint:
 
         """
         _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
-        self.connect_grpc(application_id=application_id, url=f"http://127.0.0.1:{port}")
+        self.connect_grpc(application_id=application_id, url=f"rerun+http://127.0.0.1:{port}/proxy")
 
 
 BlueprintLike = Union[Blueprint, View, Container]

@@ -21,6 +21,7 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
+    CopyEntityPathToClipboard,
 };
 use sub_menu::SubMenu;
 
@@ -152,6 +153,7 @@ fn action_list(
                 Box::new(ShowAction),
                 Box::new(HideAction),
                 Box::new(RemoveAction),
+                Box::new(CopyEntityPathToClipboard),
             ],
             vec![
                 Box::new(actions::ScreenshotAction::CopyScreenshot),
