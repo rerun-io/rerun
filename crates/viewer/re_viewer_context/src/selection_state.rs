@@ -1,5 +1,6 @@
 use ahash::HashMap;
 use indexmap::IndexMap;
+use itertools::Itertools as _;
 use parking_lot::Mutex;
 
 use crate::{global_context::resolve_mono_instance_path_item, ViewerContext};
@@ -228,6 +229,36 @@ impl ItemCollection {
     /// Extend the selection with more items.
     pub fn extend(&mut self, other: impl IntoIterator<Item = (Item, Option<ItemContext>)>) {
         self.0.extend(other);
+    }
+
+    /// Tries to copy a description of the selection to the clipboard.
+    ///
+    /// Only certain elements are copyable right now.
+    pub fn copy_to_clipboard(&self, egui_ctx: &egui::Context) {
+        if self.is_empty() {
+            return;
+        }
+
+        let clipboard_text = self
+            .iter()
+            .filter_map(|(item, _)| match item {
+                Item::AppId(_)
+                | Item::DataSource(_)
+                | Item::StoreId(_)
+                | Item::Container(_)
+                | Item::View(_) => None,
+                Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => {
+                    Some(instance_path.entity_path.clone())
+                }
+                Item::ComponentPath(component_path) => Some(component_path.entity_path.clone()),
+            })
+            .map(|entity_path| entity_path.to_string())
+            .join("\n");
+
+        if !clipboard_text.is_empty() {
+            re_log::info!("Copied entity paths to clipboard:\n{}", &clipboard_text);
+            egui_ctx.copy_text(clipboard_text);
+        }
     }
 }
 
