@@ -105,7 +105,7 @@ jobs:
         # We don't yet guarantee backwards compatibility, but we at least check it
         # so that we _know_ if/when we break it.
         # See tests/assets/rrd/README.md for more
-        run: pixi run rerun check-backwards-compatibility
+        run: pixi run check-backwards-compatibility
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
