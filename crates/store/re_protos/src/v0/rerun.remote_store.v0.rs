@@ -746,7 +746,11 @@ impl ::prost::Name for ScanParametersOrderClause {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaRequest {
+    /// which catalog entry do we want to fetch the schema from
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// recording id from which we're want to fetch the schema
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
 }
 impl ::prost::Name for GetRecordingSchemaRequest {
@@ -864,6 +868,10 @@ impl ::prost::Name for UnregisterAllRecordingsResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogRequest {
+    /// which catalog entry do we want to update
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// Properties that we want to update
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<DataframePart>,
 }
@@ -891,8 +899,11 @@ impl ::prost::Name for UpdateCatalogResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
-    /// unique identifier of the recording
+    /// which catalog entry do we want to query
     #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
+    /// unique identifier of the recording
+    #[prost(message, optional, tag = "2")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
     /// query to execute
     #[prost(message, optional, tag = "3")]
@@ -910,12 +921,15 @@ impl ::prost::Name for QueryRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogRequest {
+    /// which catalog entry do we want to query
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<CatalogEntry>,
     /// Column projection - define which columns should be returned.
     /// Providing it is optional, if not provided, all columns should be returned
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag = "2")]
     pub column_projection: ::core::option::Option<ColumnProjection>,
     /// Filter specific recordings that match the criteria (selection)
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "3")]
     pub filter: ::core::option::Option<CatalogFilter>,
 }
 impl ::prost::Name for QueryCatalogRequest {
