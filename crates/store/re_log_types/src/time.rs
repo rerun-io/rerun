@@ -1,7 +1,7 @@
 use anyhow::Result;
 use re_log::ResultExt;
 use std::ops::RangeInclusive;
-use time::{format_description::FormatItem, Date, OffsetDateTime, UtcOffset};
+use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

@@ -11,7 +11,7 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal, TimeType,
+    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
@@ -1391,6 +1391,11 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut T
             }
             time_ctrl.time_edit_string = None;
         }
+        response
+            .on_hover_text(format!("Timestamp: {}", time_int.as_i64()))
+            .context_menu(|ui| {
+                copy_time_properties_context_menu(ui, time_ctrl, None);
+            });
     }
 }
 
