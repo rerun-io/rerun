@@ -9,6 +9,7 @@ use re_log_types::LogMsg;
 
 // ---
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InputSource {
     Stdin,
     File(PathBuf),

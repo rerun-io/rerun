@@ -25,14 +25,19 @@ impl VerifyCommand {
         let version_policy = re_log_encoding::VersionPolicy::Warn;
         let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
-        let mut log_msg_count = 0;
+        let mut seen_files = std::collections::HashSet::new();
+
         for (source, res) in rx {
             verifier.verify_log_msg(&source.to_string(), res?);
-            log_msg_count += 1;
+            seen_files.insert(source);
         }
 
         if verifier.errors.is_empty() {
-            eprintln!("{log_msg_count} chunks verified successfully.");
+            if seen_files.len() == 1 {
+                eprintln!("1 file verified without error.");
+            } else {
+                eprintln!("{} files verified without error.", seen_files.len());
+            }
             Ok(())
         } else {
             for err in &verifier.errors {
