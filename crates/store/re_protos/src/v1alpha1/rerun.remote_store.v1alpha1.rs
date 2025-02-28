@@ -824,47 +824,62 @@ impl ::prost::Name for GetRecordingSchemaResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterRecordingRequest {
+pub struct RegisterRecordingsRequest {
     /// to which catalog entry do we want to register the recording
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<CatalogEntry>,
-    /// human readable description of the recording
-    #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    /// recording storage url (e.g. s3://bucket/file or file:///path/to/file)
-    #[prost(string, tag = "3")]
-    pub storage_url: ::prost::alloc::string::String,
-    /// type of recording
-    #[prost(enumeration = "RecordingType", tag = "4")]
-    pub typ: i32,
-    /// (optional) any additional metadata that should be associated with the recording
-    /// You can associate any arbtrirary number of columns with a specific recording
-    #[prost(message, optional, tag = "5")]
-    pub metadata: ::core::option::Option<DataframePart>,
+    #[prost(message, repeated, tag = "2")]
+    pub recordings: ::prost::alloc::vec::Vec<RegisterRecordingDescription>,
 }
-impl ::prost::Name for RegisterRecordingRequest {
-    const NAME: &'static str = "RegisterRecordingRequest";
+impl ::prost::Name for RegisterRecordingsRequest {
+    const NAME: &'static str = "RegisterRecordingsRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.RegisterRecordingRequest".into()
+        "rerun.remote_store.v1alpha1.RegisterRecordingsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.RegisterRecordingRequest".into()
+        "/rerun.remote_store.v1alpha1.RegisterRecordingsRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterRecordingResponse {
+pub struct RegisterRecordingDescription {
+    /// human readable description of the recording
+    #[prost(string, tag = "1")]
+    pub description: ::prost::alloc::string::String,
+    /// recording storage url (e.g. s3://bucket/file or file:///path/to/file)
+    #[prost(string, tag = "2")]
+    pub storage_url: ::prost::alloc::string::String,
+    /// type of recording
+    #[prost(enumeration = "RecordingType", tag = "3")]
+    pub typ: i32,
+    /// (optional) any additional metadata that should be associated with the recording
+    /// You can associate any arbtrirary number of columns with a specific recording
+    #[prost(message, optional, tag = "4")]
+    pub metadata: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for RegisterRecordingDescription {
+    const NAME: &'static str = "RegisterRecordingDescription";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.RegisterRecordingDescription".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.RegisterRecordingDescription".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRecordingsResponse {
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<DataframePart>,
 }
-impl ::prost::Name for RegisterRecordingResponse {
-    const NAME: &'static str = "RegisterRecordingResponse";
+impl ::prost::Name for RegisterRecordingsResponse {
+    const NAME: &'static str = "RegisterRecordingsResponse";
     const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.RegisterRecordingResponse".into()
+        "rerun.remote_store.v1alpha1.RegisterRecordingsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.RegisterRecordingResponse".into()
+        "/rerun.remote_store.v1alpha1.RegisterRecordingsResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1608,26 +1623,26 @@ pub mod storage_node_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// TODO(zehiko) support registering more than one recording at a time
-        pub async fn register_recording(
+        pub async fn register_recordings(
             &mut self,
-            request: impl tonic::IntoRequest<super::RegisterRecordingRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecording",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecordings",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v1alpha1.StorageNodeService",
-                "RegisterRecording",
+                "RegisterRecordings",
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// TODO(cmc): This needs to be batched. Everything needs to be batched, always.
         pub async fn unregister_recording(
             &mut self,
             request: impl tonic::IntoRequest<super::UnregisterRecordingRequest>,
@@ -1791,11 +1806,11 @@ pub mod storage_node_service_server {
             &self,
             request: tonic::Request<super::GetRecordingSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetRecordingSchemaResponse>, tonic::Status>;
-        /// TODO(zehiko) support registering more than one recording at a time
-        async fn register_recording(
+        async fn register_recordings(
             &self,
-            request: tonic::Request<super::RegisterRecordingRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>;
+            request: tonic::Request<super::RegisterRecordingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>;
+        /// TODO(cmc): This needs to be batched. Everything needs to be batched, always.
         async fn unregister_recording(
             &self,
             request: tonic::Request<super::UnregisterRecordingRequest>,
@@ -2524,22 +2539,23 @@ pub mod storage_node_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecordings" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterRecordingSvc<T: StorageNodeService>(pub Arc<T>);
+                    struct RegisterRecordingsSvc<T: StorageNodeService>(pub Arc<T>);
                     impl<T: StorageNodeService>
-                        tonic::server::UnaryService<super::RegisterRecordingRequest>
-                        for RegisterRecordingSvc<T>
+                        tonic::server::UnaryService<super::RegisterRecordingsRequest>
+                        for RegisterRecordingsSvc<T>
                     {
-                        type Response = super::RegisterRecordingResponse;
+                        type Response = super::RegisterRecordingsResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::RegisterRecordingRequest>,
+                            request: tonic::Request<super::RegisterRecordingsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNodeService>::register_recording(&inner, request).await
+                                <T as StorageNodeService>::register_recordings(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -2550,7 +2566,7 @@ pub mod storage_node_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = RegisterRecordingSvc(inner);
+                        let method = RegisterRecordingsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
