@@ -779,10 +779,26 @@ impl ::prost::Name for GetRecordingSchemaResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterRecordingRequest {
+pub struct RegisterRecordingsRequest {
     /// to which catalog entry do we want to register the recording
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<CatalogEntry>,
+    /// TODO
+    #[prost(message, repeated, tag = "2")]
+    pub recordings: ::prost::alloc::vec::Vec<RegisterRecordingDescription>,
+}
+impl ::prost::Name for RegisterRecordingsRequest {
+    const NAME: &'static str = "RegisterRecordingsRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.RegisterRecordingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.RegisterRecordingsRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRecordingDescription {
     /// human readable description of the recording
     #[prost(string, tag = "2")]
     pub description: ::prost::alloc::string::String,
@@ -797,14 +813,14 @@ pub struct RegisterRecordingRequest {
     #[prost(message, optional, tag = "5")]
     pub metadata: ::core::option::Option<DataframePart>,
 }
-impl ::prost::Name for RegisterRecordingRequest {
-    const NAME: &'static str = "RegisterRecordingRequest";
+impl ::prost::Name for RegisterRecordingDescription {
+    const NAME: &'static str = "RegisterRecordingDescription";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.RegisterRecordingRequest".into()
+        "rerun.remote_store.v0.RegisterRecordingDescription".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.RegisterRecordingRequest".into()
+        "/rerun.remote_store.v0.RegisterRecordingDescription".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1534,25 +1550,25 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// TODO(zehiko) support registering more than one recording at a time
-        pub async fn register_recording(
+        pub async fn register_recordings(
             &mut self,
-            request: impl tonic::IntoRequest<super::RegisterRecordingRequest>,
+            request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
         ) -> std::result::Result<tonic::Response<super::DataframePart>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/RegisterRecording",
+                "/rerun.remote_store.v0.StorageNode/RegisterRecordings",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
-                "RegisterRecording",
+                "RegisterRecordings",
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// TODO(cmc): This needs to be batched. Everything needs to be batched, always.
         pub async fn unregister_recording(
             &mut self,
             request: impl tonic::IntoRequest<super::UnregisterRecordingRequest>,
@@ -1722,11 +1738,11 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::GetRecordingSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetRecordingSchemaResponse>, tonic::Status>;
-        /// TODO(zehiko) support registering more than one recording at a time
-        async fn register_recording(
+        async fn register_recordings(
             &self,
-            request: tonic::Request<super::RegisterRecordingRequest>,
+            request: tonic::Request<super::RegisterRecordingsRequest>,
         ) -> std::result::Result<tonic::Response<super::DataframePart>, tonic::Status>;
+        /// TODO(cmc): This needs to be batched. Everything needs to be batched, always.
         async fn unregister_recording(
             &self,
             request: tonic::Request<super::UnregisterRecordingRequest>,
@@ -2443,22 +2459,22 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/RegisterRecording" => {
+                "/rerun.remote_store.v0.StorageNode/RegisterRecordings" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterRecordingSvc<T: StorageNode>(pub Arc<T>);
+                    struct RegisterRecordingsSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
-                        tonic::server::UnaryService<super::RegisterRecordingRequest>
-                        for RegisterRecordingSvc<T>
+                        tonic::server::UnaryService<super::RegisterRecordingsRequest>
+                        for RegisterRecordingsSvc<T>
                     {
                         type Response = super::DataframePart;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::RegisterRecordingRequest>,
+                            request: tonic::Request<super::RegisterRecordingsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::register_recording(&inner, request).await
+                                <T as StorageNode>::register_recordings(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2469,7 +2485,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = RegisterRecordingSvc(inner);
+                        let method = RegisterRecordingsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
