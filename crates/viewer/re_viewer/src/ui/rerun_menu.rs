@@ -1,12 +1,11 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::containers::menu::MenuConfig;
-use egui::{NumExt as _, PopupCloseBehavior};
-
+use crate::App;
+#[cfg(debug_assertions)]
+use egui::containers::menu;
+use egui::NumExt as _;
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
-
-use crate::App;
 
 const SPACING: f32 = 12.0;
 
@@ -99,8 +98,11 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        egui::containers::menu::SubMenuButton::new("Debug")
-            .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+        menu::SubMenuButton::new("Debug")
+            .config(
+                menu::MenuConfig::new()
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+            )
             .ui(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
