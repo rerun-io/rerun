@@ -1357,51 +1357,39 @@ fn help_button(ui: &mut egui::Ui) {
 fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut TimeControl) {
     if let Some(time_int) = time_ctrl.time_int() {
         let time_type = time_ctrl.time_type();
-        match time_type {
-            re_log_types::TimeType::Time => {
-                let mut time_str = time_ctrl
-                    .time_edit_string
-                    .clone()
-                    .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
 
-                let response = ui.text_edit_singleline(&mut time_str);
-                if response.changed() {
-                    time_ctrl.time_edit_string = Some(time_str.clone());
+        let mut time_str = time_ctrl
+            .time_edit_string
+            .clone()
+            .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
 
-                    if let Some(time_int) =
-                        time_type.parse_time(&time_str, ctx.app_options().time_zone)
-                    {
-                        time_ctrl.set_time(time_int);
-                    }
-                }
-                if response.lost_focus() {
-                    if let Some(time_int) =
-                        time_type.parse_time(&time_str, ctx.app_options().time_zone)
-                    {
-                        time_ctrl.set_time(time_int);
-                    }
-                    time_ctrl.time_edit_string = None;
-                }
+        // TODO: we used to have dragging the time control in some cases, reimplement it here.
+        //   // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
+        //   if time_int.as_f64() as i64 == time_int.as_i64() {
+        //     let mut int = time_int.as_i64();
+        //     let drag_value = egui::DragValue::new(&mut int)
+        //         .custom_formatter(|x, _range| {
+        //             TimeType::format_sequence(TimeInt::new_temporal(x as i64))
+        //         })
+        //         .custom_parser(|s| TimeType::parse_sequence(s).map(TimeInt::as_f64));
+        //     let response = ui.add(drag_value);
+        //     if response.changed() {
+        //         time_ctrl.set_time(TimeInt::new_temporal(int));
+        //     }
+        // } else {
+        //     // Avoid the precision problems by just displaying the number without the ability to change it (here).
+        //     ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
+        // }
+
+        let response = ui.text_edit_singleline(&mut time_str);
+        if response.changed() {
+            time_ctrl.time_edit_string = Some(time_str.clone());
+        }
+        if response.lost_focus() {
+            if let Some(time_int) = time_type.parse_time(&time_str, ctx.app_options().time_zone) {
+                time_ctrl.set_time(time_int);
             }
-            re_log_types::TimeType::Sequence => {
-                // TODO: implement
-                // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
-                if time_int.as_f64() as i64 == time_int.as_i64() {
-                    let mut int = time_int.as_i64();
-                    let drag_value = egui::DragValue::new(&mut int)
-                        .custom_formatter(|x, _range| {
-                            TimeType::format_sequence(TimeInt::new_temporal(x as i64))
-                        })
-                        .custom_parser(|s| TimeType::parse_sequence(s).map(TimeInt::as_f64));
-                    let response = ui.add(drag_value);
-                    if response.changed() {
-                        time_ctrl.set_time(TimeInt::new_temporal(int));
-                    }
-                } else {
-                    // Avoid the precision problems by just displaying the number without the ability to change it (here).
-                    ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
-                }
-            }
+            time_ctrl.time_edit_string = None;
         }
     }
 }
