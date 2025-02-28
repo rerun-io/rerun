@@ -1,6 +1,7 @@
 //! Abstraction for buttons to be used in list items.
 
 use crate::{Icon, UiExt as _};
+use egui::containers::menu::SubMenuButton;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -51,12 +52,9 @@ impl super::ItemButton for ItemMenuButton<'_> {
         ui.add_enabled_ui(self.enabled, |ui| {
             ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
 
-            let mut response = egui::menu::menu_custom_button(
-                ui,
-                ui.small_icon_button_widget(self.icon),
-                self.add_contents,
-            )
-            .response;
+            let (mut response, _) =
+                SubMenuButton::from_button(ui.small_icon_button_widget(self.icon))
+                    .ui(ui, self.add_contents);
             if let Some(hover_text) = self.hover_text {
                 response = response.on_hover_text(hover_text);
             }

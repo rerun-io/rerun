@@ -2,6 +2,7 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
+use egui::containers::menu;
 use egui::Modifiers;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
@@ -412,7 +413,7 @@ impl ExampleApp {
                     }
                 }
 
-                egui::menu::bar(ui, |ui| {
+                menu::Bar::new().ui(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 

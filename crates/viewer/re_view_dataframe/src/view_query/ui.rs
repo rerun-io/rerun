@@ -1,5 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
-
+use egui::containers::menu::SubMenuButton;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
@@ -8,6 +7,7 @@ use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{TimeDragValue, ViewId, ViewSystemExecutionError, ViewerContext};
+use std::collections::{BTreeSet, HashSet};
 
 use crate::view_query::Query;
 
@@ -434,7 +434,7 @@ impl Query {
 
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
             |ui, _| {
-                egui::menu::menu_button(ui, &visible_count_label, |ui| {
+                SubMenuButton::new(&visible_count_label).ui(ui, |ui| {
                     egui::ScrollArea::vertical()
                         .auto_shrink([false, false])
                         .show(ui, modal_ui)

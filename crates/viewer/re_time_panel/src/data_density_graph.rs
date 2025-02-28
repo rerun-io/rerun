@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use egui::emath::Rangef;
-use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape, Tooltip};
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
@@ -421,14 +421,16 @@ pub fn data_density_graph_ui(
             if ui.ctx().dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
                 //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                egui::show_tooltip_at_pointer(
-                    ui.ctx(),
-                    ui.layer_id(),
+                Tooltip::new(
                     egui::Id::new("data_tooltip"),
-                    |ui| {
-                        show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                    },
-                );
+                    ui.ctx().clone(),
+                    egui::PopupAnchor::Pointer,
+                    ui.layer_id(),
+                )
+                .gap(12.0)
+                .show(|ui| {
+                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+                });
             }
         }
     }
