@@ -10,7 +10,9 @@ use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::UiExt as _;
-use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
+use re_view_dataframe::display_record_batch::{
+    DisplayColumn, DisplayRecordBatch, DisplayRecordBatchError,
+};
 use re_viewer_context::ViewerContext;
 
 use super::servers::Command;
@@ -57,8 +59,6 @@ pub fn collection_ui(
         .chain(std::iter::once(component_uri_descriptor()))
         .collect::<Vec<_>>();
 
-    //TODO(ab): better column order?
-
     let display_record_batches: Result<Vec<_>, _> = collection
         .collection
         .iter()
@@ -74,10 +74,21 @@ pub fn collection_ui(
         }
     };
 
+    let mut column_indices: Vec<_> = (0..columns.len()).collect();
+    column_indices.sort_by_key(|column_idx| {
+        if let ColumnDescriptorRef::Component(desc) = columns[*column_idx] {
+            if desc.archetype_field_name.as_deref() == Some("thumbnail") {
+                return false;
+            }
+        }
+        true
+    });
+
     let mut table_delegate = CollectionTableDelegate {
         ctx: viewer_ctx,
         display_record_batches: &display_record_batches,
-        selected_columns: &columns,
+        columns: &columns,
+        column_indices,
     };
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
@@ -90,6 +101,18 @@ pub fn collection_ui(
                 let _ = ctx
                     .command_sender
                     .send(Command::RefreshCollection(origin.clone()));
+            }
+
+            if ui.button("Print").clicked() {
+                for sorbet_batch in &collection.collection {
+                    println!("{}", sorbet_batch);
+                }
+            }
+
+            if ui.button("PrintDesc").clicked() {
+                for desc in sorbet_schema.columns.descriptors() {
+                    println!("{:#?}", desc);
+                }
             }
         });
 
@@ -108,6 +131,7 @@ pub fn collection_ui(
             .headers(vec![egui_table::HeaderRow::new(
                 re_ui::DesignTokens::table_header_height(),
             )])
+            .num_sticky_cols(1)
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
     });
@@ -200,14 +224,26 @@ fn catalog_sorbet_batch_to_display_record_batch(
 struct CollectionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
-    selected_columns: &'a Vec<ColumnDescriptorRef<'a>>,
+    columns: &'a Vec<ColumnDescriptorRef<'a>>,
+    column_indices: Vec<usize>,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         ui.set_truncate_style();
 
-        let name = self.selected_columns[cell.group_index].name();
+        let column = &self.columns[self.column_indices[cell.group_index]];
+
+        let name = if let ColumnDescriptorRef::Component(desc) = column {
+            if let Some(field_name) = desc.archetype_field_name {
+                field_name.to_string()
+            } else {
+                desc.component_name.short_name().to_owned()
+            }
+        } else {
+            column.name()
+        };
+
         let name = name
             .strip_prefix("rerun_")
             .unwrap_or(name.as_str())
@@ -225,21 +261,9 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
         for display_record_batch in self.display_record_batches {
             let row_count = display_record_batch.num_rows();
             if row_index < row_count {
-                // this is the one
-                let column = &display_record_batch.columns()[cell.col_nr];
-
-                // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-                // avoiding doing so needs significant refactoring work.
-                column.data_ui(
-                    self.ctx,
-                    ui,
-                    &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                        TimelineName::new("unknown"),
-                    ),
-                    row_index,
-                    None,
-                );
-
+                // this is the one!
+                let column = &display_record_batch.columns()[self.column_indices[cell.col_nr]];
+                self.cell_ui_impl(ui, column, row_index);
                 break;
             } else {
                 row_index -= row_count;
@@ -249,5 +273,23 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
 
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height() * 4.0
+    }
+}
+
+impl CollectionTableDelegate<'_> {
+    fn cell_ui_impl(&self, ui: &mut egui::Ui, column: &DisplayColumn, row_index: usize) {
+        egui::Frame::new().inner_margin(4).show(ui, |ui| {
+            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+            // avoiding doing so needs significant refactoring work.
+            column.data_ui(
+                self.ctx,
+                ui,
+                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                    TimelineName::new("unknown"),
+                ),
+                row_index,
+                None,
+            );
+        });
     }
 }

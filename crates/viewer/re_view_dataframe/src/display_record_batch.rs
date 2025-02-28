@@ -15,7 +15,6 @@ use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
-use re_data_ui::EntityDataUi as _;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
