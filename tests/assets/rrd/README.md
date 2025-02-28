@@ -5,7 +5,7 @@ We don't yet guarantee backwards compatibility, but we at least check it so that
 ### Verifying
 To verify that they all still load, run:
 
-> pixi run rerun rrd verify tests/assets/rrd/*.rrd
+> pixi run check-backwards-compatibility
 
 
 ### Updating
