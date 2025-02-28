@@ -101,6 +101,13 @@ impl Time {
         r.ok_or_log_error().unwrap_or_default()
     }
 
+    /// Best effort parsing of a string into a [`Time`].
+    pub fn try_parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
+        // TODO:
+        // TODO: tests
+        None
+    }
+
     /// Human-readable formatting
     pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();

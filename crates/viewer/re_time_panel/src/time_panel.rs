@@ -1359,10 +1359,32 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut T
         let time_type = time_ctrl.time_type();
         match time_type {
             re_log_types::TimeType::Time => {
-                // TODO(#7653): parse time stamps
-                ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
+                let mut time_str = time_ctrl
+                    .time_edit_string
+                    .clone()
+                    .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
+
+                let response = ui.text_edit_singleline(&mut time_str);
+                if response.changed() {
+                    time_ctrl.time_edit_string = Some(time_str.clone());
+
+                    if let Some(time_int) =
+                        time_type.parse_time(&time_str, ctx.app_options().time_zone)
+                    {
+                        time_ctrl.set_time(time_int);
+                    }
+                }
+                if response.lost_focus() {
+                    if let Some(time_int) =
+                        time_type.parse_time(&time_str, ctx.app_options().time_zone)
+                    {
+                        time_ctrl.set_time(time_int);
+                    }
+                    time_ctrl.time_edit_string = None;
+                }
             }
             re_log_types::TimeType::Sequence => {
+                // TODO: implement
                 // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
                 if time_int.as_f64() as i64 == time_int.as_i64() {
                     let mut int = time_int.as_i64();
