@@ -196,10 +196,16 @@ impl TimeType {
                             TimeInt::try_from(re_format::parse_i64(s)?).ok()
                         } else {
                             // Otherwise, try to make sense of the time string depending on the timezone setting.
-                            TimeInt::try_from(Time::try_parse(s, time_zone_for_timestamps)?).ok()
+                            TimeInt::try_from(Time::parse(s, time_zone_for_timestamps)?).ok()
                         }
                     }
-                    Self::Sequence => TimeInt::try_from(re_format::parse_i64(s)?).ok(),
+                    Self::Sequence => {
+                        if let Some(s) = s.strip_prefix('#') {
+                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        } else {
+                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        }
+                    }
                 }
             }
         }

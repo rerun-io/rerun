@@ -1,7 +1,7 @@
 use anyhow::Result;
 use re_log::ResultExt;
 use std::ops::RangeInclusive;
-use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
+use time::{format_description::FormatItem, Date, OffsetDateTime, UtcOffset};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -101,13 +101,6 @@ impl Time {
         r.ok_or_log_error().unwrap_or_default()
     }
 
-    /// Best effort parsing of a string into a [`Time`].
-    pub fn try_parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
-        // TODO:
-        // TODO: tests
-        None
-    }
-
     /// Human-readable formatting
     pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
@@ -151,6 +144,71 @@ impl Time {
                 .format(secs);
             format!("{secs}s")
         }
+    }
+
+    /// Best effort parsing of a string into a [`Time`] from a human readable string.
+    // TODO: TESTS!
+    pub fn parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
+        // Try parsing as a simple relative time with unit suffix (e.g. "1.234s", "1.234ms")
+        let suffixes = [("s", 1e9), ("ms", 1e6), ("us", 1e3), ("ns", 1.0)];
+        for (suffix, to_ns) in suffixes {
+            if let Some(s) = s.strip_suffix(suffix) {
+                if let Ok(value) = s.parse::<f64>() {
+                    return Some(Self::from_ns_since_epoch((value * to_ns).round() as i64));
+                }
+            }
+        }
+
+        // Try parsing as an absolute time
+        let parse_with_format = |format_str: &str| -> Option<Self> {
+            let format = time::format_description::parse(format_str).ok()?;
+            let datetime = match time_zone_for_timestamps {
+                TimeZone::Utc => {
+                    // Handle 'Z' suffix for UTC times
+                    let s = s.strip_suffix('Z').unwrap_or(s);
+                    time::PrimitiveDateTime::parse(s, &format)
+                        .ok()?
+                        .assume_utc()
+                }
+                TimeZone::Local => {
+                    if let Ok(local_offset) = UtcOffset::current_local_offset() {
+                        let datetime = time::PrimitiveDateTime::parse(s, &format).ok()?;
+                        datetime.assume_offset(local_offset)
+                    } else {
+                        return None;
+                    }
+                }
+                TimeZone::UnixEpoch => time::PrimitiveDateTime::parse(s, &format)
+                    .ok()?
+                    .assume_utc(),
+            };
+
+            Some(Self::from_ns_since_epoch(
+                datetime.unix_timestamp_nanos() as i64
+            ))
+        };
+
+        // Try different format patterns
+        let formats = [
+            // Full date and time with milliseconds
+            "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond]",
+            // Full date and time
+            "[year]-[month]-[day] [hour]:[minute]:[second]",
+            // Just time with milliseconds
+            "[hour]:[minute]:[second].[subsecond]",
+            // Just time
+            "[hour]:[minute]:[second]",
+            // Just date
+            "[year]-[month]-[day]",
+        ];
+
+        for format in formats {
+            if let Some(time) = parse_with_format(format) {
+                return Some(time);
+            }
+        }
+
+        None
     }
 
     /// Useful when showing dates/times on a timeline

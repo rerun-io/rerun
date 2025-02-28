@@ -1363,7 +1363,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut T
             .clone()
             .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
 
-        // TODO: we used to have dragging the time control in some cases, reimplement it here.
+        // TODO: we used to have dragging the time control in some cases, reimplement it?
         //   // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
         //   if time_int.as_f64() as i64 == time_int.as_i64() {
         //     let mut int = time_int.as_i64();
