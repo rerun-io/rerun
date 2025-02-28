@@ -421,7 +421,7 @@ def send_recording(recording: Recording, stream: RecordingStream | None = None) 
 
     bindings.send_recording(
         recording,
-        stream=stream.to_native() if recording is not None else None,
+        stream=stream.to_native() if stream is not None else None,
     )
 
 
