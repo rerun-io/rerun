@@ -30,7 +30,8 @@ pub struct Collection {
 #[derive(Default)]
 pub struct Collections {
     //TODO(ab): these should be indexed by collection id
-    collections: HashMap<re_uri::Origin, RequestedObject<Result<Collection, StreamError>>>,
+    collections:
+        HashMap<(re_uri::Origin, String), RequestedObject<Result<Collection, StreamError>>>,
 }
 
 impl Collections {
@@ -39,13 +40,14 @@ impl Collections {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        collection_name: String,
     ) {
         self.collections.insert(
-            origin.clone(),
+            (origin.clone(), collection_name.clone()),
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
-                stream_catalog_async(origin),
+                stream_catalog_async(origin, collection_name),
             ),
         );
     }
@@ -72,7 +74,7 @@ impl Collections {
             match collection.try_as_ref() {
                 None => {
                     ui.list_item_flat_noninteractive(
-                        list_item::LabelContent::new("Loading default collection…").italics(true),
+                        list_item::LabelContent::new("Loading collection…").italics(true),
                     );
                 }
 
@@ -100,7 +102,10 @@ impl Collections {
     }
 }
 
-async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, StreamError> {
+async fn stream_catalog_async(
+    origin: re_uri::Origin,
+    collection_name: String,
+) -> Result<Collection, StreamError> {
     let mut client = redap::client(origin.clone()).await?;
 
     re_log::debug!("Fetching collection…");
@@ -108,7 +113,7 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
     let catalog_query_response = client
         .query_catalog(QueryCatalogRequest {
             entry: Some(CatalogEntry {
-                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                name: collection_name.to_owned(), /* TODO(zehiko) 9116 */
             }),
             column_projection: None, // fetch all columns
             filter: None,            // fetch all rows
@@ -138,12 +143,15 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
         .await?;
 
     //TODO(ab): ideally this is provided by the server
-    let collection_id =
-        CollectionId(egui::Id::new(origin.clone()).with("__top_level_collection__"));
+    let collection_id = CollectionId(
+        egui::Id::new(origin.clone())
+            .with(&collection_name)
+            .with("__top_level_collection__"),
+    );
     let collection = Collection {
         collection_id,
         //TODO(ab): this should be provided by the server
-        name: "default".to_owned(),
+        name: collection_name.to_owned(),
         collection: sorbet_batches,
     };
 

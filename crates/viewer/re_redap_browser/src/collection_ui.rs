@@ -37,6 +37,13 @@ pub fn collection_ui(
 ) {
     let sorbet_schema = {
         let Some(sorbet_batch) = collection.collection.first() else {
+            if ui.button("Refresh").clicked() {
+                let _ = ctx.command_sender.send(Command::RefreshCollection(
+                    origin.clone(),
+                    collection.name.clone(),
+                ));
+            }
+
             ui.label(egui::RichText::new("This collection is empty").italics());
             return;
         };
@@ -98,9 +105,10 @@ pub fn collection_ui(
             }
 
             if ui.button("Refresh").clicked() {
-                let _ = ctx
-                    .command_sender
-                    .send(Command::RefreshCollection(origin.clone()));
+                let _ = ctx.command_sender.send(Command::RefreshCollection(
+                    origin.clone(),
+                    collection.name.clone(),
+                ));
             }
 
             if ui.button("Print").clicked() {

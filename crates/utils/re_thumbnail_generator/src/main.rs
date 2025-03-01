@@ -1,19 +1,15 @@
 use egui::accesskit::Role;
-use re_data_source::{DataSource, StreamSource};
 use re_entity_db::StoreBundle;
 use re_log_encoding::VersionPolicy;
 use re_log_types::external::re_types_core::Archetype;
-use re_log_types::{EntityPath, FileSource, LogMsg, StoreKind, TimeReal, Timeline};
-use re_smart_channel::{SmartMessage, SmartMessagePayload};
-use re_view_spatial::{SpatialView2D, SpatialView3D};
+use re_log_types::{EntityPath, StoreKind, Timeline};
+use re_view_spatial::SpatialView3D;
 use re_viewer_context::external::egui_kittest::kittest::Queryable;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass, ViewId};
 use re_viewport::external::re_types;
 use re_viewport_blueprint::test_context_ext::TestContextExt;
 use re_viewport_blueprint::ViewBlueprint;
-use std::thread;
-use std::time::Duration;
 
 type ViewType = SpatialView3D;
 
