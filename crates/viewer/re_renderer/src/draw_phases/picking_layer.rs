@@ -22,7 +22,7 @@ use crate::{
         GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc, TextureDesc,
     },
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext, ScopedRenderPass,
 };
 
 use parking_lot::Mutex;
@@ -307,32 +307,37 @@ impl PickingLayerProcessor {
 
     pub fn begin_render_pass<'a>(
         &'a self,
-        view_name: &DebugLabel,
-        encoder: &'a mut wgpu::CommandEncoder,
-    ) -> wgpu::RenderPass<'a> {
+        view_name: &str,
+        scope: &'a mut wgpu_profiler::Scope<'_, wgpu::CommandEncoder>,
+        device: &wgpu::Device,
+    ) -> ScopedRenderPass<'a> {
         re_tracing::profile_function!();
 
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.picking_target.default_view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store, // Store for readback!
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.picking_depth_target.default_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: wgpu::StoreOp::Store, // Store for readback!
+        let mut pass = scope.scoped_render_pass(
+            format!("{view_name} - picking_layer pass"),
+            device,
+            wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.picking_target.default_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store, // Store for readback!
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.picking_depth_target.default_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
+                        store: wgpu::StoreOp::Store, // Store for readback!
+                    }),
+                    stencil_ops: None,
                 }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            },
+        );
 
         pass.set_bind_group(0, &self.bind_group_0, &[]);
 

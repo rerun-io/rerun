@@ -27,6 +27,9 @@ pub enum RenderContextError {
         Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
     InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
+
+    #[error("Failed to create GPU profiler: {0}")]
+    GpuProfilerCreationError(#[from] wgpu_profiler::CreationError),
 }
 
 /// Controls MSAA (Multi-Sampling Anti-Aliasing)
@@ -99,6 +102,8 @@ pub struct RenderContext {
     device_caps: DeviceCaps,
     config: RenderConfig,
     output_format_color: wgpu::TextureFormat,
+
+    pub(crate) profiler: wgpu_profiler::GpuProfiler,
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
@@ -261,12 +266,19 @@ impl RenderContext {
             Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
         ));
 
+        let profiler = wgpu_profiler::GpuProfiler::new(wgpu_profiler::GpuProfilerSettings {
+            enable_debug_groups: true, // Enable debug groups always as they are invaluable for profiling traces with other tools.
+            enable_timer_queries: true, // TODO: Allow disabling?
+            max_num_pending_frames: 3,
+        })?;
+
         Ok(Self {
             device,
             queue,
             device_caps,
             config,
             output_format_color,
+            profiler,
             global_bindings,
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
@@ -348,11 +360,9 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             self.before_submit();
         }
 
-        // Request write used staging buffer back.
+        // After queue submit actions:
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
-        self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
-        // Map all read staging buffers.
-        self.gpu_readback_belt.get_mut().after_queue_submit();
+        self.after_submit();
 
         // Close previous' frame error scope.
         if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
@@ -431,6 +441,35 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Poll device *after* resource pool `begin_frame` since resource pools may each decide drop resources.
         // Wgpu internally may then internally decide to let go of these buffers.
         self.poll_device();
+    }
+
+    fn after_submit(&mut self) {
+        // Enqueue profiler resolves to queue.
+        // TODO(andreas): This also should be part of a single per-frame submit.
+        {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: crate::DebugLabel::from("profiler resolve").get(),
+                });
+            self.profiler.resolve_queries(&mut encoder);
+            self.queue.submit([encoder.finish()]);
+        }
+        // End previous profiler frame.
+        if let Err(e) = self.profiler.end_frame() {
+            re_log::error!("Failed to end GPU profiler frame: {e}");
+        }
+        // TODO: stuff.
+        {
+            let results = self
+                .profiler
+                .process_finished_frame(self.queue.get_timestamp_period());
+            dbg!(results);
+        }
+        // Request write used staging buffer back.
+        self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
+        // Map all read staging buffers.
+        self.gpu_readback_belt.get_mut().after_queue_submit();
     }
 
     /// Call this at the end of a frame but before submitting command buffers (e.g. from [`crate::view_builder::ViewBuilder`])

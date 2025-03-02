@@ -16,7 +16,7 @@ use crate::{
     allocator::GpuReadbackError,
     texture_info::Texture2DBufferInfo,
     wgpu_resources::{GpuTexture, TextureDesc},
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext, ScopedRenderPass,
 };
 
 /// Type used as user data on the gpu readback belt.
@@ -79,27 +79,28 @@ impl ScreenshotProcessor {
 
     pub fn begin_render_pass<'a>(
         &'a self,
-        view_name: &DebugLabel,
-        encoder: &'a mut wgpu::CommandEncoder,
-    ) -> wgpu::RenderPass<'a> {
-        re_tracing::profile_function!();
-
-        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{view_name} - screenshot")).get(),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.screenshot_texture.default_view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-
-        pass
+        view_name: &String,
+        encoder_scope: &'a mut wgpu_profiler::Scope<'_, wgpu::CommandEncoder>,
+        device: &wgpu::Device,
+    ) -> ScopedRenderPass<'a> {
+        encoder_scope.scoped_render_pass(
+            format!("{view_name} - screenshot"),
+            device,
+            wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.screenshot_texture.default_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            },
+        )
     }
 
     pub fn end_render_pass(

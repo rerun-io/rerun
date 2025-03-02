@@ -102,8 +102,14 @@ impl DeviceCapabilityTier {
 
     /// Required features for the given device tier.
     #[allow(clippy::unused_self)]
-    pub fn features(&self) -> wgpu::Features {
+    pub fn required_features(&self) -> wgpu::Features {
         wgpu::Features::empty()
+    }
+
+    /// Optional features for the given device tier.
+    #[allow(clippy::unused_self)]
+    pub fn optional_features(&self) -> wgpu::Features {
+        wgpu_profiler::GpuProfiler::ALL_WGPU_TIMER_FEATURES
     }
 
     /// Check whether the given downlevel caps are sufficient for this tier.
@@ -191,6 +197,9 @@ pub struct DeviceCaps {
     /// Prefer using `tier` and other properties of this struct for distinguishing between abilities.
     /// This is useful for making wgpu-core/webgpu api path decisions.
     pub backend_type: WgpuBackendType,
+
+    /// All features supported by the adapter, including many that aren't activated.
+    adapter_features: wgpu::Features,
 }
 
 impl DeviceCaps {
@@ -238,6 +247,7 @@ impl DeviceCaps {
             max_texture_dimension2d: limits.max_texture_dimension_2d,
             max_buffer_size: limits.max_buffer_size,
             backend_type,
+            adapter_features: adapter.features(),
         }
     }
 
@@ -316,9 +326,15 @@ impl DeviceCaps {
 
     /// Device descriptor compatible with the given device tier.
     pub fn device_descriptor(&self) -> wgpu::DeviceDescriptor<'static> {
+        let activated_optional_features = self
+            .tier
+            .optional_features()
+            .intersection(self.adapter_features);
+        let required_features = self.tier.required_features() | activated_optional_features;
+
         wgpu::DeviceDescriptor {
             label: Some("re_renderer device"),
-            required_features: self.tier.features(),
+            required_features,
             required_limits: self.limits(),
             memory_hints: Default::default(),
         }

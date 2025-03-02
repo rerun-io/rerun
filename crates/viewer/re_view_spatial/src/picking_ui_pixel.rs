@@ -153,8 +153,8 @@ pub struct TextureInteractionId<'a> {
 }
 
 impl TextureInteractionId<'_> {
-    pub fn debug_label(&self, topic: &str) -> re_renderer::DebugLabel {
-        format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
+    pub fn debug_label(&self, topic: &str) -> String {
+        format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx)
     }
 
     pub fn gpu_readback_id(&self) -> re_renderer::GpuReadbackIdentifier {

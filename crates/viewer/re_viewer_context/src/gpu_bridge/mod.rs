@@ -86,7 +86,7 @@ pub fn render_image(
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
-    debug_name: re_renderer::DebugLabel,
+    debug_name: String,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 

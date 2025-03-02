@@ -404,7 +404,7 @@ impl TensorView {
             image_rect,
             colormapped_texture,
             texture_options,
-            re_renderer::DebugLabel::from("tensor_slice"),
+            "tensor_slice".to_owned(),
         )?;
 
         Ok((response, painter, image_rect))

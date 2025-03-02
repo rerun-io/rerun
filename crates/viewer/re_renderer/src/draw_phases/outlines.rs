@@ -54,7 +54,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
         PoolError, RenderPipelineDesc, SamplerDesc,
     },
-    DebugLabel, RenderContext,
+    DebugLabel, RenderContext, ScopedRenderPass,
 };
 
 use smallvec::smallvec;
@@ -335,29 +335,34 @@ impl OutlineMaskProcessor {
 
     pub fn start_mask_render_pass<'a>(
         &'a self,
-        encoder: &'a mut wgpu::CommandEncoder,
-    ) -> wgpu::RenderPass<'a> {
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{} - mask pass", self.label)).get(),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.mask_texture.default_view,
-                resolve_target: None, // We're going to do a manual resolve.
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.mask_depth.default_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: wgpu::StoreOp::Discard,
+        encoder_scope: &'a mut wgpu_profiler::Scope<'_, wgpu::CommandEncoder>,
+        device: &wgpu::Device,
+    ) -> ScopedRenderPass<'a> {
+        encoder_scope.scoped_render_pass(
+            format!("{} - mask pass", self.label),
+            device,
+            wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.mask_texture.default_view,
+                    resolve_target: None, // We're going to do a manual resolve.
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.mask_depth.default_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
                 }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        })
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            },
+        )
     }
 
     pub fn compute_outlines(

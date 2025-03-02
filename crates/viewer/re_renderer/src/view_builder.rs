@@ -43,7 +43,7 @@ pub struct ViewBuilder {
 }
 
 struct ViewTargetSetup {
-    name: DebugLabel,
+    name: String,
 
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
@@ -191,7 +191,7 @@ impl Projection {
 /// Basic configuration for a target view.
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
-    pub name: DebugLabel,
+    pub name: String,
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
@@ -515,11 +515,12 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
+        let config_debug_label = DebugLabel::from(config.name.clone());
         let outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
                 outline_config,
-                &config.name,
+                &config_debug_label,
                 config.resolution_in_pixel,
             )
         });
@@ -627,48 +628,56 @@ impl ViewBuilder {
         let mut encoder = ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: setup.name.clone().get(),
+                label: Some(&setup.name),
             });
+
+        let mut encoder_scope = ctx
+            .profiler
+            .scope(setup.name.clone(), &mut encoder, &ctx.device);
 
         {
             re_tracing::profile_scope!("main target pass");
 
             let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
 
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &setup.main_target_msaa.default_view,
-                    resolve_target: needs_msaa_resolve
-                        .then_some(&setup.main_target_resolved.default_view),
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: clear_color.r() as f64,
-                            g: clear_color.g() as f64,
-                            b: clear_color.b() as f64,
-                            a: clear_color.a() as f64,
-                        }),
-                        store: if needs_msaa_resolve {
-                            // Don't care about the result, if it's going to be resolved to the resolve target.
-                            // This can have be much better perf, especially on tiler gpus.
-                            wgpu::StoreOp::Discard
-                        } else {
-                            // Otherwise, we do need the result for the next pass.
-                            wgpu::StoreOp::Store
+            let mut pass = encoder_scope.scoped_render_pass(
+                format!("{} - main pass", setup.name),
+                &ctx.device,
+                wgpu::RenderPassDescriptor {
+                    label: None,
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &setup.main_target_msaa.default_view,
+                        resolve_target: needs_msaa_resolve
+                            .then_some(&setup.main_target_resolved.default_view),
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: clear_color.r() as f64,
+                                g: clear_color.g() as f64,
+                                b: clear_color.b() as f64,
+                                a: clear_color.a() as f64,
+                            }),
+                            store: if needs_msaa_resolve {
+                                // Don't care about the result, if it's going to be resolved to the resolve target.
+                                // This can have be much better perf, especially on tiler gpus.
+                                wgpu::StoreOp::Discard
+                            } else {
+                                // Otherwise, we do need the result for the next pass.
+                                wgpu::StoreOp::Store
+                            },
                         },
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &setup.depth_buffer.default_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: Self::DEFAULT_DEPTH_CLEAR,
-                        store: wgpu::StoreOp::Discard,
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &setup.depth_buffer.default_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: Self::DEFAULT_DEPTH_CLEAR,
+                            store: wgpu::StoreOp::Discard,
+                        }),
+                        stencil_ops: None,
                     }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                },
+            );
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
@@ -683,7 +692,11 @@ impl ViewBuilder {
 
         if let Some(picking_processor) = &self.picking_processor {
             {
-                let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder);
+                let mut pass = picking_processor.begin_render_pass(
+                    &setup.name,
+                    &mut encoder_scope,
+                    &ctx.device,
+                );
                 // PickingProcessor has as custom frame uniform buffer.
                 //
                 // TODO(andreas): Formalize this somehow.
@@ -697,7 +710,8 @@ impl ViewBuilder {
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(&renderers, &pipelines, DrawPhase::PickingLayer, &mut pass);
             }
-            match picking_processor.end_render_pass(&mut encoder, &pipelines) {
+
+            match picking_processor.end_render_pass(encoder_scope.recorder, &pipelines) {
                 Err(PickingLayerError::ResourcePoolError(err)) => {
                     return Err(err);
                 }
@@ -712,16 +726,21 @@ impl ViewBuilder {
             re_tracing::profile_scope!("outlines");
             {
                 re_tracing::profile_scope!("outline mask pass");
-                let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
+                let mut pass =
+                    outline_mask_processor.start_mask_render_pass(&mut encoder_scope, &ctx.device);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
             }
-            outline_mask_processor.compute_outlines(&pipelines, &mut encoder)?;
+            outline_mask_processor.compute_outlines(&pipelines, encoder_scope.recorder)?;
         }
 
         if let Some(screenshot_processor) = &self.screenshot_processor {
             {
-                let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
+                let mut pass = screenshot_processor.begin_render_pass(
+                    &setup.name,
+                    &mut encoder_scope,
+                    &ctx.device,
+                );
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(
                     &renderers,
@@ -730,7 +749,7 @@ impl ViewBuilder {
                     &mut pass,
                 );
             }
-            match screenshot_processor.end_render_pass(&mut encoder) {
+            match screenshot_processor.end_render_pass(encoder_scope.recorder) {
                 Ok(()) => {}
                 Err(err) => {
                     re_log::warn_once!("Failed to schedule screenshot data readback: {err}");
@@ -738,6 +757,7 @@ impl ViewBuilder {
             }
         }
 
+        drop(encoder_scope);
         Ok(encoder.finish())
     }
 
@@ -775,7 +795,7 @@ impl ViewBuilder {
 
         self.screenshot_processor = Some(ScreenshotProcessor::new(
             ctx,
-            &self.setup.name,
+            &self.setup.name.clone().into(),
             self.setup.resolution_in_pixel.into(),
             identifier,
             user_data,
@@ -830,7 +850,7 @@ impl ViewBuilder {
 
         let picking_processor = PickingLayerProcessor::new(
             ctx,
-            &self.setup.name,
+            &self.setup.name.clone().into(),
             self.setup.resolution_in_pixel.into(),
             picking_rect,
             &self.setup.frame_uniform_buffer_content,
