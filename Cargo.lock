@@ -6678,6 +6678,8 @@ dependencies = [
 name = "re_tracing"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
+ "parking_lot",
  "puffin",
  "puffin_http",
  "re_log",
@@ -7202,6 +7204,7 @@ dependencies = [
  "web-sys",
  "web-time",
  "wgpu",
+ "wgpu-profiler",
 ]
 
 [[package]]
@@ -10085,6 +10088,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "499e1757dca381db7b9d5e7260e1b4f6f7a272cb7b9b0c6e23cbec2403bf85fe"
 dependencies = [
  "parking_lot",
+ "puffin",
  "thiserror 2.0.7",
  "wgpu",
 ]

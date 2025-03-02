@@ -120,6 +120,7 @@ serde-wasm-bindgen.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 web-time.workspace = true
+wgpu-profiler = { workspace = true, features = ["puffin"] }
 wgpu.workspace = true
 
 # web dependencies:

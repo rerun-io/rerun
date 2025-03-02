@@ -8,7 +8,7 @@ use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
-use re_renderer::{external::wgpu_profiler, WgpuResourcePoolStatistics};
+use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
@@ -916,7 +916,12 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
-                self.profiler.start();
+                self.profiler.start_cpu();
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::OpenGpuProfiler => {
+                self.profiler.start_gpu();
             }
 
             UICommand::ToggleMemoryPanel => {
@@ -1328,7 +1333,10 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    render_ctx.enable_profiler(self.app_options().show_metrics);
+                    render_ctx.enable_profiler(
+                        self.app_options().show_metrics
+                            || self.profiler.is_gpu_profiler_server_active(),
+                    );
 
                     if let Some(store_context) = store_context {
                         let entity_db = store_context.recording;
@@ -1881,9 +1889,9 @@ impl App {
     fn update_gpu_time_history(
         &mut self,
         current_time: f64,
-        render_ctx: &re_renderer::RenderContext,
+        profiler_results: &[Vec<wgpu_profiler::GpuTimerQueryResult>],
     ) {
-        for gpu_timings in render_ctx.latest_profiler_results() {
+        for gpu_timings in profiler_results {
             fn visit_all_gpu_query_results(
                 results: &[wgpu_profiler::GpuTimerQueryResult],
                 visitor: &mut impl FnMut(&wgpu_profiler::GpuTimerQueryResult),
@@ -2122,7 +2130,19 @@ impl eframe::App for App {
                 .get_mut::<re_renderer::RenderContext>()
                 .expect("Failed to get render context");
 
-            self.update_gpu_time_history(current_time, render_ctx);
+            let profiler_results = render_ctx.latest_profiler_results();
+            self.update_gpu_time_history(current_time, profiler_results);
+
+            if self.profiler.is_gpu_profiler_server_active() {
+                let mut puffin_profiler = self.profiler.puffin_gpu_profiler().lock();
+                for gpu_timings in profiler_results {
+                    puffin_profiler.new_frame();
+                    wgpu_profiler::puffin::output_frame_to_puffin(
+                        &mut puffin_profiler,
+                        gpu_timings,
+                    );
+                }
+            }
 
             // Query resource statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()

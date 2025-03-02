@@ -60,7 +60,7 @@ fn main() {
             }
 
             #[cfg(feature = "tracing")]
-            "--profile" => profiler.start(),
+            "--profile" => profiler.start_cpu(),
 
             _ => {
                 eprintln!("Unknown argument: {arg:?}");

@@ -1050,7 +1050,7 @@ fn initialize_thread_pool(threads_args: i32) {
 fn run_profiler(args: &Args) -> re_tracing::Profiler {
     let mut profiler = re_tracing::Profiler::default();
     if args.profile {
-        profiler.start();
+        profiler.start_cpu();
     }
     profiler
 }

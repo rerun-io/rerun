@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut profiler = re_tracing::Profiler::default();
     if args.profile {
-        profiler.start();
+        profiler.start_cpu();
     }
 
     let benchmarks: Vec<Benchmark> = args.benchmarks.as_ref().map_or_else(
