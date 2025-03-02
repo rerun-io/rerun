@@ -125,3 +125,4 @@ pub fn pad_rgb_to_rgba<T: Copy>(rgb: &[T], alpha: T) -> Vec<T> {
 // ---------------------------------------------------------------------------
 
 type ScopedRenderPass<'a> = wgpu_profiler::OwningScope<'a, wgpu::RenderPass<'a>>;
+type ScopedCommandEncoder<'a> = wgpu_profiler::Scope<'a, wgpu::CommandEncoder>;

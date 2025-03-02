@@ -199,7 +199,7 @@ impl SpatialView2D {
             &painter,
             scene_bounds,
             near_clip_plane,
-            &query.space_origin.to_string(),
+            &query.space_origin.to_string(), // TODO(andreas): Use the view's name.
             query.highlights.any_outlines(),
             &state.pinhole_at_origin,
         ) else {

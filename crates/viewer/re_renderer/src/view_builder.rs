@@ -15,7 +15,7 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
+    MsaaMode, RectInt, RenderConfig, Rgba,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -515,12 +515,11 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
-        let config_debug_label = DebugLabel::from(config.name.clone());
         let outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
                 outline_config,
-                &config_debug_label,
+                &config.name,
                 config.resolution_in_pixel,
             )
         });
@@ -731,7 +730,7 @@ impl ViewBuilder {
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
             }
-            outline_mask_processor.compute_outlines(&pipelines, encoder_scope.recorder)?;
+            outline_mask_processor.compute_outlines(&pipelines, &mut encoder_scope, &ctx.device)?;
         }
 
         if let Some(screenshot_processor) = &self.screenshot_processor {

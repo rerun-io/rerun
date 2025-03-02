@@ -362,7 +362,7 @@ fn create_view_builder(
     re_renderer::ViewBuilder::new(
         render_ctx,
         re_renderer::view_builder::TargetConfiguration {
-            name: "MapView".into(),
+            name: "MapView".to_owned(), // TODO(andreas): Use the view's name.
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
