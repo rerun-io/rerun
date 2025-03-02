@@ -216,7 +216,7 @@ pub struct App {
 
     /// Measures how long a frame takes to paint on CPU, excluding vsync (best effort).
     pub(crate) cpu_frame_time_history: egui::util::History<f32>,
-    /// Meausres how long a frame takes to paint on GPU, excluding egui (i.e. re_renderer only)
+    /// Measures how long a frame takes to paint on GPU, excluding egui (i.e. [`re_renderer`] only)
     /// Note that no timings might be available.
     // TODO(andreas): Would be great to include egui as well!
     pub(crate) gpu_frame_time_history: egui::util::History<f32>,
@@ -1328,6 +1328,8 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
+                    render_ctx.enable_profiler(self.app_options().show_metrics);
+
                     if let Some(store_context) = store_context {
                         let entity_db = store_context.recording;
 

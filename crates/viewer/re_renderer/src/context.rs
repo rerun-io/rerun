@@ -269,7 +269,7 @@ impl RenderContext {
 
         let profiler = wgpu_profiler::GpuProfiler::new(wgpu_profiler::GpuProfilerSettings {
             enable_debug_groups: true, // Enable debug groups always as they are invaluable for profiling traces with other tools.
-            enable_timer_queries: true, // TODO: Allow disabling?
+            enable_timer_queries: false, // Has to be enabled explicitly.
             max_num_pending_frames: 3,
         })?;
 
@@ -548,6 +548,21 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// while in other frames no results may be received.
     pub fn latest_profiler_results(&self) -> &[Vec<wgpu_profiler::GpuTimerQueryResult>] {
         &self.latest_profiler_results
+    }
+
+    /// Enable or disable the profiler.
+    ///
+    /// Enabling the profiler if the device doesn't support profiling scopes has no effect.
+    pub fn enable_profiler(&mut self, enabled: bool) {
+        if let Err(e) = self
+            .profiler
+            .change_settings(wgpu_profiler::GpuProfilerSettings {
+                enable_timer_queries: enabled,
+                ..self.profiler.settings().clone()
+            })
+        {
+            re_log::error!("Failed to change GPU profiler settings: {e}");
+        }
     }
 }
 
