@@ -329,8 +329,8 @@ fn website_link_ui(ui: &mut egui::Ui) {
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
-    if let Some(frame_time) = app.frame_time_history.average() {
-        let ms = frame_time * 1e3;
+    fn show_average_timing(ui: &mut egui::Ui, avg_time: f32, label: &str, tooltip: &str) {
+        let ms = avg_time * 1e3;
 
         let visuals = ui.visuals();
         let color = if ms < 15.0 {
@@ -340,9 +340,26 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         };
 
         // we use monospace so the width doesn't fluctuate as the numbers change.
-        let text = format!("{ms:.1} ms");
-        ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+        let text_cpu = format!("{label}: {ms:.1} ms");
+        ui.label(egui::RichText::new(text_cpu).monospace().color(color))
+            .on_hover_text(tooltip);
+    }
+
+    if let Some(frame_time) = app.cpu_frame_time_history.average() {
+        show_average_timing(
+            ui,
+            frame_time,
+            "CPU",
+            "CPU time used by Rerun Viewer each frame. Lower is better.",
+        );
+    }
+    if let Some(frame_time) = app.gpu_frame_time_history.average() {
+        show_average_timing(
+            ui,
+            frame_time,
+            "GPU",
+            "Approximate GPU time excluding UI rendering each frame. Lower is better. On the web, timings are typically not available.",
+        );
     }
 }
 

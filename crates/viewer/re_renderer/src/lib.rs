@@ -96,6 +96,7 @@ pub use ecolor::{Color32, Hsva, Rgba};
 pub mod external {
     pub use re_video;
     pub use wgpu;
+    pub use wgpu_profiler;
 }
 
 // ---------------------------------------------------------------------------

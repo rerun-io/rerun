@@ -104,6 +104,7 @@ pub struct RenderContext {
     output_format_color: wgpu::TextureFormat,
 
     pub(crate) profiler: wgpu_profiler::GpuProfiler,
+    latest_profiler_results: Vec<Vec<wgpu_profiler::GpuTimerQueryResult>>,
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
@@ -279,6 +280,7 @@ impl RenderContext {
             config,
             output_format_color,
             profiler,
+            latest_profiler_results: Vec::new(),
             global_bindings,
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
@@ -438,6 +440,13 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             samplers.begin_frame(frame_index);
         }
 
+        // Update latest profiler results.
+        let timestamp_period = self.queue.get_timestamp_period(); // It's important to keep recomputing this value every frame, see docs of `GpuProfiler::process_finished_frame`.
+        self.latest_profiler_results.clear();
+        while let Some(results) = self.profiler.process_finished_frame(timestamp_period) {
+            self.latest_profiler_results.push(results);
+        }
+
         // Poll device *after* resource pool `begin_frame` since resource pools may each decide drop resources.
         // Wgpu internally may then internally decide to let go of these buffers.
         self.poll_device();
@@ -458,13 +467,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // End previous profiler frame.
         if let Err(e) = self.profiler.end_frame() {
             re_log::error!("Failed to end GPU profiler frame: {e}");
-        }
-        // TODO: stuff.
-        {
-            let results = self
-                .profiler
-                .process_finished_frame(self.queue.get_timestamp_period());
-            dbg!(results);
         }
         // Request write used staging buffer back.
         self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
@@ -538,6 +540,14 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// Returns the final output format for color (i.e. the surface's format).
     pub fn output_format_color(&self) -> wgpu::TextureFormat {
         self.output_format_color
+    }
+
+    /// Returns the latest profiler results if any.
+    ///
+    /// This is a list of lists since results for several frames may arrive at once
+    /// while in other frames no results may be received.
+    pub fn latest_profiler_results(&self) -> &[Vec<wgpu_profiler::GpuTimerQueryResult>] {
+        &self.latest_profiler_results
     }
 }
 

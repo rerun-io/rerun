@@ -8,7 +8,7 @@ use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
-use re_renderer::WgpuResourcePoolStatistics;
+use re_renderer::{external::wgpu_profiler, WgpuResourcePoolStatistics};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
@@ -214,8 +214,12 @@ pub struct App {
 
     pub(crate) latest_queue_interest: web_time::Instant,
 
-    /// Measures how long a frame takes to paint
-    pub(crate) frame_time_history: egui::util::History<f32>,
+    /// Measures how long a frame takes to paint on CPU, excluding vsync (best effort).
+    pub(crate) cpu_frame_time_history: egui::util::History<f32>,
+    /// Meausres how long a frame takes to paint on GPU, excluding egui (i.e. re_renderer only)
+    /// Note that no timings might be available.
+    // TODO(andreas): Would be great to include egui as well!
+    pub(crate) gpu_frame_time_history: egui::util::History<f32>,
 
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
@@ -447,7 +451,9 @@ impl App {
 
             latest_queue_interest: long_time_ago,
 
-            frame_time_history: egui::util::History::new(1..100, 0.5),
+            cpu_frame_time_history: egui::util::History::new(1..100, 0.5),
+            // Allow 0 length, since we may loose gain and loose timings at any time.
+            gpu_frame_time_history: egui::util::History::new(0..100, 0.5),
 
             command_sender,
             command_receiver,
@@ -1869,6 +1875,70 @@ impl App {
     pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
         self.state.redap_servers.add_server(endpoint.origin);
     }
+
+    fn update_gpu_time_history(
+        &mut self,
+        current_time: f64,
+        render_ctx: &re_renderer::RenderContext,
+    ) {
+        for gpu_timings in render_ctx.latest_profiler_results() {
+            fn visit_all_gpu_query_results(
+                results: &[wgpu_profiler::GpuTimerQueryResult],
+                visitor: &mut impl FnMut(&wgpu_profiler::GpuTimerQueryResult),
+            ) {
+                for result in results {
+                    visitor(result);
+                    visit_all_gpu_query_results(&result.nested_queries, visitor);
+                }
+            }
+
+            // GPU timing is messy!
+            // * Results form a tree structure BUT actual timings may not follow this as everything is both pipelined and potentially interleaved.
+            //   I.e. the sum of child items may be greater than the range of a parent!
+            //   -> We walk over _all_ results and pick the overall min and max to get a rough sense of how much time we might have spent.
+            // * Absolute values have no defined meaning and may wrap around arbitrarily
+            //   -> Filter out anything that looks too suspicious.
+            // * There are several known issues where timings go off the rails every now and then
+            //    * Occaionsal invalid timings on Vulkan: https://github.com/Wumpf/wgpu-profiler/issues/84
+            //    * Negative profile measurements on MacOS: https://github.com/Wumpf/wgpu-profiler/issues/64
+            const MAX_DURATION_SECONDS: f64 = 5.0; // User space drivers typically crash much earlier (see https://learn.microsoft.com/en-us/windows-hardware/drivers/display/timeout-detection-and-recovery)
+            let mut gpu_time_range_seconds: Option<std::ops::Range<f64>> = None;
+            visit_all_gpu_query_results(gpu_timings, &mut |result| {
+                if let Some(range) = &result.time {
+                    // Filter out wrap arounds & suspicious results.
+                    let duration_seconds = range.end - range.start;
+                    if duration_seconds < 0.0 || duration_seconds > MAX_DURATION_SECONDS {
+                        // Don't filter duration==0.0 - this is still a useful event for finding out the total range.
+                        return;
+                    }
+
+                    if let Some(gpu_time_range_seconds) = gpu_time_range_seconds.as_mut() {
+                        let new_range = gpu_time_range_seconds.start.min(range.start)
+                            ..gpu_time_range_seconds.end.max(range.end);
+
+                        // Update the range, but only if it doesn't disturb our result so far in an unrealistic way.
+                        let new_duration_seconds = new_range.end - new_range.start;
+                        if new_duration_seconds < MAX_DURATION_SECONDS {
+                            *gpu_time_range_seconds = new_range;
+                        }
+                    } else {
+                        gpu_time_range_seconds = Some(range.clone());
+                    }
+                }
+            });
+
+            if let Some(gpu_time_range_seconds) = gpu_time_range_seconds {
+                self.gpu_frame_time_history.add(
+                    current_time,
+                    (gpu_time_range_seconds.end - gpu_time_range_seconds.start) as _,
+                );
+            }
+        }
+
+        // Results may not always be available or come in bursts.
+        // If we no longer get GPU timings (for whatever reason!), make sure we don't keep old results around indefinitely!
+        self.gpu_frame_time_history.flush(current_time);
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1965,9 +2035,9 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let current_time = egui_ctx.input(|i| i.time);
         if let Some(seconds) = frame.info().cpu_usage {
-            self.frame_time_history
-                .add(egui_ctx.input(|i| i.time), seconds);
+            self.cpu_frame_time_history.add(current_time, seconds);
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -2034,22 +2104,25 @@ impl eframe::App for App {
             }
         }
 
-        // NOTE: GPU resource stats are cheap to compute so we always do.
+        // NOTE: GPU stats are cheap to compute so we always do.
+        // GPU timing retrieval will automatically no-op if gpu profiling is disabled.
         let gpu_resource_stats = {
-            re_tracing::profile_scope!("gpu_resource_stats");
+            re_tracing::profile_scope!("gpu statistics & timings");
 
-            let egui_renderer = frame
+            let mut egui_renderer = frame
                 .wgpu_render_state()
                 .expect("Failed to get frame render state")
                 .renderer
-                .read();
+                .write();
 
             let render_ctx = egui_renderer
                 .callback_resources
-                .get::<re_renderer::RenderContext>()
+                .get_mut::<re_renderer::RenderContext>()
                 .expect("Failed to get render context");
 
-            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
+            self.update_gpu_time_history(current_time, render_ctx);
+
+            // Query resource statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
         };
 
