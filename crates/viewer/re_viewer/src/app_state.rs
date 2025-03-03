@@ -143,13 +143,12 @@ impl AppState {
             .map(|q| (*time_ctrl.timeline().name(), q))
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        recording: &EntityDb,
         store_context: &StoreContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
@@ -227,6 +226,8 @@ impl AppState {
         let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
             viewport_ui.blueprint.root_container,
         ));
+
+        let recording = store_context.recording;
 
         let maybe_visualizable_entities_per_visualizer = view_class_registry
             .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
