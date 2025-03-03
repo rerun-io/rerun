@@ -239,20 +239,40 @@ impl ItemCollection {
             return;
         }
 
+        #[allow(clippy::match_same_arms)]
         let clipboard_text = self
             .iter()
             .filter_map(|(item, _)| match item {
-                Item::AppId(_)
-                | Item::DataSource(_)
-                | Item::StoreId(_)
-                | Item::Container(_)
-                | Item::View(_) => None,
+                Item::Container(_) => None,
+                Item::View(_) => None,
+
+                Item::DataSource(source) => match source {
+                    re_smart_channel::SmartChannelSource::File(path) => {
+                        Some(path.to_string_lossy().into())
+                    }
+                    re_smart_channel::SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                        Some(url.clone())
+                    }
+                    re_smart_channel::SmartChannelSource::RrdWebEventListener => None,
+                    re_smart_channel::SmartChannelSource::JsChannel { channel_name } => {
+                        Some(channel_name.clone())
+                    }
+                    re_smart_channel::SmartChannelSource::Sdk => None,
+                    re_smart_channel::SmartChannelSource::Stdin => None,
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url } => {
+                        Some(url.clone())
+                    }
+                    re_smart_channel::SmartChannelSource::MessageProxy { url } => Some(url.clone()),
+                },
+
+                Item::AppId(id) => Some(id.to_string()),
+                Item::StoreId(id) => Some(id.to_string()),
+
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => {
-                    Some(instance_path.entity_path.clone())
+                    Some(instance_path.entity_path.to_string())
                 }
-                Item::ComponentPath(component_path) => Some(component_path.entity_path.clone()),
+                Item::ComponentPath(component_path) => Some(component_path.entity_path.to_string()),
             })
-            .map(|entity_path| entity_path.to_string())
             .join("\n");
 
         if !clipboard_text.is_empty() {
