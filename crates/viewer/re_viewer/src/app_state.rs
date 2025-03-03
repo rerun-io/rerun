@@ -1,7 +1,6 @@
 use ahash::HashMap;
 use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
 
-use itertools::Itertools as _;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -12,7 +11,7 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig, StoreContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
     StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
     ViewStates, ViewerContext,
 };
@@ -587,7 +586,7 @@ impl AppState {
             selection_state.clear_selection();
         }
 
-        // If there's no label selected, and the user triggers a copy command, copy a descripion of the current selection.
+        // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
         if !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {

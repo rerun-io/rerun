@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use egui::text_selection::LabelSelectionState;
 use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;

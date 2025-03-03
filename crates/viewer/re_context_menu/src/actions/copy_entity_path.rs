@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use re_viewer_context::Item;
 
 use crate::{ContextMenuAction, ContextMenuContext};
