@@ -45,7 +45,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     )
     .map(|v| rerun::Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
 
-    rec.set_index("keyframe", sequence=0);
+    rec.set_time_sequence("keyframe", 0);
     rec.log(
         "my_points",
         &rerun::Points3D::new(points)
