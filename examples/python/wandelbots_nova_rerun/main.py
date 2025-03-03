@@ -1,6 +1,6 @@
-"""
-Example of planning a collision free PTP motion. A sphere is placed in the robot's path and the robot uses collision free p2p to move around it.
-"""
+"""Example of planning a collision free PTP motion. A sphere is placed in the robot's path and the robot uses collision free p2p to move around it."""
+
+from __future__ import annotations
 
 import asyncio
 
@@ -19,7 +19,6 @@ from wandelbots_api_client.models import (
     RotationAngleTypes,
     Vector3d,
 )
-
 
 DESCRIPTION = """
 # Nova rerun bridge
