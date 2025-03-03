@@ -69,7 +69,7 @@ impl std::str::FromStr for Tuid {
 
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(f, "{self}")
     }
 }
 
@@ -149,6 +149,11 @@ impl Tuid {
     #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
+    }
+
+    #[inline]
+    pub fn from_bytes(bytes: [u8; 16]) -> Self {
+        Self::from_u128(u128::from_be_bytes(bytes))
     }
 
     /// Returns most significant byte first (big endian).
