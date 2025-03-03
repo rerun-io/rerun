@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+from typing import overload
+
+import numpy as np
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun.recording_stream import RecordingStream
@@ -7,6 +11,127 @@ from rerun.recording_stream import RecordingStream
 # --- Time ---
 
 
+# These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
+@overload
+def set_index(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
+
+
+@overload
+def set_index(
+    timeline: str, *, recording: RecordingStream | None = None, timedelta: int | float | timedelta | np.timedelta64
+) -> None: ...
+
+
+@overload
+def set_index(
+    timeline: str, *, recording: RecordingStream | None = None, datetime: int | float | datetime | np.datetime64
+) -> None: ...
+
+
+def set_index(
+    timeline: str,
+    *,
+    recording: RecordingStream | None = None,
+    sequence: int | None = None,
+    timedelta: int | float | timedelta | np.timedelta64 | None = None,
+    datetime: int | float | datetime | np.datetime64 | None = None,
+) -> None:
+    """
+    Set the current time of a timeline for this thread.
+
+    Used for all subsequent logging on the same thread, until the next call to
+    [`set_index`][], [`reset_time`][] or [`disable_timeline`][].
+
+    For example: `set_index("frame_nr", sequence=frame_nr)`.
+
+    There is no requirement of monotonicity. You can move the time backwards if you like.
+
+    You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+    You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
+    you must only use `timedelta` for that timeline going forward.
+
+    Parameters
+    ----------
+    timeline : str
+        The name of the timeline to set the time for.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording (if there is one).
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    sequence:
+        Used for sequential indices, like `frame_nr`.
+        Must be an integer.
+    timedelta:
+        Used for relative times, like `time_since_start`.
+        Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
+    datetime:
+        Used for absolute time indices, like `capture_time`.
+        Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
+
+    """
+    if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+        raise ValueError("Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')")
+
+    recording = recording.to_native() if recording is not None else None
+
+    if sequence is not None:
+        bindings.set_time_sequence(
+            timeline,
+            sequence,
+            recording=recording,
+        )
+    elif timedelta is not None:
+        if isinstance(timedelta, (int, float)):
+            nanos = int(1e9 * timedelta)  # Interpret as seconds and convert to nanos
+        else:
+            nanos = to_nanos(timedelta)
+        # TODO(#8635): call a function that is specific to time-deltas
+        bindings.set_time_nanos(
+            timeline,
+            nanos,
+            recording=recording,
+        )
+    elif datetime is not None:
+        if isinstance(datetime, (int, float)):
+            nanos = int(1e9 * datetime)  # Interpret as seconds and convert to nanos
+        else:
+            nanos = to_nanos_since_epoch(datetime)
+        # TODO(#8635): call a function that is specific to absolute times
+        bindings.set_time_nanos(
+            timeline,
+            nanos,
+            recording=recording,
+        )
+
+
+def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
+    if isinstance(timedelta_obj, (int, float)):
+        return int(timedelta_obj * 1e9)
+    elif isinstance(timedelta_obj, timedelta):
+        return int(timedelta_obj.total_seconds() * 1e9)
+    elif isinstance(timedelta_obj, np.timedelta64):
+        return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
+    else:
+        raise TypeError("timedelta_obj must be an int, float, timedelta, or numpy.timedelta64 object")
+
+
+def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> int:
+    if isinstance(date_time, (int, float)):
+        return int(date_time * 1e9)
+    elif isinstance(date_time, datetime):
+        if date_time.tzinfo is None:
+            date_time = date_time.replace(tzinfo=timezone.utc)
+        else:
+            date_time = date_time.astimezone(timezone.utc)
+        epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return int((date_time - epoch).total_seconds() * 1e9)
+    elif isinstance(date_time, np.datetime64):
+        return date_time.astype("int64")  # type: ignore[no-any-return]
+    else:
+        raise TypeError("date_time must be an int, float, datetime, or numpy.datetime64 object")
+
+
+# TODO(#8635): deprecate
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread as an integer sequence.
@@ -43,6 +168,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
     )
 
 
+# TODO(#8635): deprecate
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread in seconds.
@@ -87,6 +213,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
     )
 
 
+# TODO(#8635): deprecate
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread.
@@ -131,6 +258,7 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
     )
 
 
+# TODO(emilk): rename to something with the word `index`, and maybe unify with `reset_time`?
 def disable_timeline(timeline: str, recording: RecordingStream | None = None) -> None:
     """
     Clear time information for the specified timeline on this thread.
@@ -152,6 +280,7 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
     )
 
 
+# TODO(emilk): rename to something with the word `index`, and maybe unify with `disable_timeline`?
 def reset_time(recording: RecordingStream | None = None) -> None:
     """
     Clear all timeline information on this thread.
