@@ -72,6 +72,8 @@ When the Viewer and/or SDK executes an external loader, it will pass to it a set
 
     The timestamps are expected to be in nanoseconds: use `rr.set_time_nanos` (Python) / `RecordingStream::set_time_nanos` (C++, Rust) appropriately.
 
+    TODO(#8635): update this
+
 * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
 
     The data is expected to be logged at these specific sequence timestamps.

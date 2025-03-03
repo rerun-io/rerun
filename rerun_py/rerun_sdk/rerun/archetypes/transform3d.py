@@ -86,7 +86,7 @@ class Transform3D(Transform3DExt, Archetype):
         rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
     )
 
-    rr.set_time_seconds("sim_time", 0)
+    rr.set_index("sim_time", timedelta=0)
 
     # Planetary motion is typically in the XY plane.
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
@@ -108,7 +108,7 @@ class Transform3D(Transform3DExt, Archetype):
     # Movement via transforms.
     for i in range(0, 6 * 120):
         time = i / 120.0
-        rr.set_time_seconds("sim_time", time)
+        rr.set_index("sim_time", timedelta=time)
         r_moon = time * 5.0
         r_planet = time * 2.0
 

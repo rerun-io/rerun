@@ -69,7 +69,7 @@ class Points3D(Points3DExt, Archetype):
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
     for i in range(5):
-        rr.set_time_seconds("time", 10 + i)
+        rr.set_index("time", timedelta=10 + i)
         rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
     ```
     <center>

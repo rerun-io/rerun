@@ -36,7 +36,7 @@ def run_canny(num_frames: int | None) -> None:
         # Get the current frame time. On some platforms it always returns zero.
         frame_time_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
         if frame_time_ms != 0:
-            rr.set_time_nanos("frame_time", int(frame_time_ms * 1_000_000))
+            rr.set_index("frame_time", timedelta=1e-3 * frame_time_ms)
 
         rr.set_index("frame_nr", sequence=frame_nr)
         frame_nr += 1

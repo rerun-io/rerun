@@ -37,16 +37,10 @@ parser.add_argument("--recording-id", type=str, help="optional recommended ID fo
 parser.add_argument("--entity-path-prefix", type=str, help="optional prefix for all entity paths")
 parser.add_argument("--static", action="store_true", default=False, help="optionally mark data to be logged as static")
 parser.add_argument(
-    "--datetime",
+    "--time",
     type=str,
     action="append",
-    help="optional timestamps (seconds since unix epoch) to log at (e.g. `--datetime capture_time=1709203426`)",
-)
-parser.add_argument(
-    "--timedelta",
-    type=str,
-    action="append",
-    help="optional timestamps (seconds since unix epoch) to log at (e.g. `--timedelta time_since_start=3.2`)",
+    help="optional timestamps to log at (e.g. `--time sim_time=1709203426`)",
 )
 parser.add_argument(
     "--sequence",
@@ -87,19 +81,13 @@ def main() -> None:
 
 def set_time_from_args() -> None:
     if not args.static and args.time is not None:
-        for datetime_str in args.datetime:
-            parts = datetime_str.split("=")
+        for time_str in args.time:
+            parts = time_str.split("=")
             if len(parts) != 2:
                 continue
-            timeline_name, datetime = parts
-            rr.set_index(timeline_name, datetime=float(datetime))
-
-        for timedelta_str in args.timedelta:
-            parts = timedelta_str.split("=")
-            if len(parts) != 2:
-                continue
-            timeline_name, timedelta = parts
-            rr.set_index(timeline_name, timedelta=float(timedelta))
+            timeline_name, time = parts
+            # TODO(#8635): update this
+            rr.set_index(timeline_name, timedelta=1e-9 * int(time))
 
         for time_str in args.sequence:
             parts = time_str.split("=")

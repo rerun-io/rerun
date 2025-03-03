@@ -31,7 +31,7 @@ def controlnet_callback(
     pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict[str, Any]
 ) -> dict[str, Any]:
     rr.set_index("iteration", sequence=step_index)
-    rr.set_time_seconds("timestep", timestep)
+    rr.set_index("timestep", timedelta=timestep)
     latents = callback_kwargs["latents"]
 
     image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]  # type: ignore[attr-defined]

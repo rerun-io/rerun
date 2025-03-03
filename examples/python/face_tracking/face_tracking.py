@@ -391,7 +391,7 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
 
             # log data
             rr.set_index("frame_nr", sequence=frame_idx)
-            rr.set_time_nanos("frame_time", frame_time_nano)
+            rr.set_index("frame_time", timedelta=1e-9 * frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
             landmarker.detect_and_log(frame, frame_time_nano)
             rr.log(
