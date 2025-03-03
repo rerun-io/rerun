@@ -1062,6 +1062,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     recording.set_time_sequence(timeline, sequence);
 }
 
+// TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, seconds, recording=None))]
 fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
@@ -1071,6 +1072,7 @@ fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecording
     recording.set_time_seconds(timeline, seconds);
 }
 
+// TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
 fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
