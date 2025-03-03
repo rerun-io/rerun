@@ -15,7 +15,7 @@ You can use the `set_index` function (Python reference: [set_index](https://ref.
 
 snippet: tutorials/timelines_example
 
-This will add the logged points to the timelines `frame_idx` and and `sensor_time`, as well as the automatic timelines `log_tick` and `log_time`.
+This will add the logged points to the timelines `frame_idx` and `sensor_time`, as well as the automatic timelines `log_tick` and `log_time`.
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
 
 ### Reset active timeline & differing data per timeline

@@ -8,7 +8,7 @@ Previously, you could (confusingly) have two timelines with the same name, as lo
 This is no longer possible.
 Timelines are now uniquely identified by name, and if you use different types on the same timeline, you will get a logged warning, and the _latest_ type will be used to interpret the full set of time data.
 
-## 🐍 Python: Replaced `rr.set_time_*` with `rr.set_index`
+## 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
 We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123ms`).
 
 Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.

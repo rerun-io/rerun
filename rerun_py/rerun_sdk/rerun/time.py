@@ -75,13 +75,11 @@ def set_index(
     if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
         raise ValueError("Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')")
 
-    recording = recording.to_native() if recording is not None else None
-
     if sequence is not None:
         bindings.set_time_sequence(
             timeline,
             sequence,
-            recording=recording,
+            recording=recording.to_native() if recording is not None else None,
         )
     elif timedelta is not None:
         if isinstance(timedelta, (int, float)):
@@ -92,7 +90,7 @@ def set_index(
         bindings.set_time_nanos(
             timeline,
             nanos,
-            recording=recording,
+            recording=recording.to_native() if recording is not None else None,
         )
     elif datetime is not None:
         if isinstance(datetime, (int, float)):
@@ -103,7 +101,7 @@ def set_index(
         bindings.set_time_nanos(
             timeline,
             nanos,
-            recording=recording,
+            recording=recording.to_native() if recording is not None else None,
         )
 
 
