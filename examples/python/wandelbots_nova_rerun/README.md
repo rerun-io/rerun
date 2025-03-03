@@ -2,7 +2,7 @@
 title = "Wandelbots NOVA Bridge"
 source = "https://github.com/wandelbotsgmbh/wandelbots-nova"
 tags = ["3D", "Robot"]
-thumbnail = "https://github.com/user-attachments/assets/526a3cff-3d27-4963-8d7b-e7cd98a758f9"
+thumbnail = "https://static.rerun.io/wandelbots_nova/cda66a19b854fffc78b45ce436918dbb3df0f77d/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
