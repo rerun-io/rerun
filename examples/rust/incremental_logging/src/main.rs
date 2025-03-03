@@ -35,7 +35,7 @@ It was logged with the following code:
 ```rust
 // Only log colors and radii once.
 // Logging statically would also work (i.e. `log_static`).
-rec.set_time_sequence("frame_nr", 0);
+rec.set_index("frame_nr", sequence=0);
 rec.log(
     "points",
     &rerun::Points3D::update_fields()
@@ -50,7 +50,7 @@ let dist = Uniform::new(-5., 5.);
 //
 // They will automatically re-use the colors and radii logged at the beginning.
 for i in 0..10 {
-    rec.set_time_sequence("frame_nr", i);
+    rec.set_index("frame_nr", sequence=i);
 
     rec.log(
         "points",
@@ -69,7 +69,7 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
 
     // Only log colors and radii once.
     // Logging statically would also work (i.e. `log_static`).
-    rec.set_time_sequence("frame_nr", 0);
+    rec.set_index("frame_nr", sequence = 0);
     rec.log(
         "points",
         &rerun::Points3D::update_fields()
@@ -84,7 +84,7 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     //
     // They will automatically re-use the colors and radii logged at the beginning.
     for i in 0..10 {
-        rec.set_time_sequence("frame_nr", i);
+        rec.set_index("frame_nr", sequence = i);
 
         rec.log(
             "points",

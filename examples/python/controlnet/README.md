@@ -52,7 +52,7 @@ We use a custom callback function for ControlNet that logs the output and the la
 def controlnet_callback(
     iteration: int, timestep: float, latents: torch.Tensor, pipeline: StableDiffusionXLControlNetPipeline
 ) -> None:
-    rr.set_time_sequence("iteration", iteration)
+    rr.set_index("iteration", sequence=iteration)
     rr.set_time_seconds("timestep", timestep)
     rr.log("output", rr.Image(image))
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))

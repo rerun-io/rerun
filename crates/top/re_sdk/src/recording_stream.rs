@@ -2102,7 +2102,7 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
     ///
-    /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+    /// For example: `rec.set_index("frame_nr", sequence=frame_nr)`.
     /// You can remove a timeline again using `rec.disable_timeline("frame_nr")`.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.

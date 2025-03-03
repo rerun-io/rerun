@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
     // Log the initial state of our triangle:
-    rec.set_time_sequence("frame", 0);
+    rec.set_index("frame", sequence=0);
     rec.log(
         "triangle",
         &rerun::Mesh3D::new(vertex_positions)
@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Only update its vertices' positions each frame
     for i in 1..300 {
-        rec.set_time_sequence("frame", i);
+        rec.set_index("frame", sequence=i);
 
         let factor = (i as f32 * 0.04).sin().abs();
         let vertex_positions = [

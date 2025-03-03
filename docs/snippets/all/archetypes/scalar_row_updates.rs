@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_row_updates").spawn()?;
 
     for step in 0..64 {
-        rec.set_time_sequence("step", step);
+        rec.set_index("step", sequence=step);
         rec.log("scalars", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
     }
 

@@ -61,7 +61,7 @@
 //! let colors: Vec<rerun::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rec.set_time_sequence("frame", 42);
+//! rec.set_index("frame", sequence=42);
 //! rec.log("path/to/points", &rerun::Points3D::new(points).with_colors(colors))?;
 //! rec.log("path/to/image", &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?)?;
 //!

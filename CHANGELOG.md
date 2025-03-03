@@ -722,7 +722,7 @@ API usage examples:
   rr.init("rerun_example_scalar", spawn=True)
 
   for step in range(0, 64):
-      rr.set_time_sequence("step", step)
+      rr.set_index("step", sequence=step)
       rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
   ```
 

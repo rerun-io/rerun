@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     for step in 0..64 {
-        rec.set_time_sequence("step", step);
+        rec.set_index("step", sequence=step);
         rec.log(
             "scalar",
             &rerun::Scalar::update_fields()
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Complex: Color & stroke width changing over time.
 
     for step in 0..64 {
-        rec.set_time_sequence("step", step);
+        rec.set_index("step", sequence=step);
 
         rec.log(
             "multi_colored",

@@ -173,7 +173,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_row_updates").spawn()?;
 ///
-///     rec.set_time_sequence("tick", 0);
+///     rec.set_index("tick", sequence=0);
 ///     rec.log(
 ///         "box",
 ///         &[
@@ -219,7 +219,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_column_updates").spawn()?;
 ///
-///     rec.set_time_sequence("tick", 0);
+///     rec.set_index("tick", sequence=0);
 ///     rec.log(
 ///         "box",
 ///         &[

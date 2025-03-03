@@ -856,8 +856,8 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline, TextualInversionLoader
         self._num_timesteps = len(timesteps)
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                rr.set_time_sequence("step", i)
-                rr.set_time_sequence("timestep", t)
+                rr.set_index("step", sequence=i)
+                rr.set_index("timestep", sequence=t)
 
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents

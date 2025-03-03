@@ -69,7 +69,7 @@ impl From<GltfTransform> for rerun::Transform3D {
 
 /// Log a glTF node with Rerun.
 fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
-    rec.set_time_sequence("keyframe", 0);
+    rec.set_index("keyframe", sequence = 0);
 
     if let Some(transform) = node.transform.map(rerun::Transform3D::from) {
         rec.log(node.name.as_str(), &transform)?;

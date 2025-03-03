@@ -13,7 +13,7 @@ For example, if you have an object tracking application, your code might look so
 …
 for frame in sensors.read():
     # Associate the following logs with `frame == frame.id`
-    rr.set_time_sequence("frame", frame.id)
+    rr.set_index("frame", sequence=frame.id)
     # Do the actual tracking update
     tracker.update(frame)
     if tracker.is_lost:
@@ -33,7 +33,7 @@ In some cases, the best approach may be to rethink how you log data to better ex
 …
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
-    rr.set_time_sequence("frame", frame.id)
+    rr.set_index("frame", sequence=frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
     if frame.id % 10 == 0:
@@ -63,7 +63,7 @@ class Detector:
 …
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
-    rr.set_time_sequence("frame", frame.id)
+    rr.set_index("frame", sequence=frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
     if frame.id % 10 == 0:

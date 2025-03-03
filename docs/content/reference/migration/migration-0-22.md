@@ -23,7 +23,7 @@ The following snippets give a succinct before/after picture; for more informatio
 ```py
 positions = [[i, 0, 0] for i in range(0, 10)]
 
-rr.set_time_sequence("frame", 0)
+rr.set_index("frame", sequence=0)
 rr.log("points", rr.Points3D(positions))
 
 for i in range(0, 10):
@@ -31,11 +31,11 @@ for i in range(0, 10):
     radii = [0.6 if n < i else 0.2 for n in range(0, 10)]
 
     # Update only the colors and radii, leaving everything else as-is.
-    rr.set_time_sequence("frame", i)
+    rr.set_index("frame", sequence=i)
     rr.log("points", [rr.components.ColorBatch(colors), rr.components.RadiusBatch(radii)])
 
 # Update the positions and radii, and clear everything else in the process.
-rr.set_time_sequence("frame", 20)
+rr.set_index("frame", sequence=20)
 rr.log("points", rr.Clear.flat())
 rr.log("points", [rr.components.Position3DBatch(positions), rr.components.RadiusBatch(0.3)])
 ```
@@ -44,7 +44,7 @@ rr.log("points", [rr.components.Position3DBatch(positions), rr.components.Radius
 ```py
 positions = [[i, 0, 0] for i in range(0, 10)]
 
-rr.set_time_sequence("frame", 0)
+rr.set_index("frame", sequence=0)
 rr.log("points", rr.Points3D(positions))
 
 for i in range(0, 10):
@@ -52,11 +52,11 @@ for i in range(0, 10):
     radii = [0.6 if n < i else 0.2 for n in range(0, 10)]
 
     # Update only the colors and radii, leaving everything else as-is.
-    rr.set_time_sequence("frame", i)
+    rr.set_index("frame", sequence=i)
     rr.log("points", rr.Points3D.from_fields(radii=radii, colors=colors))
 
 # Update only the colors and radii, leaving everything else as-is.
-rr.set_time_sequence("frame", 20)
+rr.set_index("frame", sequence=20)
 rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
 ```
 

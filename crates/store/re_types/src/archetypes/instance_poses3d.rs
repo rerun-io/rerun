@@ -46,7 +46,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_instance_pose3d_combined").spawn()?;
 ///
-///     rec.set_time_sequence("frame", 0);
+///     rec.set_index("frame", sequence=0);
 ///
 ///     // Log a box and points further down in the hierarchy.
 ///     rec.log(
@@ -59,7 +59,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     for i in 0..180 {
-///         rec.set_time_sequence("frame", i);
+///         rec.set_index("frame", sequence=i);
 ///
 ///         // Log a regular transform which affects both the box and the points.
 ///         rec.log(

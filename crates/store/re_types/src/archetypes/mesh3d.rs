@@ -58,7 +58,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_instancing").spawn()?;
 ///
-///     rec.set_time_sequence("frame", 0);
+///     rec.set_index("frame", sequence=0);
 ///     rec.log(
 ///         "shape",
 ///         &rerun::Mesh3D::new([
@@ -77,7 +77,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     for i in 0..100 {
-///         rec.set_time_sequence("frame", i);
+///         rec.set_index("frame", sequence=i);
 ///         rec.log(
 ///             "shape",
 ///             &rerun::InstancePoses3D::new()
