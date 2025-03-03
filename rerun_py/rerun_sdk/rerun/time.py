@@ -41,7 +41,7 @@ def set_index(
     Set the current time of a timeline for this thread.
 
     Used for all subsequent logging on the same thread, until the next call to
-    [`set_index`][], [`reset_time`][] or [`disable_timeline`][].
+    [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
     For example: `set_index("frame_nr", sequence=frame_nr)`.
 
