@@ -18,6 +18,16 @@ snippet: tutorials/timelines_example
 This will add the logged points to the timelines `frame_idx` and `sensor_time`, as well as the automatic timelines `log_tick` and `log_time`.
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
 
+### How to log precise times
+Rerun supports three types of idncies, all encoded as `i64`:
+* Sequential
+* Timestamp (nanoseconds since Unix epoch)
+* Timedelta/duration (nanoseconds)
+
+Here's how you use them:
+
+snippet: concepts/indices
+
 ### Reset active timeline & differing data per timeline
 
 You can clear the active timeline(s) at any point using `reset_time`.
