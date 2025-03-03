@@ -65,9 +65,11 @@ def set_index(
     timedelta:
         Used for relative times, like `time_since_start`.
         Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
+        For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
     datetime:
         Used for absolute time indices, like `capture_time`.
         Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
+        For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
 
     """
     if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
@@ -172,7 +174,10 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
     )
 
 
-# TODO(#8635): deprecate
+@deprecated(
+    """Use `set_index(timestamp=seconds)` or set_index(timedelta=seconds)` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread in seconds.
@@ -217,7 +222,10 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
     )
 
 
-# TODO(#8635): deprecate
+@deprecated(
+    """Use `set_index(timestamp=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread.
