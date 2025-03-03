@@ -158,7 +158,7 @@ class Transform3D(Transform3DExt, Archetype):
     )
 
     for t in range(100):
-        rr.set_time_sequence("tick", t + 1)
+        rr.set_index("tick", sequence=t + 1)
         rr.log(
             "box",
             rr.Transform3D(

@@ -771,7 +771,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline, TextualInversionLoader
                 "Passing `callback_steps` as an input argument to `__call__` is deprecated, consider use `callback_on_step_end`",
             )
 
-        rr.set_time_sequence("step", -1)
+        rr.set_index("step", sequence=-1)
 
         # 1. Check inputs
         self.check_inputs(
