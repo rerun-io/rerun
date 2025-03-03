@@ -5,6 +5,7 @@ from typing import overload
 
 import numpy as np
 import rerun_bindings as bindings  # type: ignore[attr-defined]
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.recording_stream import RecordingStream
 
@@ -131,7 +132,10 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
         raise TypeError("date_time must be an int, float, datetime, or numpy.datetime64 object")
 
 
-# TODO(#8635): deprecate
+@deprecated(
+    """Use `set_index(sequence=…)` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread as an integer sequence.
