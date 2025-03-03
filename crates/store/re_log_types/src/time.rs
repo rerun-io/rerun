@@ -102,13 +102,13 @@ impl Time {
     }
 
     /// Human-readable formatting
-    pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
+    pub fn format(&self, default_time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
         if let Some(datetime) = self.to_datetime() {
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
             let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
-            let prefix = match time_zone_for_timestamps {
+            let prefix = match default_time_zone_for_timestamps {
                 TimeZone::UnixEpoch => "[unix_timestamp]",
                 TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
             };
@@ -130,7 +130,7 @@ impl Time {
                 time::format_description::parse(&date_format).unwrap()
             };
 
-            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
+            Self::time_string(datetime, &parsed_format, default_time_zone_for_timestamps)
         } else {
             // Relative time
             let secs = nanos_since_epoch as f64 * 1e-9;
@@ -147,7 +147,6 @@ impl Time {
     }
 
     /// Best effort parsing of a string into a [`Time`] from a human readable string.
-    // TODO: TESTS!
     pub fn parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
         // Try parsing as a simple relative time with unit suffix (e.g. "1.234s", "1.234ms")
         let suffixes = [("s", 1e9), ("ms", 1e6), ("us", 1e3), ("ns", 1.0)];
@@ -159,17 +158,51 @@ impl Time {
             }
         }
 
+        // Parse a relative time of day.
+        let time_formats = [
+            // Just time with milliseconds
+            "[hour]:[minute]:[second].[subsecond]",
+            // Just time
+            "[hour]:[minute]:[second]",
+        ];
+        for format in time_formats {
+            let format = time::format_description::parse_borrowed::<2>(format)
+                .expect("Invalid format string");
+
+            if let Ok(time) = time::Time::parse(s, &format).map(|t| {
+                let (h, m, s, ns) = t.as_hms_nano();
+                Self::from_ns_since_epoch(
+                    ns as i64
+                        + s as i64 * time::convert::Nanosecond::per(time::convert::Second) as i64
+                        + m as i64 * time::convert::Nanosecond::per(time::convert::Minute) as i64
+                        + h as i64 * time::convert::Nanosecond::per(time::convert::Hour) as i64,
+                )
+            }) {
+                return Some(time);
+            }
+        }
+
         // Try parsing as an absolute time
-        let parse_with_format = |format_str: &str| -> Option<Self> {
-            let format = time::format_description::parse(format_str).ok()?;
+        fn parse_date_time(
+            s: &str,
+            format_str: &str,
+            time_zone_for_timestamps: TimeZone,
+        ) -> Option<Time> {
+            let format = time::format_description::parse_borrowed::<2>(format_str)
+                .expect("Invalid format string");
+
+            // If the string ends with Z, this is a UTC timezone independent of the time zone we set earlier.
+            let (s, time_zone_for_timestamps) = if let Some(s) = s.strip_suffix('Z') {
+                (s, TimeZone::Utc)
+            } else {
+                (s, time_zone_for_timestamps)
+            };
+
             let datetime = match time_zone_for_timestamps {
-                TimeZone::Utc => {
-                    // Handle 'Z' suffix for UTC times
-                    let s = s.strip_suffix('Z').unwrap_or(s);
-                    time::PrimitiveDateTime::parse(s, &format)
-                        .ok()?
-                        .assume_utc()
-                }
+                TimeZone::UnixEpoch | TimeZone::Utc => time::PrimitiveDateTime::parse(s, &format)
+                    .ok()?
+                    .assume_utc(),
+
                 TimeZone::Local => {
                     if let Ok(local_offset) = UtcOffset::current_local_offset() {
                         let datetime = time::PrimitiveDateTime::parse(s, &format).ok()?;
@@ -178,32 +211,22 @@ impl Time {
                         return None;
                     }
                 }
-                TimeZone::UnixEpoch => time::PrimitiveDateTime::parse(s, &format)
-                    .ok()?
-                    .assume_utc(),
             };
 
-            Some(Self::from_ns_since_epoch(
+            Some(Time::from_ns_since_epoch(
                 datetime.unix_timestamp_nanos() as i64
             ))
-        };
+        }
 
         // Try different format patterns
-        let formats = [
+        let date_time_formats = [
             // Full date and time with milliseconds
             "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond]",
             // Full date and time
             "[year]-[month]-[day] [hour]:[minute]:[second]",
-            // Just time with milliseconds
-            "[hour]:[minute]:[second].[subsecond]",
-            // Just time
-            "[hour]:[minute]:[second]",
-            // Just date
-            "[year]-[month]-[day]",
         ];
-
-        for format in formats {
-            if let Some(time) = parse_with_format(format) {
+        for format in date_time_formats {
+            if let Some(time) = parse_date_time(s, format, time_zone_for_timestamps) {
                 return Some(time);
             }
         }
@@ -413,22 +436,22 @@ mod tests {
 
     #[test]
     fn test_formatting_whole_second_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
-        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42Z");
+        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap();
+        assert_eq!(&datetime.format(TimeZone::Utc), "1954-04-11 22:35:42Z");
     }
 
     #[test]
     fn test_formatting_whole_millisecond_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
-        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42.069Z");
+        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap();
+        assert_eq!(&datetime.format(TimeZone::Utc), "1954-04-11 22:35:42.069Z");
     }
 
     #[test]
     fn test_formatting_many_digits_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
+        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42.069_042_7 UTC)).unwrap();
         assert_eq!(
             &datetime.format(TimeZone::Utc),
-            "2022-02-28 22:35:42.069042Z"
+            "1954-04-11 22:35:42.069042Z"
         ); // format function is not rounding
     }
 
@@ -487,6 +510,103 @@ mod tests {
                 .unwrap(),
             "22:35:42.069042Z"
         );
+    }
+
+    #[test]
+    fn test_parsing_time() {
+        let all_time_zones = [TimeZone::Utc, TimeZone::Local, TimeZone::UnixEpoch];
+
+        // Test relative time parsing with different units
+        // Should be independent of the time zone setting.
+        for time_zone in all_time_zones {
+            assert_eq!(
+                Time::parse("42s", time_zone),
+                Some(Time::from_seconds_since_epoch(42.0))
+            );
+            assert_eq!(
+                Time::parse("42.123s", time_zone),
+                Some(Time::from_seconds_since_epoch(42.123))
+            );
+            assert_eq!(
+                Time::parse("42ms", time_zone),
+                Some(Time::from_seconds_since_epoch(0.042))
+            );
+            assert_eq!(
+                Time::parse("42us", time_zone),
+                Some(Time::from_seconds_since_epoch(0.000042))
+            );
+            assert_eq!(
+                Time::parse("42ns", time_zone),
+                Some(Time::from_seconds_since_epoch(0.000000042))
+            );
+
+            // Hour format.
+            assert_eq!(
+                Time::parse("22:35:42", time_zone),
+                Some(Time::try_from(datetime!(1970-01-01 22:35:42 UTC)).unwrap())
+            );
+
+            // Hout format with fractional seconds.
+            assert_eq!(
+                Time::parse("22:35:42.069", time_zone),
+                Some(Time::try_from(datetime!(1970-01-01 22:35:42.069 UTC)).unwrap())
+            );
+        }
+
+        // Full dates.
+        // Fun fact: 1954-04-11 is by some considered the least eventful day in history!
+        // Full date and time
+        assert_eq!(
+            Time::parse("1954-04-11 22:35:42", TimeZone::Utc),
+            Some(Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap())
+        );
+        // Full date and time with milliseconds
+        assert_eq!(
+            Time::parse("1954-04-11 22:35:42.069", TimeZone::Utc),
+            Some(Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap())
+        );
+        // Timezone setting doesn't matter if UTC is enabled.
+        for time_zone in all_time_zones {
+            // Full date and time with Z suffix
+            assert_eq!(
+                Time::parse("1954-04-11 22:35:42Z", time_zone),
+                Some(Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap())
+            );
+
+            // Full date and time with milliseconds with Z suffix
+            assert_eq!(
+                Time::parse("1954-04-11 22:35:42.069Z", time_zone),
+                Some(Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap())
+            );
+        }
+
+        // Current timezone.
+        // Full date and time.
+        if let Ok(local_offset) = UtcOffset::current_local_offset() {
+            assert_eq!(
+                Time::parse("1954-04-11 22:35:42", TimeZone::Local),
+                Some(
+                    Time::try_from(datetime!(1954-04-11 22:35:42).assume_offset(local_offset))
+                        .unwrap()
+                )
+            );
+            // Full date and time with milliseconds
+            assert_eq!(
+                Time::parse("1954-04-11 22:35:42.069", TimeZone::Local),
+                Some(
+                    Time::try_from(datetime!(1954-04-11 22:35:42.069).assume_offset(local_offset))
+                        .unwrap()
+                )
+            );
+        }
+
+        // Test invalid formats
+        assert_eq!(Time::parse("invalid", TimeZone::Utc), None);
+        assert_eq!(Time::parse("2022-13-28", TimeZone::Utc), None); // Invalid month
+        assert_eq!(Time::parse("2022-02-29", TimeZone::Utc), None); // Invalid day (not leap year)
+        assert_eq!(Time::parse("25:00:00", TimeZone::Utc), None); // Invalid hour
+        assert_eq!(Time::parse("00:60:00", TimeZone::Utc), None); // Invalid minute
+        assert_eq!(Time::parse("00:00:60", TimeZone::Utc), None); // Invalid second
     }
 }
 
