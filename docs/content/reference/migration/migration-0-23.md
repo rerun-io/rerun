@@ -9,19 +9,19 @@ This is no longer possible.
 Timelines are now uniquely identified by name, and if you use different types on the same timeline, you will get a logged warning, and the _latest_ type will be used to interpret the full set of time data.
 
 ## 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
-We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123ms`).
+We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
 
 Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.
 
 To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_index`.
-`set_index` takes either a `sequence=`, `timedelta=` or `timestamp=` argument.
+`set_index` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
 
 `timedelta` must be either:
 * seconds as `int` or `float`
 * `datetime.timedelta`
 * `numpy.timedelta64`.
 
-`timestamp` must be either:
+`datetime` must be either:
 * seconds since unix epoch (1970-01-01) as `int` or `float`
 * `datetime.datetime`
 * `numpy.datetime64`.
@@ -35,7 +35,7 @@ When using relative times (durations/timedeltas): `rr.set_index("foo", timedelta
 You can also pass in a `datetime.timedelta` or `numpy.timedelta64` directly.
 
 ##### `rr.set_time_seconds("foo", seconds_since_epoch)`
-New: `rr.set_index("foo", timestamp=seconds_since_epoch)`
+New: `rr.set_index("foo", datetime=seconds_since_epoch)`
 You can also pass in a `datetime.datetime` or `numpy.datetime64` directly.
 
 ##### `rr.set_time_nanos("foo", duration_nanos)`
@@ -47,7 +47,7 @@ The former is subject to (double-precision) floating point precision loss (but s
 
 ##### `rr.set_time_nanos("foo", nanos_since_epoch)`
 Either:
-* `rr.set_index("foo", timestamp=1e-9 * nanos_since_epoch)`
-* `rr.set_index("foo", timestamp=np.datetime64(nanos_since_epoch, 'ns'))`
+* `rr.set_index("foo", datetime=1e-9 * nanos_since_epoch)`
+* `rr.set_index("foo", datetime=np.datetime64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
