@@ -182,7 +182,7 @@ impl TimeType {
         }
     }
 
-    // TODO: test
+    /// Parses a human-readable time string into a [`TimeInt`].
     pub fn parse_time(&self, s: &str, time_zone_for_timestamps: TimeZone) -> Option<TimeInt> {
         match s {
             "<static>" => Some(TimeInt::STATIC),

@@ -185,12 +185,6 @@ pub struct TimeControl {
     /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
     #[serde(skip)]
     pub highlighted_range: Option<ResolvedTimeRange>,
-
-    /// If the timestamp is being edited, the current value.
-    ///
-    /// It is applied only after removing focus.
-    #[serde(skip)]
-    pub time_edit_string: Option<String>, // TODO: live somewhere else
 }
 
 impl Default for TimeControl {
@@ -204,7 +198,6 @@ impl Default for TimeControl {
             speed: 1.0,
             looping: Looping::Off,
             highlighted_range: None,
-            time_edit_string: None,
         }
     }
 }
