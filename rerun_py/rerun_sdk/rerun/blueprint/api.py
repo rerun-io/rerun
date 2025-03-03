@@ -562,7 +562,7 @@ class Blueprint:
 
     @deprecated(
         """Please migrate to `connect_grpc(…)`.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
     )
     def connect(
         self,
