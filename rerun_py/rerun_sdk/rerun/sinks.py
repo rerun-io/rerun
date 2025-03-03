@@ -23,7 +23,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
 )
 def connect(
     addr: str | None = None,
@@ -68,7 +68,7 @@ def connect(
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
 )
 def connect_tcp(
     addr: str | None = None,
