@@ -210,6 +210,10 @@ features = [
 [opt_out.compare]
 "concepts/explicit_recording" = ["cpp", "rust"] # Only python
 "concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
+"concepts/different_data_per_timeline" = [
+  # TODO(#5521): log VisualBounds2D in all languages
+  "py",
+]
 "concepts/viscomp-base" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
