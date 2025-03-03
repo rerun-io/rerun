@@ -16,6 +16,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
 * [`AlbedoFactor`](components/albedo_factor.md): A color multiplier, usually applied to a whole entity, e.g. a mesh.
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
+* [`ApplicationId`](components/application_id.md): A string of text, e.g. for labels and text documents.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
@@ -59,6 +60,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
+* [`RecordingStartedTimestamp`](components/recording_started_timestamp.md): When the recording started.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.

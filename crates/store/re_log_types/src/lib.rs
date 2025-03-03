@@ -339,11 +339,24 @@ pub struct SetStoreInfo {
     pub info: StoreInfo,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct RecordingProperties {
+    /// The user-chosen name of the application doing the logging.
+    pub application_id: ApplicationId,
+
+    /// When the recording started.
+    ///
+    /// Should be an absolute time, i.e. relative to Unix Epoch.
+    pub started: Time,
+}
+
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
+    #[deprecated]
     pub application_id: ApplicationId,
 
     /// Should be unique for each recording.
@@ -365,6 +378,7 @@ pub struct StoreInfo {
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
+    #[deprecated]
     pub started: Time,
 
     pub store_source: StoreSource,

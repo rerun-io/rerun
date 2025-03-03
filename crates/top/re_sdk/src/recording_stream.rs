@@ -16,8 +16,8 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    TimeType, Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -251,10 +251,11 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
+                properties,
                 batcher_config,
                 Box::new(crate::log_sink::BufferedSink::new()),
             )
@@ -283,10 +284,11 @@ impl RecordingStreamBuilder {
     pub fn memory(
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
         let rec = if enabled {
             RecordingStream::new(
                 store_info,
+                properties,
                 batcher_config,
                 Box::new(crate::log_sink::BufferedSink::new()),
             )
@@ -385,7 +387,7 @@ impl RecordingStreamBuilder {
         url: impl Into<String>,
         flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             let url: String = url.into();
             let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
@@ -395,6 +397,7 @@ impl RecordingStreamBuilder {
 
             RecordingStream::new(
                 store_info,
+                properties,
                 batcher_config,
                 Box::new(crate::log_sink::GrpcSink::new(endpoint, flush_timeout)),
             )
@@ -422,11 +425,12 @@ impl RecordingStreamBuilder {
         self,
         path: impl Into<std::path::PathBuf>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
 
         if enabled {
             RecordingStream::new(
                 store_info,
+                properties,
                 batcher_config,
                 Box::new(crate::sink::FileSink::new(path)?),
             )
@@ -454,11 +458,12 @@ impl RecordingStreamBuilder {
             return self.buffered();
         }
 
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
 
         if enabled {
             RecordingStream::new(
                 store_info,
+                properties,
                 batcher_config,
                 Box::new(crate::sink::FileSink::stdout()?),
             )
@@ -618,7 +623,7 @@ impl RecordingStreamBuilder {
         server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             let sink = crate::web_viewer::new_sink(
                 open_browser,
@@ -627,7 +632,7 @@ impl RecordingStreamBuilder {
                 grpc_port,
                 server_memory_limit,
             )?;
-            RecordingStream::new(store_info, batcher_config, sink)
+            RecordingStream::new(store_info, properties, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
             Ok(RecordingStream::disabled())
@@ -639,7 +644,7 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(self) -> (bool, StoreInfo, ChunkBatcherConfig) {
+    pub fn into_args(self) -> (bool, StoreInfo, RecordingProperties, ChunkBatcherConfig) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -658,6 +663,11 @@ impl RecordingStreamBuilder {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
+
+        let properties = RecordingProperties {
+            application_id: application_id.clone(), // TODO
+            started: Time::now(),
+        };
 
         let store_info = StoreInfo {
             application_id,
@@ -678,7 +688,7 @@ impl RecordingStreamBuilder {
                 }
             });
 
-        (enabled, store_info, batcher_config)
+        (enabled, store_info, properties, batcher_config)
     }
 
     /// Internal check for whether or not logging is enabled using explicit/default settings & env var.
@@ -843,11 +853,6 @@ impl RecordingStreamInner {
         let batcher = ChunkBatcher::new(batcher_config)?;
 
         {
-            re_log::debug!(
-                app_id = %info.application_id,
-                rec_id = %info.store_id,
-                "setting recording info",
-            );
             sink.send(
                 re_log_types::SetStoreInfo {
                     row_id: *RowId::new(),
@@ -932,6 +937,7 @@ impl RecordingStream {
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         info: StoreInfo,
+        properties: RecordingProperties,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -943,9 +949,32 @@ impl RecordingStream {
                 // `unwrap` is ok since this force sinks are only used in tests.
                 Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
             });
-        RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
+
+        let app_id =
+            re_types_core::components::ApplicationId::from(properties.application_id.as_str());
+        let nanos = properties.started.clone().nanos_since_epoch();
+        let started = re_types_core::components::RecordingStartedTimestamp::from(
+            TimeInt::from_nanos(nanos.try_into().unwrap()),
+        );
+
+        re_log::debug!(
+            app_id = %properties.application_id,
+            rec_id = %info.store_id,
+            "setting recording info",
+        );
+        let stream = RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
             inner: Either::Left(Arc::new(Some(inner))),
-        })
+        })?;
+
+        stream.log_static(
+            "/",
+            &re_types_core::archetypes::RecordingProperties::new(
+                std::iter::once(app_id),
+                std::iter::once(started),
+            ),
+        )?;
+
+        Ok(stream)
     }
 
     /// Creates a new no-op [`RecordingStream`] that drops all logging messages, doesn't allocate
@@ -1967,6 +1996,7 @@ impl fmt::Debug for RecordingStream {
                 // This pattern match prevents _accidentally_ omitting data from the debug output
                 // when new fields are added.
                 info,
+
                 tick,
                 cmds_tx: _,
                 batcher: _,

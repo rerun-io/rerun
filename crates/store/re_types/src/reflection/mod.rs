@@ -366,6 +366,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ApplicationId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A string of text, e.g. for labels and text documents.",
+                custom_placeholder: Some(ApplicationId::default().to_arrow()?),
+                datatype: ApplicationId::arrow_datatype(),
+            },
+        ),
+        (
             <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
@@ -707,6 +715,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
                 custom_placeholder: Some(Range1D::default().to_arrow()?),
                 datatype: Range1D::arrow_datatype(),
+            },
+        ),
+        (
+            <RecordingStartedTimestamp as Component>::name(),
+            ComponentReflection {
+                docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
+                custom_placeholder: None,
+                datatype: RecordingStartedTimestamp::arrow_datatype(),
             },
         ),
         (
@@ -1698,6 +1714,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.KeypointId".into(), docstring_md :
                     "Optional keypoint IDs for the points, identifying them within a class.\n\nIf keypoint IDs are passed in but no [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s were specified, the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) will\ndefault to 0.\nThis is useful to identify points within a single classification (which is identified\nwith `class_id`).\nE.g. the classification might be 'Person' and the keypoints refer to joints on a\ndetected skeleton.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.RecordingProperties"),
+            ArchetypeReflection {
+                display_name: "Recording properties",
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "application_id", display_name :
+                    "Application id", component_name : "rerun.components.ApplicationId"
+                    .into(), docstring_md : "The user-chosen name of the application.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "started",
+                    display_name : "Started", component_name :
+                    "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
+                    "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
+                    is_required : true, },
                 ],
             },
         ),
