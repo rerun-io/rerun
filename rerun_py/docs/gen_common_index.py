@@ -109,6 +109,9 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Timeline functions",
         func_list=[
             "set_index",
+            "set_time_sequence",
+            "set_time_seconds",
+            "set_time_nanos",
             "disable_timeline",
             "reset_time",
         ],
