@@ -11,11 +11,11 @@ The logging SDK always creates two timelines for you:
 * `log_tick` - a sequence timeline with the sequence number of the log call
 * `log_time` - a temporal timeline with the time of the log call
 
-You can use the _set time_ functions (Python reference: [set_time_sequence](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_sequence), [set_time_seconds](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds), [set_time_nanos](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_nanos)) to associate logs with other timestamps on other timelines. For example:
+You can use the `set_index` function (Python reference: [set_index](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_index)) to associate logs with other timestamps on other timelines. For example:
 
 snippet: tutorials/timelines_example
 
-This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`.
+This will add the logged points to the timelines `frame_idx` and and `sensor_time`, as well as the automatic timelines `log_tick` and `log_time`.
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
 
 ### Reset active timeline & differing data per timeline
