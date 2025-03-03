@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
     let rec =
         rerun::RecordingStreamBuilder::new("rerun_example_instance_pose3d_combined").spawn()?;
 
-    rec.set_index("frame", sequence=0);
+    rec.set_time_sequence("frame", 0);
 
     // Log a box and points further down in the hierarchy.
     rec.log(
@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     for i in 0..180 {
-        rec.set_index("frame", sequence=i);
+        rec.set_time_sequence("frame", i);
 
         // Log a regular transform which affects both the box and the points.
         rec.log(

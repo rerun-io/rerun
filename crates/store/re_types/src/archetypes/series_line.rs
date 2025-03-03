@@ -50,7 +50,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
-///         rec.set_index("step", sequence=t);
+///         rec.set_time_sequence("step", t);
 ///
 ///         // Log two time series under a shared root so that they show in the same plot by default.
 ///         rec.log("trig/sin", &rerun::Scalar::new((t as f64 / 100.0).sin()))?;

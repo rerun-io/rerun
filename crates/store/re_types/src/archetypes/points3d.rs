@@ -141,7 +141,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let positions = || (0..10).map(|i| (i as f32, 0.0, 0.0));
 ///
-///     rec.set_index("frame", sequence=0);
+///     rec.set_time_sequence("frame", 0);
 ///     rec.log("points", &rerun::Points3D::new(positions()))?;
 ///
 ///     for i in 0..10 {
@@ -155,7 +155,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let radii = (0..10).map(|n| if n < i { 0.6 } else { 0.2 });
 ///
 ///         // Update only the colors and radii, leaving everything else as-is.
-///         rec.set_index("frame", sequence=i);
+///         rec.set_time_sequence("frame", i);
 ///         rec.log(
 ///             "points",
 ///             &rerun::Points3D::update_fields()
@@ -165,7 +165,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     }
 ///
 ///     // Update the positions and radii, and clear everything else in the process.
-///     rec.set_index("frame", sequence=20);
+///     rec.set_time_sequence("frame", 20);
 ///     rec.log(
 ///         "points",
 ///         &rerun::Points3D::clear_fields()

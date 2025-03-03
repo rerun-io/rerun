@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rerun::ComponentDescriptor::new("cos"),
         );
 
-        rec.set_index("step", sequence=step);
+        rec.set_time_sequence("step", step);
         rec.log("/", &[sin, cos])?;
     }
 

@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_row_updates").spawn()?;
 
     for t in 0..20 {
-        rec.set_index("time", sequence=t);
+        rec.set_time_sequence("time", t);
 
         let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
         image.slice_mut(s![.., .., 2]).fill(255);
