@@ -1429,6 +1429,23 @@ impl App {
                     }
 
                     self.validate_loaded_events(&store_events);
+
+                    if store_id.kind == StoreKind::Recording
+                        && Self::can_be_made_active(&store_events)
+                    {
+                        re_log::trace!("Opening a new recording: '{store_id}'");
+                        store_hub.set_active_recording_id(store_id.clone());
+
+                        // Also select the new recording:
+                        self.command_sender.send_system(SystemCommand::SetSelection(
+                            re_viewer_context::Item::StoreId(store_id.clone()),
+                        ));
+
+                        // If the viewer is in the background, tell the user that it has received something new.
+                        egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                            egui::UserAttentionType::Informational,
+                        ));
+                    }
                 }
 
                 Err(err) => {
@@ -1445,20 +1462,7 @@ impl App {
                     // updates the app-id when changing the recording.
                     match store_id.kind {
                         StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id}'");
-                            store_hub.set_active_recording_id(store_id.clone());
-
-                            // Also select the new recording:
-                            self.command_sender.send_system(SystemCommand::SetSelection(
-                                re_viewer_context::Item::StoreId(store_id.clone()),
-                            ));
-
-                            // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
+                            // Sorry
                         }
                         StoreKind::Blueprint => {
                             // We wait with activating blueprints until they are fully loaded,
@@ -1555,6 +1559,22 @@ impl App {
                 }
             }
         }
+    }
+
+    /// For now, both [`re_types_core::components::ApplicationId`] and a
+    /// [`re_types_core::components::RecordingStartedTimestamp`] are required
+    /// for a recording to be considered "active".
+    fn can_be_made_active(store_events: &[re_chunk_store::ChunkStoreEvent]) -> bool {
+        re_tracing::profile_function!();
+        use re_types_core::Component as _;
+
+        store_events
+            .iter()
+            .flat_map(|event| event.diff.chunk.component_names())
+            .any(|n| {
+                n == re_types_core::components::RecordingStartedTimestamp::name()
+                    || n == re_types_core::components::ApplicationId::name()
+            })
     }
 
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
