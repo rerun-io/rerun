@@ -205,11 +205,12 @@ rs-fmt = "cargo fmt --all"
 
 # Code formatting for all languages.
 format = { depends-on = [
-  "py-fmt",
   "cpp-fmt",
+  "misc-fmt",
+  "pb-fmt",
+  "py-fmt",
   "rs-fmt",
   "toml-fmt",
-  "misc-fmt",
 ] }
 fmt = { depends-on = ["format"] }
 
@@ -226,6 +227,16 @@ lint-typos = "typos"
 # Toml tasks
 toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
+
+# Protobuf tasks
+pb-fmt-check = "buf format --exit-code --diff"
+pb-fmt = "buf format --exit-code --write"
+pb-lint = "buf lint"
+pb-breaking = "buf breaking --against .git#branch=cmc/proto_tools_test_breaks" # TODO: this will not work on CI, will it?
+pb-check = { depends-on = [
+  "pb-lint",
+  "pb-breaking",
+] }
 
 # Misc formatting tasks.
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
@@ -502,9 +513,14 @@ wheel = ">=0.38,<0.39"
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
+buf = "1.*" # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
-meilisearch = "1.5.1.*"
+meilisearch = "1.5.1.*" # not available for linux-aarch64
+buf = "1.*" # not available for linux-aarch64
+
+[target.win-64.dependencies]
+buf = "1.*" # not available for linux-aarch64
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html

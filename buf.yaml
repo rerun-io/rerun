@@ -1,0 +1,11 @@
+# For details on buf.yaml configuration, visit <https://buf.build/docs/configuration/v2/buf-yaml>
+version: v2
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - WIRE_JSON # We don't care about source-code breaks, we have a compiler for that.
+  ignore_unstable_packages: true # see <https://buf.build/docs/configuration/v1/buf-yaml/?h=ignore_unstable_packages#ignore_unstable_packages>
+modules:
+  - path: crates/store/re_protos/proto
