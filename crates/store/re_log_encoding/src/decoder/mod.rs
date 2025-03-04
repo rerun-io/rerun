@@ -111,7 +111,7 @@ pub fn decode_bytes(
 
 // ----------------------------------------------------------------------------
 
-/// Read encoding options from the begining of the stream.
+/// Read encoding options from the beginning of the stream.
 pub fn read_options(
     version_policy: VersionPolicy,
     reader: &mut impl std::io::Read,
@@ -122,7 +122,7 @@ pub fn read_options(
     options_from_bytes(version_policy, &data)
 }
 
-/// Read encoding options from the begining of the stream asynchronously.
+/// Read encoding options from the beginning of the stream asynchronously.
 pub async fn read_options_async(
     version_policy: VersionPolicy,
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
