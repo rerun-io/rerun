@@ -212,7 +212,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
         );
     if response.clicked() {
         ctx.reset_blueprint_component_by_name(&property.blueprint_store_path, component_name);
-        ui.close_menu();
+        ui.close();
     }
 
     let response = ui
@@ -227,7 +227,7 @@ This has the same effect as not setting the value in the blueprint at all."
         .on_disabled_hover_text("The property is already unset.");
     if response.clicked() {
         ctx.clear_blueprint_component_by_name(&property.blueprint_store_path, component_name);
-        ui.close_menu();
+        ui.close();
     }
 
     // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
