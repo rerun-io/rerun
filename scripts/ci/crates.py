@@ -547,12 +547,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    # TODO(ab): change this to s.removeprefix("release-") when we move to Python 3.9
-    s = git.Repo().active_branch.name
-    if s.startswith("release-"):
-        s = s[len("release-") :]
-
-    return s
+    return git.Repo().active_branch.name.removeprefix("release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:

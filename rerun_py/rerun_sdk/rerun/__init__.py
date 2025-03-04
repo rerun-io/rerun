@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import random
 import sys
-import warnings
 from typing import Any, Callable, TypeVar, cast
 from uuid import UUID
 
@@ -13,11 +12,7 @@ __version__ = "0.23.0-alpha.1+dev"
 __version_info__ = (0, 23, 0, "alpha.1")
 
 if sys.version_info < (3, 9):
-    warnings.warn(
-        "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
-        DeprecationWarning,
-        stacklevel=1,
-    )
+    raise RuntimeError("Rerun SDK requires Python 3.9 or later")
 
 # =====================================
 # API RE-EXPORTS
