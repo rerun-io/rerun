@@ -1397,9 +1397,9 @@ fn quote_array_method_from_obj(
     let field_name = &obj.fields[0].name;
     unindent(&format!(
         "
-        def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+        def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype)
+            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -2651,8 +2651,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                     param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
 
-                    batch_length = shape[1] if len(shape) > 1 else 1
-                    num_rows = shape[0] if len(shape) >= 1 else 1
+                    batch_length = shape[1] if len(shape) > 1 else 1 # type: ignore[redundant-expr,misc]
+                    num_rows = shape[0] if len(shape) >= 1 else 1    # type: ignore[redundant-expr,misc]
                     sizes = batch_length * np.ones(num_rows)
                 else:
                     # For non-primitive types, default to partitioning each element separately.

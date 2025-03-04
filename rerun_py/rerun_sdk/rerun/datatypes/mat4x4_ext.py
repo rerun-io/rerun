@@ -24,12 +24,12 @@ class Mat4x4Ext:
             if isinstance(rows, Mat4x4):
                 self.flat_columns = rows.flat_columns
             else:
-                arr = np.array(rows, dtype=np.float32).reshape(4, 4)
+                arr = np.asarray(rows, dtype=np.float32).reshape(4, 4)
                 self.flat_columns = arr.flatten("F")
         elif columns is not None:
             # Equalize the format of the columns to a 4x4 matrix.
             # Numpy expects rows _and_ stores row-major. Therefore the flattened list will have flat columns.
-            arr = np.array(columns, dtype=np.float32).reshape(4, 4)
+            arr = np.asarray(columns, dtype=np.float32).reshape(4, 4)
             self.flat_columns = arr.flatten()
         else:
             _send_warning_or_raise("Need to specify either columns or columns of matrix.", 1, recording=None)

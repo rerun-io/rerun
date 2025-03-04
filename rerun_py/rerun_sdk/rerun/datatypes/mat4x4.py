@@ -69,9 +69,9 @@ class Mat4x4(Mat4x4Ext):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py
-        return np.asarray(self.flat_columns, dtype=dtype)
+        return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:
