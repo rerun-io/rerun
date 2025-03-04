@@ -14,8 +14,7 @@ const NUM_POINTS: usize = 100;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     rerun::external::re_log::setup_logging();
 
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .save("/tmp/dna_large.rrd")?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").spawn()?;
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
@@ -53,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = rand::thread_rng();
     let offsets = (0..NUM_POINTS).map(|_| rng.gen::<f32>()).collect_vec();
 
-    for i in 0..400_000 {
+    for i in 0..400 {
         let time = i as f32 * 0.01;
 
         rec.set_time_seconds("stable_time", time as f64);
