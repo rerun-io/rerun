@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 EARTH_RADIUS_METERS = 6.378137e6
 REFERENCE_COORDINATES = {

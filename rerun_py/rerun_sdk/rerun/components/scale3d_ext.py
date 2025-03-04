@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from rerun.datatypes import Float32Like, Vec3DLike
@@ -11,7 +11,7 @@ class Scale3DExt:
 
     def __init__(
         self: Any,
-        uniform_or_per_axis: Union[Vec3DLike, Float32Like] = True,
+        uniform_or_per_axis: Vec3DLike | Float32Like = True,
     ):
         """
         3D scaling factor.

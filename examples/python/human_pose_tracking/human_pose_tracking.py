@@ -6,10 +6,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp

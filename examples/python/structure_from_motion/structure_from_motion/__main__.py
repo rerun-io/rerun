@@ -103,7 +103,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
     rr.log("plot/avg_reproj_err", rr.SeriesLine(color=[240, 45, 58]), static=True)
 
     # Iterate through images (video frames) logging data related to each frame.
-    for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
+    for image in sorted(images.values(), key=lambda im: im.name):
         image_file = dataset_path / "images" / image.name
 
         if not os.path.exists(image_file):

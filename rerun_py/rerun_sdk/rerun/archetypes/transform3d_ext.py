@@ -120,6 +120,7 @@ class Transform3DExt:
                         "`from_parent` is deprecated as an argument to `Transform3D`; prefer `relation=rerun.TransformRelation.ChildFromParent` instead"
                     ),
                     category=DeprecationWarning,
+                    stacklevel=2,
                 )
 
                 if relation is not None:

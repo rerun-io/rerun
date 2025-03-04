@@ -22,7 +22,8 @@ and more compact alternatives:
 
 from __future__ import annotations
 
-from typing import Sequence, SupportsFloat, SupportsInt, cast, overload
+from collections.abc import Sequence
+from typing import SupportsFloat, SupportsInt, cast, overload
 
 import numpy as np
 import numpy.typing as npt

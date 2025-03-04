@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Hashable
 from concurrent.futures import ThreadPoolExecutor
 from math import floor
 from multiprocessing import Event, cpu_count
 from multiprocessing.synchronize import Event as EventClass
 from queue import Empty, Queue
-from typing import Callable, Generic, Hashable, TypeVar
+from typing import Callable, Generic, TypeVar
 
 
 class RateLimiter:

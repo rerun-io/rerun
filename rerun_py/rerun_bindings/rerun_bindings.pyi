@@ -1,6 +1,7 @@
 import os
+from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Iterator, Optional, Sequence, Union
+from typing import Optional
 
 import pyarrow as pa
 
@@ -161,7 +162,7 @@ class Schema:
     [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
     """
 
-    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]:
+    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
         """Iterate over all the column descriptors in the schema."""
         ...
 

@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 __all__ = ["TensorView"]
 
 
@@ -78,8 +76,8 @@ class TensorView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
         scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
         view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,

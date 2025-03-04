@@ -162,6 +162,7 @@ def ImageEncoded(
             "`ImageEncoded` is deprecated. Use `Image` (for NV12 and YUY2) or `EncodedImage` (for PNG, JPEG, …) instead."
         ),
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     if (path is None) == (contents is None):

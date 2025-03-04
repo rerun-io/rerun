@@ -28,14 +28,14 @@ class FilterIsNotNullExt:
             try:
                 data = [_to_filter_by_event(d) for d in input_data]  # type: ignore[union-attr]
             except _NotAFilterByEventLike:
-                raise ValueError(f"Unexpected input value: {input_data}")
+                raise ValueError(f"Unexpected input value: {input_data}") from None
 
         return pa.StructArray.from_arrays(
             [
-                BoolBatch([x.active for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                BoolBatch([x.active for x in data]).as_arrow_array(),
                 ComponentColumnSelectorBatch(
                     [x.column for x in data],
-                ).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ).as_arrow_array(),
             ],
             fields=list(data_type),
         )

@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent))
 from all_examples import active_examples
 
 
-class MetadataHook(MetadataHookInterface):  # type: ignore[misc]
+class MetadataHook(MetadataHookInterface):
     def update(self, metadata: dict[str, Any]) -> None:
         """
         Use our very own package to list the examples we depend on.

@@ -5,16 +5,17 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any
 
 import requests
 from frontmatter import load_frontmatter
 from PIL import Image
 
-Frontmatter = Dict[str, Any]
+Frontmatter = dict[str, Any]
 
 
 class Example:

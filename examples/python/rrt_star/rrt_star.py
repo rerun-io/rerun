@@ -15,7 +15,8 @@ or in the following medium article: https://theclassytim.medium.com/robotic-path
 from __future__ import annotations
 
 import argparse
-from typing import Annotated, Generator, Literal
+from collections.abc import Generator
+from typing import Annotated, Literal
 
 import numpy as np
 import numpy.typing as npt

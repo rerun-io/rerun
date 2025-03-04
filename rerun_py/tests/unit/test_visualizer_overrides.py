@@ -26,6 +26,6 @@ VISUALIZER_OVERRIDES_INPUT: list[Utf8ListArrayLike | None] = [
 
 def test_view_coordinates() -> None:
     for input in VISUALIZER_OVERRIDES_INPUT:
-        batch = rrbc.VisualizerOverridesBatch(input)  # type: ignore[arg-type]
+        batch = rrbc.VisualizerOverridesBatch(input)
 
         assert batch.as_arrow_array() == visualizer_overrides_expected(batch).as_arrow_array()

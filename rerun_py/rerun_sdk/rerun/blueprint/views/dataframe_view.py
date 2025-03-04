@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 __all__ = ["DataframeView"]
 
 
@@ -76,8 +74,8 @@ class DataframeView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         query: blueprint_archetypes.DataframeQuery | None = None,
     ) -> None:
         """

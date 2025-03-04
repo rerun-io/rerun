@@ -116,7 +116,7 @@ def test_transform3d() -> None:
         )
         arch = rr.Transform3D(
             translation=translation,
-            rotation_axis_angle=rotation_axis_angle,  # type: ignore[assignment, arg-type] # prior cast didn't work here
+            rotation_axis_angle=rotation_axis_angle,  # type: ignore[arg-type] # prior cast didn't work here
             quaternion=quaternion,
             scale=scale,
             mat3x3=mat3x3,
@@ -125,9 +125,7 @@ def test_transform3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.scale == rr.components.Scale3DBatch(
-            none_empty_or_value(scale, rr.components.Scale3D(scale))  # type: ignore[arg-type]
-        )
+        assert arch.scale == rr.components.Scale3DBatch(none_empty_or_value(scale, rr.components.Scale3D(scale)))
         assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch(
             none_empty_or_value(rotation_axis_angle, rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10)))
         )

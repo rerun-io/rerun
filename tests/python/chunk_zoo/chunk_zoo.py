@@ -9,7 +9,7 @@ To add new specimens to the zoo, add a function whose name starts with "specimen
 from __future__ import annotations
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import rerun as rr

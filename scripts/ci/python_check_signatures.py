@@ -108,7 +108,7 @@ def parse_function_signature(node: Any) -> APIDef:
         if child.type == "suite":
             first_child = child.children[1]
             if first_child.type == "simple_stmt" and first_child.children[0].type == "string":
-                doc = first_child.children[0].value.strip('"""')
+                doc = first_child.children[0].value.replace('"""', "")
 
     sig = Signature(parameters=params)
     return APIDef(node.name.value, sig, doc)
@@ -137,7 +137,7 @@ def load_stub_signatures(pyi_file: Path) -> TotalSignature:
                 if child.type == "suite":
                     first_child = child.children[1]
                     if first_child.type == "simple_stmt" and first_child.children[0].type == "string":
-                        doc = first_child.children[0].value.strip('"""')
+                        doc = first_child.children[0].value.replace('"""', "")
             if doc is not None:
                 class_def["__doc__"] = doc
 

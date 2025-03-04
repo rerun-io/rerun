@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pyarrow as pa

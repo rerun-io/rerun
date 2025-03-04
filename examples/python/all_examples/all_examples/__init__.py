@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import platform
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, cast
+from typing import Any, cast
 
 import tomli
 from pyproject_metadata import StandardMetadata

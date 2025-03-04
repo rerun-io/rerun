@@ -159,7 +159,7 @@ def run_roundtrips(arch: str, language: str, args: argparse.Namespace) -> None:
     elif language == "rust":
         run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
     else:
-        assert False, f"Unknown language: {language}"
+        raise AssertionError(f"Unknown language: {language}")
 
 
 def run_roundtrip_python(arch: str) -> str:

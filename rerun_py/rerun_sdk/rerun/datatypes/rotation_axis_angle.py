@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 import pyarrow as pa
 from attrs import define, field

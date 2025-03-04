@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import tomlkit
 
-Frontmatter = Dict[str, Any]
+Frontmatter = dict[str, Any]
 
 
 def load_frontmatter(s: str) -> dict[str, Any] | None:

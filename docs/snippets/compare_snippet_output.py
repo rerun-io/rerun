@@ -205,7 +205,7 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         rust_output_path = run_prebuilt_rust(example, args.release, args.target, args.target_dir)
         check_non_empty_rrd(rust_output_path)
     else:
-        assert False, f"Unknown language: {language}"
+        raise AssertionError(f"Unknown language: {language}")
 
 
 def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):

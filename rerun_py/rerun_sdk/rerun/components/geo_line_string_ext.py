@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
@@ -54,7 +54,7 @@ class GeoLineStringExt:
                 # Is it a single strip or several?
                 # It could be a sequence of the style `[[0, 0], [1, 1]]` which is a single strip.
                 if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
-                    if len(data[0]) == 2:  # type: ignore[arg-type]
+                    if len(data[0]) == 2:
                         # If any of the following elements are not sequence of length 2, DVec2DBatch should raise an error.
                         inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:

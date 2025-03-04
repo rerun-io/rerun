@@ -3,14 +3,18 @@ from __future__ import annotations
 import logging
 import pathlib
 import warnings
+from typing import TYPE_CHECKING
 
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
+
+if TYPE_CHECKING:
+    from rerun.recording_stream import RecordingStream
+
 
 # --- Sinks ---
 
@@ -146,7 +150,9 @@ def connect_grpc(
         logging.warning("Rerun is disabled - connect() call ignored")
         return
 
-    application_id = get_application_id(recording=recording)  # NOLINT
+    from rerun.recording_stream import get_application_id
+
+    application_id = get_application_id(recording)  # NOLINT
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -199,6 +205,8 @@ def save(
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
@@ -247,6 +255,8 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
     if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
+
+    from rerun.recording_stream import get_application_id
 
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
@@ -343,6 +353,7 @@ def serve(
     warnings.warn(
         message=("`serve` is deprecated. Use `serve_web` instead."),
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     return serve_web(
@@ -403,6 +414,8 @@ def serve_web(
         logging.warning("Rerun is disabled - serve() call ignored")
         return
 
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
@@ -457,6 +470,9 @@ def send_blueprint(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
 
     if application_id is None:

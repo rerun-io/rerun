@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -16,8 +16,8 @@ class VideoTimestampExt:
     def __init__(
         self: Any,
         *,
-        nanoseconds: Union[int, None] = None,
-        seconds: Union[float, None] = None,
+        nanoseconds: int | None = None,
+        seconds: float | None = None,
     ):
         """
         Create a new instance of the VideoTimestamp component.

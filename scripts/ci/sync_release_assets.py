@@ -15,14 +15,14 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import Dict, cast
+from typing import cast
 
 from github import Github
 from github.GitRelease import GitRelease
 from github.Repository import Repository
 from google.cloud import storage
 
-Assets = Dict[str, storage.Blob]
+Assets = dict[str, storage.Blob]
 
 
 def get_any_release(repo: Repository, tag_name: str) -> GitRelease | None:

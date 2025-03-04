@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from rerun import bindings
 
-from .recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from .recording_stream import RecordingStream
 
 
 def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:

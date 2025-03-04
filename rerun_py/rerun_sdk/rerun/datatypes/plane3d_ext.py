@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +30,7 @@ class Plane3DExt:
         cls.ZX = cls([0.0, 1.0, 0.0])
         cls.XY = cls([0.0, 0.0, 1.0])
 
-    def __init__(self: Any, normal: Vec3DLike, distance: Union[float, int, None] = None) -> None:
+    def __init__(self: Any, normal: Vec3DLike, distance: float | int | None = None) -> None:
         """
         Create a new instance of the Plane3D datatype.
 

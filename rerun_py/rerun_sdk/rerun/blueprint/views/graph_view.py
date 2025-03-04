@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 __all__ = ["GraphView"]
 
 
@@ -67,8 +65,8 @@ class GraphView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         force_link: blueprint_archetypes.ForceLink | None = None,
         force_many_body: blueprint_archetypes.ForceManyBody | None = None,

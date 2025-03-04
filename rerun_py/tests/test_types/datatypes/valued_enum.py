@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Literal, Sequence, Union
+from collections.abc import Sequence
+from typing import Literal, Union
 
 import pyarrow as pa
 from rerun._baseclasses import (

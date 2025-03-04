@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Literal, Sequence, Type, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Literal, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +36,7 @@ AnyComponentColumn: TypeAlias = Union[
 ]
 """A type alias for any component-column-like object."""
 
-ComponentLike: TypeAlias = Union[str, Type["ComponentMixin"]]
+ComponentLike: TypeAlias = Union[str, type["ComponentMixin"]]
 """
 A type alias for a component-like object used for content-expressions and column selectors.
 
@@ -52,7 +53,7 @@ Examples:
 
 ViewContentsLike: TypeAlias = Union[
     str,
-    Dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
+    dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
 ]
 """
 A type alias for specifying the contents of a view.

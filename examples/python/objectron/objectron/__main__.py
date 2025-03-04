@@ -9,9 +9,9 @@ import math
 import os
 import sys
 import time
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk

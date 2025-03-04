@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -43,9 +44,9 @@ class View:
         contents: ViewContentsLike,
         name: Utf8Like | None,
         visible: BoolLike | None = None,
-        properties: dict[str, AsComponents] = {},
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        properties: dict[str, AsComponents] | None = None,
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
     ):
         """
         Construct a blueprint for a new view.
@@ -88,9 +89,9 @@ class View:
         self.origin = origin
         self.contents = contents
         self.visible = visible
-        self.properties = properties
-        self.defaults = defaults
-        self.overrides = overrides
+        self.properties = properties if properties is not None else {}
+        self.defaults = defaults if defaults is not None else []
+        self.overrides = overrides if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
@@ -118,9 +119,9 @@ class View:
             contents = self.contents
         else:
             # Otherwise we delegate to the ViewContents constructor
-            contents = ViewContents(query=self.contents)  # type: ignore[arg-type]
+            contents = ViewContents(query=self.contents)
 
-        stream.log(self.blueprint_path() + "/ViewContents", contents)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path() + "/ViewContents", contents)
 
         arch = ViewBlueprint(
             class_identifier=self.class_identifier,
@@ -129,22 +130,23 @@ class View:
             visible=self.visible,
         )
 
-        stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)
 
         for prop_name, prop in self.properties.items():
-            stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
+            stream.log(f"{self.blueprint_path()}/{prop_name}", prop)
 
         for default in self.defaults:
-            if hasattr(default, "as_component_batches"):
-                stream.log(f"{self.blueprint_path()}/defaults", default, recording=stream)  # type: ignore[attr-defined]
-            elif hasattr(default, "component_descriptor"):
-                stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
+            if isinstance(default, AsComponents):
+                stream.log(f"{self.blueprint_path()}/defaults", default)
+            elif isinstance(default, ComponentBatchLike):
+                stream.log(f"{self.blueprint_path()}/defaults", [default])  # type: ignore[list-item]
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            stream.log(  # type: ignore[attr-defined]
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components, recording=stream
+            stream.log(
+                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}",
+                components,  # type: ignore[arg-type]
             )
 
     def _ipython_display_(self) -> None:
@@ -264,7 +266,7 @@ class Container:
             display_name=self.name,
         )
 
-        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
@@ -535,7 +537,7 @@ class Blueprint:
             auto_views=self.auto_views,
         )
 
-        stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
+        stream.log("viewport", viewport_arch)
 
         if hasattr(self, "top_panel"):
             self.top_panel._log_to_stream(stream)
@@ -634,7 +636,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -664,7 +666,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -721,7 +723,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+    blueprint_stream.set_index("blueprint", sequence=0)
 
     blueprint._log_to_stream(blueprint_stream)
 

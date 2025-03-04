@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -25,7 +26,7 @@ class TimeRangeBoundary(TimeRangeBoundaryExt):
 
     # You can define your own __init__ function as a member of TimeRangeBoundaryExt in time_range_boundary_ext.py
 
-    inner: Union[None, datatypes.TimeInt] = field()
+    inner: None | datatypes.TimeInt = field()
     """
     Must be one of:
 
