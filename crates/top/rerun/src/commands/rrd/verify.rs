@@ -149,19 +149,19 @@ impl Verifier {
                     // Verify archetype field.
                     // We may want to have a flag to allow some of this?
                     let archetype_field_reflection = archetype_reflection
-                    .get_field(archetype_field_name)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {:?}",
-                            archetype_reflection.fields.iter().map(|field| field.name)
-                        )
-                    })?;
+                        .get_field(archetype_field_name)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {:?}",
+                                archetype_reflection.fields.iter().map(|field| field.name)
+                            )
+                        })?;
 
                     let expected_component_name = &archetype_field_reflection.component_name;
                     if component_name != expected_component_name {
                         return Err(anyhow::anyhow!(
-                        "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
-                    ));
+                            "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
+                        ));
                     }
                 }
             } else {
