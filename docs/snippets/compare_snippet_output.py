@@ -64,6 +64,9 @@ class Example:
         return self.name < other.name
 
     def __repr__(self) -> str:
+        return f"Example(subdir={self.subdir}, name={self.name})"
+
+    def __str__(self) -> str:
         return f"{self.subdir}/{self.name}"
 
 
