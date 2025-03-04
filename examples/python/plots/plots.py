@@ -90,7 +90,7 @@ def log_spiral() -> None:
     # want this in column major, and numpy is row-major by default
     scalars = np.array((x, y)).T
     rr.send_columns(
-        "spiral", indexes=[rr.TimeSequenceColumn("frame_nr", times)], columns=[*rr.Scalar.columns(scalar=scalars)]
+        "spiral", indexes=[rr.IndexColumn("frame_nr", sequence=times)], columns=[*rr.Scalar.columns(scalar=scalars)]
     )
 
 

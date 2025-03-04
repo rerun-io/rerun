@@ -96,7 +96,7 @@ def test_bench_transforms_over_time_batched(
 
         rr.send_columns(
             "test_transform",
-            indexes=[rr.TimeSequenceColumn("frame", times)],
+            indexes=[rr.IndexColumn("frame", sequence=times)],
             columns=rr.Transform3D.columns(
                 translation=rand_trans[start:end],
                 quaternion=rand_quats[start:end],

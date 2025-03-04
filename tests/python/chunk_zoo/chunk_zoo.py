@@ -16,14 +16,14 @@ import rerun as rr
 import rerun.components as rrc
 
 
-def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColumn]:
+def frame_times(t: int | Sequence[int], *args: int) -> list[rr.IndexColumn]:
     if isinstance(t, int):
         t = [t]
     else:
         t = list(t)
     if args:
         t.extend(args)
-    return [rr.TimeSequenceColumn("frame", t)]
+    return [rr.IndexColumn("frame", sequence=t)]
 
 
 def set_frame_time(t: int) -> None:
