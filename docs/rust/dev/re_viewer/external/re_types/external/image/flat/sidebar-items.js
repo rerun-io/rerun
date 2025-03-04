@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","NormalForm"],"struct":["FlatSamples","SampleLayout","View","ViewMut"]};

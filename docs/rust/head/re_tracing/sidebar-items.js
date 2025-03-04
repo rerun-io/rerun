@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["profile_function","profile_function_if","profile_scope","profile_scope_if","profile_wait"],"mod":["reexports","server"],"struct":["Profiler"]};

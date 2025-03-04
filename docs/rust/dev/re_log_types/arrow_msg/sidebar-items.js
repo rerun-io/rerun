@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DESERIALIZE_WITH_ARROW_1","SERIALIZE_WITH_ARROW_1"],"struct":["ArrowMsg","ArrowRecordBatchReleaseCallback"]};

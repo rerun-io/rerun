@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ViewPropertyQueryError"],"fn":["entity_path_for_view_property"],"struct":["ViewProperty"]};

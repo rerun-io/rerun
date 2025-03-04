@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["bounce_lerp","color_spiral","grid","lerp","linspace"]};

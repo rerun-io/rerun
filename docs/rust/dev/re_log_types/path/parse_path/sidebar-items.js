@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PathParseError"],"fn":["entity_path_parts_from_tokens_strict","join","tokenize_by","tokenize_data_path","tokenize_entity_path"],"type":["Result"]};

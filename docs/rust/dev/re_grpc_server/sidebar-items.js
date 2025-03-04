@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Event"],"fn":["message_size"],"struct":["EventLoop","MessageProxy"],"type":["LogMsgStream"]};

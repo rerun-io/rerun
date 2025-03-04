@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_UNDOS"],"fn":["is_interacting","max_blueprint_time"],"struct":["BlueprintUndoState"]};

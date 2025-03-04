@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["text_document_ui"],"struct":["TextDocumentView","TextDocumentViewState"],"type":["ViewType"]};

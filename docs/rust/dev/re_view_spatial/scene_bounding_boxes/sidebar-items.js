@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["detect_boundingbox_discontinuity"],"struct":["SceneBoundingBoxes"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_base_source_url","get_base_url","parse_release_version"],"struct":["Manifest","ManifestEntry","Thumbnail"]};
