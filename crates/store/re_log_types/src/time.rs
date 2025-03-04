@@ -102,13 +102,13 @@ impl Time {
     }
 
     /// Human-readable formatting
-    pub fn format(&self, default_time_zone_for_timestamps: TimeZone) -> String {
+    pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
         if let Some(datetime) = self.to_datetime() {
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
             let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
-            let prefix = match default_time_zone_for_timestamps {
+            let prefix = match time_zone_for_timestamps {
                 TimeZone::UnixEpoch => "[unix_timestamp]",
                 TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
             };
@@ -130,7 +130,7 @@ impl Time {
                 time::format_description::parse(&date_format).unwrap()
             };
 
-            Self::time_string(datetime, &parsed_format, default_time_zone_for_timestamps)
+            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
         } else {
             // Relative time
             let secs = nanos_since_epoch as f64 * 1e-9;
