@@ -18,13 +18,13 @@ To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as wel
 
 `timedelta` must be either:
 * seconds as `int` or `float`
-* `datetime.timedelta`
-* `numpy.timedelta64`.
+* [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta)
+* [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64)
 
 `datetime` must be either:
 * seconds since unix epoch (1970-01-01) as `int` or `float`
-* `datetime.datetime`
-* `numpy.datetime64`.
+* [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime)
+* [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64)
 
 ### Migrating
 ##### `rr.set_sequence("foo", 42)`
