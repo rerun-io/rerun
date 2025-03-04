@@ -89,8 +89,8 @@ class TimeSeriesView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges

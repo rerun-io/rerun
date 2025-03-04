@@ -79,8 +79,8 @@ class Spatial3DView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
