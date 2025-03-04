@@ -156,14 +156,13 @@ def lint_line(
         if err := lint_url(url):
             return err
 
-    if file_extension not in ("txt"):
+    if file_extension not in ("py", "txt"):
         if (
             ellipsis.search(line)
             and not ellipsis_expression.search(line)
             and not ellipsis_import.search(line)
             and not ellipsis_bare.search(line)
             and not ellipsis_reference.search(line)
-            and not (file_extension == "py" and line.strip().startswith("def"))
         ):
             return "Use … instead of ..."
 

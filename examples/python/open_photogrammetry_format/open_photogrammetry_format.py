@@ -143,7 +143,7 @@ class OPFProject:
                 continue
 
             if self.log_as_frames:
-                rr.set_time_sequence("image", i)
+                rr.set_index("image", sequence=i)
                 entity = "world/cameras"
             else:
                 entity = f"world/cameras/{i}"

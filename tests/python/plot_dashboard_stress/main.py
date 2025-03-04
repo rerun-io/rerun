@@ -170,7 +170,7 @@ def main() -> None:
 
     for index, sim_time in ticks:
         if args.temporal_batch_size is None:
-            rr.set_time_seconds("sim_time", sim_time)
+            rr.set_index("sim_time", timedelta=sim_time)
         else:
             time_column = rr.TimeSecondsColumn("sim_time", sim_time)
 

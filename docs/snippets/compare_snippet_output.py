@@ -66,6 +66,9 @@ class Example:
     def __repr__(self) -> str:
         return f"Example(subdir={self.subdir}, name={self.name})"
 
+    def __str__(self) -> str:
+        return f"{self.subdir}/{self.name}"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
@@ -151,6 +154,7 @@ def main() -> None:
             job.get()
 
     print("----------------------------------------------------------")
+    print(f"Active languages: {active_languages}")
     print(f"Comparing {len(examples)} examples…")
 
     for example in examples:
@@ -162,17 +166,28 @@ def main() -> None:
         example_opt_out_compare = example.opt_out_compare()
 
         if "rust" in example_opt_out_entirely:
-            continue  # No baseline to compare against
+            print("SKIPPED: Missing Rust baseline to compare against")
+            continue
 
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
 
-        if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
-            run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+        if "cpp" in active_languages:
+            if "cpp" in example_opt_out_entirely:
+                print("Skipping cpp completely")
+            elif "cpp" in example_opt_out_compare:
+                print("Skipping cpp compare")
+            else:
+                run_comparison(cpp_output_path, rust_output_path, args.full_dump)
 
-        if "py" in active_languages and "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
-            run_comparison(python_output_path, rust_output_path, args.full_dump)
+        if "py" in active_languages:
+            if "py" in example_opt_out_entirely:
+                print("Skipping py completely")
+            elif "py" in example_opt_out_compare:
+                print("Skipping py compare")
+            else:
+                run_comparison(python_output_path, rust_output_path, args.full_dump)
 
     print()
     print("----------------------------------------------------------")
@@ -286,7 +301,7 @@ def check_non_empty_rrd(path: str) -> None:
     from pathlib import Path
 
     assert Path(path).stat().st_size > 0
-    print(f"Confirmed output written to {Path(path).absolute()}")
+    # print(f"Confirmed output written to {Path(path).absolute()}")
 
 
 if __name__ == "__main__":

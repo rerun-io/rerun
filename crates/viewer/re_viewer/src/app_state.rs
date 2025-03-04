@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{NumExt as _, Ui};
+use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -143,13 +143,12 @@ impl AppState {
             .map(|q| (*time_ctrl.timeline().name(), q))
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        recording: &EntityDb,
         store_context: &StoreContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
@@ -227,6 +226,8 @@ impl AppState {
         let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
             viewport_ui.blueprint.root_container,
         ));
+
+        let recording = store_context.recording;
 
         let maybe_visualizable_entities_per_visualizer = view_class_registry
             .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
@@ -584,6 +585,13 @@ impl AppState {
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
             selection_state.clear_selection();
+        }
+
+        // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
+        if !LabelSelectionState::load(ui.ctx()).has_selection()
+            && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
+        {
+            selection_state.selected_items().copy_to_clipboard(ui.ctx());
         }
 
         // Reset the focused item.

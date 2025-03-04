@@ -228,7 +228,7 @@ class MeasurementLogger:
         ]
 
     def process_measurement(self, measurement: Measurement) -> None:
-        rr.set_time_seconds("unix_time", measurement.timestamp)
+        rr.set_index("unix_time", datetime=measurement.timestamp)
 
         if self._raw:
             metadata = dataclasses.asdict(measurement)
@@ -386,7 +386,6 @@ def log_everything(paths: list[Path], raw: bool, batch: bool, batch_size: int) -
 
     proj = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
 
-    rr.set_time_seconds("unix_time", 0)
     for country_code, (level, color) in itertools.product(["DE", "CH"], [(0, (1, 0.5, 0.5))]):
         log_region_boundaries_for_country(country_code, level, color, utm_crs)
 

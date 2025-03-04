@@ -27,12 +27,12 @@ class TextLogView(View):
 
     rr.init("rerun_example_text_log", spawn=True)
 
-    rr.set_time_sequence("time", 0)
+    rr.set_index("time", sequence=0)
     rr.log("log/status", rr.TextLog("Application started.", level=rr.TextLogLevel.INFO))
-    rr.set_time_sequence("time", 5)
+    rr.set_index("time", sequence=5)
     rr.log("log/other", rr.TextLog("A warning.", level=rr.TextLogLevel.WARN))
     for i in range(10):
-        rr.set_time_sequence("time", i)
+        rr.set_index("time", sequence=i)
         rr.log("log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO))
 
     # Create a text view that displays all logs.
