@@ -6,7 +6,11 @@
 //! ```
 
 use itertools::Itertools as _;
-use rerun::{external::re_log, Color, GraphEdges, GraphNodes};
+use rerun::{
+    external::{re_log, re_log_types::RecordingProperties, re_types_core},
+    time::TimeInt,
+    Color, EntityPath, GraphEdges, GraphNodes,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -59,6 +63,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     rec.log_static("/lattice", &GraphEdges::new(edges).with_directed_edges())?;
+
+    let app_id = re_types_core::components::ApplicationId::from("test123");
+    let nanos = 42i64;
+    let started = re_types_core::components::RecordingStartedTimestamp::from(TimeInt::from_nanos(
+        nanos.try_into().unwrap(),
+    ));
+
+    rec.log_static(
+        EntityPath::root(),
+        &re_types_core::archetypes::RecordingProperties::new(
+            std::iter::once(app_id),
+            std::iter::once(started),
+        ),
+    )?;
 
     Ok(())
 }

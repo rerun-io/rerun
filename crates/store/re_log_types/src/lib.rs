@@ -161,6 +161,7 @@ impl std::fmt::Display for StoreId {
 
 // ----------------------------------------------------------------------------
 
+// TODO: consolidate with `components::ApplicationId`
 /// The user-chosen name of the application doing the logging.
 ///
 /// Used to categorize recordings.
@@ -339,11 +340,24 @@ pub struct SetStoreInfo {
     pub info: StoreInfo,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct RecordingProperties {
+    /// The user-chosen name of the application doing the logging.
+    pub application_name: ApplicationId,
+
+    /// When the recording started.
+    ///
+    /// Should be an absolute time, i.e. relative to Unix Epoch.
+    pub started: Time,
+}
+
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
+    #[deprecated]
     pub application_id: ApplicationId,
 
     /// Should be unique for each recording.
@@ -360,11 +374,13 @@ pub struct StoreInfo {
     pub cloned_from: Option<StoreId>,
 
     /// True if the recording is one of the official Rerun examples.
+    // TODO: This should be a good example for a custom attribute.
     pub is_official_example: bool,
 
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
+    #[deprecated]
     pub started: Time,
 
     pub store_source: StoreSource,

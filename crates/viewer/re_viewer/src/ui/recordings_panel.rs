@@ -112,7 +112,7 @@ fn recording_list_ui(
 
     for entity_db in ctx.store_context.bundle.entity_dbs() {
         // We want to show all open applications, even if they have no recordings
-        let Some(app_id) = entity_db.app_id().cloned() else {
+        let Some(app_id) = entity_db.app_id() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
         let recordings = entity_dbs_map.entry(app_id).or_default();

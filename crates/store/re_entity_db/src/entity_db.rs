@@ -3,14 +3,14 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingProperties, ResolvedTimeRange,
+    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -136,8 +136,16 @@ impl EntityDb {
         self.store_info_msg().map(|msg| &msg.info)
     }
 
-    pub fn app_id(&self) -> Option<&ApplicationId> {
-        self.store_info().map(|ri| &ri.application_id)
+    // TODO: Provide types
+    pub fn app_id(&self) -> Option<ApplicationId> {
+        self.latest_at_component::<re_types_core::components::ApplicationId>(
+            &EntityPath::root(),
+            &LatestAtQuery::latest("log_time".into()),
+        )
+        .map_or(
+            self.store_info().map(|s| s.application_id.clone()),
+            |(_, app_id)| Some(ApplicationId(app_id.to_string())),
+        )
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -351,7 +359,7 @@ impl EntityDb {
 
         let store_events = match &msg {
             LogMsg::SetStoreInfo(msg) => {
-                self.set_store_info(msg.clone());
+                self.set_store_info(dbg!(msg.clone()));
                 vec![]
             }
 

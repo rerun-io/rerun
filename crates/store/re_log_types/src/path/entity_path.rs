@@ -549,6 +549,11 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_root() {
+        assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
+
+    #[test]
     fn test_incremental_walk() {
         assert_eq!(
             EntityPath::incremental_walk(None, &EntityPath::root()).collect::<Vec<_>>(),
