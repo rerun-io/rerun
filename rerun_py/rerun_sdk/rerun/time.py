@@ -142,7 +142,7 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
 )
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
     """
-    Set the current time for this thread as an integer sequence.
+    DEPRECATED: Set the current time for this thread as an integer sequence.
 
     Used for all subsequent logging on the same thread,
     until the next call to `set_time_sequence`.
@@ -182,7 +182,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
     """
-    Set the current time for this thread in seconds.
+    DEPRECATED: Set the current time for this thread in seconds.
 
     Used for all subsequent logging on the same thread,
     until the next call to [`rerun.set_time_seconds`][] or [`rerun.set_time_nanos`][].
@@ -230,7 +230,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
     """
-    Set the current time for this thread.
+    DEPRECATED: Set the current time for this thread.
 
     Used for all subsequent logging on the same thread,
     until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
