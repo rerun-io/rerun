@@ -113,6 +113,16 @@ pub fn decode_bytes(
 
 pub fn read_options(
     version_policy: VersionPolicy,
+    reader: &mut impl std::io::Read,
+) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
+    let mut data = [0_u8; FileHeader::SIZE];
+    reader.read_exact(&mut data).map_err(DecodeError::Read)?;
+
+    options_from_bytes(version_policy, &data)
+}
+
+pub fn options_from_bytes(
+    version_policy: VersionPolicy,
     bytes: &[u8],
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
@@ -179,7 +189,7 @@ impl<R: std::io::Read> Decoder<R> {
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = read_options(version_policy, &data)?;
+        let (version, options) = options_from_bytes(version_policy, &data)?;
 
         Ok(Self {
             version,
@@ -223,7 +233,7 @@ impl<R: std::io::Read> Decoder<R> {
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = read_options(version_policy, &data)?;
+        let (version, options) = options_from_bytes(version_policy, &data)?;
 
         Ok(Self {
             version,
@@ -285,7 +295,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 return Some(Err(err));
             }
 
-            let (version, options) = match read_options(VersionPolicy::Warn, &data) {
+            let (version, options) = match options_from_bytes(VersionPolicy::Warn, &data) {
                 Ok(opts) => opts,
                 Err(err) => return Some(Err(err)),
             };
