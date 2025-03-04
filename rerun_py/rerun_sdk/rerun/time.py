@@ -113,7 +113,7 @@ def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
     elif isinstance(timedelta_obj, np.timedelta64):
         return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
-        raise TypeError("timedelta_obj must be an int, float, timedelta, or numpy.timedelta64 object")
+        raise TypeError(f"set_index: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}")
 
 
 def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> int:
@@ -129,7 +129,7 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
     elif isinstance(date_time, np.datetime64):
         return date_time.astype("int64")  # type: ignore[no-any-return]
     else:
-        raise TypeError("date_time must be an int, float, datetime, or numpy.datetime64 object")
+        raise TypeError(f"set_index: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}")
 
 
 @deprecated(
