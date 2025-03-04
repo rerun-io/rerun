@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -22,7 +23,7 @@ __all__ = ["AffixFuzzer4", "AffixFuzzer4ArrayLike", "AffixFuzzer4Batch", "AffixF
 class AffixFuzzer4:
     # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
 
-    inner: Union[datatypes.AffixFuzzer3, list[datatypes.AffixFuzzer3]] = field()
+    inner: datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] = field()
     """
     Must be one of:
 

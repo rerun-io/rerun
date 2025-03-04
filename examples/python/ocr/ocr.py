@@ -6,9 +6,10 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Iterable, Optional
+from typing import Any, Final, Optional
 
 import cv2 as cv2
 import numpy as np

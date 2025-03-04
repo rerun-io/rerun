@@ -7,8 +7,9 @@ import argparse
 import io
 import os
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Final
 
 import dicom_numpy
 import numpy as np

@@ -11,8 +11,6 @@ import numpy as np
 __version__ = "0.23.0-alpha.1+dev"
 __version_info__ = (0, 23, 0, "alpha.1")
 
-if sys.version_info < (3, 9):
-    raise RuntimeError("Rerun SDK requires Python 3.9 or later")
 
 # =====================================
 # API RE-EXPORTS

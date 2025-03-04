@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Generic, Iterable, Iterator, Protocol, TypeVar, runtime_checkable
+from collections.abc import Iterable, Iterator
+from typing import Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt

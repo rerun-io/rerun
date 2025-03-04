@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 __all__ = ["BarChartView"]
 
 
@@ -55,7 +53,7 @@ class BarChartView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
     ) -> None:

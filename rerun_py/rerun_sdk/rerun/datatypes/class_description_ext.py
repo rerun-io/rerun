@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 import pyarrow as pa
 

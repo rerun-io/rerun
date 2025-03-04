@@ -25,12 +25,13 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import git
 import requests

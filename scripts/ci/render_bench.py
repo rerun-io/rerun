@@ -28,12 +28,13 @@ import json
 import os
 import re
 import textwrap
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Callable, Dict, Generator, List
+from typing import Callable
 
 from google.cloud import storage
 
@@ -99,7 +100,7 @@ class BenchmarkEntry:
         )
 
 
-Benchmarks = Dict[str, List[BenchmarkEntry]]
+Benchmarks = dict[str, list[BenchmarkEntry]]
 
 
 FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+(\d+)\s+ns\/iter")
@@ -125,7 +126,7 @@ def parse_sizes_json(data: str) -> list[Measurement]:
     ]
 
 
-Blobs = Dict[str, storage.Blob]
+Blobs = dict[str, storage.Blob]
 
 
 def fetch_blobs(gcs: storage.Client, bucket: str, path_prefix: str) -> Blobs:

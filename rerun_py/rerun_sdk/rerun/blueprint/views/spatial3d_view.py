@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 __all__ = ["Spatial3DView"]
 
@@ -79,7 +79,7 @@ class Spatial3DView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like

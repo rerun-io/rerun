@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Union
-
 __all__ = ["MapView"]
 
 
@@ -62,7 +60,7 @@ class MapView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
         zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,
         background: blueprint_archetypes.MapBackground | blueprint_components.MapProviderLike | None = None,

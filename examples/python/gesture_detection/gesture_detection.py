@@ -7,8 +7,9 @@ import argparse
 import itertools
 import logging
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Final
 
 import cv2
 import mediapipe as mp

@@ -7,9 +7,10 @@ import argparse
 import json
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 import cv2
 import numpy as np

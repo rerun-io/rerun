@@ -24,11 +24,12 @@ import os
 import shutil
 import subprocess
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from jinja2 import Template

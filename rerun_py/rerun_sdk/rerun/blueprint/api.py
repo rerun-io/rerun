@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -44,7 +45,7 @@ class View:
         name: Utf8Like | None,
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
-        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        defaults: list[AsComponents | ComponentBatchLike] | None = None,
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
     ):
         """

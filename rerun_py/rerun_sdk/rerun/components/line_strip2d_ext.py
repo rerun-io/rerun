@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Optional, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, Optional, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
