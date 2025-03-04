@@ -1,0 +1,19 @@
+[project]
+name = "px4_ulog"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "pyulog",
+  "requests",
+  "rerun-sdk",
+  "tqdm",
+]
+
+[project.scripts]
+px4_ulog = "px4_ulog:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
