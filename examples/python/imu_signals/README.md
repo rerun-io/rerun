@@ -31,7 +31,7 @@ imu_data = pd.read_csv(
     comment="#",
 )
 
-times = rr.TimeNanosColumn("timestamp", imu_data["timestamp"])
+times = rr.IndexColumn("timestamp", datetime=imu_data["timestamp"])
 
 # Extract gyroscope data (x, y, z axes) and log it to a single entity.
 gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]

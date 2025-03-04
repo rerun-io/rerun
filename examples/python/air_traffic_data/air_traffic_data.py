@@ -326,7 +326,7 @@ class MeasurementBatchLogger:
             rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.from_fields(color=color), static=True)
             self._position_indicators.add(icao_id)
 
-        timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
+        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
         pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
 
         raw_coordinates = rr.AnyValues(
@@ -355,7 +355,7 @@ class MeasurementBatchLogger:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "ground_status"].drop_nulls()
 
-        timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
+        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
         columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
         rr.send_columns(entity_path, [timestamps], columns)
@@ -372,7 +372,7 @@ class MeasurementBatchLogger:
 
         rr.send_columns(
             entity_path,
-            [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
+            [rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())],
             metadata,
         )
 
