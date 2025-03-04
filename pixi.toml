@@ -488,6 +488,8 @@ pygithub = "==1.59.0"            # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
+types-decorator = "*"            # Type hint stubs
+types-pytz = "*"                 # Type hint stubs
 parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]

@@ -43,9 +43,9 @@ class View:
         contents: ViewContentsLike,
         name: Utf8Like | None,
         visible: BoolLike | None = None,
-        properties: dict[str, AsComponents] = {},
-        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        properties: dict[str, AsComponents] | None = None,
+        defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
     ):
         """
         Construct a blueprint for a new view.
@@ -88,9 +88,9 @@ class View:
         self.origin = origin
         self.contents = contents
         self.visible = visible
-        self.properties = properties
-        self.defaults = defaults
-        self.overrides = overrides
+        self.properties = properties if properties is not None else {}
+        self.defaults = defaults if defaults is not None else []
+        self.overrides = overrides if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
@@ -120,7 +120,7 @@ class View:
             # Otherwise we delegate to the ViewContents constructor
             contents = ViewContents(query=self.contents)  # type: ignore[arg-type]
 
-        stream.log(self.blueprint_path() + "/ViewContents", contents)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path() + "/ViewContents", contents)
 
         arch = ViewBlueprint(
             class_identifier=self.class_identifier,
@@ -129,22 +129,22 @@ class View:
             visible=self.visible,
         )
 
-        stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
         for prop_name, prop in self.properties.items():
-            stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
+            stream.log(f"{self.blueprint_path()}/{prop_name}", prop)
 
         for default in self.defaults:
             if hasattr(default, "as_component_batches"):
-                stream.log(f"{self.blueprint_path()}/defaults", default, recording=stream)  # type: ignore[attr-defined]
+                stream.log(f"{self.blueprint_path()}/defaults", default)
             elif hasattr(default, "component_descriptor"):
-                stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
+                stream.log(f"{self.blueprint_path()}/defaults", [default])
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
             stream.log(  # type: ignore[attr-defined]
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components, recording=stream
+                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components
             )
 
     def _ipython_display_(self) -> None:

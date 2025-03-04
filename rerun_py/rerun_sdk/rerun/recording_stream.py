@@ -4,9 +4,19 @@ import contextvars
 import functools
 import inspect
 import uuid
-from typing import Any, Callable, TypeVar
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar, overload
+
+import numpy as np
+from typing_extensions import deprecated
 
 from rerun import bindings
+from rerun.memory import MemoryRecording
+from rerun.time import reset_time
+
+if TYPE_CHECKING:
+    from rerun import AsComponents, BlueprintLike, DescribedComponentBatch
 
 
 # ---
@@ -167,6 +177,113 @@ Used to managed and detect interactions between generators and RecordingStream c
 """
 
 
+def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
+    """
+    Sends all log-data to a [`rerun.BinaryStream`] object that can be read from.
+
+    The contents of this stream are encoded in the Rerun Record Data format (rrd).
+
+    This stream has no mechanism of limiting memory or creating back-pressure. If you do not
+    read from it, it will buffer all messages that you have logged.
+
+    Example
+    -------
+    ```python
+    stream = rr.binary_stream()
+
+    rr.log("stream", rr.TextLog("Hello world"))
+
+    with open("output.rrd", "wb") as f:
+        f.write(stream.read())
+    ```
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    BinaryStream
+        An object that can be used to flush or read the data.
+
+    """
+    return BinaryStream(bindings.binary_stream(recording=recording.to_native() if recording is not None else None))
+
+
+def is_enabled(
+    recording: RecordingStream | None = None,
+) -> bool:
+    """
+    Is this Rerun recording enabled.
+
+    If false, all calls to the recording are ignored.
+
+    The default can be set in [`rerun.init`][], but is otherwise `True`.
+
+    This can be controlled with the environment variable `RERUN` (e.g. `RERUN=on` or `RERUN=off`).
+
+    """
+    return bindings.is_enabled(recording=recording.to_native() if recording is not None else None)  # type: ignore[no-any-return]
+
+
+def get_application_id(
+    recording: RecordingStream | None = None,
+) -> str | None:
+    """
+    Get the application ID that this recording is associated with, if any.
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    str
+        The application ID that this recording is associated with.
+
+    """
+    app_id = bindings.get_application_id(recording=recording.to_native() if recording is not None else None)
+    return str(app_id) if app_id is not None else None
+
+
+def get_recording_id(
+    recording: RecordingStream | None = None,
+) -> str | None:
+    """
+    Get the recording ID that this recording is logging to, as a UUIDv4, if any.
+
+    The default recording_id is based on `multiprocessing.current_process().authkey`
+    which means that all processes spawned with `multiprocessing`
+    will have the same default recording_id.
+
+    If you are not using `multiprocessing` and still want several different Python
+    processes to log to the same Rerun instance (and be part of the same recording),
+    you will need to manually assign them all the same recording_id.
+    Any random UUIDv4 will work, or copy the recording id for the parent process.
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    str
+        The recording ID that this recording is logging to.
+
+    """
+    rec_id = bindings.get_recording_id(recording=recording.to_native() if recording is not None else None)
+    return str(rec_id) if rec_id is not None else None
+
+
 class RecordingStream:
     """
     A RecordingStream is used to send data to Rerun.
@@ -291,41 +408,668 @@ class RecordingStream:
         if recording is not None and not recording.is_forked_child():
             bindings.flush(blocking=False, recording=recording)  # NOLINT
 
+    # any free function taking a `RecordingStream` as the first argument can also be a method
+    binary_stream = binary_stream
+    get_application_id = get_application_id
+    get_recording_id = get_recording_id
+    is_enabled = is_enabled
 
-def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
-    """
-    Sends all log-data to a [`rerun.BinaryStream`] object that can be read from.
+    def connect_grpc(
+        self,
+        url: str | None = None,
+        *,
+        flush_timeout_sec: float | None = 2.0,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Connect to a remote Rerun Viewer on the given HTTP(S) URL.
 
-    The contents of this stream are encoded in the Rerun Record Data format (rrd).
+        This function returns immediately.
 
-    This stream has no mechanism of limiting memory or creating back-pressure. If you do not
-    read from it, it will buffer all messages that you have logged.
+        Parameters
+        ----------
+        url:
+            The HTTP(S) URL to connect to
+        flush_timeout_sec:
+            The minimum time the SDK will wait during a flush before potentially
+            dropping data if progress is not being made. Passing `None` indicates no timeout,
+            and can cause a call to `flush` to block indefinitely.
+        default_blueprint
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
 
-    Example
-    -------
-    ```python
-    stream = rr.binary_stream()
+        """
 
-    rr.log("stream", rr.TextLog("Hello world"))
+        from rerun.sinks import connect_grpc
 
-    with open("output.rrd", "wb") as f:
-        f.write(stream.read())
-    ```
+        connect_grpc(url, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=self)
 
-    Parameters
-    ----------
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    def save(self, path: str | Path, default_blueprint: BlueprintLike | None = None) -> None:
+        """
+        Stream all log-data to a file.
 
-    Returns
-    -------
-    BinaryStream
-        An object that can be used to flush or read the data.
+        Call this _before_ you log any data!
 
-    """
-    return BinaryStream(bindings.binary_stream(recording=recording.to_native() if recording is not None else None))
+        The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+        However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+        This is a common issue on Windows and (to a lesser extent) on MacOS.
+
+        Parameters
+        ----------
+        path:
+            The path to save the data to.
+        default_blueprint
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        """
+
+        from rerun.sinks import save
+
+        save(path, default_blueprint, recording=self)
+
+    def stdout(self, default_blueprint: BlueprintLike | None = None) -> None:
+        """
+        Stream all log-data to stdout.
+
+        Pipe it into a Rerun Viewer to visualize it.
+
+        Call this _before_ you log any data!
+
+        If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+        default back to `buffered` mode, in order not to break the user's terminal.
+
+        Parameters
+        ----------
+        default_blueprint
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        """
+
+        from rerun.sinks import stdout
+
+        stdout(default_blueprint, recording=self)
+
+    def memory_recording(self) -> MemoryRecording:
+        """
+        Streams all log-data to a memory buffer.
+
+        This can be used to display the RRD to alternative formats such as html.
+        See: [rerun.notebook_show][].
+
+        Returns
+        -------
+        MemoryRecording
+            A memory recording object that can be used to read the data.
+
+        """
+
+        from .memory import memory_recording
+
+        return memory_recording(self)
+
+    def disconnect(self) -> None:
+        """
+        Closes all TCP connections, servers, and files.
+
+        Closes all TCP connections, servers, and files that have been opened with
+        [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+        """
+
+        from rerun.sinks import disconnect
+
+        disconnect(recording=self)
+
+    def serve_web(
+        self,
+        *,
+        open_browser: bool = True,
+        web_port: int | None = None,
+        grpc_port: int | None = None,
+        default_blueprint: BlueprintLike | None = None,
+        server_memory_limit: str = "25%",
+    ) -> None:
+        """
+        Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+        You can also connect to this server with the native viewer using `rerun localhost:9090`.
+
+        The WebSocket server will buffer all log data in memorsy so that late connecting viewers will get all the data.
+        You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
+        Once reached, the earliest logged data will be dropped.
+        Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+
+        This function returns immediately.
+
+        Parameters
+        ----------
+        open_browser:
+            Open the default browser to the viewer.
+        web_port:
+            The port to serve the web viewer on (defaults to 9090).
+        grpc_port:
+            The port to serve the gRPC server on (defaults to 9876)
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+        server_memory_limit:
+            Maximum amount of memory to use for buffering log data for clients that connect late.
+            This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+
+        """
+
+        from rerun.sinks import serve_web
+
+        serve_web(
+            open_browser=open_browser,
+            web_port=web_port,
+            grpc_port=grpc_port,
+            default_blueprint=default_blueprint,
+            server_memory_limit=server_memory_limit,
+            recording=self,
+        )
+
+    def send_blueprint(
+        self,
+        blueprint: BlueprintLike,
+        *,
+        make_active: bool = True,
+        make_default: bool = True,
+    ) -> None:
+        """
+        Create a blueprint from a `BlueprintLike` and send it to the `RecordingStream`.
+
+        Parameters
+        ----------
+        blueprint:
+            A blueprint object to send to the viewer.
+        make_active:
+            Immediately make this the active blueprint for the associated `app_id`.
+            Note that setting this to `false` does not mean the blueprint may not still end
+            up becoming active. In particular, if `make_default` is true and there is no other
+            currently active blueprint.
+        make_default:
+            Make this the default blueprint for the `app_id`.
+            The default blueprint will be used as the template when the user resets the
+            blueprint for the app. It will also become the active blueprint if no other
+            blueprint is currently active.
+
+        """
+
+        from rerun.sinks import send_blueprint
+
+        send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
+
+    def spawn(
+        self,
+        *,
+        port: int = 9876,
+        connect: bool = True,
+        memory_limit: str = "75%",
+        hide_welcome_screen: bool = False,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Spawn a Rerun Viewer, listening on the given port.
+
+        This is often the easiest and best way to use Rerun.
+        Just call this once at the start of your program.
+
+        You can also call [rerun.init][] with a `spawn=True` argument.
+
+        Parameters
+        ----------
+        port:
+            The port to listen on.
+        connect:
+            also connect to the viewer and stream logging data to it.
+        memory_limit:
+            An upper limit on how much memory the Rerun Viewer should use.
+            When this limit is reached, Rerun will drop the oldest data.
+            Example: `16GB` or `50%` (of system total).
+        hide_welcome_screen:
+            Hide the normal Rerun welcome screen.
+        default_blueprint
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        """
+
+        from rerun.sinks import spawn
+
+        spawn(
+            port=port,
+            connect=connect,
+            memory_limit=memory_limit,
+            hide_welcome_screen=hide_welcome_screen,
+            default_blueprint=default_blueprint,
+            recording=self,
+        )
+
+    def notebook_show(
+        self,
+        *,
+        width: int | None = None,
+        height: int | None = None,
+        blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
+
+        Any data logged to the recording after initialization will be sent directly to the viewer.
+
+        Note that this can be called at any point during cell execution. The call will block until the embedded
+        viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
+        to the viewer.
+
+        Parameters
+        ----------
+        width : int
+            The width of the viewer in pixels.
+        height : int
+            The height of the viewer in pixels.
+        blueprint : BlueprintLike
+            A blueprint object to send to the viewer.
+            It will be made active and set as the default blueprint in the recording.
+
+            Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+
+        """
+
+        from rerun.notebook import notebook_show
+
+        notebook_show(
+            width=width,
+            height=height,
+            blueprint=blueprint,
+            recording=self,
+        )
+
+    @overload
+    def set_index(self, timeline: str, *, sequence: int) -> None: ...
+
+    @overload
+    def set_index(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
+
+    @overload
+    def set_index(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
+
+    def set_index(
+        self,
+        timeline: str,
+        *,
+        sequence: int | None = None,
+        timedelta: int | float | timedelta | np.timedelta64 | None = None,
+        datetime: int | float | datetime | np.datetime64 | None = None,
+    ) -> None:
+        """
+        Set the current time of a timeline for this thread.
+
+        Used for all subsequent logging on the same thread, until the next call to
+        [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+
+        For example: `set_index("frame_nr", sequence=frame_nr)`.
+
+        There is no requirement of monotonicity. You can move the time backwards if you like.
+
+        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
+        you must only use `timedelta` for that timeline going forward.
+
+        Parameters
+        ----------
+        timeline : str
+            The name of the timeline to set the time for.
+        sequence:
+            Used for sequential indices, like `frame_nr`.
+            Must be an integer.
+        timedelta:
+            Used for relative times, like `time_since_start`.
+            Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
+            For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
+        datetime:
+            Used for absolute time indices, like `capture_time`.
+            Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
+            For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
+
+        """
+
+        from .time import set_index
+
+        # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
+        set_index(  # type: ignore[call-overload]
+            timeline=timeline,
+            time=timedelta,
+            sequence=sequence,
+            datetime=datetime,
+            recording=self,
+        )
+
+    @deprecated(
+        """Use `set_index(sequence=…)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    )
+    def set_time_sequence(self, timeline: str, sequence: int) -> None:
+        """
+        Set the current time for this thread as an integer sequence.
+
+        Used for all subsequent logging on the same thread,
+        until the next call to `set_time_sequence`.
+
+        For example: `set_time_sequence("frame_nr", frame_nr)`.
+
+        You can remove a timeline again using `disable_timeline("frame_nr")`.
+
+        There is no requirement of monotonicity. You can move the time backwards if you like.
+
+        This function marks the timeline as being of a _squential_ type.
+        You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
+        on the same timeline, as that will produce undefined behavior.
+
+        Parameters
+        ----------
+        timeline : str
+            The name of the timeline to set the time for.
+        sequence : int
+            The current time on the timeline in integer units.
+
+        """
+
+        from rerun.time import set_time_sequence
+
+        set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
+
+    @deprecated(
+        """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    )
+    def set_time_seconds(self, timeline: str, seconds: float) -> None:
+        """
+        Set the current time for this thread in seconds.
+
+        Used for all subsequent logging on the same thread,
+        until the next call to [`rerun.set_time_seconds`][] or [`rerun.set_time_nanos`][].
+
+        For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
+
+        You can remove a timeline again using `disable_timeline("capture_time")`.
+
+        Very large values will automatically be interpreted as seconds since unix epoch (1970-01-01).
+        Small values (less than a few years) will be interpreted as relative
+        some unknown point in time, and will be shown as e.g. `+3.132s`.
+
+        The bindings has a built-in time which is `log_time`, and is logged as seconds
+        since unix epoch.
+
+        There is no requirement of monotonicity. You can move the time backwards if you like.
+
+        This function marks the timeline as being of a _temporal_ type.
+        You should not use the sequential function [`rerun.set_time_sequence`][]
+        on the same timeline, as that will produce undefined behavior.
+
+        Parameters
+        ----------
+        timeline : str
+            The name of the timeline to set the time for.
+        seconds : float
+            The current time on the timeline in seconds.
+
+        """
+
+        from rerun.time import set_time_seconds
+
+        set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
+
+    @deprecated(
+        """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    )
+    def set_time_nanos(self, timeline: str, nanos: int) -> None:
+        """
+        Set the current time for this thread.
+
+        Used for all subsequent logging on the same thread,
+        until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
+
+        For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
+
+        You can remove a timeline again using `disable_timeline("capture_time")`.
+
+        Very large values will automatically be interpreted as nanoseconds since unix epoch (1970-01-01).
+        Small values (less than a few years) will be interpreted as relative
+        some unknown point in time, and will be shown as e.g. `+3.132s`.
+
+        The bindings has a built-in time which is `log_time`, and is logged as nanos since
+        unix epoch.
+
+        There is no requirement of monotonicity. You can move the time backwards if you like.
+
+        This function marks the timeline as being of a _temporal_ type.
+        You should not use the sequential function [`rerun.set_time_sequence`][]
+        on the same timeline, as that will produce undefined behavior.
+
+        Parameters
+        ----------
+        timeline : str
+            The name of the timeline to set the time for.
+        nanos : int
+            The current time on the timeline in nanoseconds.
+
+        """
+
+        from rerun.time import set_time_nanos
+
+        set_time_nanos(timeline=timeline, nanos=nanos, recording=self)
+
+    def disable_timeline(self, timeline: str) -> None:
+        """
+        Clear time information for the specified timeline on this thread.
+
+        Parameters
+        ----------
+        timeline : str
+            The name of the timeline to clear the time for.
+
+        """
+
+        from rerun.time import disable_timeline
+
+        disable_timeline(timeline=timeline, recording=self)
+
+    reset_time = reset_time
+
+    def log(
+        self,
+        entity_path: str | list[str],
+        entity: AsComponents | Iterable[DescribedComponentBatch],
+        *extra: AsComponents | Iterable[DescribedComponentBatch],
+        static: bool = False,
+        strict: bool | None = None,
+    ) -> None:
+        r"""
+        Log data to Rerun.
+
+        This is the main entry point for logging data to rerun. It can be used to log anything
+        that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
+
+
+
+        objects.
+
+        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+        for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
+        itself and should not be used for logging user data. This is where Rerun will log additional information
+        such as warnings.
+
+        The most common way to log is with one of the rerun archetypes, all of which implement
+        the `AsComponents` interface.
+
+        For example, to log a 3D point:
+        ```py
+        rr.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+        ```
+
+        The `log` function can flexibly accept an arbitrary number of additional objects which will
+        be merged into the first entity so long as they don't expose conflicting components, for instance:
+        ```py
+        # Log three points with arrows sticking out of them,
+        # and a custom "confidence" component.
+        rr.log(
+            "my/points",
+            rr.Points3D([[0.2, 0.5, 0.3], [0.9, 1.2, 0.1], [1.0, 4.2, 0.3]], radii=[0.1, 0.2, 0.3]),
+            rr.Arrows3D(vectors=[[0.3, 2.1, 0.2], [0.9, -1.1, 2.3], [-0.4, 0.5, 2.9]]),
+            rr.AnyValues(confidence=[0.3, 0.4, 0.9]),
+        )
+        ```
+
+        Parameters
+        ----------
+        entity_path:
+            Path to the entity in the space hierarchy.
+
+            The entity path can either be a string
+            (with special characters escaped, split on unescaped slashes)
+            or a list of unescaped strings.
+            This means that logging to `"world/my\ image\!"` is the same as logging
+            to ["world", "my image!"].
+
+            See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
+        entity:
+            Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
+
+        *extra:
+            An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][]
+            interface, that are logged to the same entity path.
+
+        static:
+            If true, the components will be logged as static data.
+
+            Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+            any temporal data of the same type.
+
+            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+            [`rerun.set_time_nanos`][] will also be included.
+
+        strict:
+            If True, raise exceptions on non-loggable data.
+            If False, warn on non-loggable data.
+            if None, use the global default from `rerun.strict_mode()`
+
+        """
+
+        from rerun._log import log
+
+        log(entity_path, entity, *extra, static=static, strict=strict, recording=self)
+
+    def log_file_from_contents(
+        self,
+        file_path: str | Path,
+        file_contents: bytes,
+        *,
+        entity_path_prefix: str | None = None,
+        static: bool = False,
+    ) -> None:
+        r"""
+        Logs the given `file_contents` using all `DataLoader`s available.
+
+        A single `path` might be handled by more than one loader.
+
+        This method blocks until either at least one `DataLoader` starts
+        streaming data in or all of them fail.
+
+        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+
+        Parameters
+        ----------
+        file_path:
+            Path to the file that the `file_contents` belong to.
+
+        file_contents:
+            Contents to be logged.
+
+        entity_path_prefix:
+            What should the logged entity paths be prefixed with?
+
+        static:
+            If true, the components will be logged as static data.
+
+            Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+            any temporal data of the same type.
+
+            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+            [`rerun.set_time_nanos`][] will also be included.
+
+        """
+
+        from ._log import log_file_from_contents
+
+        log_file_from_contents(
+            file_path=file_path,
+            file_contents=file_contents,
+            entity_path_prefix=entity_path_prefix,
+            static=static,
+            recording=self,
+        )
+
+    def log_file_from_path(
+        self,
+        file_path: str | Path,
+        *,
+        entity_path_prefix: str | None = None,
+        static: bool = False,
+    ) -> None:
+        r"""
+        Logs the file at the given `path` using all `DataLoader`s available.
+
+        A single `path` might be handled by more than one loader.
+
+        This method blocks until either at least one `DataLoader` starts
+        streaming data in or all of them fail.
+
+        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+
+        Parameters
+        ----------
+        file_path:
+            Path to the file to be logged.
+
+        entity_path_prefix:
+            What should the logged entity paths be prefixed with?
+
+        static:
+            If true, the components will be logged as static data.
+
+            Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+            any temporal data of the same type.
+
+            Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+            [`rerun.set_time_nanos`][] will also be included.
+
+        """
+
+        from ._log import log_file_from_path
+
+        log_file_from_path(
+            file_path=file_path,
+            entity_path_prefix=entity_path_prefix,
+            static=static,
+            recording=self,
+        )
 
 
 class BinaryStream:
@@ -381,82 +1125,6 @@ def _patch(funcs):  # type: ignore[no-untyped-def]
         wrapper = eager_wrap(fn)  # type: ignore[no-untyped-call]
         setattr(RecordingStream, fn.__name__, wrapper)
 
-
-# ---
-
-
-def is_enabled(
-    recording: RecordingStream | None = None,
-) -> bool:
-    """
-    Is this Rerun recording enabled.
-
-    If false, all calls to the recording are ignored.
-
-    The default can be set in [`rerun.init`][], but is otherwise `True`.
-
-    This can be controlled with the environment variable `RERUN` (e.g. `RERUN=on` or `RERUN=off`).
-
-    """
-    return bindings.is_enabled(recording=recording.to_native() if recording is not None else None)  # type: ignore[no-any-return]
-
-
-def get_application_id(
-    recording: RecordingStream | None = None,
-) -> str | None:
-    """
-    Get the application ID that this recording is associated with, if any.
-
-    Parameters
-    ----------
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    Returns
-    -------
-    str
-        The application ID that this recording is associated with.
-
-    """
-    app_id = bindings.get_application_id(recording=recording.to_native() if recording is not None else None)
-    return str(app_id) if app_id is not None else None
-
-
-def get_recording_id(
-    recording: RecordingStream | None = None,
-) -> str | None:
-    """
-    Get the recording ID that this recording is logging to, as a UUIDv4, if any.
-
-    The default recording_id is based on `multiprocessing.current_process().authkey`
-    which means that all processes spawned with `multiprocessing`
-    will have the same default recording_id.
-
-    If you are not using `multiprocessing` and still want several different Python
-    processes to log to the same Rerun instance (and be part of the same recording),
-    you will need to manually assign them all the same recording_id.
-    Any random UUIDv4 will work, or copy the recording id for the parent process.
-
-    Parameters
-    ----------
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    Returns
-    -------
-    str
-        The recording ID that this recording is logging to.
-
-    """
-    rec_id = bindings.get_recording_id(recording=recording.to_native() if recording is not None else None)
-    return str(rec_id) if rec_id is not None else None
-
-
-_patch([is_enabled, get_application_id, get_recording_id])  # type: ignore[no-untyped-call]
 
 # ---
 

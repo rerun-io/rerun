@@ -203,51 +203,12 @@ should exit with this exit code.
 """
 
 
-def _init_recording_stream() -> None:
-    # Inject all relevant methods into the `RecordingStream` class.
-    # We need to do this from here to avoid circular import issues.
-
-    import sys
-    from inspect import getmembers, isfunction
-
-    from rerun.recording_stream import _patch as recording_stream_patch
-
-    recording_stream_patch(
-        [
-            binary_stream,
-            connect,
-            connect_grpc,
-            save,
-            stdout,
-            disconnect,
-            memory_recording,
-            serve,
-            spawn,
-            send_blueprint,
-            notebook_show,
-        ]
-        + [
-            set_index,
-            set_time_sequence,
-            set_time_seconds,
-            set_time_nanos,
-            disable_timeline,
-            reset_time,
-            log,
-        ]
-        + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
-    )
-
-
-_init_recording_stream()
-
-
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 def init(
     application_id: str,
     *,
     recording_id: str | UUID | None = None,
-    spawn: bool = False,
+    spawn: bool = False,  # noqa: F811
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool | None = None,
