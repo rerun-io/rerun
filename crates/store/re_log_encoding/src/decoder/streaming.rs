@@ -209,7 +209,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     continue;
                 }
 
-                re_log::debug!("Reached end of stream, iterator complete");
+                re_log::trace!("Reached end of stream, iterator complete");
                 return std::task::Poll::Ready(None);
             };
 
