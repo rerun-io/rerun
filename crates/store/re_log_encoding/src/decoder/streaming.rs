@@ -12,7 +12,7 @@ use crate::{
     EncodingOptions, VersionPolicy,
 };
 
-use super::{read_options, DecodeError, FileHeader};
+use super::{options_from_bytes, DecodeError, FileHeader};
 
 /// A decoded [`LogMsg`] with extra contextual information.
 ///
@@ -74,7 +74,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, options) = read_options(version_policy, &data)?;
+        let (version, options) = options_from_bytes(version_policy, &data)?;
 
         Ok(Self {
             version,
@@ -148,7 +148,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 let data = &unprocessed_bytes[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match read_options(VersionPolicy::Warn, data) {
+                match options_from_bytes(VersionPolicy::Warn, data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.options = options;

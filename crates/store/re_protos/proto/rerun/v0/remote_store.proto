@@ -23,9 +23,9 @@ service StorageNode {
 
     rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-    rpc GetChunkIds(GetChunkIdsRequest) returns (stream GetChunkIdsResponse) {}
-
     rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v0.RerunChunk) {}
+
+    rpc GetChunksRange(GetChunksRangeRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
     // The response to `SearchIndex` a RecordBatch with 3 columns:
     // - 'resource_id' column with the id of the resource
@@ -77,22 +77,18 @@ message DataframePart {
     bytes payload = 1000;
 }
 
-// ---------------- GetChunkIds ------------------
+// ---------------- GetChunksRange ------------------
 
-message GetChunkIdsRequest {
-    // which catalog entry do we want to fetch the chunk ids from
+// GetChunksRange is a streaming API that allows to fetch chunks within a time range
+message GetChunksRangeRequest {
+    // which catalog entry do we want to fetch the chunks from
     CatalogEntry entry = 1;
-    // recording id from which we're want to fetch the chunk ids
+    // recording id from which we're want to fetch the chunk
     rerun.common.v0.RecordingId recording_id = 2;
     // timeline for which we specify the time range
     rerun.common.v0.IndexColumnSelector time_index = 3;
-    // time range for which we want to fetch the chunk ids
+    // time range for which we want to fetch the chunks
     rerun.common.v0.TimeRange time_range = 4;
-}
-
-message GetChunkIdsResponse {
-    // a batch of chunk ids for chunks that are within the specified time range
-    repeated rerun.common.v0.Tuid chunk_ids = 1;
 }
 
 // ---------------- GetChunk ---------------------
