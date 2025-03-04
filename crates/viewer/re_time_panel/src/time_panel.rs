@@ -1285,6 +1285,8 @@ impl TimePanel {
                 .clone()
                 .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
 
+            ui.style_mut().spacing.text_edit_width = 200.0;
+
             let response = ui.text_edit_singleline(&mut time_str);
             if response.changed() {
                 self.time_edit_string = Some(time_str.clone());
