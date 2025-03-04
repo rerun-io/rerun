@@ -18,7 +18,9 @@ from rerun.memory import MemoryRecording
 from rerun.time import reset_time
 
 if TYPE_CHECKING:
-    from rerun import AsComponents, BlueprintLike, DescribedComponentBatch
+    from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+
+    from ._send_columns import TimeColumnLike
 
 
 # ---
@@ -446,7 +448,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import connect_grpc
+        from .sinks import connect_grpc
 
         connect_grpc(url, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=self)
 
@@ -472,7 +474,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import save
+        from .sinks import save
 
         save(path, default_blueprint, recording=self)
 
@@ -497,7 +499,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import stdout
+        from .sinks import stdout
 
         stdout(default_blueprint, recording=self)
 
@@ -527,7 +529,7 @@ class RecordingStream:
         [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
         """
 
-        from rerun.sinks import disconnect
+        from .sinks import disconnect
 
         disconnect(recording=self)
 
@@ -571,7 +573,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import serve_web
+        from .sinks import serve_web
 
         serve_web(
             open_browser=open_browser,
@@ -609,7 +611,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import send_blueprint
+        from .sinks import send_blueprint
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
@@ -650,7 +652,7 @@ class RecordingStream:
 
         """
 
-        from rerun.sinks import spawn
+        from .sinks import spawn
 
         spawn(
             port=port,
@@ -691,7 +693,7 @@ class RecordingStream:
 
         """
 
-        from rerun.notebook import notebook_show
+        from .notebook import notebook_show
 
         notebook_show(
             width=width,
@@ -790,7 +792,7 @@ class RecordingStream:
 
         """
 
-        from rerun.time import set_time_sequence
+        from .time import set_time_sequence
 
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
@@ -831,7 +833,7 @@ class RecordingStream:
 
         """
 
-        from rerun.time import set_time_seconds
+        from .time import set_time_seconds
 
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
@@ -872,7 +874,7 @@ class RecordingStream:
 
         """
 
-        from rerun.time import set_time_nanos
+        from .time import set_time_nanos
 
         set_time_nanos(timeline=timeline, nanos=nanos, recording=self)
 
@@ -887,7 +889,7 @@ class RecordingStream:
 
         """
 
-        from rerun.time import disable_timeline
+        from .time import disable_timeline
 
         disable_timeline(timeline=timeline, recording=self)
 
@@ -974,7 +976,7 @@ class RecordingStream:
 
         """
 
-        from rerun._log import log
+        from ._log import log
 
         log(entity_path, entity, *extra, static=static, strict=strict, recording=self)
 
@@ -1074,6 +1076,51 @@ class RecordingStream:
             static=static,
             recording=self,
         )
+
+    def send_columns(
+        self,
+        entity_path: str,
+        indexes: Iterable[TimeColumnLike],
+        columns: Iterable[ComponentColumn],
+        strict: bool | None = None,
+    ) -> None:
+        r"""
+        Send columnar data to Rerun.
+
+        Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        in a columnar form. Each `TimeColumnLike` and `ComponentColumn` object represents a column
+        of data that will be sent to Rerun. The lengths of all these columns must match, and all
+        data that shares the same index across the different columns will act as a single logical row,
+        equivalent to a single call to `rr.log()`.
+
+        Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+        Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+
+        Parameters
+        ----------
+        entity_path:
+            Path to the entity in the space hierarchy.
+
+            See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        indexes:
+            The time values of this batch of data. Each `TimeColumnLike` object represents a single column
+            of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
+            [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
+        columns:
+            The columns of components to log. Each object represents a single column of data.
+
+            In order to send multiple components per time value, explicitly create a [`ComponentColumn`][rerun.ComponentColumn]
+            either by constructing it directly, or by calling the `.columns()` method on an `Archetype` type.
+        strict:
+            If True, raise exceptions on non-loggable data.
+            If False, warn on non-loggable data.
+            If None, use the global default from `rerun.strict_mode()`
+
+        """
+
+        from ._send_columns import send_columns
+
+        send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
 
 
 class BinaryStream:
