@@ -1,7 +1,8 @@
 use re_byte_size::SizeBytes;
-use re_chunk_store::ChunkStoreConfig;
+use re_chunk_store::{ChunkStoreConfig, LatestAtQuery};
 use re_entity_db::EntityDb;
-use re_log_types::StoreKind;
+use re_log_types::{EntityPath, StoreKind};
+use re_types::{components::RecordingStartedTimestamp, Component as _};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -14,7 +15,7 @@ impl crate::DataUi for EntityDb {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
+        db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
@@ -171,6 +172,13 @@ impl crate::DataUi for EntityDb {
                     ui.add_space(8.0);
                     ui.label("This is the active recording");
                 }
+                EntityPath::root().data_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    &LatestAtQuery::latest("log_time".into()),
+                    db,
+                );
             }
             StoreKind::Blueprint => {
                 let active_app_id = &ctx.store_context.app_id;
