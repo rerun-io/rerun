@@ -611,7 +611,7 @@ python = "=3.11"
 # TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
 pyproj = ">=3.7.0"
 
-# Need to use the conda version of umap-learn
+# Need to use the conda version of umap-learn to be compatible with numpy-2
 umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
@@ -639,7 +639,7 @@ incremental_logging = { path = "examples/python/incremental_logging", editable =
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
 live_scrolling_plot = { path = "examples/python/live_scrolling_plot", editable = true }
-# This depends on umap-learn which is incompatible with numpy-2
+# This depends on umap-learn which is incompatible with numpy-2 if it is installed from pypi.
 llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
 log_file = { path = "examples/python/log_file", editable = true }
 minimal = { path = "examples/python/minimal", editable = true }
