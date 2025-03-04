@@ -86,7 +86,7 @@ def _log_imu_data() -> None:
         comment="#",
     )
 
-    times = rr.TimeNanosColumn("timestamp", imu_data["timestamp"])
+    times = rr.IndexColumn("timestamp", datetime=imu_data["timestamp"])
 
     gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
     rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
@@ -132,7 +132,7 @@ def _log_gt_imu() -> None:
         comment="#",
     )
 
-    times = rr.TimeNanosColumn("timestamp", gt_imu["timestamp"])
+    times = rr.IndexColumn("timestamp", datetime=gt_imu["timestamp"])
 
     translations = gt_imu[["t.x", "t.y", "t.z"]]
     quaternions = gt_imu[

@@ -51,3 +51,33 @@ Either:
 * `rr.set_index("foo", datetime=np.datetime64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
+
+
+## 🐍 Python: replaced `rr.Time*Column` with `rr.IndexColumn`
+Similarly to the above new `set_index` API, there is also a new `IndexColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
+The migration is very similar to the above.
+
+### Migration
+##### `rr.TimeSequenceColumn("foo", values)`
+New: `rr.IndexColumn("foo", sequence=values)`
+
+##### `rr.TimeSecondsColumn("foo", duration_seconds)`
+New: `rr.IndexColumn("foo", timedelta=duration_seconds)`
+
+##### `rr.TimeSecondsColumn("foo", seconds_since_epoch)`
+New: `rr.IndexColumn("foo", datetime=seconds_since_epoch)`
+
+##### `rr.TimeNanosColumn("foo", duration_nanos)`
+Either:
+* `rr.IndexColumn("foo", timedelta=1e-9 * duration_nanos)`
+* `rr.IndexColumn("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+
+The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
+
+##### `rr.TimeNanosColumn("foo", nanos_since_epoch)`
+Either:
+* `rr.IndexColumn("foo", timedelta=1e-9 * nanos_since_epoch)`
+* `rr.IndexColumn("foo", timedelta=np.timedelta64(nanos_since_epoch, 'ns'))`
+
+The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
+

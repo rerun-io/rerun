@@ -15,6 +15,6 @@ timestamps = np.arange(0, 64)
 
 rr.send_columns(
     "/",
-    indexes=[rr.TimeSequenceColumn("step", timestamps)],
+    indexes=[rr.IndexColumn("step", sequence=timestamps)],
     columns=rr.AnyValues.columns(sin=np.sin(timestamps / 10.0), cos=np.cos(timestamps / 10.0)),
 )
