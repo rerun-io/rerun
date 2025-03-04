@@ -28,7 +28,7 @@ class FilterIsNotNullExt:
             try:
                 data = [_to_filter_by_event(d) for d in input_data]  # type: ignore[union-attr]
             except _NotAFilterByEventLike:
-                raise ValueError(f"Unexpected input value: {input_data}")
+                raise ValueError(f"Unexpected input value: {input_data}") from None
 
         return pa.StructArray.from_arrays(
             [

@@ -373,7 +373,7 @@ def detect_and_log_layouts(file_path: str) -> None:
     layouts: list[Layout] = []
     page_numbers = [i + 1 for i in range(len(images))]
     processed_layouts: list[LayoutStructure] = []
-    for i, (image, page_number) in enumerate(zip(images, page_numbers)):
+    for image, page_number in zip(images, page_numbers):
         layouts.append(detect_and_log_layout(image, page_number))
         page_path = f"page_{page_number}"
 

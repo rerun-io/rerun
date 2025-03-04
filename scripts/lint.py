@@ -806,7 +806,7 @@ def fix_header_casing(s: str) -> str:
 
     words = s.strip().split(" ")
 
-    for i, word in enumerate(words):
+    for word in words:
         if word == "":
             continue
 
@@ -857,7 +857,7 @@ def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
 
-    for i, word in enumerate(split_words(s)):
+    for word in split_words(s):
         if word.startswith("`"):
             inline_code_block = True
         if word.endswith("`"):

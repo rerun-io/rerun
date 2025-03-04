@@ -353,6 +353,7 @@ def serve(
     warnings.warn(
         message=("`serve` is deprecated. Use `serve_web` instead."),
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     return serve_web(

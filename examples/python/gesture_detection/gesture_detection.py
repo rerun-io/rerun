@@ -114,7 +114,7 @@ class GestureDetectorLogger:
         for log_key in ["hand2d/points", "hand2d/connections", "hand3d/points"]:
             rr.log(log_key, rr.Clear(recursive=True))
 
-        for i, gesture in enumerate(recognition_result.gestures):
+        for gesture in recognition_result.gestures:
             # Get the top gesture from the recognition result
             gesture_category = gesture[0].category_name if recognition_result.gestures else "None"
             self.present_detected_gesture(gesture_category)  # Log the detected gesture

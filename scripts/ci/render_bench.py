@@ -297,7 +297,7 @@ def date_type(v: str) -> datetime:
     try:
         return datetime.strptime(v, DATE_FORMAT)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Date must be in {DATE_FORMAT} format")
+        raise argparse.ArgumentTypeError(f"Date must be in {DATE_FORMAT} format") from None
 
 
 class Output(Enum):
@@ -322,12 +322,12 @@ class GcsPath:
 def parse_gcs_path(path: str) -> GcsPath:
     if not path.startswith("gs://"):
         raise ValueError(f"invalid gcs path: {path}")
-    path = path.lstrip("gs://")
+    path = path.removeprefix("gs://")
     try:
         bucket, blob = path.split("/", 1)
         return GcsPath(bucket, blob.rstrip("/"))
     except ValueError:
-        raise ValueError(f"invalid gcs path: {path}")
+        raise ValueError(f"invalid gcs path: {path}") from None
 
 
 def main() -> None:

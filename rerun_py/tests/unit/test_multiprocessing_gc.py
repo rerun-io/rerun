@@ -31,4 +31,4 @@ def test_multiprocessing_gc() -> None:
     if proc.is_alive():
         # Terminate so our test doesn't get stuck
         proc.terminate()
-        assert False, "Process deadlocked during gc.collect()"
+        raise AssertionError("Process deadlocked during gc.collect()")

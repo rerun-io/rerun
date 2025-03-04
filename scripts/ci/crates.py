@@ -54,10 +54,13 @@ def cargo(
     *,
     cargo_version: str | None = None,
     cwd: str | Path | None = None,
-    env: dict[str, Any] = {},
+    env: dict[str, Any] | None = None,
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
+    if env is None:
+        env = {}
+
     if cargo_version is None:
         cmd = [CARGO_PATH] + args.split()
     else:
@@ -367,7 +370,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
     if not dry_run:
         with Path("Cargo.toml").open("w", encoding="utf-8") as f:
             tomlkit.dump(root, f)
-        for name, crate in crates.items():
+        for crate in crates.values():
             with Path(f"{crate.path}/Cargo.toml").open("w", encoding="utf-8") as f:
                 tomlkit.dump(crate.manifest, f)
     cargo("update --workspace", dry_run=dry_run)

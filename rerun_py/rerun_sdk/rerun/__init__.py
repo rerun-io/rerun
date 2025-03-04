@@ -16,6 +16,7 @@ if sys.version_info < (3, 9):
     warnings.warn(
         "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
         DeprecationWarning,
+        stacklevel=1,
     )
 
 # =====================================

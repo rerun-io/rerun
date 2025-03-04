@@ -103,6 +103,7 @@ class Viewer:
                     warnings.warn(
                         f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
                         category=ImportWarning,
+                        stacklevel=2,
                     )
                 _version_mismatch_checked = True
 

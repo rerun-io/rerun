@@ -115,7 +115,7 @@ class DepthImageExt:
         try:
             datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage") from None
 
         self.__attrs_init__(
             buffer=image.tobytes(),
