@@ -273,8 +273,8 @@ from ..api import View, ViewContentsLike
     contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
-    defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
-    overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
+    defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+    overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     "#
     </span>.to_owned();
 
