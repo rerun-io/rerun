@@ -27,7 +27,7 @@ def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColum
 
 
 def set_frame_time(t: int) -> None:
-    rr.set_time_sequence("frame", t)
+    rr.set_index("frame", sequence=t)
 
 
 def specimen_two_rows_span_two_chunks():

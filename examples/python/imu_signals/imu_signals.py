@@ -105,7 +105,7 @@ def _log_image_data() -> None:
         dtype={"filename": str},
     )
 
-    rr.set_time_seconds("timestamp", times["timestamp"][0])
+    rr.set_index("timestamp", datetime=times["timestamp"][0])
     rr.log(
         "/cam0",
         rr.Pinhole(
@@ -119,7 +119,7 @@ def _log_image_data() -> None:
 
     for _, (filename, timestamp, _) in times.iterrows():
         image_path = cwd / DATASET_NAME / "dso/cam0/images" / f"{filename}.png"
-        rr.set_time_seconds("timestamp", timestamp)
+        rr.set_index("timestamp", datetime=timestamp)
         rr.log("/cam0/image", rr.ImageEncoded(path=image_path))
 
 
