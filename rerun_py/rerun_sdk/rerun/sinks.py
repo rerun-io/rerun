@@ -8,6 +8,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
+from rerun.dataframe import Recording
 from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
@@ -468,6 +469,31 @@ def send_blueprint(
         blueprint_storage,
         make_active,
         make_default,
+        recording=recording.to_native() if recording is not None else None,
+    )
+
+
+def send_recording(embedded_recording: Recording, recording: RecordingStream | None = None) -> None:
+    """
+    Send a recording from a `Recording` and send it to the `RecordingStream`.
+
+    Parameters
+    ----------
+    embedded_recording:
+        A recording loaded from an rrd file.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    application_id = get_application_id(recording=recording)  # NOLINT
+
+    if application_id is None:
+        raise ValueError("No application id found. You must call rerun.init before sending a recording.")
+
+    bindings.send_recording(
+        embedded_recording,
         recording=recording.to_native() if recording is not None else None,
     )
 

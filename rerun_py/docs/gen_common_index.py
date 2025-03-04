@@ -89,6 +89,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "disconnect",
             "save",
             "send_blueprint",
+            "send_recording",
             "serve",
             "serve_web",
             "spawn",
