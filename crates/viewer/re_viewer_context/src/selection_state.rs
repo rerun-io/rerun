@@ -350,13 +350,18 @@ pub struct ApplicationSelectionState {
     hovered_this_frame: Mutex<ItemCollection>,
 }
 
+pub enum SelectionChange<'a> {
+    NoChange,
+    SelectionChanged(&'a ItemCollection),
+}
+
 impl ApplicationSelectionState {
-    /// Called at the start of each frame
+    /// Called at the start of each frame.
     pub fn on_frame_start(
         &mut self,
         item_retain_condition: impl Fn(&Item) -> bool,
         fallback_selection: Option<Item>,
-    ) {
+    ) -> SelectionChange<'_> {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
 
@@ -375,6 +380,10 @@ impl ApplicationSelectionState {
         // Selection in contrast, is sticky!
         if selection_this_frame != &self.selection_previous_frame {
             self.selection_previous_frame = selection_this_frame.clone();
+
+            SelectionChange::SelectionChanged(&*selection_this_frame)
+        } else {
+            SelectionChange::NoChange
         }
     }
 

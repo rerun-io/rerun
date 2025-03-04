@@ -62,7 +62,7 @@ pub use self::{
     query_range::QueryRange,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemContext, SelectionHighlight,
+        ItemContext, SelectionChange, SelectionHighlight,
     },
     store_context::StoreContext,
     store_hub::StoreHub,

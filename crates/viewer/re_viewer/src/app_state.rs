@@ -11,9 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
-    ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
+    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _,
+    ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -21,6 +21,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     app_blueprint::AppBlueprint,
+    callback::Callbacks,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -157,7 +158,8 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>, // TODO(andreas,jan): fuse timeline callbacks and other callbacks
+        callbacks: Option<&Callbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -207,7 +209,7 @@ impl AppState {
             return;
         }
 
-        selection_state.on_frame_start(
+        let selection_change = selection_state.on_frame_start(
             |item| {
                 if let re_viewer_context::Item::StoreId(store_id) = item {
                     if store_id.is_empty_recording() {
@@ -221,6 +223,12 @@ impl AppState {
                 store_context.recording.store_id().clone(),
             )),
         );
+
+        if let SelectionChange::SelectionChanged(selection) = selection_change {
+            if let Some(callbacks) = callbacks {
+                callbacks.on_selection_change(selection);
+            }
+        }
 
         // The root container cannot be dragged.
         let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(

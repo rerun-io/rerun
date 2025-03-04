@@ -5,6 +5,8 @@ import logging
 import os
 import pathlib
 import time
+from abc import ABC
+from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
 import anywidget
@@ -50,6 +52,47 @@ else:
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
+class ViewerCallbacks(ABC):
+    def on_selection_change(self, selection: list[SelectionItem]):
+        pass
+
+    def on_timeline_change(self, timeline: str, time: float):
+        pass
+
+    def on_time_update(self, time: float):
+        pass
+
+
+@dataclass
+class EntityPathSelection:
+    @property
+    def kind(self) -> Literal["entity_path"]:
+        return "entity_path"
+
+    entity_path: str
+
+
+# @dataclass
+# class ViewSelection:
+#     @property
+#     def kind(self) -> Literal["view"]:
+#         return "view"
+
+#     view_id: str
+
+
+SelectionItem = EntityPathSelection  # | ViewSelection
+
+
+def _selection_item_from_json(json: Any) -> SelectionItem:
+    if json["type"] == "entity_path":
+        return EntityPathSelection(entity_path=json["entity_path"])
+    else:
+        raise NotImplementedError(f"selection item kind {json[type]} is not handled")
+    # elif json["type"] == "view":
+    #     return ViewSelection
+
+
 class Viewer(anywidget.AnyWidget):
     _esm = ESM_MOD
     _css = CSS_PATH
@@ -76,6 +119,8 @@ class Viewer(anywidget.AnyWidget):
     ).tag(sync=True)
     _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
+    _callbacks: list[ViewerCallbacks] = []
+
     def __init__(
         self,
         *,
@@ -92,12 +137,30 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._data_queue = []
 
+        from ipywidgets import widgets
+
+        self._output = widgets.Output()
+
         if panel_states:
             self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
+            elif not isinstance(content, str) and "event" in content:
+                if content["event"] == "selectionchange":
+                    selection = [_selection_item_from_json(item) for item in content["payload"]]
+                    for callback in self._callbacks:
+                        callback.on_selection_change(selection)
+                elif content["event"] == "timelinechange":
+                    timeline = content["payload"]["timeline"]
+                    time = content["payload"]["time"]
+                    for callback in self._callbacks:
+                        callback.on_timeline_change(timeline, time)
+                elif content["event"] == "timeupdate":
+                    time = content["payload"]
+                    for callback in self._callbacks:
+                        callback.on_time_update(time)
 
         self.on_msg(handle_msg)
 
@@ -147,3 +210,7 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
 
     def set_active_recording(self, recording_id: str) -> None:
         self._recording_id = recording_id
+
+    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        # TODO(jan): maybe allow unregister by making this a map instead
+        self._callbacks.append(callbacks)
