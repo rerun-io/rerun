@@ -32,11 +32,11 @@ New: `rr.set_index("foo", sequence=42)`
 
 ##### `rr.set_time_seconds("foo", duration_seconds)`
 When using relative times (durations/timedeltas): `rr.set_index("foo", timedelta=duration_seconds)`
-You can also pass in a `datetime.timedelta` or `numpy.timedelta64` directly.
+You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
 ##### `rr.set_time_seconds("foo", seconds_since_epoch)`
 New: `rr.set_index("foo", datetime=seconds_since_epoch)`
-You can also pass in a `datetime.datetime` or `numpy.datetime64` directly.
+You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 
 ##### `rr.set_time_nanos("foo", duration_nanos)`
 Either:
