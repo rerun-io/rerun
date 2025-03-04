@@ -10,6 +10,7 @@ use std::io::Read;
 
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
+use tokio::io::AsyncRead;
 
 use crate::codec;
 use crate::codec::file::decoder;
@@ -111,12 +112,29 @@ pub fn decode_bytes(
 
 // ----------------------------------------------------------------------------
 
+/// Read encoding options from the begining of the stream.
 pub fn read_options(
     version_policy: VersionPolicy,
     reader: &mut impl std::io::Read,
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
     reader.read_exact(&mut data).map_err(DecodeError::Read)?;
+
+    options_from_bytes(version_policy, &data)
+}
+
+/// Read encoding options from the begining of the stream asynchronously.
+pub async fn read_options_async(
+    version_policy: VersionPolicy,
+    reader: &mut (impl AsyncRead + Unpin),
+) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
+    let mut data = [0_u8; FileHeader::SIZE];
+
+    use tokio::io::AsyncReadExt;
+    reader
+        .read_exact(&mut data)
+        .await
+        .map_err(DecodeError::Read)?;
 
     options_from_bytes(version_policy, &data)
 }
