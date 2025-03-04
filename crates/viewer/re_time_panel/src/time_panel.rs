@@ -343,12 +343,6 @@ impl TimePanel {
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
-        // Right clicking anywhere on free space the collapsed panel, shows a context menu.
-        ui.allocate_response(ui.max_rect().size(), egui::Sense::click())
-            .context_menu(|ui| {
-                copy_time_properties_context_menu(ui, time_ctrl, None);
-            });
-
         if ui.max_rect().width() < 600.0 && has_more_than_one_time_point {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
