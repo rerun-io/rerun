@@ -182,6 +182,35 @@ impl TimeType {
         }
     }
 
+    /// Parses a human-readable time string into a [`TimeInt`].
+    pub fn parse_time(&self, s: &str, time_zone_for_timestamps: TimeZone) -> Option<TimeInt> {
+        match s.to_lowercase().as_str() {
+            "<static>" | "static" => Some(TimeInt::STATIC),
+            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            _ => {
+                match self {
+                    Self::Time => {
+                        if s.chars().all(|c| c.is_ascii_digit()) {
+                            // If it's just numbers, interpret it as a raw time int.
+                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        } else {
+                            // Otherwise, try to make sense of the time string depending on the timezone setting.
+                            TimeInt::try_from(Time::parse(s, time_zone_for_timestamps)?).ok()
+                        }
+                    }
+                    Self::Sequence => {
+                        if let Some(s) = s.strip_prefix('#') {
+                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        } else {
+                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn format(
         &self,
         time_int: impl Into<TimeInt>,
