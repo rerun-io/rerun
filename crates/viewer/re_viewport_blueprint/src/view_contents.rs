@@ -560,7 +560,7 @@ impl DataQueryPropertyResolver<'_> {
                 use re_types::Component as _;
                 let latest_at_results = blueprint.latest_at(
                     blueprint_query,
-                    &recursive_override_path,
+                    &individual_override_path,
                     std::iter::once(blueprint_components::VisibleTimeRange::name()),
                 );
                 let visible_time_ranges =
