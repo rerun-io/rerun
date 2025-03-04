@@ -31,8 +31,8 @@ use re_chunk_store::{
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
-use re_log_types::{EntityPathFilter, LogMsg, ResolvedTimeRange};
-use re_sdk::{ComponentName, EntityPath, RecordingStreamBuilder, StoreId, StoreKind};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange};
+use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
 use crate::utils::get_tokio_runtime;
@@ -1370,36 +1370,6 @@ impl PyRecording {
             .application_id
             .as_str()
             .to_owned())
-    }
-
-    fn to_stream(&self, py: Python<'_>) -> PyResult<crate::python_bridge::PyRecordingStream> {
-        let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
-        let on_release = |chunk| {
-            GARBAGE_QUEUE.0.send(chunk).ok();
-        };
-        batcher_config.hooks.on_release = Some(on_release.into());
-
-        let application_id = self.application_id()?;
-        let recording_id = self.store.read().id();
-
-        let recording = RecordingStreamBuilder::new(application_id)
-            .batcher_config(batcher_config)
-            .is_official_example(false)
-            .store_id(recording_id.clone())
-            .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
-            .default_enabled(true)
-            .buffered()
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        all_recordings().insert(recording_id.clone(), recording.clone());
-
-        for chunk in self.store.read().iter_chunks() {
-            let msg = chunk.to_arrow_msg().expect("oops");
-
-            recording.record_msg(LogMsg::ArrowMsg(recording_id.clone(), msg));
-        }
-
-        Ok(PyRecordingStream(recording))
     }
 }
 

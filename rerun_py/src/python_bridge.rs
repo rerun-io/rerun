@@ -15,8 +15,9 @@ use pyo3::{
 };
 
 use re_log::ResultExt as _;
-use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
+use re_log_types::{LogMsg, SetStoreInfo};
+use re_sdk::external::re_tuid::Tuid;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
@@ -50,8 +51,7 @@ use crate::dataframe::PyRecording;
 // Python GC is doing, which obviously leads to very bad things :tm:.
 //
 // TODO(#2116): drop unused recordings
-pub(crate) fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>>
-{
+fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>> {
     static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<HashMap<StoreId, RecordingStream>>> =
         OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
@@ -82,7 +82,7 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-pub(crate) static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
+static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
     Lazy::new(crossbeam::channel::unbounded);
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
@@ -349,7 +349,7 @@ fn shutdown(py: Python<'_>) {
 
 #[pyclass(frozen)]
 #[derive(Clone)]
-pub(crate) struct PyRecordingStream(pub(crate) RecordingStream);
+struct PyRecordingStream(RecordingStream);
 
 #[pymethods]
 impl PyRecordingStream {
@@ -1346,18 +1346,23 @@ fn send_blueprint(
 }
 
 /// Send a recording to the given recording stream.
-// TODO(gijsd): Figure out naming for the recording stream parameter, it's called `recording` everywhere else.
 #[pyfunction]
-#[pyo3(signature = (recording, stream = None))]
-fn send_recording(recording: &PyRecording, stream: Option<&PyRecordingStream>) {
-    let Some(stream) = get_data_recording(stream) else {
+#[pyo3(signature = (embedded_recording, recording = None))]
+fn send_recording(embedded_recording: &PyRecording, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
         return;
     };
 
-    // TODO(gijsd): Overwrite store info here, since we want to replace it with the info from the recording we're sending
+    let store = embedded_recording.store.read();
+    if let Some(info) = store.info().cloned() {
+        recording.record_msg(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: Tuid::new(),
+            info,
+        }));
+    }
 
-    for chunk in recording.store.read().iter_chunks() {
-        stream.send_chunk((**chunk).clone());
+    for chunk in store.iter_chunks() {
+        recording.send_chunk((**chunk).clone());
     }
 }
 
