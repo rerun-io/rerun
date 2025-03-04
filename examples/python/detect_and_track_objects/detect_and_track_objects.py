@@ -176,7 +176,7 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.legacy.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -218,7 +218,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()

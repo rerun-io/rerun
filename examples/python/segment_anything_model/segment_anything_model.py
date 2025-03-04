@@ -102,7 +102,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: cv2.typin
     # TODO(jleibs): we could instead draw each mask as a separate image layer, but the current layer-stacking
     # does not produce great results.
     masks_with_ids = list(enumerate(masks, start=1))
-    masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)  # type: ignore[no-any-return]
+    masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)
 
     # Layer all of the masks together, using the id as class-id in the segmentation
     segmentation_img = np.zeros((image.shape[0], image.shape[1]))

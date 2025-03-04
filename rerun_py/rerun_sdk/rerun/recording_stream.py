@@ -6,6 +6,7 @@ import inspect
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar, overload
 
 import numpy as np
@@ -357,12 +358,14 @@ class RecordingStream:
         self._prev: RecordingStream | None = None
         self.context_token: contextvars.Token[RecordingStream] | None = None
 
-    def __enter__(self):  # type: ignore[no-untyped-def]
+    def __enter__(self) -> RecordingStream:
         self.context_token = active_recording_stream.set(self)
         self._prev = set_thread_local_data_recording(self)
         return self
 
-    def __exit__(self, type, value, traceback):  # type: ignore[no-untyped-def]
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None:
         self.flush(blocking=True)
 
         current_recording = active_recording_stream.get(None)
@@ -372,7 +375,7 @@ class RecordingStream:
             active_recording_stream.reset(self.context_token)
 
         # Restore the recording stream state
-        set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
+        set_thread_local_data_recording(self._prev)
         self._prev = None
 
         # Sanity check: we set this context-var on enter. If it's not still set, something weird
@@ -1099,31 +1102,6 @@ class BinaryStream:
         This will block until the flush is complete.
         """
         self.storage.flush()
-
-
-def _patch(funcs):  # type: ignore[no-untyped-def]
-    """Adds the given functions as methods to the `RecordingStream` class; injects `recording=self` in passing."""
-    import functools
-    import os
-
-    # If this is a special RERUN_APP_ONLY context (launched via .spawn), we
-    # can bypass everything else, which keeps us from monkey patching methods
-    # that never get used.
-    if os.environ.get("RERUN_APP_ONLY"):
-        return
-
-    # NOTE: Python's closures capture by reference… make sure to copy `fn` early.
-    def eager_wrap(fn):  # type: ignore[no-untyped-def]
-        @functools.wraps(fn)
-        def wrapper(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
-            kwargs["recording"] = self
-            return fn(*args, **kwargs)
-
-        return wrapper
-
-    for fn in funcs:
-        wrapper = eager_wrap(fn)  # type: ignore[no-untyped-call]
-        setattr(RecordingStream, fn.__name__, wrapper)
 
 
 # ---

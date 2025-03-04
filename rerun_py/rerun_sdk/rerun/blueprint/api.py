@@ -118,7 +118,7 @@ class View:
             contents = self.contents
         else:
             # Otherwise we delegate to the ViewContents constructor
-            contents = ViewContents(query=self.contents)  # type: ignore[arg-type]
+            contents = ViewContents(query=self.contents)
 
         stream.log(self.blueprint_path() + "/ViewContents", contents)
 
@@ -140,7 +140,7 @@ class View:
             elif isinstance(default, ComponentBatchLike):
                 stream.log(f"{self.blueprint_path()}/defaults", [default])  # type: ignore[list-item]
             else:
-                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")  # type: ignore[arg-type]
+                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
             stream.log(
@@ -265,7 +265,7 @@ class Container:
             display_name=self.name,
         )
 
-        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
@@ -536,7 +536,7 @@ class Blueprint:
             auto_views=self.auto_views,
         )
 
-        stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
+        stream.log("viewport", viewport_arch)
 
         if hasattr(self, "top_panel"):
             self.top_panel._log_to_stream(stream)
@@ -635,7 +635,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -665,7 +665,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -722,7 +722,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
+    blueprint_stream.set_index("blueprint", sequence=0)
 
     blueprint._log_to_stream(blueprint_stream)
 

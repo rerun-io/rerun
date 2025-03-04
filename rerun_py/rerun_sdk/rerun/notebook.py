@@ -128,7 +128,7 @@ class Viewer:
             )
 
             if blueprint is not None:
-                recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+                recording.send_blueprint(blueprint)
 
     def add_recording(
         self,
@@ -167,7 +167,7 @@ class Viewer:
         )
 
         if blueprint is not None:
-            recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+            recording.send_blueprint(blueprint)
 
     def display(self, block_until_ready: bool = True) -> None:
         """

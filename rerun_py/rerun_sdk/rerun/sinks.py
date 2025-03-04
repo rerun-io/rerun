@@ -5,7 +5,7 @@ import pathlib
 import warnings
 from typing import TYPE_CHECKING
 
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint

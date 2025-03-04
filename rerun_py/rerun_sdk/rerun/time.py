@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, overload
 
 import numpy as np
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 if TYPE_CHECKING:

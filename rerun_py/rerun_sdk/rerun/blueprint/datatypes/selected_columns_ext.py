@@ -84,7 +84,7 @@ class SelectedColumnsExt:
             offsets=_compute_offsets(d.component_columns for d in data),
             values=ComponentColumnSelectorBatch(
                 list(itertools.chain.from_iterable(d.component_columns for d in data)),
-            ).as_arrow_array(),  # type: ignore[misc, arg-type]
+            ).as_arrow_array(),
             type=data_type.field(1).type,
         )
 

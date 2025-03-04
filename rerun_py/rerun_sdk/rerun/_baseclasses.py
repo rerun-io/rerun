@@ -588,7 +588,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
@@ -604,7 +604,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined]
 
 
 @catch_and_log_exceptions(context="creating empty array")

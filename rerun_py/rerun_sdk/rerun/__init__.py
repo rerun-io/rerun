@@ -23,7 +23,7 @@ if sys.version_info < (3, 9):
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
 # Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
 #
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 
 from . import (
     blueprint as blueprint,
@@ -358,7 +358,7 @@ def _register_on_fork() -> None:
     try:
         import os
 
-        os.register_at_fork(after_in_child=cleanup_if_forked_child)  # type: ignore[attr-defined]
+        os.register_at_fork(after_in_child=cleanup_if_forked_child)
     except AttributeError:
         # not defined on all OSes
         pass
