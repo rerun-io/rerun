@@ -598,8 +598,7 @@ rerun-notebook = "==0.22.1"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
-# Ideally we would could remove`linux-aarch64` from here, but it breaks other things.
-# See: https://github.com/prefix-dev/pixi/issues/1051
+# TODO(#9180): Split `examples` into high-dep and low-dep so we can run some examples on `linux-aarch64` and `osx-64`.
 platforms = ["linux-64", "osx-arm64", "win-64"]
 
 
@@ -664,7 +663,6 @@ signed_distance_fields = { path = "examples/python/signed_distance_fields", edit
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 
-# TODO(jleibs): Do this with less duplication
 face_tracking = { path = "examples/python/face_tracking", editable = true }
 gesture_detection = { path = "examples/python/gesture_detection", editable = true }
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
