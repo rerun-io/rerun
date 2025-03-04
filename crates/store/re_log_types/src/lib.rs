@@ -161,6 +161,7 @@ impl std::fmt::Display for StoreId {
 
 // ----------------------------------------------------------------------------
 
+// TODO: consolidate with `components::ApplicationId`
 /// The user-chosen name of the application doing the logging.
 ///
 /// Used to categorize recordings.
@@ -343,7 +344,7 @@ pub struct SetStoreInfo {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingProperties {
     /// The user-chosen name of the application doing the logging.
-    pub application_id: ApplicationId,
+    pub application_name: ApplicationId,
 
     /// When the recording started.
     ///
@@ -373,6 +374,7 @@ pub struct StoreInfo {
     pub cloned_from: Option<StoreId>,
 
     /// True if the recording is one of the official Rerun examples.
+    // TODO: This should be a good example for a custom attribute.
     pub is_official_example: bool,
 
     /// When the recording started.

@@ -665,7 +665,7 @@ impl RecordingStreamBuilder {
         });
 
         let properties = RecordingProperties {
-            application_id: application_id.clone(), // TODO
+            application_name: application_id.clone(), // TODO
             started: Time::now(),
         };
 
@@ -951,14 +951,14 @@ impl RecordingStream {
             });
 
         let app_id =
-            re_types_core::components::ApplicationId::from(properties.application_id.as_str());
+            re_types_core::components::ApplicationId::from(properties.application_name.as_str());
         let nanos = properties.started.clone().nanos_since_epoch();
         let started = re_types_core::components::RecordingStartedTimestamp::from(
             TimeInt::from_nanos(nanos.try_into().unwrap()),
         );
 
         re_log::debug!(
-            app_id = %properties.application_id,
+            app_id = %properties.application_name,
             rec_id = %info.store_id,
             "setting recording info",
         );
@@ -967,7 +967,7 @@ impl RecordingStream {
         })?;
 
         stream.log_static(
-            "/",
+            EntityPath::root(),
             &re_types_core::archetypes::RecordingProperties::new(
                 std::iter::once(app_id),
                 std::iter::once(started),

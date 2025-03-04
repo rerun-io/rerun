@@ -39,7 +39,7 @@ impl crate::DataUi for ApplicationId {
             .store_context
             .bundle
             .recordings()
-            .filter(|db| db.app_id() == Some(self))
+            .filter(|db| db.app_id() == Some(self.clone()))
             .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
             .collect();
 

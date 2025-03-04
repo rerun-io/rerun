@@ -174,7 +174,7 @@ impl crate::DataUi for EntityDb {
             }
             StoreKind::Blueprint => {
                 let active_app_id = &ctx.store_context.app_id;
-                let is_active_app_id = self.app_id() == Some(active_app_id);
+                let is_active_app_id = self.app_id() == Some(active_app_id.clone());
 
                 if is_active_app_id {
                     let is_default =
