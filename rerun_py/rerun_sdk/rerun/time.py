@@ -105,7 +105,7 @@ def set_index(
 
 def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
     if isinstance(timedelta_obj, (int, np.integer)):
-        return 1_000_000_000 * timedelta_obj  # Interpret as seconds and convert to nanos
+        return 1_000_000_000 * int(timedelta_obj)  # Interpret as seconds and convert to nanos
     elif isinstance(timedelta_obj, float):
         return round(1e9 * timedelta_obj)  # Interpret as seconds and convert to nanos
     elif isinstance(timedelta_obj, timedelta):
@@ -120,7 +120,7 @@ def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
 
 def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> int:
     if isinstance(date_time, (int, np.integer)):
-        return 1_000_000_000 * date_time  # Interpret as seconds and convert to nanos
+        return 1_000_000_000 * int(date_time)  # Interpret as seconds and convert to nanos
     elif isinstance(date_time, float):
         return round(1e9 * date_time)  # Interpret as seconds and convert to nanos
     elif isinstance(date_time, datetime):
