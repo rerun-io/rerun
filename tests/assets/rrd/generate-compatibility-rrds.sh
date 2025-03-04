@@ -26,9 +26,5 @@ echo "Copying .rrd files to ${DEST_DIR}…"
 find "$SOURCE_DIR" -type f -name "*.rrd" -exec cp {} "${DEST_DIR}" \;
 
 
-echo "Tracking .rrd files with git LFS…"
-git lfs track "*.rrd"
-
-
 echo "Adding new .rrd files to git…"
 git add -f ${DEST_DIR}/*.rrd
