@@ -184,10 +184,10 @@ impl TimeType {
 
     /// Parses a human-readable time string into a [`TimeInt`].
     pub fn parse_time(&self, s: &str, time_zone_for_timestamps: TimeZone) -> Option<TimeInt> {
-        match s {
-            "<static>" => Some(TimeInt::STATIC),
-            "−∞" => Some(TimeInt::MIN),
-            "∞" | "+∞" => Some(TimeInt::MAX),
+        match s.to_lowercase().as_str() {
+            "<static>" | "static" => Some(TimeInt::STATIC),
+            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 match self {
                     Self::Time => {
