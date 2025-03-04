@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 
-use re_chunk::{RowId, Timeline};
+use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
     external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, RangeQuery,
     ResolvedTimeRange, TimeInt,
@@ -61,7 +61,7 @@ fn simple_range() -> anyhow::Result<()> {
     // --- First test: `(timepoint1, timepoint3]` ---
 
     let query = RangeQuery::new(
-        timepoint1[0].0,
+        *timepoint1[0].0.name(),
         ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
@@ -83,7 +83,7 @@ fn simple_range() -> anyhow::Result<()> {
     // --- Second test: `[timepoint1, timepoint3]` ---
 
     let query = RangeQuery::new(
-        timepoint1[0].0,
+        *timepoint1[0].0.name(),
         ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
@@ -166,7 +166,7 @@ fn static_range() -> anyhow::Result<()> {
     // --- First test: `(timepoint1, timepoint3]` ---
 
     let query = RangeQuery::new(
-        timepoint1[0].0,
+        *timepoint1[0].0.name(),
         ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
@@ -190,7 +190,7 @@ fn static_range() -> anyhow::Result<()> {
     // The inclusion of `timepoint1` means latest-at semantics will fall back to static data!
 
     let query = RangeQuery::new(
-        timepoint1[0].0,
+        *timepoint1[0].0.name(),
         ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
@@ -216,7 +216,7 @@ fn static_range() -> anyhow::Result<()> {
     // --- Third test: `[-inf, +inf]` ---
 
     let query = RangeQuery::new(
-        timepoint1[0].0,
+        *timepoint1[0].0.name(),
         ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
@@ -273,10 +273,7 @@ fn time_back_and_forth() {
 
     // --- Query #1: `[8, 10]` ---
 
-    let query = RangeQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        ResolvedTimeRange::new(8, 10),
-    );
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(8, 10));
 
     let expected_points = &[
         (
@@ -305,10 +302,7 @@ fn time_back_and_forth() {
 
     // --- Query #2: `[1, 3]` ---
 
-    let query = RangeQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        ResolvedTimeRange::new(1, 3),
-    );
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(1, 3));
 
     let expected_points = &[
         (
@@ -344,10 +338,7 @@ fn time_back_and_forth() {
 
     // --- Query #3: `[5, 7]` ---
 
-    let query = RangeQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        ResolvedTimeRange::new(5, 7),
-    );
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(5, 7));
 
     let expected_points = &[
         (
@@ -391,15 +382,15 @@ fn invalidation() {
                              past_data_timepoint: TimePoint,
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
-            .get(&query.timeline())
+            .get(query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
-            .get(&query.timeline())
+            .get(query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
         let future_timestamp = future_data_timepoint
-            .get(&query.timeline())
+            .get(query.timeline())
             .copied()
             .unwrap_or(TimeInt::STATIC);
 
@@ -634,14 +625,14 @@ fn invalidation() {
     let frame_124 = build_frame_nr(124);
 
     test_invalidation(
-        RangeQuery::new(frame_123.0, ResolvedTimeRange::EVERYTHING),
+        RangeQuery::new(*frame_123.0.name(), ResolvedTimeRange::EVERYTHING),
         [frame_123].into(),
         [frame_122].into(),
         [frame_124].into(),
     );
 
     test_invalidation(
-        RangeQuery::new(frame_123.0, ResolvedTimeRange::EVERYTHING),
+        RangeQuery::new(*frame_123.0.name(), ResolvedTimeRange::EVERYTHING),
         [frame_123].into(),
         static_,
         [frame_124].into(),
@@ -687,7 +678,7 @@ fn invalidation_of_future_optionals() {
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
-    let query = RangeQuery::new(frame2[0].0, ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*frame2[0].0.name(), ResolvedTimeRange::EVERYTHING);
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -787,7 +778,7 @@ fn invalidation_static() {
     let static_ = TimePoint::default();
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
-    let query = RangeQuery::new(frame0[0].0, ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*frame0[0].0.name(), ResolvedTimeRange::EVERYTHING);
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -886,7 +877,7 @@ fn concurrent_multitenant_edge_case() {
 
     // --- Tenant #1 queries the data, but doesn't cache the result in the deserialization cache ---
 
-    let query = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::EVERYTHING);
 
     eprintln!("{store}");
 
@@ -898,7 +889,7 @@ fn concurrent_multitenant_edge_case() {
 
     // --- Meanwhile, tenant #2 queries and deserializes the data ---
 
-    let query = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::EVERYTHING);
 
     let expected_points = &[
         (
@@ -963,7 +954,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #1 queries the data at (123, 223), but doesn't cache the result in the deserialization cache ---
 
-    let query1 = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::new(123, 223));
+    let query1 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(123, 223));
     {
         let cached = caches.range(&query1, &entity_path, MyPoints::all_components().iter());
 
@@ -972,7 +963,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #2 queries the data at (423, 523), but doesn't cache the result in the deserialization cache ---
 
-    let query2 = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::new(423, 523));
+    let query2 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(423, 523));
     {
         let cached = caches.range(&query2, &entity_path, MyPoints::all_components().iter());
 
@@ -981,7 +972,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #2 queries the data at (223, 423) and deserializes it ---
 
-    let query3 = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::new(223, 423));
+    let query3 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(223, 423));
     let expected_points = &[
         (
             (TimeInt::new_temporal(223), chunk2.row_id_range().unwrap().0),
@@ -1072,7 +1063,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+                    chunk.iter_component_indices(query.timeline(), &MyPoint::name()),
                     chunk.iter_component::<MyPoint>()
                 )
             })
@@ -1088,7 +1079,7 @@ fn query_and_compare(
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
+                    chunk.iter_component_indices(query.timeline(), &MyColor::name()),
                     chunk.iter_slices::<u32>(MyColor::name()),
                 )
             })

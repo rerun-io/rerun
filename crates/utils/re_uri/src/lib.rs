@@ -8,9 +8,83 @@ mod endpoints;
 mod error;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, recording::RecordingEndpoint},
+    endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimeRange {
+    pub timeline: re_log_types::Timeline,
+    pub range: re_log_types::ResolvedTimeRangeF,
+}
+
+impl TimeRange {
+    const QUERY_KEY: &str = "time_range";
+}
+
+impl std::fmt::Display for TimeRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { timeline, range } = self;
+        write!(f, "{}@", timeline.name())?;
+        match timeline.typ() {
+            re_log_types::TimeType::Sequence => {
+                let min = range.min.floor().as_i64();
+                let max = range.max.ceil().as_i64();
+                write!(f, "{min}..{max}")
+            }
+            re_log_types::TimeType::Time => {
+                let min = range.min.as_secs_f64();
+                let max = range.max.as_secs_f64();
+                write!(f, "{min:.4}s..{max:.4}s")
+            }
+        }
+    }
+}
+
+impl TryFrom<&str> for TimeRange {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let (timeline, range) = value.split_once('@').ok_or(Error::InvalidTimeRange)?;
+
+        let (min, max) = range.split_once("..").ok_or(Error::InvalidTimeRange)?;
+
+        // NOTE: We have some well-known timeline names, but we're explicitly not using them here
+        //       as this URL should really not be constructed by a user, ever.
+        let (min, typ) = match min.strip_suffix('s') {
+            Some(min) => (min, re_log_types::TimeType::Time),
+            None => (min, re_log_types::TimeType::Sequence),
+        };
+        let (max, typ) = match (max.strip_suffix('s'), typ) {
+            // if `max` had no `s` suffix, but `min` does, then it's a temporal timeline:
+            (Some(max), re_log_types::TimeType::Sequence) => (max, re_log_types::TimeType::Time),
+            // otherwise it's just whatever we already had, with the suffix stripped:
+            (Some(max), typ) => (max, typ),
+            (None, typ) => (max, typ),
+        };
+
+        let min = min.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
+        let max = max.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
+
+        let timeline = re_log_types::Timeline::new(timeline, typ);
+
+        let (min, max) = match typ {
+            // in frame numbers
+            re_log_types::TimeType::Sequence => (
+                re_log_types::TimeReal::from(min),
+                re_log_types::TimeReal::from(max),
+            ),
+            // in seconds
+            re_log_types::TimeType::Time => (
+                re_log_types::TimeReal::from_seconds(min),
+                re_log_types::TimeReal::from_seconds(max),
+            ),
+        };
+        let range = re_log_types::ResolvedTimeRangeF::new(min, max);
+
+        Ok(Self { timeline, range })
+    }
+}
 
 /// The different schemes supported by Rerun.
 ///
@@ -141,13 +215,13 @@ impl std::fmt::Display for Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
-    Proxy(Origin),
+    Proxy(ProxyEndpoint),
 }
 
 impl std::fmt::Display for RedapUri {
@@ -155,8 +229,16 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
-            Self::Proxy(origin) => write!(f, "{origin}/proxy",),
+            Self::Proxy(endpoint) => write!(f, "{endpoint}",),
         }
+    }
+}
+
+impl std::str::FromStr for RedapUri {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
     }
 }
 
@@ -175,12 +257,18 @@ impl TryFrom<&str> for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
+        let time_range = http_url
+            .query_pairs()
+            .find(|(key, _)| key == TimeRange::QUERY_KEY)
+            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
+
         match segments.as_slice() {
             ["recording", recording_id] => Ok(Self::Recording(RecordingEndpoint::new(
                 origin,
                 (*recording_id).to_owned(),
+                time_range.transpose()?,
             ))),
-            ["proxy"] => Ok(Self::Proxy(origin)),
+            ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
             ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
@@ -232,6 +320,7 @@ mod tests {
         let RedapUri::Recording(RecordingEndpoint {
             origin,
             recording_id,
+            time_range,
         }) = address
         else {
             panic!("Expected recording");
@@ -241,6 +330,101 @@ mod tests {
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
         assert_eq!(recording_id, "12345");
+        assert_eq!(time_range, None);
+    }
+
+    #[test]
+    fn test_recording_url_time_range_temporal_to_address() {
+        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20s";
+        let address: RedapUri = url.try_into().unwrap();
+
+        let RedapUri::Recording(RecordingEndpoint {
+            origin,
+            recording_id,
+            time_range,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            time_range,
+            Some(TimeRange {
+                timeline: re_log_types::Timeline::new_temporal("timeline"),
+                range: re_log_types::ResolvedTimeRangeF::new(
+                    re_log_types::TimeReal::from_seconds(10.0),
+                    re_log_types::TimeReal::from_seconds(20.0)
+                )
+            })
+        );
+    }
+
+    #[test]
+    fn test_recording_url_time_range_sequence_to_address() {
+        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@100..200";
+        let address: RedapUri = url.try_into().unwrap();
+
+        let RedapUri::Recording(RecordingEndpoint {
+            origin,
+            recording_id,
+            time_range,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            time_range,
+            Some(TimeRange {
+                timeline: re_log_types::Timeline::new_sequence("timeline"),
+                range: re_log_types::ResolvedTimeRangeF::new(
+                    re_log_types::TimeReal::from(100.0),
+                    re_log_types::TimeReal::from(200.0)
+                )
+            })
+        );
+    }
+
+    #[test]
+    fn test_recording_url_time_range_temporal_only_one_suffix_to_address() {
+        for url in [
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10..20s",
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20",
+        ] {
+            let address: RedapUri = url.try_into().unwrap();
+
+            let RedapUri::Recording(RecordingEndpoint {
+                origin,
+                recording_id,
+                time_range,
+            }) = address
+            else {
+                panic!("Expected recording");
+            };
+
+            assert_eq!(origin.scheme, Scheme::Rerun);
+            assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+            assert_eq!(origin.port, 1234);
+            assert_eq!(recording_id, "12345");
+            assert_eq!(
+                time_range,
+                Some(TimeRange {
+                    timeline: re_log_types::Timeline::new_temporal("timeline"),
+                    range: re_log_types::ResolvedTimeRangeF::new(
+                        re_log_types::TimeReal::from_seconds(10.0),
+                        re_log_types::TimeReal::from_seconds(20.0)
+                    )
+                })
+            );
+        }
     }
 
     #[test]
@@ -320,10 +504,12 @@ mod tests {
         let url = "rerun://localhost:51234/proxy";
         let address: Result<RedapUri, _> = url.try_into();
 
-        let expected = RedapUri::Proxy(Origin {
-            scheme: Scheme::Rerun,
-            host: url::Host::Domain("localhost".to_owned()),
-            port: 51234,
+        let expected = RedapUri::Proxy(ProxyEndpoint {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
         });
 
         assert_eq!(address.unwrap(), expected);

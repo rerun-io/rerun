@@ -1,7 +1,7 @@
 //! Query and display the first 10 rows of a recording.
 
 use rerun::{
-    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
+    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::re_format_arrow::format_record_batch,
     ChunkStoreConfig, VersionPolicy,
 };
@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = std::env::args().collect::<Vec<_>>();
 
     let path_to_rrd = &args[1];
-    let timeline = Timeline::log_time();
+    let timeline = TimelineName::log_time();
 
     let engines = QueryEngine::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,

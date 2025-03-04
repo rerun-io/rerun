@@ -147,6 +147,7 @@ fn generate_component_reflection(
                 docstring_md: #docstring_md,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
+                verify_arrow_array: #type_name::verify_arrow_array,
             }
         };
         quoted_pairs.push(quote! { (#quoted_name, #quoted_reflection) });

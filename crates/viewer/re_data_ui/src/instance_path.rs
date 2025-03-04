@@ -55,7 +55,7 @@ impl DataUi for InstancePath {
                 ui,
                 format!(
                     "{self} has no components on timeline {:?}",
-                    query.timeline().name()
+                    query.timeline()
                 ),
             );
             return;
@@ -70,15 +70,13 @@ impl DataUi for InstancePath {
         let mut components = latest_at(db, query, entity_path, &components);
 
         if components.is_empty() {
+            let typ = db.timeline_type(&query.timeline());
             ui_layout.label(
                 ui,
                 format!(
                     "Nothing logged at {} = {}",
-                    query.timeline().name(),
-                    query
-                        .timeline()
-                        .typ()
-                        .format(query.at(), ctx.app_options().time_zone),
+                    query.timeline(),
+                    typ.format(query.at(), ctx.app_options().time_zone),
                 ),
             );
             return;

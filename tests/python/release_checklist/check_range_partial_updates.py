@@ -106,20 +106,20 @@ def log_readme() -> None:
 
 
 def log_points() -> None:
-    rr.set_time_sequence("frame", 42)
+    rr.set_index("frame", sequence=42)
     rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]], colors=[255, 0, 0]))
 
-    rr.set_time_sequence("frame", 43)
+    rr.set_index("frame", sequence=43)
     rr.log("points", [rr.components.RadiusBatch(-20)])
 
-    rr.set_time_sequence("frame", 44)
+    rr.set_index("frame", sequence=44)
     rr.log("points", [rr.components.ColorBatch([0, 0, 255])])
 
-    rr.set_time_sequence("frame", 45)
+    rr.set_index("frame", sequence=45)
     rr.log("points", rr.Points3D([[0, 0, 1], [1, 1, 0]]))
     rr.log("points", [rr.components.RadiusBatch(-40)])
 
-    rr.set_time_sequence("frame", 46)
+    rr.set_index("frame", sequence=46)
     rr.log("points", [rr.components.RadiusBatch(-40)])
     rr.log("points", rr.Points3D([[0, 2, 0], [1, 2, 1]]))
     rr.log("points", [rr.components.RadiusBatch(-30)])

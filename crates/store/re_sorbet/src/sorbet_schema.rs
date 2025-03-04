@@ -43,7 +43,7 @@ impl SorbetSchema {
     }
 
     pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-        ("rerun.id".to_owned(), format!("{:X}", chunk_id.as_u128()))
+        ("rerun.id".to_owned(), chunk_id.to_string())
     }
 
     pub fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {

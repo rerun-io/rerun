@@ -113,7 +113,7 @@ impl DatastoreUi {
         let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
-        let all_timelines = chunk_store.all_timelines_sorted();
+        let all_timelines = chunk_store.timelines();
 
         self.chunk_list_mode.ui(ui, chunk_store, time_zone);
 
@@ -132,7 +132,7 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .latest_at_relevant_chunks(
-                        &LatestAtQuery::new(*timeline, *at),
+                        &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
                         *component_name,
                     )
@@ -147,7 +147,7 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .range_relevant_chunks(
-                        &RangeQuery::new(*timeline, *range),
+                        &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
                         *component_name,
                     )
@@ -219,7 +219,7 @@ impl DatastoreUi {
                 chunk
                     .timelines()
                     .iter()
-                    .find(|(timeline, _)| timeline.name() == timeline_name)
+                    .find(|(timeline, _)| *timeline == timeline_name)
                     .map_or(re_log_types::TimeInt::MIN, |(_, time_column)| {
                         time_column.time_range().min()
                     })
@@ -257,10 +257,9 @@ impl DatastoreUi {
                 ChunkListColumn::RowCount.ui(ui, &mut self.chunk_list_sort_column);
             });
 
-            for timeline in &all_timelines {
+            for &timeline in all_timelines.keys() {
                 row.col(|ui| {
-                    ChunkListColumn::Timeline(*timeline.name())
-                        .ui(ui, &mut self.chunk_list_sort_column);
+                    ChunkListColumn::Timeline(timeline).ui(ui, &mut self.chunk_list_sort_column);
                 });
             }
 
@@ -300,11 +299,11 @@ impl DatastoreUi {
                 .map(|(timeline, time_column)| (timeline, time_column.time_range()))
                 .collect::<BTreeMap<_, _>>();
 
-            for timeline in &all_timelines {
+            for timeline in all_timelines.values() {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    if let Some(time_range) = timeline_ranges.get(timeline) {
+                    if let Some(time_range) = timeline_ranges.get(timeline.name()) {
                         ui.label(format_time_range(timeline, time_range, time_zone));
                     } else {
                         ui.label("-");

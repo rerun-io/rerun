@@ -45,7 +45,7 @@ impl Query {
         ui.separator();
         self.filter_range_ui(ctx, ui, timeline.as_ref())?;
         ui.separator();
-        self.filter_is_not_null_ui(ctx, ui, timeline.as_ref(), view_id)?;
+        self.filter_is_not_null_ui(ctx, ui, timeline.map(|tl| *tl.name()).as_ref(), view_id)?;
         ui.separator();
         self.column_visibility_ui(ctx, ui, timeline.as_ref(), view_columns)?;
         ui.separator();

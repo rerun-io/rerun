@@ -51,7 +51,7 @@ pub fn viewer_started(
 pub fn open_recording(
     app_env: &AppEnvironment,
     entity_db: &re_entity_db::EntityDb,
-) -> OpenRecording {
+) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_types::StoreInfo {
             application_id,
@@ -139,21 +139,23 @@ pub fn open_recording(
     });
 
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
-        re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
-        re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
-        re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "grpc",
+        re_smart_channel::SmartChannelSource::File(_) => Some("file"), // .rrd, .png, .glb, …
+        re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => Some("http"),
+        // TODO(grtlr): Differentiate between `recording` and `catalog`
+        // re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => "recording | catalog",
+        re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
+        re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
-        re_smart_channel::SmartChannelSource::MessageProxy { .. } => "temp", // TODO(#8761): URL prefix
-        re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
-        re_smart_channel::SmartChannelSource::JsChannel { .. } => "javascript", // mediated via rerun-js
-        re_smart_channel::SmartChannelSource::Sdk => "sdk",                     // show()
-        re_smart_channel::SmartChannelSource::Stdin => "stdin",
-    });
+        re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => Some("web_event"),
+        re_smart_channel::SmartChannelSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
+        re_smart_channel::SmartChannelSource::Sdk => Some("sdk"),                     // show()
+        re_smart_channel::SmartChannelSource::Stdin => Some("stdin"),
+    })?;
 
-    OpenRecording {
+    Some(OpenRecording {
         url: app_env.url().cloned(),
         app_env: app_env.name(),
         store_info,
         data_source,
-    }
+    })
 }

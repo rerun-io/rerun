@@ -45,6 +45,7 @@ examples = [
   "rrt_star",
   "rgbd",
   "nv12",
+  "imu_signals",
 ]
 
 [categories.generative-vision]
@@ -153,6 +154,7 @@ examples = [
   "live_scrolling_plot",
   "raw_mesh",
   "air_traffic_data",
+  "imu_signals",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included

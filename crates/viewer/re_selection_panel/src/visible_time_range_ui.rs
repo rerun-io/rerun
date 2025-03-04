@@ -188,7 +188,7 @@ Notes:
                     });
             });
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
+                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline().name()) {
                     TimeDragValue::from_time_histogram(times)
                 } else {
                     TimeDragValue::from_time_range(0..=0)

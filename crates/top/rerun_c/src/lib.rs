@@ -20,7 +20,7 @@ use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
-    external::nohash_hasher::IntMap,
+    external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
@@ -567,7 +567,7 @@ fn rr_recording_stream_connect_impl(
     let stream = recording_stream(stream)?;
 
     let tcp_addr = tcp_addr.as_str("tcp_addr")?;
-    let tcp_addr = tcp_addr.parse().map_err(|err| {
+    let tcp_addr: std::net::SocketAddr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
             &format!("Failed to parse tcp address {tcp_addr:?}: {err}"),
@@ -579,8 +579,10 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
-    #[expect(deprecated)] // Will be removed once `connect` is removed.
-    stream.connect_opts(tcp_addr, flush_timeout);
+
+    stream
+        .connect_grpc_opts(format!("rerun+http://{tcp_addr}/proxy"), flush_timeout)
+        .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
 
     Ok(())
 }
@@ -996,7 +998,7 @@ fn rr_recording_stream_send_columns_impl(
     let stream = recording_stream(stream)?;
     let entity_path = entity_path.as_str("entity_path")?;
 
-    let time_columns: IntMap<Timeline, TimeColumn> = time_columns
+    let time_columns: IntMap<TimelineName, TimeColumn> = time_columns
         .iter()
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
@@ -1010,7 +1012,7 @@ fn rr_recording_stream_send_columns_impl(
             })?;
 
             Ok((
-                timeline,
+                *timeline.name(),
                 TimeColumn::new(
                     time_column.sorting_status.is_sorted(),
                     timeline,

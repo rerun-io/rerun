@@ -50,28 +50,22 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    RerunGrpcStream {
-        /// Should include `rerun://` prefix.
-        url: String,
-    },
+    RedapGrpcStream { url: String },
 
-    /// A stream of messages over message proxy gRPC interface.
-    MessageProxy {
-        // TODO(#8761): URL prefix
-        /// Should include `temp://` prefix.
-        url: String,
-    },
+    /// The data is streaming in via a message proxy.
+    MessageProxy { url: String },
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::RerunGrpcStream { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ }
+            | Self::RedapGrpcStream { url }
+            | Self::MessageProxy { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
-            Self::MessageProxy { url } => write!(f, "gRPC server: {url}"),
             Self::Stdin => "Standard input".fmt(f),
         }
     }
@@ -83,7 +77,7 @@ impl SmartChannelSource {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
             Self::RrdHttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::RerunGrpcStream { .. }
+            | Self::RedapGrpcStream { .. }
             | Self::MessageProxy { .. } => true,
         }
     }
@@ -127,17 +121,10 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RerunGrpcStream {
-        /// Should include `rerun://` prefix.
-        url: String,
-    },
+    RerunGrpcStream { url: String },
 
     /// A stream of messages over message proxy gRPC interface.
-    MessageProxy {
-        // TODO(#8761): URL prefix
-        /// Should include `temp://` prefix.
-        url: String,
-    },
+    MessageProxy { url: String },
 }
 
 impl std::fmt::Display for SmartMessageSource {

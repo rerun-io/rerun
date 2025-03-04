@@ -18,7 +18,7 @@ use pyo3::{
 use tokio_stream::StreamExt;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, TimelineName};
 use re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
@@ -36,7 +36,7 @@ use re_protos::{
         SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
-use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
+use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
 
 use crate::dataframe::{
     ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
@@ -109,6 +109,9 @@ impl PyStorageNodeClient {
                 let resp = self
                     .client
                     .query_catalog(QueryCatalogRequest {
+                        entry: Some(CatalogEntry {
+                            name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                        }),
                         column_projection: None, // fetch all columns
                         filter: Some(CatalogFilter {
                             recording_ids: vec![RecordingId { id: id.to_owned() }],
@@ -159,6 +162,9 @@ impl PyStorageNodeClient {
             let batches = self
                 .client
                 .query(QueryRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                    }),
                     recording_id: Some(id.into()),
                     query: Some(query.clone()),
                 })
@@ -221,6 +227,9 @@ impl PyStorageNodeClient {
                     .collect(),
             });
             let request = QueryCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 column_projection,
                 filter,
             };
@@ -274,6 +283,9 @@ impl PyStorageNodeClient {
     fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
         self.runtime.block_on(async {
             let request = GetRecordingSchemaRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 recording_id: Some(RecordingId { id }),
             };
 
@@ -741,6 +753,9 @@ impl PyStorageNodeClient {
             }
 
             let request = UpdateCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 metadata: Some(
                     metadata
                         .encode()
@@ -809,6 +824,9 @@ impl PyStorageNodeClient {
             let mut resp = self
                 .client
                 .fetch_recording(FetchRecordingRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) #9116 */
+                    }),
                     recording_id: Some(RecordingId { id: id.to_owned() }),
                 })
                 .await
@@ -1179,7 +1197,7 @@ impl PyRemoteRecording {
 
         // TODO(jleibs): Need to get this from the remote schema
         //let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
-        let timeline = Timeline::new_sequence(index);
+        let timeline = TimelineName::new(index);
 
         let contents = Self::extract_contents_expr(contents)?;
 

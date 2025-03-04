@@ -3,14 +3,14 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
+use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -140,6 +140,16 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
+    pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
+        self.storage_engine()
+            .store()
+            .time_column_type(timeline_name)
+            .unwrap_or_else(|| {
+                re_log::warn_once!("Timeline {timeline_name:?} not found");
+                TimeType::Sequence
+            })
+    }
+
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
@@ -248,22 +258,22 @@ impl EntityDb {
         self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.time_histogram_per_timeline.timelines()
+    pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
+        self.storage_engine().store().timelines()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
         &self.times_per_timeline
     }
 
-    pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
+    pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
         self.time_histogram_per_timeline
             .get(timeline)
             .is_some_and(|hist| !hist.is_empty())
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
-    pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
+    pub fn time_range_for(&self, timeline: &TimelineName) -> Option<ResolvedTimeRange> {
         let hist = self.time_histogram_per_timeline.get(timeline)?;
         let min = hist.min_key()?;
         let max = hist.max_key()?;
@@ -271,7 +281,7 @@ impl EntityDb {
     }
 
     /// Histogram of all events on the timeeline, of all entities.
-    pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
+    pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
         self.time_histogram_per_timeline.get(timeline)
     }
 
@@ -469,7 +479,7 @@ impl EntityDb {
     /// Used to implement undo (erase the last event from the blueprint db).
     pub fn drop_time_range(
         &mut self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         drop_range: ResolvedTimeRange,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
@@ -559,7 +569,7 @@ impl EntityDb {
     /// specific time range will be accounted for.
     pub fn to_messages(
         &self,
-        time_selection: Option<(Timeline, ResolvedTimeRangeF)>,
+        time_selection: Option<(TimelineName, ResolvedTimeRangeF)>,
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
@@ -695,7 +705,7 @@ impl EntityDb {
         &self,
         engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
@@ -717,7 +727,7 @@ impl EntityDb {
     pub fn subtree_has_data_on_timeline(
         &self,
         engine: &StorageEngineReadGuard<'_>,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> bool {
         re_tracing::profile_function!();
@@ -739,7 +749,7 @@ impl EntityDb {
     pub fn subtree_has_temporal_data_on_timeline(
         &self,
         engine: &StorageEngineReadGuard<'_>,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> bool {
         re_tracing::profile_function!();

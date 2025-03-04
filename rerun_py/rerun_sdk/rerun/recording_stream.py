@@ -95,7 +95,7 @@ def new_recording(
     ```python
     from uuid import uuid4
     stream = rr.new_recording("my_app", recording_id=uuid4())
-    stream.connect()
+    stream.connect_grpc()
     stream.log("hello", rr.TextLog("Hello world"))
     ```
 
@@ -103,7 +103,7 @@ def new_recording(
     ```python
     from uuid import uuid4
     rr.new_recording("my_app", make_default=True, recording_id=uuid4())
-    rr.connect()
+    rr.connect_grpc()
     rr.log("hello", rr.TextLog("Hello world"))
     ```
 
@@ -212,7 +212,7 @@ class RecordingStream:
     - Sink-related functions:
         [`rerun.connect`][], [`rerun.spawn`][], …
     - Time-related functions:
-        [`rerun.set_time_seconds`][], [`rerun.set_time_sequence`][], …
+        [`rerun.set_index`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
     - Log-related functions:
         [`rerun.log`][], …
 

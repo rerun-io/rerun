@@ -9,7 +9,7 @@ rr.init("rerun_example_dataframe", spawn=True)
 
 # Log some data.
 for t in range(0, int(math.pi * 4 * 100.0)):
-    rr.set_time_seconds("t", t)
+    rr.set_index("t", timedelta=t)
     rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))
     rr.log("trig/cos", rr.Scalar(math.cos(float(t) / 100.0)))
 

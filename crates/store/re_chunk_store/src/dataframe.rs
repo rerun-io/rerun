@@ -104,7 +104,7 @@ impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {
         Self {
-            timeline: *desc.timeline().name(),
+            timeline: desc.timeline_name(),
         }
     }
 }
@@ -252,7 +252,7 @@ impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContent
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
-pub type Index = Timeline;
+pub type Index = TimelineName;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `TimeInt`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
@@ -331,7 +331,7 @@ pub struct QueryExpression {
     ///
     /// If left unspecified, the results will only contain static data.
     ///
-    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
+    /// Examples: `Some(TimelineName("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
     pub filtered_index: Option<Index>,
@@ -415,9 +415,9 @@ impl ChunkStore {
         re_tracing::profile_function!();
 
         let indices = self
-            .all_timelines_sorted()
-            .into_iter()
-            .map(IndexColumnDescriptor::from)
+            .timelines()
+            .values()
+            .map(|timeline| IndexColumnDescriptor::from(*timeline))
             .collect();
 
         let components = self
@@ -476,11 +476,10 @@ impl ChunkStore {
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
     pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
-        let timelines = self.all_timelines();
+        let timelines = self.timelines();
 
         let timeline = timelines
-            .iter()
-            .find(|timeline| timeline.name() == &selector.timeline)
+            .get(&selector.timeline)
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 

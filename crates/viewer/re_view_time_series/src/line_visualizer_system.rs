@@ -224,7 +224,7 @@ impl SeriesLineSystem {
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     // That is just so we can satisfy the `range_zip` contract later on.
                     .map(|index| (index, ()))
@@ -245,7 +245,7 @@ impl SeriesLineSystem {
 
             // Determine per-series visibility flags.
             let mut series_visibility_flags: Vec<bool> = results
-                .iter_as(query.timeline(), SeriesVisible::name())
+                .iter_as(*query.timeline(), SeriesVisible::name())
                 .slice::<bool>()
                 .next()
                 .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
@@ -269,7 +269,7 @@ impl SeriesLineSystem {
                 let points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
                         debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
@@ -370,7 +370,7 @@ impl SeriesLineSystem {
 
                     let all_colors = all_color_chunks.iter().flat_map(|chunk| {
                         itertools::izip!(
-                            chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                            chunk.iter_component_indices(query.timeline(), &Color::name()),
                             chunk.iter_slices::<u32>(Color::name())
                         )
                     });
@@ -432,10 +432,8 @@ impl SeriesLineSystem {
 
                         let all_stroke_widths = all_stroke_width_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk.iter_component_indices(
-                                    &query.timeline(),
-                                    &StrokeWidth::name()
-                                ),
+                                chunk
+                                    .iter_component_indices(query.timeline(), &StrokeWidth::name()),
                                 chunk.iter_slices::<f32>(StrokeWidth::name())
                             )
                         });
@@ -508,11 +506,11 @@ impl SeriesLineSystem {
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
                         .timelines()
-                        .get(&query.timeline())
+                        .get(query.timeline())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
                         .timelines()
-                        .get(&query.timeline())
+                        .get(query.timeline())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
                     lhs_time_max <= rhs_time_min
                 });
@@ -608,7 +606,7 @@ fn collect_recursive_clears(
         for chunk in chunks {
             cleared_indices.extend(
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &ClearIsRecursive::name()),
+                    chunk.iter_component_indices(query.timeline(), &ClearIsRecursive::name()),
                     chunk
                         .iter_component::<ClearIsRecursive>()
                         .map(|is_recursive| {

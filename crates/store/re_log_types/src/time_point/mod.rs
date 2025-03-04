@@ -29,7 +29,7 @@ pub use self::{
 /// any temporal data of the same type.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
+pub struct TimePoint(BTreeMap<Timeline, TimeInt>); // TODO(#9084): use `TimelineName` as the key
 
 impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
     fn from(timelines: BTreeMap<Timeline, TimeInt>) -> Self {
@@ -39,12 +39,36 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 
 impl TimePoint {
     #[inline]
-    pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
-        self.0.get(timeline)
+    pub fn get(&self, timeline_name: &TimelineName) -> Option<&TimeInt> {
+        self.0.iter().find_map(|(timeline, time)| {
+            if timeline.name() == timeline_name {
+                Some(time)
+            } else {
+                None
+            }
+        })
     }
 
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Option<TimeInt> {
+        self.0.retain(|existing_timeline, _| {
+            // TODO(#9084): remove this
+            if existing_timeline.name() == timeline.name()
+                && existing_timeline.typ() != timeline.typ()
+            {
+                re_log::warn_once!(
+                    "Timeline {:?} changed type from {:?} to {:?}. \
+                     Rerun does not support using different types for the same timeline.",
+                    timeline.name(),
+                    existing_timeline.typ(),
+                    timeline.typ()
+                );
+                false // remove old value
+            } else {
+                true
+            }
+        });
+
         let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
         self.0.insert(timeline, time)
     }
@@ -117,7 +141,7 @@ impl re_byte_size::SizeBytes for TimePoint {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
-    /// Normal wall time.
+    /// Normal wall time, encoded as nanoseconds.
     Time,
 
     /// Used e.g. for frames in a film.
@@ -224,6 +248,38 @@ impl TimeType {
         match self {
             Self::Time => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
             Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
+        }
+    }
+
+    /// Returns an array with the appropriate datatype, using `None` for [`TimeInt::STATIC`].
+    pub fn make_arrow_array_from_time_ints(
+        self,
+        times: impl Iterator<Item = TimeInt>,
+    ) -> arrow::array::ArrayRef {
+        match self {
+            Self::Time => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::TimestampNanosecondArray>(),
+            ),
+
+            Self::Sequence => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::Int64Array>(),
+            ),
         }
     }
 }

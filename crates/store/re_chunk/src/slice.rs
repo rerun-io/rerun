@@ -5,7 +5,7 @@ use arrow::array::{
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_log_types::Timeline;
+use re_log_types::TimelineName;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
@@ -139,7 +139,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timeline_sliced(&self, timeline: Timeline) -> Self {
+    pub fn timeline_sliced(&self, timeline: TimelineName) -> Self {
         let Self {
             id,
             entity_path,
@@ -227,7 +227,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<Timeline>) -> Self {
+    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<TimelineName>) -> Self {
         let Self {
             id,
             entity_path,
@@ -487,7 +487,7 @@ impl Chunk {
     //
     // TODO(cmc): `Timeline` should really be `Index`.
     #[inline]
-    pub fn deduped_latest_on_index(&self, index: &Timeline) -> Self {
+    pub fn deduped_latest_on_index(&self, index: &TimelineName) -> Self {
         re_tracing::profile_function!();
 
         if self.is_empty() {
@@ -1089,7 +1089,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
@@ -1112,7 +1112,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(5, got.num_rows());
 
@@ -1220,7 +1220,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
@@ -1239,7 +1239,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 

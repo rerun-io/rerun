@@ -23,7 +23,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
 )
 def connect(
     addr: str | None = None,
@@ -56,8 +56,8 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith("http"):
-        addr = f"http://{addr}"
+    if addr is not None:
+        addr = f"rerun+http://{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
@@ -68,7 +68,7 @@ def connect(
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
 )
 def connect_tcp(
     addr: str | None = None,
@@ -101,8 +101,8 @@ def connect_tcp(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if addr is not None and not addr.startswith("http"):
-        addr = f"http://{addr}"
+    if addr is not None:
+        addr = f"rerun+http://{addr}/proxy"
     return connect_grpc(
         url=addr,
         flush_timeout_sec=flush_timeout_sec,
@@ -521,7 +521,7 @@ def spawn(
 
     if connect:
         connect_grpc(
-            f"http://127.0.0.1:{port}",
+            f"rerun+http://127.0.0.1:{port}/proxy",
             recording=recording,  # NOLINT
             default_blueprint=default_blueprint,
         )

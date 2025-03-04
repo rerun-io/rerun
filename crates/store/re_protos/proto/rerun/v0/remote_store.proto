@@ -2,9 +2,15 @@ syntax = "proto3";
 
 package rerun.remote_store.v0;
 
+import "rerun/v0/collection_ops.proto";
 import "rerun/v0/common.proto";
 
 service StorageNode {
+    // Collection APIs
+
+    rpc FindCollection(FindCollectionRequest) returns (FindCollectionResponse);
+    rpc FindCollections(FindCollectionsRequest) returns (FindCollectionsResponse);
+
     // Data APIs
 
     rpc Query(QueryRequest) returns (stream DataframePart) {}
@@ -74,12 +80,14 @@ message DataframePart {
 // ---------------- GetChunkIds ------------------
 
 message GetChunkIdsRequest {
+    // which catalog entry do we want to fetch the chunk ids from
+    CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk ids
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // timeline for which we specify the time range
-    rerun.common.v0.IndexColumnSelector time_index = 2;
+    rerun.common.v0.IndexColumnSelector time_index = 3;
     // time range for which we want to fetch the chunk ids
-    rerun.common.v0.TimeRange time_range = 3;
+    rerun.common.v0.TimeRange time_range = 4;
 }
 
 message GetChunkIdsResponse {
@@ -90,10 +98,12 @@ message GetChunkIdsResponse {
 // ---------------- GetChunk ---------------------
 
 message GetChunksRequest {
+    // which catalog entry do we want to fetch the chunks from
+    CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk ids
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // batch of chunk ids for which we want to stream back chunks
-    repeated rerun.common.v0.Tuid chunk_ids = 2;
+    repeated rerun.common.v0.Tuid chunk_ids = 3;
 }
 
 // ---------------- CreateIndex ------------------
@@ -275,14 +285,17 @@ message QueryManifestRequest {
     // If true, `columns` always includes `byte_offset` and `byte_size`.
     bool columns_always_include_byte_offsets = 230;
 
+    // If true, `columns` always includes `entity_path`.
+    bool columns_always_include_entity_paths = 240;
+
     // If true, `columns` always includes all static component-level indexes.
-    bool columns_always_include_static_indexes = 240;
+    bool columns_always_include_static_indexes = 250;
 
     // If true, `columns` always includes all temporal chunk-level indexes.
-    bool columns_always_include_global_indexes = 250;
+    bool columns_always_include_global_indexes = 260;
 
     // If true, `columns` always includes all component-level indexes.
-    bool columns_always_include_component_indexes = 260;
+    bool columns_always_include_component_indexes = 270;
 
     // If specified, will perform a latest-at query with the given parameters.
     //
@@ -299,11 +312,14 @@ message QueryManifestRequest {
 }
 
 message QueryManifestLatestAtRelevantChunks {
+    // Which entity paths are we interested in?
+    repeated rerun.common.v0.EntityPath entity_paths = 10;
+
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 1;
+    rerun.common.v0.IndexColumnSelector index = 20;
 
     // What index value are we looking for?
-    int64 at = 2;
+    int64 at = 30;
 
     // Which components are we interested in?
     //
@@ -314,15 +330,18 @@ message QueryManifestLatestAtRelevantChunks {
     // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 3;
+    repeated string fuzzy_descriptors = 40;
 }
 
 message QueryManifestRangeRelevantChunks {
+    // Which entity paths are we interested in?
+    repeated rerun.common.v0.EntityPath entity_paths = 10;
+
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 1;
+    rerun.common.v0.IndexColumnSelector index = 20;
 
     // What index range are we looking for?
-    rerun.common.v0.TimeRange index_range = 2;
+    rerun.common.v0.TimeRange index_range = 30;
 
     // Which components are we interested in?
     //
@@ -333,7 +352,7 @@ message QueryManifestRangeRelevantChunks {
     // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 3;
+    repeated string fuzzy_descriptors = 40;
 }
 
 // Generic parameters that will influence the behavior of the Lance scanner.
@@ -370,7 +389,10 @@ message ScanParameters {
     ScanParametersOrderClause order_by = 300;
 
     // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-    bool explain = 400;
+    bool explain_plan = 400;
+
+    // If set, the final `scanner.filter` will be dumped to the server's log.
+    bool explain_filter = 401;
 }
 
 message ScanParametersOrderClause {
@@ -382,7 +404,10 @@ message ScanParametersOrderClause {
 // ---------------- GetRecordingSchema ------------------
 
 message GetRecordingSchemaRequest {
-    rerun.common.v0.RecordingId recording_id = 1;
+    // which catalog entry do we want to fetch the schema from
+    CatalogEntry entry = 1;
+    // recording id from which we're want to fetch the schema
+    rerun.common.v0.RecordingId recording_id = 2;
 }
 
 message GetRecordingSchemaResponse {
@@ -424,6 +449,9 @@ message UnregisterAllRecordingsResponse {}
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
+    // which catalog entry do we want to update
+    CatalogEntry entry = 1;
+    // Properties that we want to update
     DataframePart metadata = 2;
 }
 
@@ -432,8 +460,10 @@ message UpdateCatalogResponse {}
 // ---------------- Query -----------------
 
 message QueryRequest {
+    // which catalog entry do we want to query
+    CatalogEntry entry = 1;
     // unique identifier of the recording
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // query to execute
     rerun.common.v0.Query query = 3;
 }
@@ -441,11 +471,13 @@ message QueryRequest {
 // ----------------- QueryCatalog -----------------
 
 message QueryCatalogRequest {
+    // which catalog entry do we want to query
+    CatalogEntry entry = 1;
     // Column projection - define which columns should be returned.
     // Providing it is optional, if not provided, all columns should be returned
-    ColumnProjection column_projection = 1;
+    ColumnProjection column_projection = 2;
     // Filter specific recordings that match the criteria (selection)
-    CatalogFilter filter = 2;
+    CatalogFilter filter = 3;
 }
 
 message ColumnProjection {
@@ -471,7 +503,10 @@ enum RecordingType {
 // ----------------- FetchRecording -----------------
 
 message FetchRecordingRequest {
-    rerun.common.v0.RecordingId recording_id = 1;
+    // which catalog entry do we want to fetch the recording from
+    CatalogEntry entry = 1;
+    // recording id from which we're want to fetch the recording
+    rerun.common.v0.RecordingId recording_id = 2;
 }
 
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now

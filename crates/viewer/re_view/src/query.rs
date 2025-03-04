@@ -6,7 +6,7 @@ use crate::{
     HybridResults,
 };
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentName};
 use re_viewer_context::{
@@ -105,7 +105,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
 pub fn query_archetype_with_history<'a>(
     ctx: &'a ViewContext<'a>,
-    timeline: &Timeline,
+    timeline: &TimelineName,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
     component_names: impl IntoIterator<Item = ComponentName>,

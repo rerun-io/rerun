@@ -9,7 +9,7 @@ use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
-use re_chunk::external::nohash_hasher::IntMap;
+use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
@@ -160,7 +160,12 @@ fn prepare_episode_chunks(
     store_ids
 }
 
-fn load_episode(
+/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
+///
+/// This function processes an episode from the dataset by extracting the relevant data columns and
+/// converting them into appropriate Rerun data structures. It handles different types of data
+/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
+pub fn load_episode(
     dataset: &LeRobotDataset,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
@@ -180,7 +185,7 @@ fn load_episode(
         .values();
 
     let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
-    let timelines = std::iter::once((timeline, time_column.clone())).collect();
+    let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
 
     let mut chunks = Vec::new();
 
@@ -377,7 +382,7 @@ fn load_episode_video(
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.into(),
-                std::iter::once((*timeline, time_column)).collect(),
+                std::iter::once((*timeline.name(), time_column)).collect(),
                 [
                     (
                         VideoFrameReference::indicator().descriptor.clone(),
@@ -439,7 +444,7 @@ impl ExactSizeIterator for ScalarChunkIterator {}
 fn load_scalar(
     feature_key: &str,
     feature: &Feature,
-    timelines: &IntMap<Timeline, TimeColumn>,
+    timelines: &IntMap<TimelineName, TimeColumn>,
     data: &RecordBatch,
 ) -> Result<ScalarChunkIterator, DataLoaderError> {
     let field = data
@@ -494,7 +499,7 @@ fn load_scalar(
 fn make_scalar_batch_entity_chunks(
     field: &Field,
     feature: &Feature,
-    timelines: &IntMap<Timeline, TimeColumn>,
+    timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     let num_elements = data.value_length() as usize;
@@ -533,7 +538,7 @@ fn make_scalar_batch_entity_chunks(
 
 fn make_scalar_entity_chunk(
     entity_path: EntityPath,
-    timelines: &IntMap<Timeline, TimeColumn>,
+    timelines: &IntMap<TimelineName, TimeColumn>,
     data: &ArrayRef,
 ) -> Result<Chunk, DataLoaderError> {
     // cast the slice to f64 first, as scalars need an f64

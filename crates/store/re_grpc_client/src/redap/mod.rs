@@ -1,5 +1,5 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v0::storage_node_client::StorageNodeClient;
+use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, CatalogEntry};
 use re_uri::{Origin, RecordingEndpoint};
 use tokio_stream::StreamExt as _;
 
@@ -10,20 +10,29 @@ use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
-    common::v0::RecordingId,
+    common::v0::{IndexColumnSelector, RecordingId},
     remote_store::v0::{
-        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
-        CATALOG_START_TIME_FIELD_NAME,
+        CatalogFilter, FetchRecordingRequest, GetChunkIdsRequest, GetChunksRequest,
+        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
     },
 };
 
-use crate::{spawn_future, StreamError, TonicStatusError, MAX_DECODING_MESSAGE_SIZE};
+use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
+
+pub enum Command {
+    SetLoopSelection {
+        recording_id: re_log_types::StoreId,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRangeF,
+    },
+}
 
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_from_redap(
     endpoint: RecordingEndpoint,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     re_log::debug!("Loading {endpoint}…");
@@ -32,13 +41,13 @@ pub fn stream_from_redap(
         re_smart_channel::SmartMessageSource::RerunGrpcStream {
             url: endpoint.to_string(),
         },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+        re_smart_channel::SmartChannelSource::RedapGrpcStream {
             url: endpoint.to_string(),
         },
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_msg).await {
+        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_cmd, on_msg).await {
             re_log::error!(
                 "Error while streaming {endpoint}: {}",
                 re_error::format_ref(&err)
@@ -75,17 +84,32 @@ pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, Co
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ConnectionError> {
+    use std::net::Ipv4Addr;
+
     use tonic::transport::Endpoint;
 
     let http_url = origin.as_url();
 
     match Endpoint::new(http_url)?
-        .tls_config(tonic::transport::ClientTlsConfig::new().with_enabled_roots())?
+        .tls_config(
+            tonic::transport::ClientTlsConfig::new()
+                .with_enabled_roots()
+                .assume_http2(true),
+        )?
         .connect()
         .await
     {
         Ok(channel) => Ok(channel),
         Err(original_error) => {
+            if ![
+                url::Host::Domain("localhost".to_owned()),
+                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+            ]
+            .contains(&origin.host)
+            {
+                return Err(ConnectionError::Tonic(original_error));
+            }
+
             // If we can't establish a connection, we probe if the server is
             // expecting unencrypted traffic. If that is the case, we return
             // a more meaningful error message.
@@ -136,6 +160,7 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
 pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::RecordingEndpoint,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Connecting to {}…", endpoint.origin);
@@ -143,8 +168,11 @@ pub async fn stream_recording_async(
 
     re_log::debug!("Fetching catalog data for {}…", endpoint.recording_id);
 
-    let resp = client
+    let catalog_chunk_stream = client
         .query_catalog(QueryCatalogRequest {
+            entry: Some(CatalogEntry {
+                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+            }),
             column_projection: None, // fetch all columns
             filter: Some(CatalogFilter {
                 recording_ids: vec![RecordingId {
@@ -152,9 +180,10 @@ pub async fn stream_recording_async(
                 }],
             }),
         })
-        .await
-        .map_err(TonicStatusError)?
-        .into_inner()
+        .await?
+        .into_inner();
+
+    let catalog_chunks = catalog_chunk_stream
         .map(|resp| {
             resp.and_then(|r| {
                 r.decode()
@@ -162,39 +191,85 @@ pub async fn stream_recording_async(
             })
         })
         .collect::<Result<Vec<_>, tonic::Status>>()
-        .await
-        .map_err(TonicStatusError)?;
+        .await?;
 
-    if resp.len() != 1 || resp[0].num_rows() != 1 {
+    if catalog_chunks.len() != 1 || catalog_chunks[0].num_rows() != 1 {
         return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!(
                 "expected exactly one recording with id {}, got {}",
                 endpoint.recording_id,
-                resp.len()
+                catalog_chunks.len()
             ),
         }));
     }
 
-    let store_info = store_info_from_catalog_chunk(&resp[0].clone(), &endpoint.recording_id)?;
+    let store_info =
+        store_info_from_catalog_chunk(&catalog_chunks[0].clone(), &endpoint.recording_id)?;
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Fetching {}…", endpoint.recording_id);
 
-    let mut resp = client
-        .fetch_recording(FetchRecordingRequest {
-            recording_id: Some(RecordingId {
-                id: endpoint.recording_id.clone(),
-            }),
-        })
-        .await
-        .map_err(TonicStatusError)?
-        .into_inner()
-        .map(|resp| {
-            resp.and_then(|r| {
-                r.decode()
-                    .map_err(|err| tonic::Status::internal(err.to_string()))
+    let mut chunk_stream = if let Some(time_range) = &endpoint.time_range {
+        let chunk_id_stream = client
+            .get_chunk_ids(GetChunkIdsRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
+                recording_id: Some(RecordingId {
+                    id: endpoint.recording_id.clone(),
+                }),
+                time_index: Some(IndexColumnSelector {
+                    timeline: Some(time_range.timeline.into()),
+                }),
+                time_range: Some(
+                    re_log_types::ResolvedTimeRange::new(
+                        // min.floor()..min.ceil() should cover the entire requested range
+                        time_range.range.min.floor(),
+                        time_range.range.max.ceil(),
+                    )
+                    .into(),
+                ),
             })
-        });
+            .await?
+            .into_inner();
+        let chunk_ids = chunk_id_stream
+            .collect::<Result<Vec<_>, tonic::Status>>()
+            .await?
+            .into_iter()
+            .flat_map(|r| r.chunk_ids)
+            .collect::<Vec<_>>();
+
+        client
+            .get_chunks(GetChunksRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
+                recording_id: Some(RecordingId {
+                    id: endpoint.recording_id.clone(),
+                }),
+                chunk_ids,
+            })
+            .await?
+            .into_inner()
+    } else {
+        client
+            .fetch_recording(FetchRecordingRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
+                recording_id: Some(RecordingId {
+                    id: endpoint.recording_id.clone(),
+                }),
+            })
+            .await?
+            .into_inner()
+    }
+    .map(|resp| {
+        resp.and_then(|r| {
+            r.decode()
+                .map_err(|err| tonic::Status::internal(err.to_string()))
+        })
+    });
 
     drop(client);
 
@@ -210,9 +285,16 @@ pub async fn stream_recording_async(
         return Ok(());
     }
 
-    re_log::info!("Starting to read...");
-    while let Some(result) = resp.next().await {
-        let batch = result.map_err(TonicStatusError)?;
+    if let Some(time_range) = endpoint.time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
+            timeline: time_range.timeline,
+            time_range: time_range.range,
+        });
+    }
+
+    while let Some(result) = chunk_stream.next().await {
+        let batch = result?;
         let chunk = Chunk::from_record_batch(&batch)?;
 
         if tx

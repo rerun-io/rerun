@@ -15,7 +15,6 @@
 use crate::web_tools::{url_to_receiver, window, JsResultExt as _};
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
-use re_log::ResultExt as _;
 use re_viewer_context::StoreHub;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 use std::sync::Arc;
@@ -169,9 +168,12 @@ fn handle_popstate(
     let follow_if_http = false;
     for url in &entry.urls {
         // we continue in case of errors because some receivers may be valid
-        let Some(receiver) =
-            url_to_receiver(egui_ctx.clone(), follow_if_http, url.clone()).ok_or_log_error()
-        else {
+        let Some(receiver) = url_to_receiver(
+            egui_ctx.clone(),
+            follow_if_http,
+            url.clone(),
+            command_sender.clone(),
+        ) else {
             continue;
         };
 

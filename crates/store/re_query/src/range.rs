@@ -39,7 +39,7 @@ impl QueryCache {
             let component_descr = component_descr.into();
             store
                 .entity_has_component_on_timeline(
-                    &query.timeline(),
+                    query.timeline(),
                     entity_path,
                     &component_descr.component_name,
                 )
@@ -47,7 +47,7 @@ impl QueryCache {
         });
 
         for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -176,7 +176,7 @@ impl RangeCache {
                 cached
                     .chunk
                     .timelines()
-                    .get(&self.cache_key.timeline)
+                    .get(&self.cache_key.timeline_name)
                     .map(|time_column| time_column.time_range())
             })
             .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
@@ -190,7 +190,7 @@ impl RangeCache {
 impl std::fmt::Debug for RangeCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            cache_key,
+            cache_key: _,
             chunks,
             pending_invalidations: _,
         } = self;
@@ -198,8 +198,8 @@ impl std::fmt::Debug for RangeCache {
         let mut strings: Vec<String> = Vec::new();
 
         strings.push(format!(
-            "{} ({})",
-            cache_key.timeline.typ().format_range_utc(self.time_range()),
+            "{:?} ({})",
+            self.time_range(),
             re_format::format_bytes(chunks.total_size_bytes() as _),
         ));
 
@@ -266,7 +266,7 @@ impl RangeCache {
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        debug_assert_eq!(query.timeline(), self.cache_key.timeline);
+        debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
 
         // First, we forward the query as-is to the store.
         //
@@ -287,8 +287,8 @@ impl RangeCache {
                         // will speed up future arrow operations on this chunk.
                         .densified(component_name)
                         // Pre-sort the cached chunk according to the cache key's timeline.
-                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline),
-                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline),
+                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
                 });
         }
 
@@ -303,7 +303,7 @@ impl RangeCache {
             .map(|cached_sorted_chunk| {
                 debug_assert!(cached_sorted_chunk
                     .chunk
-                    .is_timeline_sorted(&query.timeline()));
+                    .is_timeline_sorted(query.timeline()));
 
                 let chunk = &cached_sorted_chunk.chunk;
 

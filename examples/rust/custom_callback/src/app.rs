@@ -15,7 +15,10 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = ControlApp::bind("127.0.0.1:8888").await?.run();
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback")
-        .connect_grpc_opts("http://127.0.0.1:9877", rerun::default_flush_timeout())?;
+        .connect_grpc_opts(
+            "rerun+http://127.0.0.1:9877/proxy",
+            rerun::default_flush_timeout(),
+        )?;
 
     // Add a handler for incoming messages
     let add_rec = rec.clone();
