@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generic, Iterable, Iterator, Protocol, TypeVar
+from typing import Generic, Iterable, Iterator, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -165,6 +165,7 @@ class DescribedComponentBatch:
         return ComponentColumn(self, lengths=lengths)
 
 
+@runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""
 
@@ -177,6 +178,7 @@ class ComponentBatchLike(Protocol):
         ...
 
 
+@runtime_checkable
 class AsComponents(Protocol):
     """Describes interface for interpreting an object as a bundle of Components."""
 

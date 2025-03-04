@@ -750,7 +750,7 @@ class RecordingStream:
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
         set_index(  # type: ignore[call-overload]
             timeline=timeline,
-            time=timedelta,
+            timedelta=timedelta,
             sequence=sequence,
             datetime=datetime,
             recording=self,

@@ -129,22 +129,23 @@ class View:
             visible=self.visible,
         )
 
-        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)
 
         for prop_name, prop in self.properties.items():
             stream.log(f"{self.blueprint_path()}/{prop_name}", prop)
 
         for default in self.defaults:
-            if hasattr(default, "as_component_batches"):
+            if isinstance(default, AsComponents):
                 stream.log(f"{self.blueprint_path()}/defaults", default)
-            elif hasattr(default, "component_descriptor"):
-                stream.log(f"{self.blueprint_path()}/defaults", [default])
+            elif isinstance(default, ComponentBatchLike):
+                stream.log(f"{self.blueprint_path()}/defaults", [default])  # type: ignore[list-item]
             else:
-                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
+                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")  # type: ignore[arg-type]
 
         for path, components in self.overrides.items():
-            stream.log(  # type: ignore[attr-defined]
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components
+            stream.log(
+                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}",
+                components,  # type: ignore[arg-type]
             )
 
     def _ipython_display_(self) -> None:
