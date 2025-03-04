@@ -436,22 +436,22 @@ mod tests {
 
     #[test]
     fn test_formatting_whole_second_for_datetime() {
-        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap();
-        assert_eq!(&datetime.format(TimeZone::Utc), "1954-04-11 22:35:42Z");
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
+        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42Z");
     }
 
     #[test]
     fn test_formatting_whole_millisecond_for_datetime() {
-        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap();
-        assert_eq!(&datetime.format(TimeZone::Utc), "1954-04-11 22:35:42.069Z");
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
+        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42.069Z");
     }
 
     #[test]
     fn test_formatting_many_digits_for_datetime() {
-        let datetime = Time::try_from(datetime!(1954-04-11 22:35:42.069_042_7 UTC)).unwrap();
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
         assert_eq!(
             &datetime.format(TimeZone::Utc),
-            "1954-04-11 22:35:42.069042Z"
+            "2022-02-28 22:35:42.069042Z"
         ); // format function is not rounding
     }
 
