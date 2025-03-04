@@ -63,7 +63,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     import rerun as rr
 
     rr.init("rerun_example_mesh3d_instancing", spawn=True)
-    rr.set_time_sequence("frame", 0)
+    rr.set_index("frame", sequence=0)
 
     rr.log(
         "shape",
@@ -80,7 +80,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
 
     for i in range(0, 100):
-        rr.set_time_sequence("frame", i)
+        rr.set_index("frame", sequence=i)
         rr.log(
             "shape",
             rr.InstancePoses3D(
@@ -297,8 +297,8 @@ class Mesh3D(Mesh3DExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

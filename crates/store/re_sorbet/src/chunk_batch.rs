@@ -86,6 +86,15 @@ impl ChunkBatch {
             self.columns()[0].as_fixed_size_binary(),
         )
     }
+
+    /// Returns self but with all rows removed.
+    #[must_use]
+    pub fn drop_all_rows(self) -> Self {
+        Self {
+            schema: self.schema.clone(),
+            sorbet_batch: self.sorbet_batch.drop_all_rows(),
+        }
+    }
 }
 
 impl std::fmt::Display for ChunkBatch {

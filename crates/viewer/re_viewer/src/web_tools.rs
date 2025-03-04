@@ -81,6 +81,7 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
+// TODO(#9134): Unify with `re_data_source::DataSource`.
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///
@@ -88,44 +89,23 @@ enum EndpointCategory {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    RedapRecording(re_uri::RecordingEndpoint),
-
-    /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/catalog`
-    RedapCatalog(re_uri::CatalogEndpoint),
+    RerunGrpcStream(re_uri::RedapUri),
 
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
-
-    /// A stream of messages over gRPC, relayed from the SDK.
-    MessageProxy(String),
 }
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        match re_uri::RedapUri::try_from(uri.as_ref()) {
-            Ok(re_uri::RedapUri::Recording(endpoint)) => return Self::RedapRecording(endpoint),
-            Ok(re_uri::RedapUri::Catalog(endpoint)) => return Self::RedapCatalog(endpoint),
-            Ok(re_uri::RedapUri::Proxy(_origin)) => return Self::MessageProxy(uri),
-            Err(_) => {} // Not a Rerun URI,
+        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+            return Self::RerunGrpcStream(uri);
         }
 
-        if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri)
-        } else if uri.starts_with("web_event:") {
+        if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
-        } else if uri.starts_with("temp:") {
-            // TODO(#8761): URL prefix
-            Self::MessageProxy(uri)
         } else {
-            // If this is something like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::info!("Assuming gRPC endpoint");
-            if uri.contains("://") {
-                Self::MessageProxy(uri)
-            } else {
-                // TODO(jan): this should be `https` if it's not localhost or same-origin
-                Self::MessageProxy(format!("http://{uri}"))
-            }
+            // if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
+            Self::HttpRrd(uri)
         }
     }
 }
@@ -136,14 +116,14 @@ pub fn url_to_receiver(
     follow_if_http: bool,
     url: String,
     command_sender: CommandSender,
-) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
+) -> Option<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
         // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
     match EndpointCategory::categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => Ok(
+        EndpointCategory::HttpRrd(url) => Some(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
                 follow_if_http,
@@ -151,7 +131,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RedapRecording(endpoint) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -163,17 +143,21 @@ pub fn url_to_receiver(
                     time_range,
                 }),
             });
-            Ok(re_grpc_client::redap::stream_from_redap(
+            Some(re_grpc_client::redap::stream_from_redap(
                 endpoint,
                 on_cmd,
                 Some(ui_waker),
             ))
         }
 
-        EndpointCategory::RedapCatalog(_endpoint) => {
-            // TODO(grtlr): Implement catalog support
-            anyhow::bail!("Catalogs are not supported yet")
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+            None
         }
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
+            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+        ),
 
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
@@ -206,12 +190,7 @@ pub fn url_to_receiver(
                     }
                 }
             }));
-            Ok(rx)
-        }
-
-        EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(&url, Some(ui_waker))
-                .map_err(|err| err.into())
+            Some(rx)
         }
     }
 }

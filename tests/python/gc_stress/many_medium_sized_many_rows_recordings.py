@@ -21,7 +21,7 @@ rng = default_rng(12345)
 for i in range(0, 20000000):
     rr.init("rerun_example_recording_gc", recording_id=f"image-rec-{i}", spawn=True)
     for j in range(0, 10000):
-        rr.set_time_sequence("frame", j)
+        rr.set_index("frame", sequence=j)
         positions = rng.uniform(-5, 5, size=[1000, 3])
         colors = rng.uniform(0, 255, size=[1000, 3])
         radii = rng.uniform(0, 1, size=[1000])

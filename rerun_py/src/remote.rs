@@ -109,6 +109,9 @@ impl PyStorageNodeClient {
                 let resp = self
                     .client
                     .query_catalog(QueryCatalogRequest {
+                        entry: Some(CatalogEntry {
+                            name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                        }),
                         column_projection: None, // fetch all columns
                         filter: Some(CatalogFilter {
                             recording_ids: vec![RecordingId { id: id.to_owned() }],
@@ -159,6 +162,9 @@ impl PyStorageNodeClient {
             let batches = self
                 .client
                 .query(QueryRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                    }),
                     recording_id: Some(id.into()),
                     query: Some(query.clone()),
                 })
@@ -221,6 +227,9 @@ impl PyStorageNodeClient {
                     .collect(),
             });
             let request = QueryCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 column_projection,
                 filter,
             };
@@ -274,6 +283,9 @@ impl PyStorageNodeClient {
     fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
         self.runtime.block_on(async {
             let request = GetRecordingSchemaRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 recording_id: Some(RecordingId { id }),
             };
 
@@ -741,6 +753,9 @@ impl PyStorageNodeClient {
             }
 
             let request = UpdateCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 metadata: Some(
                     metadata
                         .encode()

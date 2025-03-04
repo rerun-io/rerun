@@ -2,9 +2,15 @@ syntax = "proto3";
 
 package rerun.remote_store.v0;
 
+import "rerun/v0/collection_ops.proto";
 import "rerun/v0/common.proto";
 
 service StorageNode {
+    // Collection APIs
+
+    rpc FindCollection(FindCollectionRequest) returns (FindCollectionResponse);
+    rpc FindCollections(FindCollectionsRequest) returns (FindCollectionsResponse);
+
     // Data APIs
 
     rpc Query(QueryRequest) returns (stream DataframePart) {}
@@ -398,7 +404,10 @@ message ScanParametersOrderClause {
 // ---------------- GetRecordingSchema ------------------
 
 message GetRecordingSchemaRequest {
-    rerun.common.v0.RecordingId recording_id = 1;
+    // which catalog entry do we want to fetch the schema from
+    CatalogEntry entry = 1;
+    // recording id from which we're want to fetch the schema
+    rerun.common.v0.RecordingId recording_id = 2;
 }
 
 message GetRecordingSchemaResponse {
@@ -440,6 +449,9 @@ message UnregisterAllRecordingsResponse {}
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
+    // which catalog entry do we want to update
+    CatalogEntry entry = 1;
+    // Properties that we want to update
     DataframePart metadata = 2;
 }
 
@@ -448,8 +460,10 @@ message UpdateCatalogResponse {}
 // ---------------- Query -----------------
 
 message QueryRequest {
+    // which catalog entry do we want to query
+    CatalogEntry entry = 1;
     // unique identifier of the recording
-    rerun.common.v0.RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 2;
     // query to execute
     rerun.common.v0.Query query = 3;
 }
@@ -457,11 +471,13 @@ message QueryRequest {
 // ----------------- QueryCatalog -----------------
 
 message QueryCatalogRequest {
+    // which catalog entry do we want to query
+    CatalogEntry entry = 1;
     // Column projection - define which columns should be returned.
     // Providing it is optional, if not provided, all columns should be returned
-    ColumnProjection column_projection = 1;
+    ColumnProjection column_projection = 2;
     // Filter specific recordings that match the criteria (selection)
-    CatalogFilter filter = 2;
+    CatalogFilter filter = 3;
 }
 
 message ColumnProjection {

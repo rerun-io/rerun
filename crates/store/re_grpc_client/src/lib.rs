@@ -1,7 +1,6 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
 pub mod message_proxy;
-pub use message_proxy::MessageProxyUrl;
 
 pub mod redap;
 

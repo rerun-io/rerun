@@ -468,7 +468,7 @@ jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other 
 mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1.*"
-numpy = ">=1.23,<2"
+numpy = ">=2"
 prettier = "3.2.5.*"
 pyarrow = "18.0.0.*"
 pytest = ">=7"
@@ -541,7 +541,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 #
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
-numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-dev.activation]
@@ -574,11 +574,14 @@ mike = "==1.1.2"
 setuptools = ">75"
 sphobjinv = "==2.3.1"
 
+[feature.py-test-deps]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
+
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.2.2" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.3.1" # This must match the torch version in any package we install during `wheel-test`
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -590,18 +593,17 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
 opencv = ">4.6"
-numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.17.0"
-rerun-notebook = "==0.17.0"
+rerun-sdk = "==0.22.1"
+rerun-notebook = "==0.22.1"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
-# Ideally we would could remove`linux-aarch64` from here, but it breaks other things.
-# See: https://github.com/prefix-dev/pixi/issues/1051
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+# TODO(#9180): Split `examples` into high-dep and low-dep so we can run some examples on `linux-aarch64` and `osx-64`.
+platforms = ["linux-64", "osx-arm64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
@@ -612,6 +614,9 @@ python = "=3.11"
 
 # TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
 pyproj = ">=3.7.0"
+
+# Need to use the conda version of umap-learn to be compatible with numpy-2
+umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
 # External deps
@@ -638,6 +643,7 @@ incremental_logging = { path = "examples/python/incremental_logging", editable =
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
 live_scrolling_plot = { path = "examples/python/live_scrolling_plot", editable = true }
+# This depends on umap-learn which is incompatible with numpy-2 if it is installed from pypi.
 llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
 log_file = { path = "examples/python/log_file", editable = true }
 minimal = { path = "examples/python/minimal", editable = true }
@@ -661,23 +667,6 @@ signed_distance_fields = { path = "examples/python/signed_distance_fields", edit
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 
-# TODO(jleibs): Do this with less duplication
-[feature.examples-common.target.linux-64.pypi-dependencies]
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
-
-[feature.examples-common.target.osx-arm64.pypi-dependencies]
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
-
-[feature.examples-common.target.osx-64.pypi-dependencies]
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
-
-[feature.examples-common.target.win-64.pypi-dependencies]
 face_tracking = { path = "examples/python/face_tracking", editable = true }
 gesture_detection = { path = "examples/python/gesture_detection", editable = true }
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }

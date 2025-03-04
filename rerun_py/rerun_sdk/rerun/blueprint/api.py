@@ -562,7 +562,7 @@ class Blueprint:
 
     @deprecated(
         """Please migrate to `connect_grpc(…)`.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-22?speculative-link for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
     )
     def connect(
         self,
@@ -634,7 +634,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -664,7 +664,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -691,7 +691,7 @@ class Blueprint:
 
         """
         _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
-        self.connect_grpc(application_id=application_id, url=f"http://127.0.0.1:{port}")
+        self.connect_grpc(application_id=application_id, url=f"rerun+http://127.0.0.1:{port}/proxy")
 
 
 BlueprintLike = Union[Blueprint, View, Container]
@@ -721,7 +721,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+    blueprint_stream.set_index("blueprint", sequence=0)  # type: ignore[attr-defined]
 
     blueprint._log_to_stream(blueprint_stream)
 

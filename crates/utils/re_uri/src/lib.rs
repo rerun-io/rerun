@@ -8,7 +8,7 @@ mod endpoints;
 mod error;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, recording::RecordingEndpoint},
+    endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
 };
 
@@ -215,13 +215,13 @@ impl std::fmt::Display for Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
-    Proxy(Origin),
+    Proxy(ProxyEndpoint),
 }
 
 impl std::fmt::Display for RedapUri {
@@ -229,8 +229,16 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
-            Self::Proxy(origin) => write!(f, "{origin}/proxy",),
+            Self::Proxy(endpoint) => write!(f, "{endpoint}",),
         }
+    }
+}
+
+impl std::str::FromStr for RedapUri {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
     }
 }
 
@@ -260,7 +268,7 @@ impl TryFrom<&str> for RedapUri {
                 (*recording_id).to_owned(),
                 time_range.transpose()?,
             ))),
-            ["proxy"] => Ok(Self::Proxy(origin)),
+            ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
             ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
@@ -496,10 +504,12 @@ mod tests {
         let url = "rerun://localhost:51234/proxy";
         let address: Result<RedapUri, _> = url.try_into();
 
-        let expected = RedapUri::Proxy(Origin {
-            scheme: Scheme::Rerun,
-            host: url::Host::Domain("localhost".to_owned()),
-            port: 51234,
+        let expected = RedapUri::Proxy(ProxyEndpoint {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
         });
 
         assert_eq!(address.unwrap(), expected);

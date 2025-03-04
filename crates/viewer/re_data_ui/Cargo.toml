@@ -46,4 +46,5 @@ egui.workspace = true
 image.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+rexif.workspace = true
 unindent.workspace = true

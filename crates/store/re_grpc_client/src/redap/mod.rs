@@ -41,7 +41,7 @@ pub fn stream_from_redap(
         re_smart_channel::SmartMessageSource::RerunGrpcStream {
             url: endpoint.to_string(),
         },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
+        re_smart_channel::SmartChannelSource::RedapGrpcStream {
             url: endpoint.to_string(),
         },
     );
@@ -170,6 +170,9 @@ pub async fn stream_recording_async(
 
     let catalog_chunk_stream = client
         .query_catalog(QueryCatalogRequest {
+            entry: Some(CatalogEntry {
+                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+            }),
             column_projection: None, // fetch all columns
             filter: Some(CatalogFilter {
                 recording_ids: vec![RecordingId {

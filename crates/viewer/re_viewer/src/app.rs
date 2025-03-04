@@ -569,13 +569,12 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. } => false,
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
+                    | SmartChannelSource::RedapGrpcStream { .. }
                     | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
                 });
@@ -596,6 +595,8 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
+                self.state.display_mode = DisplayMode::RedapBrowser;
+                self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -625,7 +626,8 @@ impl App {
                 match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                        self.state.redap_servers.add_server(endpoint.origin);
+                        self.command_sender
+                            .send_system(SystemCommand::AddRedapServer { endpoint });
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -926,6 +928,11 @@ impl App {
             UICommand::ToggleBlueprintPanel => {
                 app_blueprint.toggle_blueprint_panel(&self.command_sender);
             }
+            UICommand::ExpandBlueprintPanel => {
+                if !app_blueprint.blueprint_panel_state().is_expanded() {
+                    app_blueprint.toggle_blueprint_panel(&self.command_sender);
+                }
+            }
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
@@ -1157,7 +1164,7 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RerunGrpcStream { url: base_url }) = &entity_db.data_source
+        let Some(SmartChannelSource::RedapGrpcStream { url: base_url }) = &entity_db.data_source
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1324,8 +1331,6 @@ impl App {
                     .get_mut::<re_renderer::RenderContext>()
                 {
                     if let Some(store_context) = store_context {
-                        let entity_db = store_context.recording;
-
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
@@ -1340,7 +1345,6 @@ impl App {
                             app_blueprint,
                             ui,
                             render_ctx,
-                            entity_db,
                             store_context,
                             &self.reflection,
                             &self.component_ui_registry,
@@ -1724,7 +1728,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RerunGrpcStream { .. }
+                | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
@@ -1868,7 +1872,8 @@ impl App {
     }
 
     pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
-        self.state.redap_servers.add_server(endpoint.origin);
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer { endpoint });
     }
 }
 

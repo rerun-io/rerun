@@ -120,8 +120,7 @@ def log(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -212,8 +211,7 @@ def log_components(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -270,8 +268,7 @@ def _log_components(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -351,8 +348,7 @@ def log_file_from_path(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -406,8 +402,7 @@ def log_file_from_contents(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
