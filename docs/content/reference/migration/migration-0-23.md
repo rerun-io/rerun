@@ -83,4 +83,4 @@ The former is subject to (double-precision) floating point precision loss (still
 
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, and `rr.connect_tcp()`
 
-These functions were [deprecated](migration-0-22#python-api-changes) in 0.22 and are no longer available. See the [0.22 migration guide](migration-0-22.md) for detailed information about the new APIs and how to migrate to them. 
+These functions were [deprecated](migration-0-22#python-api-changes) in 0.22 and are no longer available. See the [0.22 migration guide](migration-0-22.md) for detailed information about the new APIs and how to migrate to them.
