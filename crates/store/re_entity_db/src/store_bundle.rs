@@ -101,11 +101,8 @@ impl StoreBundle {
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
                 info: re_log_types::StoreInfo {
-                    application_id: id.as_str().into(),
                     store_id: id.clone(),
                     cloned_from: None,
-                    is_official_example: false,
-                    started: re_log_types::Time::now(),
                     store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
                     store_version: Some(re_build_info::CrateVersion::LOCAL),
                 },

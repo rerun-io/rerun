@@ -55,9 +55,7 @@ pub fn default_flush_timeout() -> Option<std::time::Duration> {
     Some(std::time::Duration::from_secs(2))
 }
 
-pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
-};
+pub use re_log_types::{entity_path, EntityPath, EntityPathPart, Instance, StoreId, StoreKind};
 
 pub use re_memory::MemoryLimit;
 
@@ -199,25 +197,7 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 
 // ----------------------------------------------------------------------------
 
-/// Creates a new [`re_log_types::StoreInfo`] which can be used with [`RecordingStream::new`].
-#[track_caller] // track_caller so that we can see if we are being called from an official example.
-pub fn new_store_info(
-    application_id: impl Into<re_log_types::ApplicationId>,
-) -> re_log_types::StoreInfo {
-    re_log_types::StoreInfo {
-        application_id: application_id.into(),
-        store_id: StoreId::random(StoreKind::Recording),
-        cloned_from: None,
-        is_official_example: called_from_official_rust_example(),
-        started: re_log_types::Time::now(),
-        store_source: re_log_types::StoreSource::RustSdk {
-            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-        },
-        store_version: Some(re_build_info::CrateVersion::LOCAL),
-    }
-}
-
+// TODO: Still needed?
 #[track_caller]
 fn called_from_official_rust_example() -> bool {
     // The sentinel file we use to identify the official examples directory.

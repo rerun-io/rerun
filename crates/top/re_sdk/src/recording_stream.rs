@@ -15,10 +15,11 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
     TimeType, Timeline, TimelineName,
 };
+use re_types_core::components::ApplicationId;
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
@@ -151,7 +152,7 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
-            is_official_example,
+            is_official_example, // TODO: Remove
         }
     }
 
@@ -671,11 +672,8 @@ impl RecordingStreamBuilder {
         };
 
         let store_info = StoreInfo {
-            application_id,
             store_id,
             cloned_from: None,
-            is_official_example,
-            started: Time::now(),
             store_source,
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         };
@@ -796,6 +794,7 @@ impl Drop for RecordingStream {
 
 struct RecordingStreamInner {
     info: StoreInfo,
+    properties: RecordingProperties,
     tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
@@ -847,12 +846,17 @@ impl Drop for RecordingStreamInner {
 impl RecordingStreamInner {
     fn new(
         info: StoreInfo,
+        properties: RecordingProperties,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
         let on_release = batcher_config.hooks.on_release.clone();
         let batcher = ChunkBatcher::new(batcher_config)?;
 
+        re_log::debug!(
+            rec_id = %info.store_id,
+            "setting recording info",
+        );
         {
             sink.send(
                 re_log_types::SetStoreInfo {
@@ -880,8 +884,23 @@ impl RecordingStreamInner {
                 })?
         };
 
+        let properties_archetype: re_types_core::archetypes::RecordingProperties =
+            properties.clone().into();
+
+        // We pre-populate the batcher with a chunk the contains the recording
+        // properties, so that these get automatically sent to the sink.
+
+        re_log::debug!(properties = ?properties, "adding recording properties to batcher");
+
+        let initial_chunk = Chunk::builder(EntityPath::recording_properties())
+            .with_archetype(RowId::new(), TimePoint::default(), &properties_archetype)
+            .build()?;
+
+        batcher.push_chunk(initial_chunk);
+
         Ok(Self {
             info,
+            properties,
             tick: AtomicI64::new(0),
             cmds_tx,
             batcher,
@@ -951,29 +970,12 @@ impl RecordingStream {
                 Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
             });
 
-        let app_id =
-            re_types_core::components::ApplicationId::from(properties.application_id.as_str());
-        let nanos = properties.recording_started.clone().nanos_since_epoch();
-        let started = re_types_core::components::RecordingStartedTimestamp::from(
-            TimeInt::from_nanos(nanos.try_into().unwrap()),
-        );
-
-        re_log::debug!(
-            app_id = %properties.application_id,
-            rec_id = %info.store_id,
-            "setting recording info",
-        );
-        let stream = RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
-            inner: Either::Left(Arc::new(Some(inner))),
-        })?;
-
-        stream.log_static(
-            EntityPath::root(),
-            &re_types_core::archetypes::RecordingProperties::new(
-                std::iter::once(app_id),
-                std::iter::once(started),
-            ),
-        )?;
+        let stream =
+            RecordingStreamInner::new(info, properties, batcher_config, sink).map(|inner| {
+                Self {
+                    inner: Either::Left(Arc::new(Some(inner))),
+                }
+            })?;
 
         Ok(stream)
     }
@@ -1257,7 +1259,10 @@ impl RecordingStream {
         static_: bool,
         prefer_current_recording: bool,
     ) -> RecordingStreamResult<()> {
-        let Some(store_info) = self.store_info().clone() else {
+        let (Some(store_info), Some(properties)) = (
+            self.store_info().clone(),
+            self.recording_properties().clone(),
+        ) else {
             re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
             return Ok(());
         };
@@ -1271,7 +1276,7 @@ impl RecordingStream {
         );
 
         let mut settings = crate::DataLoaderSettings {
-            application_id: Some(store_info.application_id.clone()),
+            application_id: Some(properties.application_id.clone()),
             opened_application_id: None,
             store_id: store_info.store_id.clone(),
             opened_store_id: None,
@@ -1296,7 +1301,7 @@ impl RecordingStream {
         };
 
         if prefer_current_recording {
-            settings.opened_application_id = Some(store_info.application_id.clone());
+            settings.opened_application_id = Some(properties.application_id.clone());
             settings.opened_store_id = Some(store_info.store_id);
         }
 
@@ -1377,7 +1382,6 @@ fn forwarding_thread(
                 // Send the recording info to the new sink. This is idempotent.
                 {
                     re_log::debug!(
-                        app_id = %info.application_id,
                         rec_id = %info.store_id,
                         "setting recording info",
                     );
@@ -1477,6 +1481,12 @@ impl RecordingStream {
     #[inline]
     pub fn store_info(&self) -> Option<StoreInfo> {
         self.with(|inner| inner.info.clone())
+    }
+
+    /// The [`RecordingProperties`] associated with this `RecordingStream`.
+    #[inline]
+    pub fn recording_properties(&self) -> Option<RecordingProperties> {
+        self.with(|inner| inner.properties.clone())
     }
 
     /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our
@@ -1997,7 +2007,7 @@ impl fmt::Debug for RecordingStream {
                 // This pattern match prevents _accidentally_ omitting data from the debug output
                 // when new fields are added.
                 info,
-
+                properties,
                 tick,
                 cmds_tx: _,
                 batcher: _,
@@ -2008,6 +2018,7 @@ impl fmt::Debug for RecordingStream {
 
             f.debug_struct("RecordingStream")
                 .field("info", &info)
+                .field("properties", &properties)
                 .field("tick", &tick)
                 .field("pending_dataloaders", &dataloader_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)

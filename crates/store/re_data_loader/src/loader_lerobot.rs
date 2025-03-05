@@ -11,8 +11,7 @@ use itertools::Either;
 use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint,
-    Timeline,
+    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
 use re_log_types::{RecordingProperties, StoreId};
