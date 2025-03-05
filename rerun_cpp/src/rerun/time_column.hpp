@@ -175,7 +175,7 @@ namespace rerun {
         /// Creates a duration column from an array of nanoseconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param duration_in_nanos Duration values in  nanoseconds.
+        /// \param duration_in_nanos Duration values in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
