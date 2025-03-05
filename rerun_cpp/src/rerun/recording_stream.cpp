@@ -162,44 +162,47 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr)
+    void RecordingStream::set_index_sequence(std::string_view timeline_name, int64_t sequence_nr)
         const {
         if (!is_enabled()) {
             return;
         }
-        rr_error status = {};
-        rr_recording_stream_set_time_sequence(
+        rr_error error = {};
+        rr_recording_stream_set_index(
             _id,
             detail::to_rr_string(timeline_name),
+            RR_TIME_TYPE_SEQUENCE,
             sequence_nr,
-            &status
+            &error
         );
-        Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
+        Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_seconds(std::string_view timeline_name, double seconds) const {
-        if (!is_enabled()) {
-            return;
-        }
-        rr_error status = {};
-        rr_recording_stream_set_time_seconds(
+    void RecordingStream::set_index_duration_nanos(std::string_view timeline_name, int64_t nanos)
+        const {
+        rr_error error = {};
+        rr_recording_stream_set_index(
             _id,
             detail::to_rr_string(timeline_name),
-            seconds,
-            &status
-        );
-        Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
-    }
-
-    void RecordingStream::set_time_nanos(std::string_view timeline_name, int64_t nanos) const {
-        rr_error status = {};
-        rr_recording_stream_set_time_nanos(
-            _id,
-            detail::to_rr_string(timeline_name),
+            RR_TIME_TYPE_DURATION,
             nanos,
-            &status
+            &error
         );
-        Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
+        Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::set_index_timestamp_nanos_since_epoch(
+        std::string_view timeline_name, int64_t nanos
+    ) const {
+        rr_error error = {};
+        rr_recording_stream_set_index(
+            _id,
+            detail::to_rr_string(timeline_name),
+            RR_TIME_TYPE_TIMESTAMP,
+            nanos,
+            &error
+        );
+        Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
     void RecordingStream::disable_timeline(std::string_view timeline_name) const {
