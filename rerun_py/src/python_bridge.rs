@@ -1346,6 +1346,9 @@ fn send_blueprint(
 }
 
 /// Send a recording to the given recording stream.
+///
+/// If the `embedded_recording` contains store info, it will be copied to the
+/// destination before sending the recording chunks.
 #[pyfunction]
 #[pyo3(signature = (embedded_recording, recording = None))]
 fn send_recording(embedded_recording: &PyRecording, recording: Option<&PyRecordingStream>) {
