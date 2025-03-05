@@ -271,11 +271,14 @@ enum {
 typedef uint32_t rr_time_type;
 
 enum {
-    /// Normal wall time.
-    RR_TIME_TYPE_TIME = 0,
-
     /// Used e.g. for frames in a film.
     RR_TIME_TYPE_SEQUENCE = 1,
+
+    /// Nanoseconds.
+    RR_TIME_TYPE_DURATION = 2,
+
+    /// Nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    RR_TIME_TYPE_TIMESTAMP = 3,
 };
 
 /// Definition of a timeline.

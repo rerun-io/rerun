@@ -226,11 +226,14 @@ impl CSortingStatus {
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum CTimeType {
-    /// Normal wall time.
-    Time = 0,
-
     /// Used e.g. for frames in a film.
     Sequence = 1,
+
+    /// Nanoseconds.
+    Duration = 2,
+
+    /// Nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    Timestamp = 3,
 }
 
 /// See `rr_timeline` in the C header.
@@ -251,8 +254,9 @@ impl TryFrom<CTimeline> for Timeline {
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
         let name = timeline.name.as_str("timeline.name")?;
         let typ = match timeline.typ {
-            CTimeType::Time => TimeType::Time,
             CTimeType::Sequence => TimeType::Sequence,
+            // TODO(#8635): differentiate between duration and timestamp
+            CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
         };
         Ok(Self::new(name, typ))
     }
