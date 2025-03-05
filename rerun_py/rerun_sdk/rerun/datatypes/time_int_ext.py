@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, overload
 
 
 class TimeIntExt:
     """Extension for [TimeInt][rerun.datatypes.TimeInt]."""
+
+    @overload
+    def __init__(self: Any, *, seq: int) -> None: ...
+
+    @overload
+    def __init__(self: Any, *, seconds: float) -> None: ...
+
+    @overload
+    def __init__(self: Any, *, nanos: int) -> None: ...
 
     def __init__(self: Any, *, seq: int | None = None, seconds: float | None = None, nanos: int | None = None) -> None:
         """

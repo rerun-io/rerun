@@ -36,14 +36,14 @@ class IndexColumn(TimeColumnLike):
 
     # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
     @overload
-    def __init__(self, timeline: str, *, sequence: Iterable[int] | None = None) -> None: ...
+    def __init__(self, timeline: str, *, sequence: Iterable[int]) -> None: ...
 
     @overload
     def __init__(
         self,
         timeline: str,
         *,
-        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
+        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64],
     ) -> None: ...
 
     @overload
@@ -51,7 +51,7 @@ class IndexColumn(TimeColumnLike):
         self,
         timeline: str,
         *,
-        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
+        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64],
     ) -> None: ...
 
     def __init__(
