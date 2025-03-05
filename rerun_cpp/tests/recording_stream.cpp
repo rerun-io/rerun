@@ -150,10 +150,10 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                                       {{1.0, 2.0}, {4.0, 5.0}}
                     ).value_or_throw();
-                    auto batch1 =
-                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
-                                                                           })
-                            .value_or_throw();
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                                      {rerun::Color(0xFF0000FF)}
+                    )
+                                      .value_or_throw();
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -172,9 +172,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                         {{1.0, 2.0}, {4.0, 5.0}}
                     );
-                    auto batch1 =
-                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
-                        });
+                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
+                        {rerun::Color(0xFF0000FF)}
+                    );
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -186,8 +186,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1
-                        };
+                            batch1};
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
