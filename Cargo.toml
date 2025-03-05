@@ -129,27 +129,27 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # egui-crates:
-ecolor = "0.31.0"
-eframe = { version = "0.31.0", default-features = false, features = [
+ecolor = "0.31.1"
+eframe = { version = "0.31.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.31.0", features = [
+egui = { version = "0.31.1", features = [
   "callstack",
   "color-hex",
   "log",
   "rayon",
 ] }
 egui_commonmark = { version = "0.20.0", default-features = false }
-egui_extras = { version = "0.31.0", features = ["http", "image", "serde"] }
-egui_kittest = { version = "0.31.0", features = ["wgpu", "snapshot", "eframe"] }
+egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
+egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.31.0" # https://github.com/emilk/egui_plot
 egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.12.0" # https://github.com/rerun-io/egui_tiles
-egui-wgpu = "0.31.0"
-emath = "0.31.0"
+egui-wgpu = "0.31.1"
+emath = "0.31.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
