@@ -768,6 +768,12 @@ impl App {
                 Some(re_log_types::StoreId::random(StoreKind::Recording))
             });
 
+        // Clear any shortcut input before firing up any UI components
+        egui_ctx.input_mut(|input| {
+            input.modifiers = Default::default();
+            input.keys_down = Default::default();
+        });
+
         match cmd {
             UICommand::SaveRecording => {
                 if let Err(err) = save_recording(self, store_context, None) {
