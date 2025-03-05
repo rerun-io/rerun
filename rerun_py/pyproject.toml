@@ -137,6 +137,7 @@ lint.select = [
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
   "FA",      # Force from __future__ import annotations
   "I",       # Isort
+  "ISC",
   "TID",     # flake8-tidy-imports
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "UP",      # pyupgrade (ensures idomatic code for supported python version)

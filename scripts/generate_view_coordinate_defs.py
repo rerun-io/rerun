@@ -249,8 +249,8 @@ def gen_cpp_arch_decl() -> list[str]:
 def cpp_arch_def(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        + f"rerun::components::ViewCoordinates::{coords.name}\n"
-        + ");\n"
+        f"rerun::components::ViewCoordinates::{coords.name}\n"
+        ");\n"
     )
 
 
@@ -291,8 +291,8 @@ def gen_cpp_cmp_decl() -> list[str]:
 def cpp_cmp_def(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        + f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
-        + ");\n"
+        f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
+        ");\n"
     )
 
 

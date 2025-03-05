@@ -106,7 +106,7 @@ class TensorDataExt:
                     _send_warning_or_raise(
                         (
                             f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}). "
-                            + "Ignoring shape argument."
+                            "Ignoring shape argument."
                         ),
                         2,
                     )
@@ -134,7 +134,7 @@ class TensorDataExt:
                 _send_warning_or_raise(
                     (
                         f"len(shape) = {len(self.shape)} != "
-                        + f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
+                        f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
                     ),
                     2,
                 )
