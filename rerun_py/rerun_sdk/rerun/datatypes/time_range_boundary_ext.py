@@ -76,35 +76,38 @@ class TimeRangeBoundaryExt:
         """
         Boundary that is at an absolute time.
 
+        Exactly one of 'time', 'seq', 'seconds', or 'nanos' must be provided.
+
         Parameters
         ----------
         time:
             Absolute time.
 
-            Mutually exclusive with seq, seconds and nanos.
         seq:
             Absolute time in sequence numbers.
 
-            Use this for sequence timelines.
-            Mutually exclusive with time, seconds and nanos.
+            Not compatible with temporal timelines.
+
         seconds:
             Absolute time in seconds.
 
-            Use this for time based timelines.
-            Mutually exclusive with time, seq and nanos.
+            Interpreted either as a duration or time since unix epoch (depending on timeline type).
+            Not compatible with sequence timelines.
+
         nanos:
             Absolute time in nanoseconds.
 
-            Use this for time based timelines.
-            Mutually exclusive with time, seq and seconds.
+            Interpreted either as a duration or time since unix epoch (depending on timeline type).
+            Not compatible with sequence timelines.
 
         """
+
+        if sum(x is not None for x in (time, seq, seconds, nanos)) != 1:
+            raise ValueError("Exactly one of 'time', 'seq', 'seconds', or 'nanos' must be provided.")
 
         from .time_range_boundary import TimeRangeBoundary
 
         if time is None:
             time = TimeInt(seq=seq, seconds=seconds, nanos=nanos)
-        elif seq is not None or seconds is not None or nanos is not None:
-            raise ValueError("Only one of time, seq, seconds, or nanos can be provided.")
 
         return TimeRangeBoundary(inner=time, kind="absolute")
