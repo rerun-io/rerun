@@ -36,7 +36,7 @@ For each processed video frame, all data sent to Rerun is associated with the tw
 
 ```python
 rr.set_index("time", timedelta=bgr_frame.time)
-rr.set_index("frame_idx", sequence=bgr_frame.idx)
+rr.set_index("frame_idx", seq=bgr_frame.idx)
 ```
 
 ### Video

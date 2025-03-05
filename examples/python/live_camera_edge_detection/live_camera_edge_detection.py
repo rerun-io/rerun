@@ -38,7 +38,7 @@ def run_canny(num_frames: int | None) -> None:
         if frame_time_ms != 0:
             rr.set_index("frame_time", timedelta=1e-3 * frame_time_ms)
 
-        rr.set_index("frame_nr", sequence=frame_nr)
+        rr.set_index("frame_nr", seq=frame_nr)
         frame_nr += 1
 
         # Log the original image

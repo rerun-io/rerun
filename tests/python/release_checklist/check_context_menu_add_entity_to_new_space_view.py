@@ -44,7 +44,7 @@ def blueprint() -> rrb.BlueprintLike:
 
 
 def log_some_views() -> None:
-    rr.set_index("frame_nr", sequence=0)
+    rr.set_index("frame_nr", seq=0)
 
     rr.log("boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
     rr.log("boxes2d", rr.Boxes2D(centers=[[0, 0], [1.3, 0.5], [3, 2]], half_sizes=[0.5, 1] * 3))
@@ -53,7 +53,7 @@ def log_some_views() -> None:
     rr.log("tensor", rr.Tensor(np.random.rand(3, 4, 5)))
 
     for i in range(10):
-        rr.set_index("frame_nr", sequence=i)
+        rr.set_index("frame_nr", seq=i)
         rr.log("timeseries", rr.Scalar(random.randint(0, 100)))
 
 

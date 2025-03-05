@@ -14,7 +14,7 @@ We're moving towards a more explicit API for setting time, where you need to exp
 Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.
 
 To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_index`.
-`set_index` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
+`set_index` takes either a `seq=`, `timedelta=` or `datetime=` argument.
 
 `timedelta` must be either:
 * seconds as `int` or `float`
@@ -28,7 +28,7 @@ To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as wel
 
 ### Migrating
 ##### `rr.set_sequence("foo", 42)`
-New: `rr.set_index("foo", sequence=42)`
+New: `rr.set_index("foo", seq=42)`
 
 ##### `rr.set_time_seconds("foo", duration_seconds)`
 When using relative times (durations/timedeltas): `rr.set_index("foo", timedelta=duration_seconds)`
@@ -59,7 +59,7 @@ The migration is very similar to the above.
 
 ### Migration
 ##### `rr.TimeSequenceColumn("foo", values)`
-New: `rr.IndexColumn("foo", sequence=values)`
+New: `rr.IndexColumn("foo", seq=values)`
 
 ##### `rr.TimeSecondsColumn("foo", duration_seconds)`
 New: `rr.IndexColumn("foo", timedelta=duration_seconds)`

@@ -636,7 +636,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_index("blueprint", seq=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -666,7 +666,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_index("blueprint", seq=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -723,7 +723,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    blueprint_stream.set_index("blueprint", sequence=0)
+    blueprint_stream.set_index("blueprint", seq=0)
 
     blueprint._log_to_stream(blueprint_stream)
 

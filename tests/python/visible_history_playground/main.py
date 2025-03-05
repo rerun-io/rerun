@@ -40,10 +40,10 @@ for i in range(0, 100):
     rr.set_index("temporal_100ms_zero_centered", timedelta=(i - 50) / 1000)
     rr.set_index("temporal_100us_zero_centered", timedelta=(i - 50) / 1000000)
 
-    rr.set_index("sequence", sequence=i)
-    rr.set_index("sequence_zero_centered", sequence=(i - 50))
-    rr.set_index("sequence_10k_offset", sequence=10000 + i)
-    rr.set_index("sequence_10k_neg_offset", sequence=-10000 + i)
+    rr.set_index("sequence", seq=i)
+    rr.set_index("sequence_zero_centered", seq=(i - 50))
+    rr.set_index("sequence_10k_offset", seq=10000 + i)
+    rr.set_index("sequence_10k_neg_offset", seq=-10000 + i)
 
     rr.log("world/data/nested/point", rr.Points2D([[i, 0], [i, 1]], radii=0.4))
     rr.log("world/data/nested/point2", rr.Points2D([i, 2], radii=0.4))

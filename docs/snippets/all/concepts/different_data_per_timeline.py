@@ -5,7 +5,7 @@ import rerun.blueprint as rrb
 
 rr.init("rerun_example_different_data_per_timeline", spawn=True)
 
-rr.set_index("blue timeline", sequence=0)
+rr.set_index("blue timeline", seq=0)
 rr.set_index("red timeline", timedelta=0.0)
 rr.log("points", rr.Points2D([[0, 0], [1, 1]], radii=rr.Radius.ui_points(10.0)))
 
@@ -16,7 +16,7 @@ rr.log("points", [rr.components.Color(0xFF0000FF)])
 
 # And a blue color on the other.
 rr.reset_time()  # Clears all set timeline info.
-rr.set_index("blue timeline", sequence=1)
+rr.set_index("blue timeline", seq=1)
 rr.log("points", [rr.components.Color(0x0000FFFF)])
 
 

@@ -23,11 +23,11 @@ def frame_times(t: int | Sequence[int], *args: int) -> list[rr.IndexColumn]:
         t = list(t)
     if args:
         t.extend(args)
-    return [rr.IndexColumn("frame", sequence=t)]
+    return [rr.IndexColumn("frame", seq=t)]
 
 
 def set_frame_time(t: int) -> None:
-    rr.set_index("frame", sequence=t)
+    rr.set_index("frame", seq=t)
 
 
 def specimen_two_rows_span_two_chunks():
