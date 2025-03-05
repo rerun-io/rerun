@@ -81,10 +81,12 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
-## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, and `rr.connect_tcp()`
+## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, `rr.connect_tcp()`, and `rr.serve()`
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.
 
 Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
 
-Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.22.1/common/initialization_functions/#rerun.connect_grpc?speculative-link).
+Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc?speculative-link).
+
+Calls to `rr.serve()` must be changed to [`rr.serve_web()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.serve_web?speculative-link).
