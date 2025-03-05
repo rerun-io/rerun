@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package rerun.sdk_comms.v1alpha1;
 
-import "rerun/v1alpha1/log_msg.proto";
 import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/log_msg.proto";
 
 // Simple buffer for messages between SDKs and viewers.
 //
@@ -15,10 +15,10 @@ import "rerun/v1alpha1/common.proto";
 // Whenever `ReadMessages` is called, all buffered messages are sent in the order they were received.
 // The stream will then also yield any new messages passed to `WriteMessages` from any client.
 service MessageProxy {
-    // TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
-    //            It may allow us to amortize the overhead of the gRPC protocol.
-    rpc WriteMessages(stream rerun.log_msg.v1alpha1.LogMsg) returns (WriteMessagesResponse) {}
-    rpc ReadMessages(ReadMessagesRequest) returns (stream rerun.log_msg.v1alpha1.LogMsg) {}
+  // TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
+  //            It may allow us to amortize the overhead of the gRPC protocol.
+  rpc WriteMessages(stream rerun.log_msg.v1alpha1.LogMsg) returns (WriteMessagesResponse) {}
+  rpc ReadMessages(ReadMessagesRequest) returns (stream rerun.log_msg.v1alpha1.LogMsg) {}
 }
 
 message WriteMessagesResponse {}
