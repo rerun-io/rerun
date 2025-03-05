@@ -10,7 +10,7 @@ import math
 import os
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp
@@ -258,7 +258,7 @@ class FaceLandmarkerLogger:
             else self._detector.detect(image)
         )
 
-        def is_empty(i: Iterator[Any]) -> Optional[bool]:
+        def is_empty(i: Iterator[Any]) -> bool:
             try:
                 next(i)
                 return False
