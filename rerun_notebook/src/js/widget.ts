@@ -50,6 +50,25 @@ class ViewerWidget {
     );
     model.on("change:_recording_id", this.on_set_recording_id);
 
+    this.viewer.on("selectionchange", (items) => {
+      model.send({
+        event: "selectionchange",
+        payload: items,
+      });
+    });
+    this.viewer.on("timelinechange", (timeline, time) => {
+      model.send({
+        event: "timelinechange",
+        payload: { timeline, time },
+      });
+    });
+    this.viewer.on("timeupdate", (time) => {
+      model.send({
+        event: "timeupdate",
+        payload: time,
+      });
+    });
+
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
 

@@ -112,6 +112,8 @@ export interface AppOptions extends WebViewerOptions {
   enable_history?: boolean;
 }
 
+type CallbackItem = { type: "entity_path"; entity_path: string };
+
 interface TimelineOptions {
   on_timelinechange: (timeline: string, time: number) => void;
   on_timeupdate: (time: number) => void;
@@ -132,6 +134,8 @@ interface WebViewerEvents {
   timeupdate: number;
   play: void;
   pause: void;
+
+  selectionchange: [CallbackItem[]];
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -220,7 +224,18 @@ export class WebViewer {
       on_play: () => this.#dispatch_event("play"),
     };
 
-    this.#handle = new WebHandle_class({ ...options, fullscreen, timeline });
+    const callbacks = {
+      on_selection_change: (items: CallbackItem[]) => {
+        this.#dispatch_event("selectionchange", items);
+      },
+    };
+
+    this.#handle = new WebHandle_class({
+      ...options,
+      fullscreen,
+      timeline,
+      callbacks,
+    });
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
