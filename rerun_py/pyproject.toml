@@ -22,7 +22,7 @@ dependencies = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 
 [[project.authors]]
@@ -109,12 +109,11 @@ lint.ignore = [
 
   # allow relative imports
   "TID252",
-
-  "UP007", # We need this, or `ruff format` will convert `Union[X, Y]` to `X | Y` which break on Python 3.8
 ]
 
 line-length = 120
 lint.select = [
+  "B",       # flake8-bugbear lints
   "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
   "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html

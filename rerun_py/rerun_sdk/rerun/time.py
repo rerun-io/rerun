@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import overload
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
-from rerun.recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from rerun.recording_stream import RecordingStream
 
 # --- Time ---
 
 
-# These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
+# These overloads ensure that mypy can catch errors that would otherwise not be caught until runtime.
 @overload
 def set_index(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
 

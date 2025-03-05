@@ -11,8 +11,8 @@ from __future__ import annotations
 import argparse
 import itertools
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 BEGIN_MARKER = "<BEGIN_GENERATED:{}>"
 END_MARKER = "<END_GENERATED:{}>"

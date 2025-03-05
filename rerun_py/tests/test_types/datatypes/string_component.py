@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -48,7 +49,7 @@ class StringComponentBatch(BaseBatch[StringComponentArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: StringComponentArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array: Union[list[str], npt.ArrayLike] = [data]
+            array: list[str] | npt.ArrayLike = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
         elif isinstance(data, np.ndarray):

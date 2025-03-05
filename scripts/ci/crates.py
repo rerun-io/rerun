@@ -25,12 +25,13 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import git
 import requests
@@ -54,10 +55,13 @@ def cargo(
     *,
     cargo_version: str | None = None,
     cwd: str | Path | None = None,
-    env: dict[str, Any] = {},
+    env: dict[str, Any] | None = None,
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
+    if env is None:
+        env = {}
+
     if cargo_version is None:
         cmd = [CARGO_PATH] + args.split()
     else:
@@ -367,7 +371,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
     if not dry_run:
         with Path("Cargo.toml").open("w", encoding="utf-8") as f:
             tomlkit.dump(root, f)
-        for name, crate in crates.items():
+        for crate in crates.values():
             with Path(f"{crate.path}/Cargo.toml").open("w", encoding="utf-8") as f:
                 tomlkit.dump(crate.manifest, f)
     cargo("update --workspace", dry_run=dry_run)
@@ -544,12 +548,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    # TODO(ab): change this to s.removeprefix("release-") when we move to Python 3.9
-    s = git.Repo().active_branch.name
-    if s.startswith("release-"):
-        s = s[len("release-") :]
-
-    return s
+    return git.Repo().active_branch.name.removeprefix("release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:

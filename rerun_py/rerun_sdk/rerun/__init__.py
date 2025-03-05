@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import random
 import sys
-import warnings
 from typing import Any, Callable, TypeVar, cast
 from uuid import UUID
 
@@ -12,18 +11,17 @@ import numpy as np
 __version__ = "0.23.0-alpha.1+dev"
 __version_info__ = (0, 23, 0, "alpha.1")
 
-if sys.version_info < (3, 9):
-    warnings.warn(
-        "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
-        DeprecationWarning,
-    )
+
+if sys.version_info < (3, 9):  # noqa: UP036
+    raise RuntimeError("Rerun SDK requires Python 3.9 or later.")
+
 
 # =====================================
 # API RE-EXPORTS
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
 # Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
 #
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 
 from . import (
     blueprint as blueprint,
@@ -204,51 +202,12 @@ should exit with this exit code.
 """
 
 
-def _init_recording_stream() -> None:
-    # Inject all relevant methods into the `RecordingStream` class.
-    # We need to do this from here to avoid circular import issues.
-
-    import sys
-    from inspect import getmembers, isfunction
-
-    from rerun.recording_stream import _patch as recording_stream_patch
-
-    recording_stream_patch(
-        [
-            binary_stream,
-            connect,
-            connect_grpc,
-            save,
-            stdout,
-            disconnect,
-            memory_recording,
-            serve,
-            spawn,
-            send_blueprint,
-            notebook_show,
-        ]
-        + [
-            set_index,
-            set_time_sequence,
-            set_time_seconds,
-            set_time_nanos,
-            disable_timeline,
-            reset_time,
-            log,
-        ]
-        + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
-    )
-
-
-_init_recording_stream()
-
-
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 def init(
     application_id: str,
     *,
     recording_id: str | UUID | None = None,
-    spawn: bool = False,
+    spawn: bool = False,  # noqa: F811
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool | None = None,
@@ -398,7 +357,7 @@ def _register_on_fork() -> None:
     try:
         import os
 
-        os.register_at_fork(after_in_child=cleanup_if_forked_child)  # type: ignore[attr-defined]
+        os.register_at_fork(after_in_child=cleanup_if_forked_child)
     except AttributeError:
         # not defined on all OSes
         pass

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Generic, Iterable, Iterator, Protocol, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -165,6 +166,7 @@ class DescribedComponentBatch:
         return ComponentColumn(self, lengths=lengths)
 
 
+@runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""
 
@@ -177,6 +179,7 @@ class ComponentBatchLike(Protocol):
         ...
 
 
+@runtime_checkable
 class AsComponents(Protocol):
     """Describes interface for interpreting an object as a bundle of Components."""
 
@@ -586,7 +589,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
@@ -602,7 +605,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined]
 
 
 @catch_and_log_exceptions(context="creating empty array")
