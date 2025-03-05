@@ -35,10 +35,7 @@ class AffixFuzzer8(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
         self.__attrs_init__(single_float_optional=single_float_optional)
 
-    single_float_optional: float | None = field(
-        default=None,
-        converter=float_or_none,
-    )
+    single_float_optional: float | None = field(default=None, converter=float_or_none)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py

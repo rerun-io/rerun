@@ -62,10 +62,7 @@ class MagnificationFilter(Enum):
 
 
 MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest", "linear", "nearest"], int]
-MagnificationFilterArrayLike = Union[
-    MagnificationFilterLike,
-    Sequence[MagnificationFilterLike],
-]
+MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
 
 
 class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], ComponentBatchMixin):

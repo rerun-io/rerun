@@ -59,14 +59,9 @@ class ContainerKind(Enum):
 
 
 ContainerKindLike = Union[
-    ContainerKind,
-    Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"],
-    int,
+    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"], int
 ]
-ContainerKindArrayLike = Union[
-    ContainerKindLike,
-    Sequence[ContainerKindLike],
-]
+ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):

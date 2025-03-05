@@ -130,6 +130,7 @@ lint.select = [
   "ANN", # Ensure all code is properly annotated.
   "B",   # flake8-bugbear lints
   "COM", # Trailing-comma-related rules
+  "C4",  # Comprehension-related rules
   "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
   "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)

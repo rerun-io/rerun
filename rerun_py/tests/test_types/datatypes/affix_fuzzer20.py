@@ -43,12 +43,8 @@ class AffixFuzzer20:
         # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
         self.__attrs_init__(p=p, s=s)
 
-    p: datatypes.PrimitiveComponent = field(
-        converter=_affix_fuzzer20__p__special_field_converter_override,
-    )
-    s: datatypes.StringComponent = field(
-        converter=_affix_fuzzer20__s__special_field_converter_override,
-    )
+    p: datatypes.PrimitiveComponent = field(converter=_affix_fuzzer20__p__special_field_converter_override)
+    s: datatypes.StringComponent = field(converter=_affix_fuzzer20__s__special_field_converter_override)
 
 
 AffixFuzzer20Like = AffixFuzzer20

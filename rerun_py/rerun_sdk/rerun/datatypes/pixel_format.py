@@ -182,10 +182,7 @@ PixelFormatLike = Union[
     ],
     int,
 ]
-PixelFormatArrayLike = Union[
-    PixelFormatLike,
-    Sequence[PixelFormatLike],
-]
+PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
 
 
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike]):

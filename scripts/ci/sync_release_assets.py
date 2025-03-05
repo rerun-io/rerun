@@ -41,7 +41,7 @@ def fetch_binary_assets(
     do_rerun_cli: bool = True,
 ) -> Assets:
     """Given a release ID, fetches all associated binary assets from our cloud storage (build.rerun.io)."""
-    assets = dict()
+    assets = {}
 
     gcs = storage.Client()
     bucket = gcs.bucket("rerun-builds")
@@ -245,7 +245,7 @@ def main() -> None:
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
     release = cast(GitRelease, get_any_release(repo, args.github_release))
-    commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[args.github_release]
+    commit = {tag.name: tag.commit for tag in repo.get_tags()}[args.github_release]
 
     print(
         f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',

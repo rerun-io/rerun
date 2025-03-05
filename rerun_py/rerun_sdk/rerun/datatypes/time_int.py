@@ -27,9 +27,7 @@ class TimeInt(TimeIntExt):
 
     # __init__ can be found in time_int_ext.py
 
-    value: int = field(
-        converter=int,
-    )
+    value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of TimeIntExt in time_int_ext.py
@@ -43,10 +41,7 @@ class TimeInt(TimeIntExt):
 
 
 if TYPE_CHECKING:
-    TimeIntLike = Union[
-        TimeInt,
-        int,
-    ]
+    TimeIntLike = Union[TimeInt, int]
 else:
     TimeIntLike = Any
 

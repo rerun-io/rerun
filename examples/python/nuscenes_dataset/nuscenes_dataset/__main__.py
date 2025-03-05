@@ -84,7 +84,7 @@ def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> list[str]:
         "CAM_BACK": 4,
         "CAM_BACK_LEFT": 5,
     }
-    return sorted(list(sensor_names), key=lambda sensor_name: ordering.get(sensor_name, float("inf")))
+    return sorted(sensor_names, key=lambda sensor_name: ordering.get(sensor_name, float("inf")))
 
 
 def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) -> None:

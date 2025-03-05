@@ -65,14 +65,9 @@ class TransformRelation(Enum):
 
 
 TransformRelationLike = Union[
-    TransformRelation,
-    Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"],
-    int,
+    TransformRelation, Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"], int
 ]
-TransformRelationArrayLike = Union[
-    TransformRelationLike,
-    Sequence[TransformRelationLike],
-]
+TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRelationLike]]
 
 
 class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBatchMixin):

@@ -30,9 +30,7 @@ class ClassId:
         # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
         self.__attrs_init__(id=id)
 
-    id: int = field(
-        converter=int,
-    )
+    id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ClassIdExt in class_id_ext.py
@@ -46,19 +44,11 @@ class ClassId:
 
 
 if TYPE_CHECKING:
-    ClassIdLike = Union[
-        ClassId,
-        int,
-    ]
+    ClassIdLike = Union[ClassId, int]
 else:
     ClassIdLike = Any
 
-ClassIdArrayLike = Union[
-    ClassId,
-    Sequence[ClassIdLike],
-    int,
-    npt.ArrayLike,
-]
+ClassIdArrayLike = Union[ClassId, Sequence[ClassIdLike], int, npt.ArrayLike]
 
 
 class ClassIdBatch(BaseBatch[ClassIdArrayLike]):

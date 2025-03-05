@@ -130,10 +130,7 @@ ColormapLike = Union[
     ],
     int,
 ]
-ColormapArrayLike = Union[
-    ColormapLike,
-    Sequence[ColormapLike],
-]
+ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):

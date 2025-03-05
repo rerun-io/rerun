@@ -53,16 +53,12 @@ class Range2D:
         # You can define your own __init__ function as a member of Range2DExt in range2d_ext.py
         self.__attrs_init__(x_range=x_range, y_range=y_range)
 
-    x_range: datatypes.Range1D = field(
-        converter=_range2d__x_range__special_field_converter_override,
-    )
+    x_range: datatypes.Range1D = field(converter=_range2d__x_range__special_field_converter_override)
     # The range of the X-axis (usually left and right bounds).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    y_range: datatypes.Range1D = field(
-        converter=_range2d__y_range__special_field_converter_override,
-    )
+    y_range: datatypes.Range1D = field(converter=_range2d__y_range__special_field_converter_override)
     # The range of the Y-axis (usually top and bottom bounds).
     #
     # (Docstring intentionally commented out to hide this field from the docs)

@@ -31,33 +31,24 @@ class TensorDimensionSelection(TensorDimensionSelectionExt):
 
     # __init__ can be found in tensor_dimension_selection_ext.py
 
-    dimension: int = field(
-        converter=int,
-    )
+    dimension: int = field(converter=int)
     # The dimension number to select.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    invert: bool = field(
-        converter=bool,
-    )
+    invert: bool = field(converter=bool)
     # Invert the direction of the dimension.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
-    TensorDimensionSelectionLike = Union[
-        TensorDimensionSelection,
-        int,
-    ]
+    TensorDimensionSelectionLike = Union[TensorDimensionSelection, int]
 else:
     TensorDimensionSelectionLike = Any
 
 TensorDimensionSelectionArrayLike = Union[
-    TensorDimensionSelection,
-    Sequence[TensorDimensionSelectionLike],
-    npt.ArrayLike,
+    TensorDimensionSelection, Sequence[TensorDimensionSelectionLike], npt.ArrayLike
 ]
 
 

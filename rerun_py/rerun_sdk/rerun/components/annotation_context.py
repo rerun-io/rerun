@@ -61,9 +61,7 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
 
 if TYPE_CHECKING:
     AnnotationContextLike = Union[
-        AnnotationContext,
-        datatypes.ClassDescriptionArrayLike,
-        Sequence[datatypes.ClassDescriptionMapElemLike],
+        AnnotationContext, datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]
     ]
 else:
     AnnotationContextLike = Any
@@ -105,7 +103,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
                                     ]),
                                     nullable=False,
                                     metadata={},
-                                ),
+                                )
                             ),
                             nullable=False,
                             metadata={},
@@ -121,7 +119,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
                                     ]),
                                     nullable=False,
                                     metadata={},
-                                ),
+                                )
                             ),
                             nullable=False,
                             metadata={},
@@ -133,7 +131,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
             ]),
             nullable=False,
             metadata={},
-        ),
+        )
     )
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.AnnotationContext")
 

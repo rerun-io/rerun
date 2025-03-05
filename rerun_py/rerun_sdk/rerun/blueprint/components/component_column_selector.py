@@ -27,7 +27,7 @@ class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, Compo
 
 class ComponentColumnSelectorBatch(blueprint_datatypes.ComponentColumnSelectorBatch, ComponentBatchMixin):
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor(
-        "rerun.blueprint.components.ComponentColumnSelector",
+        "rerun.blueprint.components.ComponentColumnSelector"
     )
 
 

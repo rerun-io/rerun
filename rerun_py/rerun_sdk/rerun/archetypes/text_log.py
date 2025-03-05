@@ -190,11 +190,7 @@ class TextLog(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
-            "text": text,
-            "level": level,
-            "color": color,
-        }
+        kwargs = {"text": text, "level": level, "color": color}
         columns = []
 
         for batch in batches:

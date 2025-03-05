@@ -31,7 +31,7 @@ class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
 
 class ViewerRecommendationHashBatch(datatypes.UInt64Batch, ComponentBatchMixin):
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor(
-        "rerun.blueprint.components.ViewerRecommendationHash",
+        "rerun.blueprint.components.ViewerRecommendationHash"
     )
 
 

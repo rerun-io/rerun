@@ -110,10 +110,7 @@ ChannelDatatypeLike = Union[
     ],
     int,
 ]
-ChannelDatatypeArrayLike = Union[
-    ChannelDatatypeLike,
-    Sequence[ChannelDatatypeLike],
-]
+ChannelDatatypeArrayLike = Union[ChannelDatatypeLike, Sequence[ChannelDatatypeLike]]
 
 
 class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike]):

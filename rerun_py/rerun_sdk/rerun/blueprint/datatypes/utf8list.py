@@ -35,10 +35,7 @@ class Utf8List(Utf8ListExt):
 
 
 if TYPE_CHECKING:
-    Utf8ListLike = Union[
-        Utf8List,
-        Sequence[str],
-    ]
+    Utf8ListLike = Union[Utf8List, Sequence[str]]
 else:
     Utf8ListLike = Any
 

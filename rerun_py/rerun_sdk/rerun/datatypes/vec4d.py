@@ -34,9 +34,7 @@ class Vec4D(Vec4DExt):
         # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
         self.__attrs_init__(xyzw=xyzw)
 
-    xyzw: npt.NDArray[np.float32] = field(
-        converter=to_np_float32,
-    )
+    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec4DExt in vec4d_ext.py
@@ -44,22 +42,12 @@ class Vec4D(Vec4DExt):
 
 
 if TYPE_CHECKING:
-    Vec4DLike = Union[
-        Vec4D,
-        npt.NDArray[Any],
-        npt.ArrayLike,
-        Sequence[float],
-    ]
+    Vec4DLike = Union[Vec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     Vec4DLike = Any
 
 Vec4DArrayLike = Union[
-    Vec4D,
-    Sequence[Vec4DLike],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[float]],
-    Sequence[float],
+    Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 

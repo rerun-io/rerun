@@ -63,9 +63,7 @@ class Mat3x3(Mat3x3Ext):
 
     # __init__ can be found in mat3x3_ext.py
 
-    flat_columns: npt.NDArray[np.float32] = field(
-        converter=to_np_float32,
-    )
+    flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
     # Flat list of matrix coefficients in column-major order.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -76,18 +74,11 @@ class Mat3x3(Mat3x3Ext):
 
 
 if TYPE_CHECKING:
-    Mat3x3Like = Union[
-        Mat3x3,
-        npt.ArrayLike,
-    ]
+    Mat3x3Like = Union[Mat3x3, npt.ArrayLike]
 else:
     Mat3x3Like = Any
 
-Mat3x3ArrayLike = Union[
-    Mat3x3,
-    Sequence[Mat3x3Like],
-    npt.ArrayLike,
-]
+Mat3x3ArrayLike = Union[Mat3x3, Sequence[Mat3x3Like], npt.ArrayLike]
 
 
 class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):

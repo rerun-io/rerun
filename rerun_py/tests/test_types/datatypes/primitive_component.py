@@ -27,9 +27,7 @@ class PrimitiveComponent:
         # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
         self.__attrs_init__(value=value)
 
-    value: int = field(
-        converter=int,
-    )
+    value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of PrimitiveComponentExt in primitive_component_ext.py

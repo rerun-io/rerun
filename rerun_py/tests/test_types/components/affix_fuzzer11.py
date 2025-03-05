@@ -35,10 +35,7 @@ class AffixFuzzer11(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
         self.__attrs_init__(many_floats_optional=many_floats_optional)
 
-    many_floats_optional: npt.NDArray[np.float32] | None = field(
-        default=None,
-        converter=to_np_float32,
-    )
+    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
@@ -59,7 +56,7 @@ class AffixFuzzer11Batch(BaseBatch[AffixFuzzer11ArrayLike], ComponentBatchMixin)
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer11ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer11 not implemented: We lack codegen for arrow-serialization of general structs",
+            "Arrow serialization of AffixFuzzer11 not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer11_ext.py
 
 

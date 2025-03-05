@@ -39,8 +39,7 @@ class AffixFuzzer5:
         self.__attrs_init__(single_optional_union=single_optional_union)
 
     single_optional_union: datatypes.AffixFuzzer4 | None = field(
-        default=None,
-        converter=_affix_fuzzer5__single_optional_union__special_field_converter_override,
+        default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override
     )
 
 
@@ -100,7 +99,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                                     ]),
                                     nullable=False,
                                     metadata={},
-                                ),
+                                )
                             ),
                             nullable=False,
                             metadata={},
@@ -131,27 +130,18 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                                             "item",
                                             pa.struct([
                                                 pa.field(
-                                                    "single_float_optional",
-                                                    pa.float32(),
-                                                    nullable=True,
-                                                    metadata={},
+                                                    "single_float_optional", pa.float32(), nullable=True, metadata={}
                                                 ),
                                                 pa.field(
-                                                    "single_string_required",
-                                                    pa.utf8(),
-                                                    nullable=False,
-                                                    metadata={},
+                                                    "single_string_required", pa.utf8(), nullable=False, metadata={}
                                                 ),
                                                 pa.field(
-                                                    "single_string_optional",
-                                                    pa.utf8(),
-                                                    nullable=True,
-                                                    metadata={},
+                                                    "single_string_optional", pa.utf8(), nullable=True, metadata={}
                                                 ),
                                                 pa.field(
                                                     "many_floats_optional",
                                                     pa.list_(
-                                                        pa.field("item", pa.float32(), nullable=False, metadata={}),
+                                                        pa.field("item", pa.float32(), nullable=False, metadata={})
                                                     ),
                                                     nullable=True,
                                                     metadata={},
@@ -172,7 +162,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                                                 pa.field(
                                                     "almost_flattened_scalar",
                                                     pa.struct([
-                                                        pa.field("value", pa.float32(), nullable=False, metadata={}),
+                                                        pa.field("value", pa.float32(), nullable=False, metadata={})
                                                     ]),
                                                     nullable=False,
                                                     metadata={},
@@ -181,7 +171,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                                             ]),
                                             nullable=False,
                                             metadata={},
-                                        ),
+                                        )
                                     ),
                                     nullable=False,
                                     metadata={},
@@ -196,7 +186,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                             ]),
                             nullable=True,
                             metadata={},
-                        ),
+                        )
                     ),
                     nullable=False,
                     metadata={},
@@ -204,7 +194,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
             ]),
             nullable=True,
             metadata={},
-        ),
+        )
     ])
 
     @staticmethod

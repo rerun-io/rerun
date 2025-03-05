@@ -33,9 +33,7 @@ class FilterIsNotNull(FilterIsNotNullExt):
     """**Datatype**: Configuration for the filter is not null feature of the dataframe view."""
 
     def __init__(
-        self: Any,
-        active: datatypes.BoolLike,
-        column: blueprint_datatypes.ComponentColumnSelectorLike,
+        self: Any, active: datatypes.BoolLike, column: blueprint_datatypes.ComponentColumnSelectorLike
     ) -> None:
         """
         Create a new instance of the FilterIsNotNull datatype.
@@ -52,9 +50,7 @@ class FilterIsNotNull(FilterIsNotNullExt):
         # You can define your own __init__ function as a member of FilterIsNotNullExt in filter_is_not_null_ext.py
         self.__attrs_init__(active=active, column=column)
 
-    active: datatypes.Bool = field(
-        converter=_filter_is_not_null__active__special_field_converter_override,
-    )
+    active: datatypes.Bool = field(converter=_filter_is_not_null__active__special_field_converter_override)
     # Whether the filter by event feature is active.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -66,10 +62,7 @@ class FilterIsNotNull(FilterIsNotNullExt):
 
 
 if TYPE_CHECKING:
-    FilterIsNotNullLike = Union[
-        FilterIsNotNull,
-        blueprint_datatypes.ComponentColumnSelectorLike,
-    ]
+    FilterIsNotNullLike = Union[FilterIsNotNull, blueprint_datatypes.ComponentColumnSelectorLike]
 else:
     FilterIsNotNullLike = Any
 

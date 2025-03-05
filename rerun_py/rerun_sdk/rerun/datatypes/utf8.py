@@ -30,9 +30,7 @@ class Utf8:
         # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
         self.__attrs_init__(value=value)
 
-    value: str = field(
-        converter=str,
-    )
+    value: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.value)
@@ -42,20 +40,11 @@ class Utf8:
 
 
 if TYPE_CHECKING:
-    Utf8Like = Union[
-        Utf8,
-        str,
-    ]
+    Utf8Like = Union[Utf8, str]
 else:
     Utf8Like = Any
 
-Utf8ArrayLike = Union[
-    Utf8,
-    Sequence[Utf8Like],
-    str,
-    Sequence[str],
-    npt.ArrayLike,
-]
+Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str], npt.ArrayLike]
 
 
 class Utf8Batch(BaseBatch[Utf8ArrayLike]):

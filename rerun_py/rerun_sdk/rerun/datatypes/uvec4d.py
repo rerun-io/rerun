@@ -33,9 +33,7 @@ class UVec4D:
         # You can define your own __init__ function as a member of UVec4DExt in uvec4d_ext.py
         self.__attrs_init__(xyzw=xyzw)
 
-    xyzw: npt.NDArray[np.uint32] = field(
-        converter=to_np_uint32,
-    )
+    xyzw: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec4DExt in uvec4d_ext.py
@@ -43,22 +41,12 @@ class UVec4D:
 
 
 if TYPE_CHECKING:
-    UVec4DLike = Union[
-        UVec4D,
-        npt.NDArray[Any],
-        npt.ArrayLike,
-        Sequence[int],
-    ]
+    UVec4DLike = Union[UVec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[int]]
 else:
     UVec4DLike = Any
 
 UVec4DArrayLike = Union[
-    UVec4D,
-    Sequence[UVec4DLike],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[int]],
-    Sequence[int],
+    UVec4D, Sequence[UVec4DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]
 ]
 
 
@@ -68,5 +56,5 @@ class UVec4DBatch(BaseBatch[UVec4DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: UVec4DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of UVec4D not implemented: We lack codegen for arrow-serialization of general structs",
+            "Arrow serialization of UVec4D not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in uvec4d_ext.py

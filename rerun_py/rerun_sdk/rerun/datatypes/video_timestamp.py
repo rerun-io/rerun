@@ -43,9 +43,7 @@ class VideoTimestamp:
         # You can define your own __init__ function as a member of VideoTimestampExt in video_timestamp_ext.py
         self.__attrs_init__(timestamp_ns=timestamp_ns)
 
-    timestamp_ns: int = field(
-        converter=int,
-    )
+    timestamp_ns: int = field(converter=int)
     # Presentation timestamp value in nanoseconds.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -62,18 +60,11 @@ class VideoTimestamp:
 
 
 if TYPE_CHECKING:
-    VideoTimestampLike = Union[
-        VideoTimestamp,
-        int,
-    ]
+    VideoTimestampLike = Union[VideoTimestamp, int]
 else:
     VideoTimestampLike = Any
 
-VideoTimestampArrayLike = Union[
-    VideoTimestamp,
-    Sequence[VideoTimestampLike],
-    npt.NDArray[np.int64],
-]
+VideoTimestampArrayLike = Union[VideoTimestamp, Sequence[VideoTimestampLike], npt.NDArray[np.int64]]
 
 
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):

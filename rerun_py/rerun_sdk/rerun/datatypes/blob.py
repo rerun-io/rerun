@@ -34,9 +34,7 @@ class Blob(BlobExt):
         # You can define your own __init__ function as a member of BlobExt in blob_ext.py
         self.__attrs_init__(data=data)
 
-    data: npt.NDArray[np.uint8] = field(
-        converter=to_np_uint8,
-    )
+    data: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of BlobExt in blob_ext.py
@@ -44,20 +42,11 @@ class Blob(BlobExt):
 
 
 if TYPE_CHECKING:
-    BlobLike = Union[
-        Blob,
-        bytes,
-        npt.NDArray[np.uint8],
-    ]
+    BlobLike = Union[Blob, bytes, npt.NDArray[np.uint8]]
 else:
     BlobLike = Any
 
-BlobArrayLike = Union[
-    Blob,
-    Sequence[BlobLike],
-    bytes,
-    npt.NDArray[np.uint8],
-]
+BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
 
 
 class BlobBatch(BaseBatch[BlobArrayLike]):

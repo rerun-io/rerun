@@ -44,7 +44,7 @@ class TensorBuffer(TensorBufferExt):
         | npt.NDArray[np.uint64]
         | npt.NDArray[np.uint8]
     ) = field(
-        converter=TensorBufferExt.inner__field_converter_override,  # type: ignore[misc]
+        converter=TensorBufferExt.inner__field_converter_override  # type: ignore[misc]
     )
     """
     Must be one of:
@@ -123,70 +123,40 @@ class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
     _ARROW_DATATYPE = pa.dense_union([
         pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
         pa.field(
-            "U8",
-            pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "U8", pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "U16",
-            pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "U16", pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "U32",
-            pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "U32", pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "U64",
-            pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "U64", pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field("I8", pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})), nullable=False, metadata={}),
         pa.field(
-            "I16",
-            pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "I16", pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "I32",
-            pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "I32", pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "I64",
-            pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "I64", pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "F16",
-            pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "F16", pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "F32",
-            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "F32", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "F64",
-            pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "F64", pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
     ])
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.datatypes.TensorBuffer#U8",
+            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.datatypes.TensorBuffer#U8"
         )  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py

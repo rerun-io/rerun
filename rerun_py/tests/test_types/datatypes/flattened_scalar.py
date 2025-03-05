@@ -27,9 +27,7 @@ class FlattenedScalar:
         # You can define your own __init__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
         self.__attrs_init__(value=value)
 
-    value: float = field(
-        converter=float,
-    )
+    value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py

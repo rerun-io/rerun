@@ -24,10 +24,7 @@ class ScalarAxis(Archetype):
     """**Archetype**: Configuration for the scalar axis of a plot."""
 
     def __init__(
-        self: Any,
-        *,
-        range: datatypes.Range1DLike | None = None,
-        zoom_lock: datatypes.BoolLike | None = None,
+        self: Any, *, range: datatypes.Range1DLike | None = None, zoom_lock: datatypes.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the ScalarAxis archetype.

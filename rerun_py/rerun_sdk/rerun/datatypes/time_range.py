@@ -57,16 +57,12 @@ class TimeRange:
         # You can define your own __init__ function as a member of TimeRangeExt in time_range_ext.py
         self.__attrs_init__(start=start, end=end)
 
-    start: datatypes.TimeRangeBoundary = field(
-        converter=_time_range__start__special_field_converter_override,
-    )
+    start: datatypes.TimeRangeBoundary = field(converter=_time_range__start__special_field_converter_override)
     # Low time boundary for sequence timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    end: datatypes.TimeRangeBoundary = field(
-        converter=_time_range__end__special_field_converter_override,
-    )
+    end: datatypes.TimeRangeBoundary = field(converter=_time_range__end__special_field_converter_override)
     # High time boundary for sequence timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

@@ -59,10 +59,7 @@ class GraphEdges(Archetype):
     """
 
     def __init__(
-        self: Any,
-        edges: datatypes.Utf8PairArrayLike,
-        *,
-        graph_type: components.GraphTypeLike | None = None,
+        self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
     ) -> None:
         """
         Create a new instance of the GraphEdges archetype.
@@ -180,10 +177,7 @@ class GraphEdges(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
-            "edges": edges,
-            "graph_type": graph_type,
-        }
+        kwargs = {"edges": edges, "graph_type": graph_type}
         columns = []
 
         for batch in batches:

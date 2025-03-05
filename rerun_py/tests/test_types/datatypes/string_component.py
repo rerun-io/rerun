@@ -27,9 +27,7 @@ class StringComponent:
         # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py
         self.__attrs_init__(value=value)
 
-    value: str = field(
-        converter=str,
-    )
+    value: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.value)

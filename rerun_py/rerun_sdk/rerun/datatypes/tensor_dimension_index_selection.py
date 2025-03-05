@@ -48,16 +48,12 @@ class TensorDimensionIndexSelection:
         # You can define your own __init__ function as a member of TensorDimensionIndexSelectionExt in tensor_dimension_index_selection_ext.py
         self.__attrs_init__(dimension=dimension, index=index)
 
-    dimension: int = field(
-        converter=int,
-    )
+    dimension: int = field(converter=int)
     # The dimension number to select.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    index: int = field(
-        converter=int,
-    )
+    index: int = field(converter=int)
     # The index along the dimension to use.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

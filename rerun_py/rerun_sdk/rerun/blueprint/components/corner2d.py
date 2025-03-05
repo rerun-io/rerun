@@ -63,10 +63,7 @@ Corner2DLike = Union[
     Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"],
     int,
 ]
-Corner2DArrayLike = Union[
-    Corner2DLike,
-    Sequence[Corner2DLike],
-]
+Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):

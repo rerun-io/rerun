@@ -186,11 +186,7 @@ class Asset3D(Asset3DExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
-            "blob": blob,
-            "media_type": media_type,
-            "albedo_factor": albedo_factor,
-        }
+        kwargs = {"blob": blob, "media_type": media_type, "albedo_factor": albedo_factor}
         columns = []
 
         for batch in batches:

@@ -220,10 +220,7 @@ class AssetVideo(AssetVideoExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
-            "blob": blob,
-            "media_type": media_type,
-        }
+        kwargs = {"blob": blob, "media_type": media_type}
         columns = []
 
         for batch in batches:

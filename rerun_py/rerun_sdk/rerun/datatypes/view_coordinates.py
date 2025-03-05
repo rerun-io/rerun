@@ -61,9 +61,7 @@ class ViewCoordinates(ViewCoordinatesExt):
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         self.__attrs_init__(coordinates=coordinates)
 
-    coordinates: npt.NDArray[np.uint8] = field(
-        converter=to_np_uint8,
-    )
+    coordinates: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
     # The directions of the [x, y, z] axes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -74,18 +72,11 @@ class ViewCoordinates(ViewCoordinatesExt):
 
 
 if TYPE_CHECKING:
-    ViewCoordinatesLike = Union[
-        ViewCoordinates,
-        npt.ArrayLike,
-    ]
+    ViewCoordinatesLike = Union[ViewCoordinates, npt.ArrayLike]
 else:
     ViewCoordinatesLike = Any
 
-ViewCoordinatesArrayLike = Union[
-    ViewCoordinates,
-    Sequence[ViewCoordinatesLike],
-    npt.ArrayLike,
-]
+ViewCoordinatesArrayLike = Union[ViewCoordinates, Sequence[ViewCoordinatesLike], npt.ArrayLike]
 
 
 class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):

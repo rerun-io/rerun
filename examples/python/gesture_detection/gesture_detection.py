@@ -133,7 +133,7 @@ class GestureDetectorLogger:
                         landmark_positions_3d,
                         radii=20,
                         class_ids=0,
-                        keypoint_ids=[i for i in range(len(landmark_positions_3d))],
+                        keypoint_ids=list(range(len(landmark_positions_3d))),
                     ),
                 )
 

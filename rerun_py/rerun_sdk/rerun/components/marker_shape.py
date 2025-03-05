@@ -102,10 +102,7 @@ MarkerShapeLike = Union[
     ],
     int,
 ]
-MarkerShapeArrayLike = Union[
-    MarkerShapeLike,
-    Sequence[MarkerShapeLike],
-]
+MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):

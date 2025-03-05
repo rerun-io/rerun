@@ -30,9 +30,7 @@ class Float32:
         # You can define your own __init__ function as a member of Float32Ext in float32_ext.py
         self.__attrs_init__(value=value)
 
-    value: float = field(
-        converter=float,
-    )
+    value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Float32Ext in float32_ext.py
@@ -46,20 +44,12 @@ class Float32:
 
 
 if TYPE_CHECKING:
-    Float32Like = Union[
-        Float32,
-        float,
-    ]
+    Float32Like = Union[Float32, float]
 else:
     Float32Like = Any
 
 Float32ArrayLike = Union[
-    Float32,
-    Sequence[Float32Like],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[float]],
-    Sequence[float],
+    Float32, Sequence[Float32Like], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 

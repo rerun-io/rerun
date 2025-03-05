@@ -30,9 +30,7 @@ class Float64:
         # You can define your own __init__ function as a member of Float64Ext in float64_ext.py
         self.__attrs_init__(value=value)
 
-    value: float = field(
-        converter=float,
-    )
+    value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Float64Ext in float64_ext.py
@@ -46,20 +44,12 @@ class Float64:
 
 
 if TYPE_CHECKING:
-    Float64Like = Union[
-        Float64,
-        float,
-    ]
+    Float64Like = Union[Float64, float]
 else:
     Float64Like = Any
 
 Float64ArrayLike = Union[
-    Float64,
-    Sequence[Float64Like],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[float]],
-    Sequence[float],
+    Float64, Sequence[Float64Like], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 

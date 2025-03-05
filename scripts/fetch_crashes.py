@@ -144,13 +144,13 @@ for backtrace, props in backtraces:
     signal = props[0].get("signal")
     title = file_line if file_line is not None else signal
 
-    timestamps = sorted(list({prop["timestamp"] for prop in props}))
+    timestamps = sorted({prop["timestamp"] for prop in props})
     first_occurrence = timestamps[0]
     last_occurrence = timestamps[-1]
 
-    targets = sorted(list({prop["target"] for prop in props}))
-    rust_versions = sorted(list({prop["rust_version"] for prop in props}))
-    rerun_versions = sorted(list({prop["rerun_version"] for prop in props}))
+    targets = sorted({prop["target"] for prop in props})
+    rust_versions = sorted({prop["rust_version"] for prop in props})
+    rerun_versions = sorted({prop["rerun_version"] for prop in props})
 
     print(
         f"## {n} distinct user(s) affected by {event} crash @ `{title}`\n"

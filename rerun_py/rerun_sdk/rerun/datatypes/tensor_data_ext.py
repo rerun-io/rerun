@@ -113,7 +113,7 @@ class TensorDataExt:
                 resolved_shape = None
 
             if resolved_shape is None:
-                resolved_shape = [size for size in array.shape]
+                resolved_shape = list(array.shape)
 
         if resolved_shape is not None:
             self.shape: npt.NDArray[np.uint64] = resolved_shape
@@ -187,7 +187,7 @@ class TensorDataExt:
 
     def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
         """Convert the TensorData back to a numpy array."""
-        dims = [d for d in self.shape]
+        dims = list(self.shape)
         return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]
 
 

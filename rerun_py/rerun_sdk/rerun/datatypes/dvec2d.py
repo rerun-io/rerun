@@ -34,9 +34,7 @@ class DVec2D(DVec2DExt):
         # You can define your own __init__ function as a member of DVec2DExt in dvec2d_ext.py
         self.__attrs_init__(xy=xy)
 
-    xy: npt.NDArray[np.float64] = field(
-        converter=to_np_float64,
-    )
+    xy: npt.NDArray[np.float64] = field(converter=to_np_float64)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of DVec2DExt in dvec2d_ext.py
@@ -44,22 +42,12 @@ class DVec2D(DVec2DExt):
 
 
 if TYPE_CHECKING:
-    DVec2DLike = Union[
-        DVec2D,
-        npt.NDArray[Any],
-        npt.ArrayLike,
-        Sequence[float],
-    ]
+    DVec2DLike = Union[DVec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     DVec2DLike = Any
 
 DVec2DArrayLike = Union[
-    DVec2D,
-    Sequence[DVec2DLike],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[float]],
-    Sequence[float],
+    DVec2D, Sequence[DVec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 

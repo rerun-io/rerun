@@ -30,9 +30,7 @@ class UInt64:
         # You can define your own __init__ function as a member of UInt64Ext in uint64_ext.py
         self.__attrs_init__(value=value)
 
-    value: int = field(
-        converter=int,
-    )
+    value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt64Ext in uint64_ext.py
@@ -46,19 +44,11 @@ class UInt64:
 
 
 if TYPE_CHECKING:
-    UInt64Like = Union[
-        UInt64,
-        int,
-    ]
+    UInt64Like = Union[UInt64, int]
 else:
     UInt64Like = Any
 
-UInt64ArrayLike = Union[
-    UInt64,
-    Sequence[UInt64Like],
-    int,
-    npt.NDArray[np.uint64],
-]
+UInt64ArrayLike = Union[UInt64, Sequence[UInt64Like], int, npt.NDArray[np.uint64]]
 
 
 class UInt64Batch(BaseBatch[UInt64ArrayLike]):

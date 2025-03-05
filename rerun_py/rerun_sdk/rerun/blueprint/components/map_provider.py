@@ -72,10 +72,7 @@ MapProviderLike = Union[
     ],
     int,
 ]
-MapProviderArrayLike = Union[
-    MapProviderLike,
-    Sequence[MapProviderLike],
-]
+MapProviderArrayLike = Union[MapProviderLike, Sequence[MapProviderLike]]
 
 
 class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):

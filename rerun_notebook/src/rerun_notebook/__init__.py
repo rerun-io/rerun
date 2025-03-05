@@ -135,7 +135,7 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                 time.sleep(0.1)
 
     def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
-        new_panel_states = {k: v for k, v in self._panel_states.items()} if self._panel_states else {}
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)

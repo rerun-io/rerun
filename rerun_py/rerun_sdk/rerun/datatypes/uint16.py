@@ -30,9 +30,7 @@ class UInt16:
         # You can define your own __init__ function as a member of UInt16Ext in uint16_ext.py
         self.__attrs_init__(value=value)
 
-    value: int = field(
-        converter=int,
-    )
+    value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt16Ext in uint16_ext.py
@@ -46,19 +44,11 @@ class UInt16:
 
 
 if TYPE_CHECKING:
-    UInt16Like = Union[
-        UInt16,
-        int,
-    ]
+    UInt16Like = Union[UInt16, int]
 else:
     UInt16Like = Any
 
-UInt16ArrayLike = Union[
-    UInt16,
-    Sequence[UInt16Like],
-    int,
-    npt.NDArray[np.uint16],
-]
+UInt16ArrayLike = Union[UInt16, Sequence[UInt16Like], int, npt.NDArray[np.uint16]]
 
 
 class UInt16Batch(BaseBatch[UInt16ArrayLike]):

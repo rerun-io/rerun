@@ -51,23 +51,17 @@ class TensorData(TensorDataExt):
 
     # __init__ can be found in tensor_data_ext.py
 
-    shape: npt.NDArray[np.uint64] = field(
-        converter=to_np_uint64,
-    )
+    shape: npt.NDArray[np.uint64] = field(converter=to_np_uint64)
     # The shape of the tensor, i.e. the length of each dimension.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    buffer: datatypes.TensorBuffer = field(
-        converter=_tensor_data__buffer__special_field_converter_override,
-    )
+    buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
     # The content/data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    names: list[str] | None = field(
-        default=None,
-    )
+    names: list[str] | None = field(default=None)
     # The names of the dimensions of the tensor (optional).
     #
     # If set, should be the same length as [`datatypes.TensorData.shape`][rerun.datatypes.TensorData.shape].
@@ -80,33 +74,20 @@ class TensorData(TensorDataExt):
 
 
 if TYPE_CHECKING:
-    TensorDataLike = Union[
-        TensorData,
-        npt.ArrayLike,
-    ]
+    TensorDataLike = Union[TensorData, npt.ArrayLike]
 else:
     TensorDataLike = Any
 
-TensorDataArrayLike = Union[
-    TensorData,
-    Sequence[TensorDataLike],
-    npt.ArrayLike,
-]
+TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 
 
 class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
     _ARROW_DATATYPE = pa.struct([
         pa.field(
-            "shape",
-            pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
-            nullable=False,
-            metadata={},
+            "shape", pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})), nullable=False, metadata={}
         ),
         pa.field(
-            "names",
-            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
-            nullable=True,
-            metadata={},
+            "names", pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})), nullable=True, metadata={}
         ),
         pa.field(
             "buffer",

@@ -34,9 +34,7 @@ class UVec2D(UVec2DExt):
         # You can define your own __init__ function as a member of UVec2DExt in uvec2d_ext.py
         self.__attrs_init__(xy=xy)
 
-    xy: npt.NDArray[np.uint32] = field(
-        converter=to_np_uint32,
-    )
+    xy: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec2DExt in uvec2d_ext.py
@@ -44,22 +42,12 @@ class UVec2D(UVec2DExt):
 
 
 if TYPE_CHECKING:
-    UVec2DLike = Union[
-        UVec2D,
-        npt.NDArray[Any],
-        npt.ArrayLike,
-        Sequence[int],
-    ]
+    UVec2DLike = Union[UVec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[int]]
 else:
     UVec2DLike = Any
 
 UVec2DArrayLike = Union[
-    UVec2D,
-    Sequence[UVec2DLike],
-    npt.NDArray[Any],
-    npt.ArrayLike,
-    Sequence[Sequence[int]],
-    Sequence[int],
+    UVec2D, Sequence[UVec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]
 ]
 
 

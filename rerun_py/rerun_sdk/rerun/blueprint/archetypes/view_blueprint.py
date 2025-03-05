@@ -58,10 +58,7 @@ class ViewBlueprint(Archetype):
         # You can define your own __init__ function as a member of ViewBlueprintExt in view_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                class_identifier=class_identifier,
-                display_name=display_name,
-                space_origin=space_origin,
-                visible=visible,
+                class_identifier=class_identifier, display_name=display_name, space_origin=space_origin, visible=visible
             )
             return
         self.__attrs_clear__()
