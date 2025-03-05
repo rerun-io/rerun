@@ -1564,17 +1564,30 @@ impl App {
     /// For now, both [`re_types_core::components::ApplicationId`] and a
     /// [`re_types_core::components::RecordingStartedTimestamp`] are required
     /// for a recording to be considered "active".
+    ///
+    /// We check for the indicator component here, which the SDK should always
+    /// include early in the recording. The users are free to log individual
+    /// components later on.
     fn can_be_made_active(store_events: &[re_chunk_store::ChunkStoreEvent]) -> bool {
         re_tracing::profile_function!();
-        use re_types_core::Component as _;
+        use re_types_core::{archetypes::RecordingProperties, Archetype as _};
 
-        store_events
-            .iter()
-            .flat_map(|event| event.diff.chunk.component_names())
-            .any(|n| {
-                n == re_types_core::components::RecordingStartedTimestamp::name()
-                    || n == re_types_core::components::ApplicationId::name()
-            })
+        for event in store_events {
+            let chunk = &event.diff.chunk;
+            for component in chunk.component_names() {
+                if Some(RecordingProperties::name().short_name())
+                    == component.indicator_component_archetype().as_deref()
+                {
+                    re_log::trace!(
+                        "Found `{}` archetype in chunks",
+                        RecordingProperties::name()
+                    );
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {

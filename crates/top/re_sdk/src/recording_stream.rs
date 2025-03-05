@@ -666,7 +666,8 @@ impl RecordingStreamBuilder {
 
         let properties = RecordingProperties {
             application_name: application_id.clone(), // TODO
-            started: Time::now(),
+            recording_started: Time::now(),
+            recording_name: None,
         };
 
         let store_info = StoreInfo {
@@ -952,7 +953,7 @@ impl RecordingStream {
 
         let app_id =
             re_types_core::components::ApplicationId::from(properties.application_name.as_str());
-        let nanos = properties.started.clone().nanos_since_epoch();
+        let nanos = properties.recording_started.clone().nanos_since_epoch();
         let started = re_types_core::components::RecordingStartedTimestamp::from(
             TimeInt::from_nanos(nanos.try_into().unwrap()),
         );

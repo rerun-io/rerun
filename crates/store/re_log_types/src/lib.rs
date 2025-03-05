@@ -27,6 +27,7 @@ pub mod time_point;
 // mod data_row;
 // mod data_table;
 mod instance;
+mod recording_properties;
 mod resolved_time_range;
 mod time;
 mod time_real;
@@ -36,10 +37,12 @@ use std::sync::Arc;
 
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
+use re_types_core::components::ApplicationId;
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::instance::Instance;
 pub use self::path::*;
+pub use self::recording_properties::RecordingProperties;
 pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{
@@ -156,48 +159,6 @@ impl std::fmt::Display for StoreId {
         // because that can easily lead to confusion and bugs
         // when roundtripping to a string (e.g. via Python SDK).
         self.id.fmt(f)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-// TODO: consolidate with `components::ApplicationId`
-/// The user-chosen name of the application doing the logging.
-///
-/// Used to categorize recordings.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ApplicationId(pub String);
-
-impl From<&str> for ApplicationId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for ApplicationId {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-impl ApplicationId {
-    /// The default [`ApplicationId`] if the user hasn't set one.
-    ///
-    /// Currently: `"unknown_app_id"`.
-    pub fn unknown() -> Self {
-        Self("unknown_app_id".to_owned())
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl std::fmt::Display for ApplicationId {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
     }
 }
 
@@ -338,18 +299,6 @@ pub struct SetStoreInfo {
     pub row_id: re_tuid::Tuid,
 
     pub info: StoreInfo,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingProperties {
-    /// The user-chosen name of the application doing the logging.
-    pub application_name: ApplicationId,
-
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    pub started: Time,
 }
 
 /// Information about a recording or blueprint.

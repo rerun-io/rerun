@@ -9,13 +9,14 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingProperties, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
+use re_types_core::components;
 
 use crate::{Error, TimesPerTimeline};
 
@@ -136,16 +137,20 @@ impl EntityDb {
         self.store_info_msg().map(|msg| &msg.info)
     }
 
-    // TODO: Provide types
     pub fn app_id(&self) -> Option<ApplicationId> {
-        self.latest_at_component::<re_types_core::components::ApplicationId>(
-            &EntityPath::root(),
+        self.latest_at_component::<ApplicationId>(
+            &EntityPath::root(), // TODO: change
             &LatestAtQuery::latest("log_time".into()),
         )
-        .map_or(
-            self.store_info().map(|s| s.application_id.clone()),
-            |(_, app_id)| Some(ApplicationId(app_id.to_string())),
+        .map(|(_, app_id)| app_id)
+    }
+
+    pub fn recording_started(&self) -> Option<RecordingStartedTimestamp> {
+        self.latest_at_component::<RecordingStartedTimestamp>(
+            &EntityPath::root(), // TODO: change
+            &LatestAtQuery::latest("log_time".into()),
         )
+        .map(|(_, app_id)| app_id)
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -359,7 +364,7 @@ impl EntityDb {
 
         let store_events = match &msg {
             LogMsg::SetStoreInfo(msg) => {
-                self.set_store_info(dbg!(msg.clone()));
+                self.set_store_info(msg.clone());
                 vec![]
             }
 
