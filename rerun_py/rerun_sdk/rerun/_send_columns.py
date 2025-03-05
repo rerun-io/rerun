@@ -35,7 +35,7 @@ class IndexColumn(TimeColumnLike):
 
     # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
     @overload
-    def __init__(self, timeline: str, *, sequence: Iterable[int] | None = None) -> None: ...
+    def __init__(self, timeline: str, *, seq: Iterable[int] | None = None) -> None: ...
 
     @overload
     def __init__(
@@ -57,7 +57,7 @@ class IndexColumn(TimeColumnLike):
         self,
         timeline: str,
         *,
-        sequence: Iterable[int] | None = None,
+        seq: Iterable[int] | None = None,
         timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
         datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
     ):
@@ -66,7 +66,7 @@ class IndexColumn(TimeColumnLike):
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+        You are expected to set exactly ONE of the arguments `seq`, `timedelta`, or `datetime`.
         You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
         you must only use `timedelta` for that timeline going forward.
 
@@ -74,7 +74,7 @@ class IndexColumn(TimeColumnLike):
         ----------
         timeline:
             The name of the timeline.
-        sequence:
+        seq:
             Used for sequential indices, like `frame_nr`.
             Must be integers.
         timedelta:
@@ -85,16 +85,16 @@ class IndexColumn(TimeColumnLike):
             Must either be in seconds since Unix epoch, [`datetime.datetime`][], or [`numpy.datetime64`][].
 
         """
-        if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+        if sum(x is not None for x in (seq, timedelta, datetime)) != 1:
             raise ValueError(
-                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+                "IndexColumn: Exactly one of `seq`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
             )
 
         self.timeline = timeline
 
-        if sequence is not None:
+        if seq is not None:
             self.type = pa.int64()
-            self.times = sequence
+            self.times = seq
         elif timedelta is not None:
             self.type = pa.duration("ns")
             self.times = [to_nanos(td) for td in timedelta]

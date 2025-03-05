@@ -94,7 +94,7 @@ def set_time_from_args() -> None:
             if len(parts) != 2:
                 continue
             timeline_name, time = parts
-            rr.set_index(timeline_name, sequence=int(time))
+            rr.set_index(timeline_name, seq=int(time))
 
 
 if __name__ == "__main__":

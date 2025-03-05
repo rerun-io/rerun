@@ -202,7 +202,7 @@ def main() -> None:
         ]
 
     for n, image_uri in enumerate(args.images):
-        rr.set_index("image", sequence=n)
+        rr.set_index("image", seq=n)
         image = load_image(image_uri)
         run_segmentation(mask_generator, image)
 

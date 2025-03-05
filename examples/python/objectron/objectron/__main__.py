@@ -109,7 +109,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
 
     frame_times = []
     for sample in samples:
-        rr.set_index("frame", sequence=sample.index)
+        rr.set_index("frame", seq=sample.index)
         rr.set_index("time", timedelta=sample.timestamp)
         frame_times.append(sample.timestamp)
 

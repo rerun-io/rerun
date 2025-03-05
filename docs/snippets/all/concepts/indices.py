@@ -7,7 +7,7 @@ import rerun as rr
 
 rr.init("rerun_example_different_indices", spawn=True)
 
-rr.set_index("frame_nr", sequence=42)
+rr.set_index("frame_nr", seq=42)
 rr.set_index("elapsed", timedelta=12)  # elapsed seconds
 rr.set_index("time", datetime=1_741_017_564)  # Seconds since unix epoch
 rr.set_index("time", datetime=datetime.fromisoformat("2025-03-03T15:59:24"))

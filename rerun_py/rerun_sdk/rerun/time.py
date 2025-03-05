@@ -14,7 +14,7 @@ from rerun.recording_stream import RecordingStream
 
 # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
 @overload
-def set_index(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
+def set_index(timeline: str, *, recording: RecordingStream | None = None, seq: int) -> None: ...
 
 
 @overload
@@ -33,7 +33,7 @@ def set_index(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
-    sequence: int | None = None,
+    seq: int | None = None,
     timedelta: int | float | timedelta | np.timedelta64 | None = None,
     datetime: int | float | datetime | np.datetime64 | None = None,
 ) -> None:
@@ -43,11 +43,11 @@ def set_index(
     Used for all subsequent logging on the same thread, until the next call to
     [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
-    For example: `set_index("frame_nr", sequence=frame_nr)`.
+    For example: `set_index("frame_nr", seq=frame_nr)`.
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
-    You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+    You are expected to set exactly ONE of the arguments `seq`, `timedelta`, or `datetime`.
     You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
     you must only use `timedelta` for that timeline going forward.
 
@@ -61,7 +61,7 @@ def set_index(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording (if there is one).
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    sequence:
+    seq:
         Used for sequential indices, like `frame_nr`.
         Must be an integer.
     timedelta:
@@ -74,15 +74,15 @@ def set_index(
         For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
 
     """
-    if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+    if sum(x is not None for x in (seq, timedelta, datetime)) != 1:
         raise ValueError(
-            "set_index: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+            "set_index: Exactly one of `seq`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
         )
 
-    if sequence is not None:
+    if seq is not None:
         bindings.set_time_sequence(
             timeline,
-            sequence,
+            seq,
             recording=recording.to_native() if recording is not None else None,
         )
     elif timedelta is not None:
@@ -139,7 +139,7 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
 
 
 @deprecated(
-    """Use `set_index(sequence=…)` instead.
+    """Use `set_index(seq=…)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
 )
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:

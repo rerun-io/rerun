@@ -18,7 +18,7 @@ def test_load_recording() -> None:
 
         with rr.new_recording("rerun_example_test_recording") as rec:
             rr.save(rrd, recording=rec)
-            rr.set_index("my_index", sequence=1, recording=rec)
+            rr.set_index("my_index", seq=1, recording=rec)
             rr.log("log", rr.TextLog("Hello"), recording=rec)
 
         recording = rr.dataframe.load_recording(rrd)
@@ -51,9 +51,9 @@ class TestDataframe:
 
             with rr.new_recording(APP_ID, recording_id=RECORDING_ID) as rec:
                 rr.save(rrd, recording=rec)
-                rr.set_index("my_index", sequence=1, recording=rec)
+                rr.set_index("my_index", seq=1, recording=rec)
                 rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]), recording=rec)
-                rr.set_index("my_index", sequence=7, recording=rec)
+                rr.set_index("my_index", seq=7, recording=rec)
                 rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]), recording=rec)
                 rr.log("static_text", rr.TextLog("Hello"), static=True, recording=rec)
 

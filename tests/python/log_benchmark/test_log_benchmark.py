@@ -74,7 +74,7 @@ def test_bench_transforms_over_time_individual(
 
     num_transforms = rand_trans.shape[0]
     for i in range(num_transforms):
-        rr.set_index("frame", sequence=i)
+        rr.set_index("frame", seq=i)
         rr.log(
             "test_transform",
             rr.Transform3D(translation=rand_trans[i], rotation=rr.Quaternion(xyzw=rand_quats[i]), scale=rand_scales[i]),
@@ -96,7 +96,7 @@ def test_bench_transforms_over_time_batched(
 
         rr.send_columns(
             "test_transform",
-            indexes=[rr.IndexColumn("frame", sequence=times)],
+            indexes=[rr.IndexColumn("frame", seq=times)],
             columns=rr.Transform3D.columns(
                 translation=rand_trans[start:end],
                 quaternion=rand_quats[start:end],
