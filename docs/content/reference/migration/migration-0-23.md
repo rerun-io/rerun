@@ -85,9 +85,11 @@ The former is subject to (double-precision) floating point precision loss (still
 
 Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream?speculative-link) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
 
+<!-- NOLINT_START -->
+
 ```python
 # before
-rec = rr. new_recording("my_app_id")
+rec = rr. new_recording("rerun_example")
 
 # after
 rec = rr.RecordingStream("my_app_id")
@@ -103,6 +105,8 @@ rec = rr. new_recording("my_app_id", spawn=True)
 rec = rr.RecordingStream("my_app_id")
 rec.spawn()
 ```
+
+<!-- NOLINT_END -->
 
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, and `rr.connect_tcp()`
 

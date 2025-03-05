@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 @deprecated(
     """Please migrate to `rr.RecordingStream(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def new_recording(
     application_id: str,
