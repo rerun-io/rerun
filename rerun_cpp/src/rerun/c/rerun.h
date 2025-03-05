@@ -490,37 +490,16 @@ extern void rr_recording_stream_stdout(rr_recording_stream stream, rr_error* err
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 
-/// Set the current time of the recording, for the current calling thread.
+/// Set the current index value of the recording, for a specific timeline, for the current calling thread.
 ///
 /// Used for all subsequent logging performed from this same thread, until the next call
 /// to one of the time setting methods.
 ///
 /// For example:
-/// `rr_recording_stream_set_time_sequence(stream, "frame_nr", &frame_nr, &err)`.
-extern void rr_recording_stream_set_time_sequence(
-    rr_recording_stream stream, rr_string timeline_name, int64_t sequence, rr_error* error
-);
-
-/// Set the current time of the recording, for the current calling thread.
-///
-/// Used for all subsequent logging performed from this same thread, until the next call
-/// to one of the time setting methods.
-///
-/// For example:
-/// `rr_recording_stream_set_time_seconds(stream, "sim_time", sim_time_secs, &err)`.
-extern void rr_recording_stream_set_time_seconds(
-    rr_recording_stream stream, rr_string timeline_name, double seconds, rr_error* error
-);
-
-/// Set the current time of the recording, for the current calling thread.
-///
-/// Used for all subsequent logging performed from this same thread, until the next call
-/// to one of the time setting methods.
-///
-/// For example:
-/// `rr_recording_stream_set_time_nanos(stream, "sim_time", sim_time_nanos, &err)`.
-extern void rr_recording_stream_set_time_nanos(
-    rr_recording_stream stream, rr_string timeline_name, int64_t ns, rr_error* error
+/// `rr_recording_stream_set_time_sequence(stream, "frame_nr", RR_TIME_TYPE_SEQUENCE, frame_nr, &err)`.
+extern void rr_recording_stream_set_index(
+    rr_recording_stream stream, rr_string timeline_name, rr_time_type time_type, int64_t value,
+    rr_error* error
 );
 
 /// Stops logging to the specified timeline for subsequent log calls.

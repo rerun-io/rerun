@@ -724,73 +724,32 @@ pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut C
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_sequence_impl(
+fn rr_recording_stream_set_index_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
-    sequence: i64,
+    time_type: CTimeType,
+    value: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, sequence);
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_sequence(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    sequence: i64,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
-        err.write_error(error);
+    let stream = recording_stream(stream)?;
+    match time_type {
+        CTimeType::Sequence => stream.set_time_sequence(timeline, value),
+        // TODO(#8635): do different things for Duration and Timestamp
+        CTimeType::Duration | CTimeType::Timestamp => stream.set_time_nanos(timeline, value),
     }
-}
-
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_seconds_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    seconds: f64,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_seconds(timeline, seconds);
     Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_seconds(
+pub extern "C" fn rr_recording_stream_set_index(
     stream: CRecordingStream,
     timeline_name: CStringView,
-    seconds: f64,
+    time_type: CTimeType,
+    value: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
-        err.write_error(error);
-    }
-}
-
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_nanos_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    nanos: i64,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_nanos(timeline, nanos);
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_nanos(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    nanos: i64,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
+    if let Err(err) = rr_recording_stream_set_index_impl(stream, timeline_name, time_type, value) {
         err.write_error(error);
     }
 }

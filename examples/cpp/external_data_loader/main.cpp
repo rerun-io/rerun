@@ -17,7 +17,8 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
             if (pos != std::string::npos) {
                 auto timeline_name = time_str.substr(0, pos);
                 int64_t time = std::stol(time_str.substr(pos + 1));
-                rec.set_time_nanos(timeline_name, time);
+                // TODO(#8635): update dataloaders
+                rec.set_index_duration_nanos(timeline_name, time);
             }
         }
     }

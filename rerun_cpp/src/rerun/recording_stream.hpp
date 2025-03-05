@@ -407,7 +407,9 @@ namespace rerun {
         [[deprecated(
             "Use either `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`"
         )]] void
-            set_time_seconds(std::string_view timeline_name, double seconds) const;
+            set_time_seconds(std::string_view timeline_name, double seconds) const {
+            set_index_duration_secs(timeline_name, seconds);
+        }
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -421,7 +423,9 @@ namespace rerun {
         [[deprecated(
             "Use either `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`"
         )]] void
-            set_time_nanos(std::string_view timeline_name, int64_t nanos) const;
+            set_time_nanos(std::string_view timeline_name, int64_t nanos) const {
+            set_index_duration_nanos(timeline_name, nanos);
+        }
 
         /// Stops logging to the specified timeline for subsequent log calls.
         ///
