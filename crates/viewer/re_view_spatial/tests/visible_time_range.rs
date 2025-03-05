@@ -20,7 +20,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
     let frame = |sequence: i64| {
         TimePoint::default().with(
             timeline,
-            TimeInt::from_sequence(sequence.try_into().unwrap()),
+            TimeInt::from_sequence(sequence.try_into().expect("unexpected min value")),
         )
     };
 
@@ -196,8 +196,10 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             let x = i as f32 * 10.0 + 5.0;
             let y_red = 40.0;
             let y_green = 60.0;
-            let time_point =
-                TimePoint::default().with(timeline, TimeInt::from_seconds(i.try_into().unwrap()));
+            let time_point = TimePoint::default().with(
+                timeline,
+                TimeInt::from_seconds(i.try_into().expect("unexpected min value")),
+            );
 
             for y in [y_green, y_red] {
                 test_context.log_entity(
@@ -238,7 +240,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                         .with_radii([2.5])
                         .with_draw_order(3.0),
                 )
-            })
+            });
         }
     }
 
