@@ -37,8 +37,8 @@ def blueprint() -> rrb.BlueprintLike:
             rrb.Horizontal(
                 rrb.Vertical(
                     rrb.Spatial3DView(origin="/"),
-                )
-            )
+                ),
+            ),
         ),
         column_shares=[2, 1],
     )

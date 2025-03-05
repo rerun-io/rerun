@@ -54,7 +54,7 @@ def test_arrows3d() -> None:
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Arrows3D(
             vectors=vectors,

@@ -22,7 +22,6 @@ class LatLon(datatypes.DVec2D, ComponentMixin):
     # You can define your own __init__ function as a member of LatLonExt in lat_lon_ext.py
 
     # Note: there are no fields here because LatLon delegates to datatypes.DVec2D
-    pass
 
 
 class LatLonBatch(datatypes.DVec2DBatch, ComponentBatchMixin):

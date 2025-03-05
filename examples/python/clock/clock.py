@@ -65,7 +65,7 @@ def log_clock(steps: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="An example visualizing an analog clock is built with Rerun Arrow3D primitives."
+        description="An example visualizing an analog clock is built with Rerun Arrow3D primitives.",
     )
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     rr.script_add_args(parser)

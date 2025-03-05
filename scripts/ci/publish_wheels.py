@@ -55,7 +55,7 @@ def publish_notebook_asset() -> None:
                 # Extract the specified file to the target directory
                 archive.extract("rerun_notebook/static/widget.js", "extracted")
                 bucket.blob(f"version/{wheel_version}/widget.js").upload_from_filename(
-                    "extracted/rerun_notebook/static/widget.js"
+                    "extracted/rerun_notebook/static/widget.js",
                 )
 
 
@@ -68,7 +68,7 @@ def main() -> None:
     args = parser.parse_args()
 
     bucket = Gcs("rerun-open").bucket("rerun-builds")
-    wheel_blobs: list[Blob] = list(blob for blob in bucket.list_blobs(prefix=args.dir) if blob.name.endswith(".whl"))
+    wheel_blobs: list[Blob] = [blob for blob in bucket.list_blobs(prefix=args.dir) if blob.name.endswith(".whl")]
     wheels = [blob.name.split("/")[-1] for blob in wheel_blobs]
     wheel_paths = [f"wheels/{wheel}" for wheel in wheels]
     wheel_utils.check_expected_wheels(wheels)

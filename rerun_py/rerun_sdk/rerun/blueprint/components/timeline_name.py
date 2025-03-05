@@ -22,7 +22,6 @@ class TimelineName(datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of TimelineNameExt in timeline_name_ext.py
 
     # Note: there are no fields here because TimelineName delegates to datatypes.Utf8
-    pass
 
 
 class TimelineNameBatch(datatypes.Utf8Batch, ComponentBatchMixin):

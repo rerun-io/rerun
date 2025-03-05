@@ -25,8 +25,9 @@ class TensorDimensionIndexSliderExt:
             [
                 pa.array(
                     np.asarray(
-                        [x.dimension if isinstance(x, TensorDimensionIndexSlider) else x for x in data], dtype=np.uint32
-                    )
+                        [x.dimension if isinstance(x, TensorDimensionIndexSlider) else x for x in data],
+                        dtype=np.uint32,
+                    ),
                 ),
             ],
             fields=list(data_type),

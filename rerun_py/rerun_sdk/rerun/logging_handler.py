@@ -20,7 +20,7 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: TextLogLevel.DEBUG,
     }
 
-    def __init__(self, path_prefix: str | None = None):
+    def __init__(self, path_prefix: str | None = None) -> None:
         """
         Initializes the logging handler with an optional path prefix.
 

@@ -103,7 +103,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Logs raw 3D meshes and their transform hierarchy using the Rerun SDK."
+        description="Logs raw 3D meshes and their transform hierarchy using the Rerun SDK.",
     )
     parser.add_argument(
         "--scene",

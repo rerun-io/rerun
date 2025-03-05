@@ -12,7 +12,7 @@ class Scale3DExt:
     def __init__(
         self: Any,
         uniform_or_per_axis: Vec3DLike | Float32Like = True,
-    ):
+    ) -> None:
         """
         3D scaling factor.
 

@@ -29,7 +29,9 @@ class GraphView(View):
     rr.log(
         "simple",
         rr.GraphNodes(
-            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+            node_ids=["a", "b", "c"],
+            positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
+            labels=["A", "B", "C"],
         ),
     )
 

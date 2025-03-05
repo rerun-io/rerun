@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
+from typing import Self
 
 
 @dataclass
@@ -25,7 +26,7 @@ class Span:
     start: int
     end: int
 
-    def offset(self, by: int):
+    def offset(self, by: int) -> Self:
         self.start += by
         self.end += by
         return self
@@ -100,11 +101,11 @@ class Error:
 class NoClosingTagError(Error):
     CODE = "E001"
 
-    def __init__(self, tagname: str, span: Span):
+    def __init__(self, tagname: str, span: Span) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> has no closing tag", span)
 
     @staticmethod
-    def explain():
+    def explain() -> str:
         return textwrap.dedent(
             """
             If a block element such as `<video>` has no closing tag,
@@ -123,18 +124,18 @@ class NoClosingTagError(Error):
               <source>
             </video>
             ```
-            """
+            """,
         )
 
 
 class NoPrecedingBlankLineError(Error):
     CODE = "E002"
 
-    def __init__(self, tagname: str, ws_start: int, line_end: int):
+    def __init__(self, tagname: str, ws_start: int, line_end: int) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> is not preceded by a blank line", Span(ws_start, line_end))
 
     @staticmethod
-    def explain():
+    def explain() -> str:
         return textwrap.dedent(
             """
             If a block element such as `<video>` is preceded by a paragraph
@@ -160,18 +161,18 @@ class NoPrecedingBlankLineError(Error):
               <source>
             </video>
             ```
-            """
+            """,
         )
 
 
 class BlankLinesError(Error):
     CODE = "E003"
 
-    def __init__(self, tagname: str, span: Span):
+    def __init__(self, tagname: str, span: Span) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> element contains a blank line", span)
 
     @staticmethod
-    def explain():
+    def explain() -> str:
         return textwrap.dedent(
             """
             If a block element such as `<picture>` contains a blank line,
@@ -195,18 +196,18 @@ class BlankLinesError(Error):
               <source>      ## blank line is gone
             </picture>
             ```
-            """
+            """,
         )
 
 
 class BacktickLinkError(Error):
     CODE = "E004"
 
-    def __init__(self, span: Span):
+    def __init__(self, span: Span) -> None:
         super().__init__(type(self).CODE, "link contains backtick", span)
 
     @staticmethod
-    def explain():
+    def explain() -> str:
         return textwrap.dedent(
             """
             URLs in links wrapping text should not contain backticks (`).
@@ -224,7 +225,7 @@ class BacktickLinkError(Error):
             ```
             [Some link](https://github.com/rerun-io/rerun)
             ```
-            """
+            """,
         )
 
 
@@ -269,7 +270,7 @@ def get_non_void_element_spans(content: str, search_start: int, tagname: str) ->
     )
 
 
-def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, errors: list[Error]):
+def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, errors: list[Error]) -> None:
     before_open_tag = Span(spans.line.start, spans.element.start).slice(content)
     if len(before_open_tag) == 0:
         # `<picture>` is not indented
@@ -380,7 +381,7 @@ def check_file(path: str) -> str | None:
         return "\n".join([error.render(path, content) for error in errors])
 
 
-def lint(glob_pattern: str):
+def lint(glob_pattern: str) -> None:
     with ThreadPoolExecutor() as e:
         errors = [v for v in e.map(check_file, glob(glob_pattern, recursive=True)) if v is not None]
         if len(errors) > 0:
@@ -391,7 +392,7 @@ def lint(glob_pattern: str):
         print("No problems found")
 
 
-def explain(error_code: str):
+def explain(error_code: str) -> None:
     f = EXPLAIN[error_code]
     if not f:
         print(f'Unknown error code "{error_code}"')

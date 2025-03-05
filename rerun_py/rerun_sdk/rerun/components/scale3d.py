@@ -29,7 +29,6 @@ class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
     # __init__ can be found in scale3d_ext.py
 
     # Note: there are no fields here because Scale3D delegates to datatypes.Vec3D
-    pass
 
 
 class Scale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):

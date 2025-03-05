@@ -66,7 +66,7 @@ def test_instance_poses3d() -> None:
             f"    quaternions={quaternions!r}\n"  #
             f"    scales={scales!r}\n"  #
             f"    mat3x3={mat3x3!r}\n"  #
-            f")"
+            f")",
         )
         arch = rr.InstancePoses3D(
             translations=translations,

@@ -354,7 +354,7 @@ def main() -> None:
           - '-' for stdout
           - 'gs://' prefix for GCS
           - local path
-        """
+        """,
         ),
     )
 

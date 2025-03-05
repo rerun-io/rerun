@@ -162,7 +162,7 @@ def new_recording(
             make_thread_default=make_thread_default,
             application_path=application_path,
             default_enabled=default_enabled,
-        )
+        ),
     )
 
     if spawn:
@@ -367,7 +367,10 @@ class RecordingStream:
         return self
 
     def __exit__(
-        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self.flush(blocking=True)
 
@@ -385,7 +388,7 @@ class RecordingStream:
         # happened. The user is probably doing something sketch with generators or async code.
         if current_recording is not self:
             raise RuntimeError(
-                "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`."
+                "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`.",
             )
 
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
@@ -404,7 +407,7 @@ class RecordingStream:
         """
         bindings.flush(blocking, recording=self.to_native())
 
-    def __del__(self):  # type: ignore[no-untyped-def]
+    def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = RecordingStream.to_native(self)
         # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
         # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still
@@ -766,7 +769,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `set_index(sequence=…)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
         """
@@ -800,7 +803,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
         """
@@ -841,7 +844,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:
         """

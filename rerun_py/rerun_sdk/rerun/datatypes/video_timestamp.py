@@ -29,7 +29,7 @@ class VideoTimestamp:
     Presentation timestamps are typically measured as time since video start.
     """
 
-    def __init__(self: Any, timestamp_ns: VideoTimestampLike):
+    def __init__(self: Any, timestamp_ns: VideoTimestampLike) -> None:
         """
         Create a new instance of the VideoTimestamp datatype.
 

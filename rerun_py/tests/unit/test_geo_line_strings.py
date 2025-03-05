@@ -141,7 +141,7 @@ def test_geo_line_strings_invalid_shapes() -> None:
             lat_lon=np.array([
                 [[0, 0], (2, 1), [4, -1], (6, 0)],
                 [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
-            ])
+            ]),
         )
     with pytest.raises(ValueError):
         rr.GeoLineStrings(

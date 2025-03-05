@@ -118,7 +118,7 @@ def image_from_clipboard() -> Image:
 
 
 class Uploader:
-    def __init__(self):
+    def __init__(self) -> None:
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
 
@@ -281,7 +281,11 @@ class Uploader:
         return html_str
 
     def upload_data(
-        self, data: bytes, path: str, content_type: str | None = None, content_encoding: str | None = None
+        self,
+        data: bytes,
+        path: str,
+        content_type: str | None = None,
+        content_encoding: str | None = None,
     ) -> None:
         """
         Low-level upload of data.
@@ -389,10 +393,15 @@ Download an image, optimize it and create a multi-resolution stack:
 def main() -> None:
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
-        "path", type=str, nargs="?", help="Image file URL or path. If not provided, use the clipboard's content."
+        "path",
+        type=str,
+        nargs="?",
+        help="Image file URL or path. If not provided, use the clipboard's content.",
     )
     parser.add_argument(
-        "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
+        "--single",
+        action="store_true",
+        help="Upload a single image instead of creating a multi-resolution stack.",
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")

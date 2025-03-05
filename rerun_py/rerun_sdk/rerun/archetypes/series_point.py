@@ -65,7 +65,7 @@ class SeriesPoint(Archetype):
     )
 
     # Log the data on a timeline called "step".
-    for t in range(0, int(tau * 2 * 10.0)):
+    for t in range(int(tau * 2 * 10.0)):
         rr.set_index("step", sequence=t)
 
         rr.log("trig/sin", rr.Scalar(sin(float(t) / 10.0)))
@@ -91,7 +91,7 @@ class SeriesPoint(Archetype):
         name: datatypes.Utf8Like | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesPoint archetype.
 

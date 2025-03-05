@@ -23,7 +23,6 @@ class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin
     # __init__ can be found in video_timestamp_ext.py
 
     # Note: there are no fields here because VideoTimestamp delegates to datatypes.VideoTimestamp
-    pass
 
 
 class VideoTimestampBatch(datatypes.VideoTimestampBatch, ComponentBatchMixin):

@@ -21,7 +21,7 @@ __all__ = ["MultiEnum", "MultiEnumArrayLike", "MultiEnumBatch", "MultiEnumLike"]
 
 @define(init=False)
 class MultiEnum:
-    def __init__(self: Any, value1: datatypes.EnumTestLike, value2: datatypes.ValuedEnumLike | None = None):
+    def __init__(self: Any, value1: datatypes.EnumTestLike, value2: datatypes.ValuedEnumLike | None = None) -> None:
         """
         Create a new instance of the MultiEnum datatype.
 

@@ -30,7 +30,7 @@ class TensorSliceSelection(Archetype):
         height: datatypes.TensorDimensionSelectionLike | None = None,
         indices: datatypes.TensorDimensionIndexSelectionArrayLike | None = None,
         slider: blueprint_datatypes.TensorDimensionIndexSliderArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the TensorSliceSelection archetype.
 

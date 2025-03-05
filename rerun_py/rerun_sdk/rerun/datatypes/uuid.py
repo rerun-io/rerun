@@ -28,7 +28,7 @@ __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike"]
 class Uuid(UuidExt):
     """**Datatype**: A 16-byte UUID."""
 
-    def __init__(self: Any, bytes: UuidLike):
+    def __init__(self: Any, bytes: UuidLike) -> None:
         """
         Create a new instance of the Uuid datatype.
 

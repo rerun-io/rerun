@@ -20,7 +20,7 @@ class ComponentColumnSelectorExt:
         *,
         entity_path: datatypes.EntityPathLike | None = None,
         component: datatypes.Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ComponentColumnSelector datatype.
 

@@ -124,7 +124,7 @@ class LineStrips3D(Archetype):
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the LineStrips3D archetype.
 

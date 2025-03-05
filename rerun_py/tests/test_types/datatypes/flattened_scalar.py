@@ -21,7 +21,7 @@ __all__ = ["FlattenedScalar", "FlattenedScalarArrayLike", "FlattenedScalarBatch"
 
 @define(init=False)
 class FlattenedScalar:
-    def __init__(self: Any, value: FlattenedScalarLike):
+    def __init__(self: Any, value: FlattenedScalarLike) -> None:
         """Create a new instance of the FlattenedScalar datatype."""
 
         # You can define your own __init__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py

@@ -21,7 +21,7 @@ class TensorExt:
         *,
         dim_names: Sequence[str] | None = None,
         value_range: Range1DLike | None = None,
-    ):
+    ) -> None:
         """
         Construct a `Tensor` archetype.
 

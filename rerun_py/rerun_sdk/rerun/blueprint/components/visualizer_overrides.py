@@ -33,7 +33,6 @@ class VisualizerOverrides(blueprint_datatypes.Utf8List, ComponentMixin):
     # You can define your own __init__ function as a member of VisualizerOverridesExt in visualizer_overrides_ext.py
 
     # Note: there are no fields here because VisualizerOverrides delegates to datatypes.Utf8List
-    pass
 
 
 class VisualizerOverridesBatch(blueprint_datatypes.Utf8ListBatch, ComponentBatchMixin):

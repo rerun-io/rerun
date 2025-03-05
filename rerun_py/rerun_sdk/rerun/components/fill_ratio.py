@@ -29,7 +29,6 @@ class FillRatio(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of FillRatioExt in fill_ratio_ext.py
 
     # Note: there are no fields here because FillRatio delegates to datatypes.Float32
-    pass
 
 
 class FillRatioBatch(datatypes.Float32Batch, ComponentBatchMixin):

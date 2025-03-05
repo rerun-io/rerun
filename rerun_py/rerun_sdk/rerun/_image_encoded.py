@@ -63,7 +63,7 @@ class ImageFormat:
     which has to be specified specifying in order to set the RGB size of the image.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
     def __str__(self) -> str:

@@ -44,7 +44,7 @@ class LineStrip2D(LineStrip2DExt, ComponentMixin):
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, points: LineStrip2DLike):
+    def __init__(self: Any, points: LineStrip2DLike) -> None:
         """Create a new instance of the LineStrip2D component."""
 
         # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py

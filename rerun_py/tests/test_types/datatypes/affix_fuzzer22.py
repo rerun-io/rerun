@@ -24,7 +24,7 @@ __all__ = ["AffixFuzzer22", "AffixFuzzer22ArrayLike", "AffixFuzzer22Batch", "Aff
 
 @define(init=False)
 class AffixFuzzer22:
-    def __init__(self: Any, fixed_sized_native: AffixFuzzer22Like):
+    def __init__(self: Any, fixed_sized_native: AffixFuzzer22Like) -> None:
         """Create a new instance of the AffixFuzzer22 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py

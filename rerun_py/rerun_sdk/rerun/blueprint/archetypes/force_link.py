@@ -29,7 +29,7 @@ class ForceLink(Archetype):
         enabled: datatypes.BoolLike | None = None,
         distance: datatypes.Float64Like | None = None,
         iterations: datatypes.UInt64Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ForceLink archetype.
 

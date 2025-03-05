@@ -16,7 +16,7 @@ class GeoLineStringsExt:
         lat_lon: components.GeoLineStringArrayLike,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the GeoLineStrings archetype.
 

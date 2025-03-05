@@ -22,7 +22,6 @@ class ClassId(datatypes.ClassId, ComponentMixin):
     # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
 
     # Note: there are no fields here because ClassId delegates to datatypes.ClassId
-    pass
 
 
 class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):

@@ -22,7 +22,6 @@ class IncludedContent(datatypes.EntityPath, ComponentMixin):
     # You can define your own __init__ function as a member of IncludedContentExt in included_content_ext.py
 
     # Note: there are no fields here because IncludedContent delegates to datatypes.EntityPath
-    pass
 
 
 class IncludedContentBatch(datatypes.EntityPathBatch, ComponentBatchMixin):

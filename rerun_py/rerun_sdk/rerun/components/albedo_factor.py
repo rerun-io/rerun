@@ -22,7 +22,6 @@ class AlbedoFactor(datatypes.Rgba32, ComponentMixin):
     # You can define your own __init__ function as a member of AlbedoFactorExt in albedo_factor_ext.py
 
     # Note: there are no fields here because AlbedoFactor delegates to datatypes.Rgba32
-    pass
 
 
 class AlbedoFactorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):

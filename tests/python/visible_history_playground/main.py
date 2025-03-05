@@ -24,7 +24,7 @@ rr.log("3dworld/image/pinhole", rr.Pinhole(focal_length=20, width=100, height=10
 
 date_offset = int(datetime.datetime(year=2023, month=1, day=1).timestamp())
 
-for i in range(0, 100):
+for i in range(100):
     rr.set_index("temporal_100day_span", timedelta=i * 24 * 3600)
     rr.set_index("temporal_100s_span", timedelta=i)
     rr.set_index("temporal_100ms_span", timedelta=i / 1000)

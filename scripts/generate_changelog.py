@@ -41,7 +41,7 @@ OFFICIAL_RERUN_DEVS = [
 ]
 
 
-def eprint(*args, **kwargs) -> None:  # type: ignore
+def eprint(*args: Any, **kwargs: Any) -> None:  # type: ignore
     print(*args, file=sys.stderr, **kwargs)  # type: ignore
 
 
@@ -173,7 +173,7 @@ def main() -> None:
             pool.imap(fetch_pr_info_from_commit_info, commit_infos),
             total=len(commit_infos),
             desc="Fetch PR info commits",
-        )
+        ),
     )
 
     chronological = []

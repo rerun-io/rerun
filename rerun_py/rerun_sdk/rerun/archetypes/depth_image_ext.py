@@ -50,7 +50,7 @@ class DepthImageExt:
         depth_range: Range1DLike | None = None,
         point_fill_ratio: Float32Like | None = None,
         draw_order: Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the DepthImage archetype.
 
