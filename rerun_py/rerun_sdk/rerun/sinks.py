@@ -192,7 +192,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
     Closes all TCP connections, servers, and files.
 
     Closes all TCP connections, servers, and files that have been opened with
-    [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+    [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
 
     Parameters
     ----------

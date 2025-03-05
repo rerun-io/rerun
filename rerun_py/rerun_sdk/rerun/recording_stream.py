@@ -40,7 +40,7 @@ def new_recording(
     If you only need a single global recording, [`rerun.init`][] might be simpler.
 
     Note that unless setting `spawn=True` new recording streams always begin connected to a buffered sink.
-    To send the data to a viewer or file you will likely want to call [`rerun.connect`][] or [`rerun.save`][]
+    To send the data to a viewer or file you will likely want to call [`rerun.connect_grpc`][] or [`rerun.save`][]
     explicitly.
 
     !!! Warning
@@ -331,7 +331,7 @@ class RecordingStream:
     - Metadata-related functions:
         [`rerun.is_enabled`][], [`rerun.get_recording_id`][], …
     - Sink-related functions:
-        [`rerun.connect`][], [`rerun.spawn`][], …
+        [`rerun.connect_grpc`][], [`rerun.spawn`][], …
     - Time-related functions:
         [`rerun.set_index`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
     - Log-related functions:
@@ -526,7 +526,7 @@ class RecordingStream:
         Closes all TCP connections, servers, and files.
 
         Closes all TCP connections, servers, and files that have been opened with
-        [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+        [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
         """
 
         from .sinks import disconnect
