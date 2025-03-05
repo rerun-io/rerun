@@ -6,7 +6,6 @@ from typing import Any
 
 import pyarrow as pa
 import rerun_bindings as bindings
-from typing_extensions import deprecated
 
 from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
@@ -166,69 +165,6 @@ def log(
     _log_components(
         entity_path=entity_path,
         components=components,
-        static=static,
-        recording=recording,  # NOLINT
-    )
-
-
-@deprecated(
-    """Use `log` with partial update APIs instead.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
-)
-@catch_and_log_exceptions()
-def log_components(
-    entity_path: str | list[str],
-    components: Iterable[DescribedComponentBatch],
-    *,
-    static: bool = False,
-    recording: RecordingStream | None = None,
-    strict: bool | None = None,
-) -> None:
-    r"""
-    Log an entity from a collection of `ComponentBatchLike` objects.
-
-    See also: [`rerun.log`][].
-
-    Parameters
-    ----------
-    entity_path:
-        Path to the entity in the space hierarchy.
-
-        The entity path can either be a string
-        (with special characters escaped, split on unescaped slashes)
-        or a list of unescaped strings.
-        This means that logging to `"world/my\ image\!"` is the same as logging
-        to ["world", "my image!"].
-
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
-
-    components:
-        A collection of `ComponentBatchLike` objects.
-
-    static:
-        If true, the components will be logged as static data.
-
-        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
-        any temporal data of the same type.
-
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
-
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
-        defaults to the current active data recording, if there is one. See
-        also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    strict:
-        If True, raise exceptions on non-loggable data.
-        If False, warn on non-loggable data.
-        if None, use the global default from `rerun.strict_mode()`
-
-    """
-
-    _log_components(
-        entity_path=entity_path,
-        components=list(components),
         static=static,
         recording=recording,  # NOLINT
     )

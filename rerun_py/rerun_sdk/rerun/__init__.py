@@ -47,7 +47,6 @@ from ._log import (
     IndicatorComponentBatch as IndicatorComponentBatch,
     escape_entity_path_part as escape_entity_path_part,
     log as log,
-    log_components as log_components,
     log_file_from_contents as log_file_from_contents,
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
