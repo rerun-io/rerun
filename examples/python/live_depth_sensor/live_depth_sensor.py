@@ -73,7 +73,7 @@ def run_realsense(num_frames: int | None) -> None:
             frame_nr += 1
 
             frames = pipe.wait_for_frames()
-            for f in frames:
+            for _f in frames:
                 # Log the depth frame
                 depth_frame = frames.get_depth_frame()
                 depth_units = depth_frame.get_units()

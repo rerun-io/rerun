@@ -35,9 +35,9 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
 
     try:
         # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
+        return tensor.numpy(force=True)
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class Mesh3DExt:

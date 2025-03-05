@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import overload
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
-from rerun.recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from rerun.recording_stream import RecordingStream
 
 # --- Time ---
 
 
-# These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
+# These overloads ensure that mypy can catch errors that would otherwise not be caught until runtime.
 @overload
 def set_index(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
 
@@ -51,6 +52,8 @@ def set_index(
     You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
     you must only use `timedelta` for that timeline going forward.
 
+    The columnar equivalent to this function is [`rerun.IndexColumn`][].
+
     Parameters
     ----------
     timeline : str
@@ -73,7 +76,9 @@ def set_index(
 
     """
     if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
-        raise ValueError("Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')")
+        raise ValueError(
+            "set_index: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+        )
 
     if sequence is not None:
         bindings.set_time_sequence(
@@ -82,10 +87,7 @@ def set_index(
             recording=recording.to_native() if recording is not None else None,
         )
     elif timedelta is not None:
-        if isinstance(timedelta, (int, float)):
-            nanos = int(1e9 * timedelta)  # Interpret as seconds and convert to nanos
-        else:
-            nanos = to_nanos(timedelta)
+        nanos = to_nanos(timedelta)
         # TODO(#8635): call a function that is specific to time-deltas
         bindings.set_time_nanos(
             timeline,
@@ -93,10 +95,7 @@ def set_index(
             recording=recording.to_native() if recording is not None else None,
         )
     elif datetime is not None:
-        if isinstance(datetime, (int, float)):
-            nanos = int(1e9 * datetime)  # Interpret as seconds and convert to nanos
-        else:
-            nanos = to_nanos_since_epoch(datetime)
+        nanos = to_nanos_since_epoch(datetime)
         # TODO(#8635): call a function that is specific to absolute times
         bindings.set_time_nanos(
             timeline,
@@ -106,10 +105,12 @@ def set_index(
 
 
 def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
-    if isinstance(timedelta_obj, (int, float)):
-        return int(timedelta_obj * 1e9)
+    if isinstance(timedelta_obj, (int, np.integer)):
+        return 1_000_000_000 * int(timedelta_obj)  # Interpret as seconds and convert to nanos
+    elif isinstance(timedelta_obj, float):
+        return round(1e9 * timedelta_obj)  # Interpret as seconds and convert to nanos
     elif isinstance(timedelta_obj, timedelta):
-        return int(timedelta_obj.total_seconds() * 1e9)
+        return round(1e9 * timedelta_obj.total_seconds())
     elif isinstance(timedelta_obj, np.timedelta64):
         return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
@@ -119,15 +120,17 @@ def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
 
 
 def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> int:
-    if isinstance(date_time, (int, float)):
-        return int(date_time * 1e9)
+    if isinstance(date_time, (int, np.integer)):
+        return 1_000_000_000 * int(date_time)  # Interpret as seconds and convert to nanos
+    elif isinstance(date_time, float):
+        return round(1e9 * date_time)  # Interpret as seconds and convert to nanos
     elif isinstance(date_time, datetime):
         if date_time.tzinfo is None:
             date_time = date_time.replace(tzinfo=timezone.utc)
         else:
             date_time = date_time.astimezone(timezone.utc)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
-        return int((date_time - epoch).total_seconds() * 1e9)
+        return round(1e9 * (date_time - epoch).total_seconds())
     elif isinstance(date_time, np.datetime64):
         return date_time.astype("int64")  # type: ignore[no-any-return]
     else:

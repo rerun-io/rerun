@@ -8,7 +8,8 @@ import subprocess
 import tempfile
 import threading
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import rerun as rr
 import rerun.blueprint as rrb

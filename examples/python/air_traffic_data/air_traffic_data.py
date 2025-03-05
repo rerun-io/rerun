@@ -93,7 +93,7 @@ def log_region_boundaries_for_country(
     # cspell:disable-next-line
     map_data = gpd.read_file(MAP_DATA_DIR / f"NUTS_RG_01M_2021_4326_LEVL_{level}.json").set_crs("epsg:4326").to_crs(crs)
 
-    for i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
+    for _i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
         entity_path = f"region_boundaries/{country_code}/{level}/{row.NUTS_ID}"
         lines = shapely_geom_to_numpy(row.geometry)
         rr.log(entity_path + "/2D", rr.LineStrips2D(lines, colors=color), static=True)
@@ -326,7 +326,7 @@ class MeasurementBatchLogger:
             rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.from_fields(color=color), static=True)
             self._position_indicators.add(icao_id)
 
-        timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
+        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
         pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
 
         raw_coordinates = rr.AnyValues(
@@ -355,7 +355,7 @@ class MeasurementBatchLogger:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "ground_status"].drop_nulls()
 
-        timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
+        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
         columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
         rr.send_columns(entity_path, [timestamps], columns)
@@ -372,7 +372,7 @@ class MeasurementBatchLogger:
 
         rr.send_columns(
             entity_path,
-            [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
+            [rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())],
             metadata,
         )
 

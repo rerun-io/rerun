@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from typing import Iterable, Protocol, TypeVar
+from collections.abc import Iterable
+from datetime import datetime, timedelta
+from typing import Protocol, TypeVar, overload
 
+import numpy as np
 import pyarrow as pa
 import rerun_bindings as bindings
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from ._baseclasses import Archetype, ComponentColumn, ComponentDescriptor
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
+from .time import to_nanos, to_nanos_since_epoch
 
 
 class TimeColumnLike(Protocol):
@@ -22,9 +27,97 @@ class TimeColumnLike(Protocol):
         ...
 
 
+class IndexColumn(TimeColumnLike):
+    """
+    A column of index (time) values.
+
+    Columnar equivalent to [`rerun.set_index`][].
+    """
+
+    # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
+    @overload
+    def __init__(self, timeline: str, *, sequence: Iterable[int] | None = None) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        timeline: str,
+        *,
+        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        timeline: str,
+        *,
+        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        timeline: str,
+        *,
+        sequence: Iterable[int] | None = None,
+        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
+        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
+    ):
+        """
+        Create a column of index values.
+
+        There is no requirement of monotonicity. You can move the time backwards if you like.
+
+        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
+        you must only use `timedelta` for that timeline going forward.
+
+        Parameters
+        ----------
+        timeline:
+            The name of the timeline.
+        sequence:
+            Used for sequential indices, like `frame_nr`.
+            Must be integers.
+        timedelta:
+            Used for relative times, like `time_since_start`.
+            Must either be in seconds, [`datetime.timedelta`][], or [`numpy.timedelta64`][].
+        datetime:
+            Used for absolute time indices, like `capture_time`.
+            Must either be in seconds since Unix epoch, [`datetime.datetime`][], or [`numpy.datetime64`][].
+
+        """
+        if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+            raise ValueError(
+                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+            )
+
+        self.timeline = timeline
+
+        if sequence is not None:
+            self.type = pa.int64()
+            self.times = sequence
+        elif timedelta is not None:
+            self.type = pa.duration("ns")
+            self.times = [to_nanos(td) for td in timedelta]
+        elif datetime is not None:
+            self.type = pa.timestamp("ns")
+            self.times = [to_nanos_since_epoch(dt) for dt in datetime]
+
+    def timeline_name(self) -> str:
+        """Returns the name of the timeline."""
+        return self.timeline
+
+    def as_arrow_array(self) -> pa.Array:
+        return pa.array(self.times, type=self.type)
+
+
+@deprecated(
+    """Use `rr.IndexColumn` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 class TimeSequenceColumn(TimeColumnLike):
     """
-    A column of time values that are represented as an integer sequence.
+    DEPRECATED: A column of time values that are represented as an integer sequence.
 
     Columnar equivalent to [`rerun.set_time_sequence`][rerun.set_time_sequence].
     """
@@ -52,9 +145,13 @@ class TimeSequenceColumn(TimeColumnLike):
         return pa.array(self.times, type=pa.int64())
 
 
+@deprecated(
+    """Use `rr.IndexColumn` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 class TimeSecondsColumn(TimeColumnLike):
     """
-    A column of time values that are represented as floating point seconds.
+    DEPRECATED: A column of time values that are represented as floating point seconds.
 
     Columnar equivalent to [`rerun.set_time_seconds`][rerun.set_time_seconds].
     """
@@ -82,9 +179,13 @@ class TimeSecondsColumn(TimeColumnLike):
         return pa.array([int(t * 1e9) for t in self.times], type=pa.timestamp("ns"))
 
 
+@deprecated(
+    """Use `rr.IndexColumn` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+)
 class TimeNanosColumn(TimeColumnLike):
     """
-    A column of time values that are represented as integer nanoseconds.
+    DEPRECATED: A column of time values that are represented as integer nanoseconds.
 
     Columnar equivalent to [`rerun.set_time_nanos`][rerun.set_time_nanos].
     """
@@ -143,8 +244,7 @@ def send_columns(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     indexes:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-        of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
-        [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
+        of timestamps. You usually want to use [`rerun.IndexColumn`][] for this.
     columns:
         The columns of components to log. Each object represents a single column of data.
 

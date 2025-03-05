@@ -9,21 +9,21 @@ To add new specimens to the zoo, add a function whose name starts with "specimen
 from __future__ import annotations
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import rerun as rr
 import rerun.components as rrc
 
 
-def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColumn]:
+def frame_times(t: int | Sequence[int], *args: int) -> list[rr.IndexColumn]:
     if isinstance(t, int):
         t = [t]
     else:
         t = list(t)
     if args:
         t.extend(args)
-    return [rr.TimeSequenceColumn("frame", t)]
+    return [rr.IndexColumn("frame", sequence=t)]
 
 
 def set_frame_time(t: int) -> None:

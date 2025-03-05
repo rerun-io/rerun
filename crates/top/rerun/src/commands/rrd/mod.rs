@@ -2,11 +2,13 @@ mod compare;
 mod filter;
 mod merge_compact;
 mod print;
+mod verify;
 
 use self::compare::CompareCommand;
 use self::filter::FilterCommand;
 use self::merge_compact::{CompactCommand, MergeCommand};
 use self::print::PrintCommand;
+use self::verify::VerifyCommand;
 
 // ---
 
@@ -28,6 +30,11 @@ pub enum RrdCommands {
     ///
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
+
+    /// Verify the that the .rrd file can be loaded and correctly interpreted.
+    ///
+    /// Can be used to ensure that the current Rerun version can load the data.
+    Verify(VerifyCommand),
 
     /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
     ///
@@ -76,6 +83,7 @@ impl RrdCommands {
                     .with_context(|| format!("current directory {:?}", std::env::current_dir()))
             }
             Self::Print(print_command) => print_command.run(),
+            Self::Verify(verify_command) => verify_command.run(),
             Self::Compact(compact_command) => compact_command.run(),
             Self::Merge(merge_command) => merge_command.run(),
             Self::Filter(drop_command) => drop_command.run(),

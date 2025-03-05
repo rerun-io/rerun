@@ -141,13 +141,16 @@ def download_progress(url: str, dst: Path) -> None:
     total = int(resp.headers.get("content-length", 0))
     chunk_size = 1024 * 1024
     # Can also replace 'file' with a io.BytesIO object
-    with open(dst, "wb") as file, tqdm(
-        desc=dst.name,
-        total=total,
-        unit="iB",
-        unit_scale=True,
-        unit_divisor=1024,
-    ) as bar:
+    with (
+        open(dst, "wb") as file,
+        tqdm(
+            desc=dst.name,
+            total=total,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar,
+    ):
         for data in resp.iter_content(chunk_size=chunk_size):
             size = file.write(data)
             bar.update(size)

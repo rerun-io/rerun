@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import collections
+from collections.abc import Sequence
 from math import prod
-from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
+from typing import TYPE_CHECKING, Any, Final, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -36,7 +37,7 @@ def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
         # Make available to the cpu
         return tensor.numpy(force=True)  # type: ignore[union-attr]
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class TensorDataExt:

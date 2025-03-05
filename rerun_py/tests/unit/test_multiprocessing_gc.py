@@ -10,7 +10,7 @@ import rerun as rr
 try:
     import torch.multiprocessing as multiprocessing
 except ImportError:
-    import multiprocessing  # type: ignore[no-redef]
+    import multiprocessing
 
 
 def task() -> None:
@@ -31,4 +31,4 @@ def test_multiprocessing_gc() -> None:
     if proc.is_alive():
         # Terminate so our test doesn't get stuck
         proc.terminate()
-        assert False, "Process deadlocked during gc.collect()"
+        raise AssertionError("Process deadlocked during gc.collect()")

@@ -33,9 +33,9 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
 
     try:
         # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
+        return tensor.numpy(force=True)
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class DepthImageExt:
@@ -115,7 +115,7 @@ class DepthImageExt:
         try:
             datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage") from None
 
         self.__attrs_init__(
             buffer=image.tobytes(),

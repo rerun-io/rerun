@@ -109,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        indexes=[rr.TimeSecondsColumn("time", times)],
+        indexes=[rr.IndexColumn("time", timedelta=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),
@@ -349,8 +349,8 @@ class Points3D(Points3DExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

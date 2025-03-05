@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from typing import Optional
 
 from ..datatypes import Float32ArrayLike, Utf8Like
 from .api import Container, View

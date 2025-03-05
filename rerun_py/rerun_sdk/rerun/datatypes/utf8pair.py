@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -67,7 +68,7 @@ class Utf8Pair(Utf8PairExt):
 
 
 if TYPE_CHECKING:
-    Utf8PairLike = Union[Utf8Pair, Tuple[datatypes.Utf8Like, datatypes.Utf8Like]]
+    Utf8PairLike = Union[Utf8Pair, tuple[datatypes.Utf8Like, datatypes.Utf8Like]]
 else:
     Utf8PairLike = Any
 

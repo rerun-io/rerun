@@ -33,7 +33,7 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
         # Make available to the cpu
         return tensor.numpy(force=True)  # type: ignore[union-attr]
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class SegmentationImageExt:
@@ -62,7 +62,7 @@ class SegmentationImageExt:
         try:
             datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {image.dtype} for SegmentationImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for SegmentationImage") from None
 
         self.__attrs_init__(
             buffer=image.tobytes(),

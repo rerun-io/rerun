@@ -200,7 +200,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.send_columns(
         "box",
-        indexes=[rr.TimeSequenceColumn("tick", range(1, 101))],
+        indexes=[rr.IndexColumn("tick", sequence=range(1, 101))],
         columns=rr.Transform3D.columns(
             translation=[[0, 0, t / 10.0] for t in range(100)],
             rotation_axis_angle=[
@@ -448,8 +448,8 @@ class Transform3D(Transform3DExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

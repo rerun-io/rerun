@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -35,9 +36,9 @@ class UVec3D(UVec3DExt):
 
     xyz: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec3DExt in uvec3d_ext.py
-        return np.asarray(self.xyz, dtype=dtype)
+        return np.asarray(self.xyz, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:
