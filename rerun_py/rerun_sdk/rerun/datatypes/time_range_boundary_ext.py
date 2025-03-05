@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from . import TimeInt
 
@@ -10,6 +10,26 @@ if TYPE_CHECKING:
 
 class TimeRangeBoundaryExt:
     """Extension for [TimeRangeBoundary][rerun.datatypes.TimeRangeBoundary]."""
+
+    @overload
+    @staticmethod
+    def cursor_relative() -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def cursor_relative(offset: TimeInt) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def cursor_relative(*, seq: int) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def cursor_relative(*, seconds: float) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def cursor_relative(*, nanos: int) -> TimeRangeBoundary: ...
 
     @staticmethod
     def cursor_relative(
@@ -51,7 +71,7 @@ class TimeRangeBoundaryExt:
             if seq is None and seconds is None and nanos is None:
                 offset = TimeInt(seq=0)
             else:
-                offset = TimeInt(seq=seq, seconds=seconds, nanos=nanos)
+                offset = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]
         elif seq is not None or seconds is not None or nanos is not None:
             raise ValueError("Only one of time, seq, seconds, or nanos can be provided.")
 
@@ -68,6 +88,22 @@ class TimeRangeBoundaryExt:
         from .time_range_boundary import TimeRangeBoundary
 
         return TimeRangeBoundary(inner=None, kind="infinite")
+
+    @overload
+    @staticmethod
+    def absolute(time: TimeInt) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def absolute(*, seq: int) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def absolute(*, seconds: float) -> TimeRangeBoundary: ...
+
+    @overload
+    @staticmethod
+    def absolute(*, nanos: int) -> TimeRangeBoundary: ...
 
     @staticmethod
     def absolute(
@@ -108,6 +144,6 @@ class TimeRangeBoundaryExt:
         from .time_range_boundary import TimeRangeBoundary
 
         if time is None:
-            time = TimeInt(seq=seq, seconds=seconds, nanos=nanos)
+            time = TimeInt(seq=seq, seconds=seconds, nanos=nanos)  # type: ignore[call-overload]
 
         return TimeRangeBoundary(inner=time, kind="absolute")
