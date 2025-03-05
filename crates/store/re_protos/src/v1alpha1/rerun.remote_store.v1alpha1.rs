@@ -15,12 +15,12 @@ pub struct Collection {
 }
 impl ::prost::Name for Collection {
     const NAME: &'static str = "Collection";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.Collection".into()
+        "rerun.remote_store.v1alpha1.Collection".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.Collection".into()
+        "/rerun.remote_store.v1alpha1.Collection".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -32,12 +32,12 @@ pub struct CollectionFilter {
 }
 impl ::prost::Name for CollectionFilter {
     const NAME: &'static str = "CollectionFilter";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CollectionFilter".into()
+        "rerun.remote_store.v1alpha1.CollectionFilter".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CollectionFilter".into()
+        "/rerun.remote_store.v1alpha1.CollectionFilter".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -47,12 +47,12 @@ pub struct FindCollectionRequest {
 }
 impl ::prost::Name for FindCollectionRequest {
     const NAME: &'static str = "FindCollectionRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FindCollectionRequest".into()
+        "rerun.remote_store.v1alpha1.FindCollectionRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FindCollectionRequest".into()
+        "/rerun.remote_store.v1alpha1.FindCollectionRequest".into()
     }
 }
 /// Returns matching collection, if there is exactly one match
@@ -63,12 +63,12 @@ pub struct FindCollectionResponse {
 }
 impl ::prost::Name for FindCollectionResponse {
     const NAME: &'static str = "FindCollectionResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FindCollectionResponse".into()
+        "rerun.remote_store.v1alpha1.FindCollectionResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FindCollectionResponse".into()
+        "/rerun.remote_store.v1alpha1.FindCollectionResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -78,12 +78,12 @@ pub struct FindCollectionsRequest {
 }
 impl ::prost::Name for FindCollectionsRequest {
     const NAME: &'static str = "FindCollectionsRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FindCollectionsRequest".into()
+        "rerun.remote_store.v1alpha1.FindCollectionsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FindCollectionsRequest".into()
+        "/rerun.remote_store.v1alpha1.FindCollectionsRequest".into()
     }
 }
 /// Contains zero or more matching collections
@@ -94,19 +94,22 @@ pub struct FindCollectionsResponse {
 }
 impl ::prost::Name for FindCollectionsResponse {
     const NAME: &'static str = "FindCollectionsResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FindCollectionsResponse".into()
+        "rerun.remote_store.v1alpha1.FindCollectionsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FindCollectionsResponse".into()
+        "/rerun.remote_store.v1alpha1.FindCollectionsResponse".into()
     }
 }
 /// DataframePart is arrow IPC encoded RecordBatch
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DataframePart {
     /// encoder version used to encode the data
-    #[prost(enumeration = "super::super::common::v0::EncoderVersion", tag = "1")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::EncoderVersion",
+        tag = "1"
+    )]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
     #[prost(bytes = "vec", tag = "1000")]
@@ -114,12 +117,12 @@ pub struct DataframePart {
 }
 impl ::prost::Name for DataframePart {
     const NAME: &'static str = "DataframePart";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.DataframePart".into()
+        "rerun.remote_store.v1alpha1.DataframePart".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.DataframePart".into()
+        "/rerun.remote_store.v1alpha1.DataframePart".into()
     }
 }
 /// GetChunksRange is a streaming API that allows to fetch chunks within a time range
@@ -130,22 +133,22 @@ pub struct GetChunksRangeRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// recording id from which we're want to fetch the chunk
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
     /// timeline for which we specify the time range
     #[prost(message, optional, tag = "3")]
-    pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// time range for which we want to fetch the chunks
     #[prost(message, optional, tag = "4")]
-    pub time_range: ::core::option::Option<super::super::common::v0::TimeRange>,
+    pub time_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
 }
 impl ::prost::Name for GetChunksRangeRequest {
     const NAME: &'static str = "GetChunksRangeRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetChunksRangeRequest".into()
+        "rerun.remote_store.v1alpha1.GetChunksRangeRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetChunksRangeRequest".into()
+        "/rerun.remote_store.v1alpha1.GetChunksRangeRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -155,19 +158,19 @@ pub struct GetChunksRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// recording id from which we're want to fetch the chunk ids
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
     /// batch of chunk ids for which we want to stream back chunks
     #[prost(message, repeated, tag = "3")]
-    pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v0::Tuid>,
+    pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
 }
 impl ::prost::Name for GetChunksRequest {
     const NAME: &'static str = "GetChunksRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetChunksRequest".into()
+        "rerun.remote_store.v1alpha1.GetChunksRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetChunksRequest".into()
+        "/rerun.remote_store.v1alpha1.GetChunksRequest".into()
     }
 }
 /// used to define which column we want to index
@@ -175,7 +178,7 @@ impl ::prost::Name for GetChunksRequest {
 pub struct IndexColumn {
     /// The path of the entity.
     #[prost(message, optional, tag = "1")]
-    pub entity_path: ::core::option::Option<super::super::common::v0::EntityPath>,
+    pub entity_path: ::core::option::Option<super::super::common::v1alpha1::EntityPath>,
     /// Optional name of the `Archetype` associated with this data.
     #[prost(string, optional, tag = "2")]
     pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
@@ -188,12 +191,12 @@ pub struct IndexColumn {
 }
 impl ::prost::Name for IndexColumn {
     const NAME: &'static str = "IndexColumn";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.IndexColumn".into()
+        "rerun.remote_store.v1alpha1.IndexColumn".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.IndexColumn".into()
+        "/rerun.remote_store.v1alpha1.IndexColumn".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -213,16 +216,16 @@ pub struct CreateIndexRequest {
     /// TODO(zehiko) this might go away and we might just index
     /// across all the timelines
     #[prost(message, optional, tag = "4")]
-    pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
 }
 impl ::prost::Name for CreateIndexRequest {
     const NAME: &'static str = "CreateIndexRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateIndexRequest".into()
+        "rerun.remote_store.v1alpha1.CreateIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateIndexRequest".into()
+        "/rerun.remote_store.v1alpha1.CreateIndexRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -236,12 +239,12 @@ pub struct ReIndexRequest {
 }
 impl ::prost::Name for ReIndexRequest {
     const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ReIndexRequest".into()
+        "rerun.remote_store.v1alpha1.ReIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ReIndexRequest".into()
+        "/rerun.remote_store.v1alpha1.ReIndexRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -263,12 +266,12 @@ pub mod index_properties {
 }
 impl ::prost::Name for IndexProperties {
     const NAME: &'static str = "IndexProperties";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.IndexProperties".into()
+        "rerun.remote_store.v1alpha1.IndexProperties".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.IndexProperties".into()
+        "/rerun.remote_store.v1alpha1.IndexProperties".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -281,12 +284,12 @@ pub struct InvertedIndex {
 }
 impl ::prost::Name for InvertedIndex {
     const NAME: &'static str = "InvertedIndex";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.InvertedIndex".into()
+        "rerun.remote_store.v1alpha1.InvertedIndex".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.InvertedIndex".into()
+        "/rerun.remote_store.v1alpha1.InvertedIndex".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -300,12 +303,12 @@ pub struct VectorIvfPqIndex {
 }
 impl ::prost::Name for VectorIvfPqIndex {
     const NAME: &'static str = "VectorIvfPqIndex";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.VectorIvfPqIndex".into()
+        "rerun.remote_store.v1alpha1.VectorIvfPqIndex".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.VectorIvfPqIndex".into()
+        "/rerun.remote_store.v1alpha1.VectorIvfPqIndex".into()
     }
 }
 /// TODO(zehiko) add properties as needed
@@ -313,12 +316,12 @@ impl ::prost::Name for VectorIvfPqIndex {
 pub struct BTreeIndex {}
 impl ::prost::Name for BTreeIndex {
     const NAME: &'static str = "BTreeIndex";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.BTreeIndex".into()
+        "rerun.remote_store.v1alpha1.BTreeIndex".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.BTreeIndex".into()
+        "/rerun.remote_store.v1alpha1.BTreeIndex".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -328,24 +331,24 @@ pub struct CreateIndexResponse {
 }
 impl ::prost::Name for CreateIndexResponse {
     const NAME: &'static str = "CreateIndexResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateIndexResponse".into()
+        "rerun.remote_store.v1alpha1.CreateIndexResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateIndexResponse".into()
+        "/rerun.remote_store.v1alpha1.CreateIndexResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ReIndexResponse {}
 impl ::prost::Name for ReIndexResponse {
     const NAME: &'static str = "ReIndexResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ReIndexResponse".into()
+        "rerun.remote_store.v1alpha1.ReIndexResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ReIndexResponse".into()
+        "/rerun.remote_store.v1alpha1.ReIndexResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -372,12 +375,12 @@ pub struct SearchIndexRequest {
 }
 impl ::prost::Name for SearchIndexRequest {
     const NAME: &'static str = "SearchIndexRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.SearchIndexRequest".into()
+        "rerun.remote_store.v1alpha1.SearchIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.SearchIndexRequest".into()
+        "/rerun.remote_store.v1alpha1.SearchIndexRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -401,12 +404,12 @@ pub mod index_query_properties {
 }
 impl ::prost::Name for IndexQueryProperties {
     const NAME: &'static str = "IndexQueryProperties";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.IndexQueryProperties".into()
+        "rerun.remote_store.v1alpha1.IndexQueryProperties".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.IndexQueryProperties".into()
+        "/rerun.remote_store.v1alpha1.IndexQueryProperties".into()
     }
 }
 /// TODO(zehiko) add properties as needed
@@ -414,12 +417,12 @@ impl ::prost::Name for IndexQueryProperties {
 pub struct InvertedIndexQuery {}
 impl ::prost::Name for InvertedIndexQuery {
     const NAME: &'static str = "InvertedIndexQuery";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.InvertedIndexQuery".into()
+        "rerun.remote_store.v1alpha1.InvertedIndexQuery".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.InvertedIndexQuery".into()
+        "/rerun.remote_store.v1alpha1.InvertedIndexQuery".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -429,12 +432,12 @@ pub struct VectorIndexQuery {
 }
 impl ::prost::Name for VectorIndexQuery {
     const NAME: &'static str = "VectorIndexQuery";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.VectorIndexQuery".into()
+        "rerun.remote_store.v1alpha1.VectorIndexQuery".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.VectorIndexQuery".into()
+        "/rerun.remote_store.v1alpha1.VectorIndexQuery".into()
     }
 }
 /// TODO(zehiko) add properties as needed
@@ -442,12 +445,12 @@ impl ::prost::Name for VectorIndexQuery {
 pub struct BTreeIndexQuery {}
 impl ::prost::Name for BTreeIndexQuery {
     const NAME: &'static str = "BTreeIndexQuery";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.BTreeIndexQuery".into()
+        "rerun.remote_store.v1alpha1.BTreeIndexQuery".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.BTreeIndexQuery".into()
+        "/rerun.remote_store.v1alpha1.BTreeIndexQuery".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -457,12 +460,12 @@ pub struct CatalogEntry {
 }
 impl ::prost::Name for CatalogEntry {
     const NAME: &'static str = "CatalogEntry";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CatalogEntry".into()
+        "rerun.remote_store.v1alpha1.CatalogEntry".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CatalogEntry".into()
+        "/rerun.remote_store.v1alpha1.CatalogEntry".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -473,24 +476,24 @@ pub struct CreateManifestsRequest {
 }
 impl ::prost::Name for CreateManifestsRequest {
     const NAME: &'static str = "CreateManifestsRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateManifestsRequest".into()
+        "rerun.remote_store.v1alpha1.CreateManifestsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateManifestsRequest".into()
+        "/rerun.remote_store.v1alpha1.CreateManifestsRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct CreateManifestsResponse {}
 impl ::prost::Name for CreateManifestsResponse {
     const NAME: &'static str = "CreateManifestsResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CreateManifestsResponse".into()
+        "rerun.remote_store.v1alpha1.CreateManifestsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CreateManifestsResponse".into()
+        "/rerun.remote_store.v1alpha1.CreateManifestsResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -506,17 +509,20 @@ pub struct ListManifestsRequest {
 }
 impl ::prost::Name for ListManifestsRequest {
     const NAME: &'static str = "ListManifestsRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ListManifestsRequest".into()
+        "rerun.remote_store.v1alpha1.ListManifestsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ListManifestsRequest".into()
+        "/rerun.remote_store.v1alpha1.ListManifestsRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListManifestsResponse {
-    #[prost(enumeration = "super::super::common::v0::EncoderVersion", tag = "1")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::EncoderVersion",
+        tag = "1"
+    )]
     pub encoder_version: i32,
     /// The record batch of the response, encoded according to `encoder_version`.
     #[prost(bytes = "vec", tag = "2")]
@@ -524,12 +530,12 @@ pub struct ListManifestsResponse {
 }
 impl ::prost::Name for ListManifestsResponse {
     const NAME: &'static str = "ListManifestsResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ListManifestsResponse".into()
+        "rerun.remote_store.v1alpha1.ListManifestsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ListManifestsResponse".into()
+        "/rerun.remote_store.v1alpha1.ListManifestsResponse".into()
     }
 }
 /// A manifest query will find all the relevant chunk IDs (and optionally a bunch of related metadata)
@@ -544,7 +550,7 @@ pub struct QueryManifestRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// What resource are we querying the manifest for?
     #[prost(message, optional, tag = "100")]
-    pub resource_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub resource_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
     /// What columns of the manifest are we interested in?
     #[prost(message, optional, tag = "200")]
     pub columns: ::core::option::Option<ColumnProjection>,
@@ -585,22 +591,22 @@ pub struct QueryManifestRequest {
 }
 impl ::prost::Name for QueryManifestRequest {
     const NAME: &'static str = "QueryManifestRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryManifestRequest".into()
+        "rerun.remote_store.v1alpha1.QueryManifestRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryManifestRequest".into()
+        "/rerun.remote_store.v1alpha1.QueryManifestRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestLatestAtRelevantChunks {
     /// Which entity paths are we interested in?
     #[prost(message, repeated, tag = "10")]
-    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v0::EntityPath>,
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
     #[prost(message, optional, tag = "20")]
-    pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index value are we looking for?
     #[prost(int64, tag = "30")]
     pub at: i64,
@@ -618,25 +624,25 @@ pub struct QueryManifestLatestAtRelevantChunks {
 }
 impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
     const NAME: &'static str = "QueryManifestLatestAtRelevantChunks";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryManifestLatestAtRelevantChunks".into()
+        "rerun.remote_store.v1alpha1.QueryManifestLatestAtRelevantChunks".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryManifestLatestAtRelevantChunks".into()
+        "/rerun.remote_store.v1alpha1.QueryManifestLatestAtRelevantChunks".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestRangeRelevantChunks {
     /// Which entity paths are we interested in?
     #[prost(message, repeated, tag = "10")]
-    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v0::EntityPath>,
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
     #[prost(message, optional, tag = "20")]
-    pub index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
+    pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index range are we looking for?
     #[prost(message, optional, tag = "30")]
-    pub index_range: ::core::option::Option<super::super::common::v0::TimeRange>,
+    pub index_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
     /// Which components are we interested in?
     ///
     /// If left unspecified, all existing components are considered of interest.
@@ -651,12 +657,12 @@ pub struct QueryManifestRangeRelevantChunks {
 }
 impl ::prost::Name for QueryManifestRangeRelevantChunks {
     const NAME: &'static str = "QueryManifestRangeRelevantChunks";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryManifestRangeRelevantChunks".into()
+        "rerun.remote_store.v1alpha1.QueryManifestRangeRelevantChunks".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryManifestRangeRelevantChunks".into()
+        "/rerun.remote_store.v1alpha1.QueryManifestRangeRelevantChunks".into()
     }
 }
 /// Generic parameters that will influence the behavior of the Lance scanner.
@@ -702,12 +708,12 @@ pub struct ScanParameters {
 }
 impl ::prost::Name for ScanParameters {
     const NAME: &'static str = "ScanParameters";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ScanParameters".into()
+        "rerun.remote_store.v1alpha1.ScanParameters".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ScanParameters".into()
+        "/rerun.remote_store.v1alpha1.ScanParameters".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -721,12 +727,12 @@ pub struct ScanParametersOrderClause {
 }
 impl ::prost::Name for ScanParametersOrderClause {
     const NAME: &'static str = "ScanParametersOrderClause";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ScanParametersOrderClause".into()
+        "rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ScanParametersOrderClause".into()
+        "/rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -736,31 +742,31 @@ pub struct GetRecordingSchemaRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// recording id from which we're want to fetch the schema
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
 }
 impl ::prost::Name for GetRecordingSchemaRequest {
     const NAME: &'static str = "GetRecordingSchemaRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetRecordingSchemaRequest".into()
+        "rerun.remote_store.v1alpha1.GetRecordingSchemaRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetRecordingSchemaRequest".into()
+        "/rerun.remote_store.v1alpha1.GetRecordingSchemaRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaResponse {
     #[prost(message, optional, tag = "2")]
-    pub schema: ::core::option::Option<super::super::common::v0::Schema>,
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
 }
 impl ::prost::Name for GetRecordingSchemaResponse {
     const NAME: &'static str = "GetRecordingSchemaResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.GetRecordingSchemaResponse".into()
+        "rerun.remote_store.v1alpha1.GetRecordingSchemaResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.GetRecordingSchemaResponse".into()
+        "/rerun.remote_store.v1alpha1.GetRecordingSchemaResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -784,12 +790,12 @@ pub struct RegisterRecordingRequest {
 }
 impl ::prost::Name for RegisterRecordingRequest {
     const NAME: &'static str = "RegisterRecordingRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.RegisterRecordingRequest".into()
+        "rerun.remote_store.v1alpha1.RegisterRecordingRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.RegisterRecordingRequest".into()
+        "/rerun.remote_store.v1alpha1.RegisterRecordingRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -799,28 +805,28 @@ pub struct UnregisterRecordingRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// unique identifier of the recording
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
 }
 impl ::prost::Name for UnregisterRecordingRequest {
     const NAME: &'static str = "UnregisterRecordingRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UnregisterRecordingRequest".into()
+        "rerun.remote_store.v1alpha1.UnregisterRecordingRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UnregisterRecordingRequest".into()
+        "/rerun.remote_store.v1alpha1.UnregisterRecordingRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct UnregisterRecordingResponse {}
 impl ::prost::Name for UnregisterRecordingResponse {
     const NAME: &'static str = "UnregisterRecordingResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UnregisterRecordingResponse".into()
+        "rerun.remote_store.v1alpha1.UnregisterRecordingResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UnregisterRecordingResponse".into()
+        "/rerun.remote_store.v1alpha1.UnregisterRecordingResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -831,24 +837,24 @@ pub struct UnregisterAllRecordingsRequest {
 }
 impl ::prost::Name for UnregisterAllRecordingsRequest {
     const NAME: &'static str = "UnregisterAllRecordingsRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UnregisterAllRecordingsRequest".into()
+        "rerun.remote_store.v1alpha1.UnregisterAllRecordingsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UnregisterAllRecordingsRequest".into()
+        "/rerun.remote_store.v1alpha1.UnregisterAllRecordingsRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct UnregisterAllRecordingsResponse {}
 impl ::prost::Name for UnregisterAllRecordingsResponse {
     const NAME: &'static str = "UnregisterAllRecordingsResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UnregisterAllRecordingsResponse".into()
+        "rerun.remote_store.v1alpha1.UnregisterAllRecordingsResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UnregisterAllRecordingsResponse".into()
+        "/rerun.remote_store.v1alpha1.UnregisterAllRecordingsResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -862,24 +868,24 @@ pub struct UpdateCatalogRequest {
 }
 impl ::prost::Name for UpdateCatalogRequest {
     const NAME: &'static str = "UpdateCatalogRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UpdateCatalogRequest".into()
+        "rerun.remote_store.v1alpha1.UpdateCatalogRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UpdateCatalogRequest".into()
+        "/rerun.remote_store.v1alpha1.UpdateCatalogRequest".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogResponse {}
 impl ::prost::Name for UpdateCatalogResponse {
     const NAME: &'static str = "UpdateCatalogResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.UpdateCatalogResponse".into()
+        "rerun.remote_store.v1alpha1.UpdateCatalogResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.UpdateCatalogResponse".into()
+        "/rerun.remote_store.v1alpha1.UpdateCatalogResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -889,19 +895,19 @@ pub struct QueryRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// unique identifier of the recording
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
     /// query to execute
     #[prost(message, optional, tag = "3")]
-    pub query: ::core::option::Option<super::super::common::v0::Query>,
+    pub query: ::core::option::Option<super::super::common::v1alpha1::Query>,
 }
 impl ::prost::Name for QueryRequest {
     const NAME: &'static str = "QueryRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryRequest".into()
+        "rerun.remote_store.v1alpha1.QueryRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryRequest".into()
+        "/rerun.remote_store.v1alpha1.QueryRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -919,12 +925,12 @@ pub struct QueryCatalogRequest {
 }
 impl ::prost::Name for QueryCatalogRequest {
     const NAME: &'static str = "QueryCatalogRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryCatalogRequest".into()
+        "rerun.remote_store.v1alpha1.QueryCatalogRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryCatalogRequest".into()
+        "/rerun.remote_store.v1alpha1.QueryCatalogRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -934,12 +940,12 @@ pub struct ColumnProjection {
 }
 impl ::prost::Name for ColumnProjection {
     const NAME: &'static str = "ColumnProjection";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.ColumnProjection".into()
+        "rerun.remote_store.v1alpha1.ColumnProjection".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.ColumnProjection".into()
+        "/rerun.remote_store.v1alpha1.ColumnProjection".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -947,21 +953,24 @@ pub struct CatalogFilter {
     /// Filtering is very simple right now, we can only select
     /// recordings by their ids.
     #[prost(message, repeated, tag = "1")]
-    pub recording_ids: ::prost::alloc::vec::Vec<super::super::common::v0::RecordingId>,
+    pub recording_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::RecordingId>,
 }
 impl ::prost::Name for CatalogFilter {
     const NAME: &'static str = "CatalogFilter";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.CatalogFilter".into()
+        "rerun.remote_store.v1alpha1.CatalogFilter".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.CatalogFilter".into()
+        "/rerun.remote_store.v1alpha1.CatalogFilter".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogResponse {
-    #[prost(enumeration = "super::super::common::v0::EncoderVersion", tag = "1")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::EncoderVersion",
+        tag = "1"
+    )]
     pub encoder_version: i32,
     /// raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
     #[prost(bytes = "vec", tag = "2")]
@@ -969,12 +978,12 @@ pub struct QueryCatalogResponse {
 }
 impl ::prost::Name for QueryCatalogResponse {
     const NAME: &'static str = "QueryCatalogResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryCatalogResponse".into()
+        "rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryCatalogResponse".into()
+        "/rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -984,16 +993,16 @@ pub struct FetchRecordingRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// recording id from which we're want to fetch the recording
     #[prost(message, optional, tag = "2")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+    pub recording_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
 }
 impl ::prost::Name for FetchRecordingRequest {
     const NAME: &'static str = "FetchRecordingRequest";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FetchRecordingRequest".into()
+        "rerun.remote_store.v1alpha1.FetchRecordingRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FetchRecordingRequest".into()
+        "/rerun.remote_store.v1alpha1.FetchRecordingRequest".into()
     }
 }
 /// TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
@@ -1003,7 +1012,10 @@ pub struct FetchRecordingResponse {
     /// TODO(zehiko) we need to expand this to become something like 'encoder options'
     /// as we will need to specify additional options like compression, including schema
     /// in payload, etc.
-    #[prost(enumeration = "super::super::common::v0::EncoderVersion", tag = "1")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::EncoderVersion",
+        tag = "1"
+    )]
     pub encoder_version: i32,
     /// payload is raw bytes that the relevant codec can interpret
     #[prost(bytes = "vec", tag = "2")]
@@ -1011,12 +1023,12 @@ pub struct FetchRecordingResponse {
 }
 impl ::prost::Name for FetchRecordingResponse {
     const NAME: &'static str = "FetchRecordingResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.FetchRecordingResponse".into()
+        "rerun.remote_store.v1alpha1.FetchRecordingResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.FetchRecordingResponse".into()
+        "/rerun.remote_store.v1alpha1.FetchRecordingResponse".into()
     }
 }
 /// Application level error - used as `details` in the `google.rpc.Status` message
@@ -1034,12 +1046,12 @@ pub struct RemoteStoreError {
 }
 impl ::prost::Name for RemoteStoreError {
     const NAME: &'static str = "RemoteStoreError";
-    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.RemoteStoreError".into()
+        "rerun.remote_store.v1alpha1.RemoteStoreError".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.RemoteStoreError".into()
+        "/rerun.remote_store.v1alpha1.RemoteStoreError".into()
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -1223,11 +1235,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/FindCollection",
+                "/rerun.remote_store.v1alpha1.StorageNode/FindCollection",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "FindCollection",
             ));
             self.inner.unary(req, path, codec).await
@@ -1242,11 +1254,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/FindCollections",
+                "/rerun.remote_store.v1alpha1.StorageNode/FindCollections",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "FindCollections",
             ));
             self.inner.unary(req, path, codec).await
@@ -1262,11 +1274,12 @@ pub mod storage_node_client {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/rerun.remote_store.v0.StorageNode/Query");
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v1alpha1.StorageNode/Query",
+            );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "Query",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1275,7 +1288,9 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::FetchRecordingRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::super::super::common::v0::RerunChunk>>,
+            tonic::Response<
+                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
+            >,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1283,11 +1298,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/FetchRecording",
+                "/rerun.remote_store.v1alpha1.StorageNode/FetchRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "FetchRecording",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1302,11 +1317,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/CreateIndex",
+                "/rerun.remote_store.v1alpha1.StorageNode/CreateIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "CreateIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -1319,11 +1334,12 @@ pub mod storage_node_client {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/rerun.remote_store.v0.StorageNode/ReIndex");
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v1alpha1.StorageNode/ReIndex",
+            );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "ReIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -1332,7 +1348,9 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::super::super::common::v0::RerunChunk>>,
+            tonic::Response<
+                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
+            >,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1340,11 +1358,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/GetChunks",
+                "/rerun.remote_store.v1alpha1.StorageNode/GetChunks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "GetChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1353,7 +1371,9 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRangeRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::super::super::common::v0::RerunChunk>>,
+            tonic::Response<
+                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
+            >,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1361,11 +1381,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/GetChunksRange",
+                "/rerun.remote_store.v1alpha1.StorageNode/GetChunksRange",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "GetChunksRange",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1390,11 +1410,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/SearchIndex",
+                "/rerun.remote_store.v1alpha1.StorageNode/SearchIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "SearchIndex",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1409,11 +1429,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/CreateManifests",
+                "/rerun.remote_store.v1alpha1.StorageNode/CreateManifests",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "CreateManifests",
             ));
             self.inner.unary(req, path, codec).await
@@ -1430,11 +1450,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/ListManifests",
+                "/rerun.remote_store.v1alpha1.StorageNode/ListManifests",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "ListManifests",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1451,11 +1471,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/QueryManifest",
+                "/rerun.remote_store.v1alpha1.StorageNode/QueryManifest",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "QueryManifest",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1472,11 +1492,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/QueryCatalog",
+                "/rerun.remote_store.v1alpha1.StorageNode/QueryCatalog",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "QueryCatalog",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1491,11 +1511,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/UpdateCatalog",
+                "/rerun.remote_store.v1alpha1.StorageNode/UpdateCatalog",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "UpdateCatalog",
             ));
             self.inner.unary(req, path, codec).await
@@ -1510,11 +1530,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/GetRecordingSchema",
+                "/rerun.remote_store.v1alpha1.StorageNode/GetRecordingSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "GetRecordingSchema",
             ));
             self.inner.unary(req, path, codec).await
@@ -1529,11 +1549,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/RegisterRecording",
+                "/rerun.remote_store.v1alpha1.StorageNode/RegisterRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "RegisterRecording",
             ));
             self.inner.unary(req, path, codec).await
@@ -1548,11 +1568,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/UnregisterRecording",
+                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "UnregisterRecording",
             ));
             self.inner.unary(req, path, codec).await
@@ -1569,11 +1589,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/UnregisterAllRecordings",
+                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterAllRecordings",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNode",
                 "UnregisterAllRecordings",
             ));
             self.inner.unary(req, path, codec).await
@@ -1613,7 +1633,7 @@ pub mod storage_node_server {
         /// Server streaming response type for the FetchRecording method.
         type FetchRecordingStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<
-                    super::super::super::common::v0::RerunChunk,
+                    super::super::super::common::v1alpha1::RerunChunk,
                     tonic::Status,
                 >,
             > + std::marker::Send
@@ -1633,7 +1653,7 @@ pub mod storage_node_server {
         /// Server streaming response type for the GetChunks method.
         type GetChunksStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<
-                    super::super::super::common::v0::RerunChunk,
+                    super::super::super::common::v1alpha1::RerunChunk,
                     tonic::Status,
                 >,
             > + std::marker::Send
@@ -1645,7 +1665,7 @@ pub mod storage_node_server {
         /// Server streaming response type for the GetChunksRange method.
         type GetChunksRangeStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<
-                    super::super::super::common::v0::RerunChunk,
+                    super::super::super::common::v1alpha1::RerunChunk,
                     tonic::Status,
                 >,
             > + std::marker::Send
@@ -1800,7 +1820,7 @@ pub mod storage_node_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/rerun.remote_store.v0.StorageNode/FindCollection" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/FindCollection" => {
                     #[allow(non_camel_case_types)]
                     struct FindCollectionSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::FindCollectionRequest>
@@ -1841,7 +1861,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/FindCollections" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/FindCollections" => {
                     #[allow(non_camel_case_types)]
                     struct FindCollectionsSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::FindCollectionsRequest>
@@ -1882,7 +1902,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/Query" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/Query" => {
                     #[allow(non_camel_case_types)]
                     struct QuerySvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::ServerStreamingService<super::QueryRequest> for QuerySvc<T> {
@@ -1922,14 +1942,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/FetchRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/FetchRecording" => {
                     #[allow(non_camel_case_types)]
                     struct FetchRecordingSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
                         tonic::server::ServerStreamingService<super::FetchRecordingRequest>
                         for FetchRecordingSvc<T>
                     {
-                        type Response = super::super::super::common::v0::RerunChunk;
+                        type Response = super::super::super::common::v1alpha1::RerunChunk;
                         type ResponseStream = T::FetchRecordingStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -1966,7 +1986,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/CreateIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/CreateIndex" => {
                     #[allow(non_camel_case_types)]
                     struct CreateIndexSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::CreateIndexRequest> for CreateIndexSvc<T> {
@@ -2005,7 +2025,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/ReIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/ReIndex" => {
                     #[allow(non_camel_case_types)]
                     struct ReIndexSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
@@ -2043,14 +2063,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/GetChunks" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/GetChunks" => {
                     #[allow(non_camel_case_types)]
                     struct GetChunksSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
                         tonic::server::ServerStreamingService<super::GetChunksRequest>
                         for GetChunksSvc<T>
                     {
-                        type Response = super::super::super::common::v0::RerunChunk;
+                        type Response = super::super::super::common::v1alpha1::RerunChunk;
                         type ResponseStream = T::GetChunksStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2087,14 +2107,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/GetChunksRange" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/GetChunksRange" => {
                     #[allow(non_camel_case_types)]
                     struct GetChunksRangeSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
                         tonic::server::ServerStreamingService<super::GetChunksRangeRequest>
                         for GetChunksRangeSvc<T>
                     {
-                        type Response = super::super::super::common::v0::RerunChunk;
+                        type Response = super::super::super::common::v1alpha1::RerunChunk;
                         type ResponseStream = T::GetChunksRangeStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2131,7 +2151,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/SearchIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/SearchIndex" => {
                     #[allow(non_camel_case_types)]
                     struct SearchIndexSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2175,7 +2195,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/CreateManifests" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/CreateManifests" => {
                     #[allow(non_camel_case_types)]
                     struct CreateManifestsSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::CreateManifestsRequest>
@@ -2216,7 +2236,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/ListManifests" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/ListManifests" => {
                     #[allow(non_camel_case_types)]
                     struct ListManifestsSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2260,7 +2280,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/QueryManifest" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/QueryManifest" => {
                     #[allow(non_camel_case_types)]
                     struct QueryManifestSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2304,7 +2324,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/QueryCatalog" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/QueryCatalog" => {
                     #[allow(non_camel_case_types)]
                     struct QueryCatalogSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2348,7 +2368,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/UpdateCatalog" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/UpdateCatalog" => {
                     #[allow(non_camel_case_types)]
                     struct UpdateCatalogSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode> tonic::server::UnaryService<super::UpdateCatalogRequest>
@@ -2389,7 +2409,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/GetRecordingSchema" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/GetRecordingSchema" => {
                     #[allow(non_camel_case_types)]
                     struct GetRecordingSchemaSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2431,7 +2451,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/RegisterRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/RegisterRecording" => {
                     #[allow(non_camel_case_types)]
                     struct RegisterRecordingSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2473,7 +2493,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/UnregisterRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterRecording" => {
                     #[allow(non_camel_case_types)]
                     struct UnregisterRecordingSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2515,7 +2535,7 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/UnregisterAllRecordings" => {
+                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterAllRecordings" => {
                     #[allow(non_camel_case_types)]
                     struct UnregisterAllRecordingsSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
@@ -2586,7 +2606,7 @@ pub mod storage_node_server {
         }
     }
     /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "rerun.remote_store.v0.StorageNode";
+    pub const SERVICE_NAME: &str = "rerun.remote_store.v1alpha1.StorageNode";
     impl<T> tonic::server::NamedService for StorageNodeServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rerun.common.v0;
+package rerun.common.v1alpha1;
 
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rerun.remote_store.v0;
+package rerun.remote_store.v1alpha1;
 
 import "google/protobuf/timestamp.proto";
 
