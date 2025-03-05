@@ -22,12 +22,12 @@ pub mod log_msg {
 }
 impl ::prost::Name for LogMsg {
     const NAME: &'static str = "LogMsg";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.LogMsg".into()
+        "rerun.log_msg.v1alpha1.LogMsg".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.LogMsg".into()
+        "/rerun.log_msg.v1alpha1.LogMsg".into()
     }
 }
 /// Corresponds to `LogMsg::SetStoreInfo`. Used to identify a recording.
@@ -35,19 +35,19 @@ impl ::prost::Name for LogMsg {
 pub struct SetStoreInfo {
     /// A time-based UID that is used to determine how a `StoreInfo` fits in the global ordering of events.
     #[prost(message, optional, tag = "1")]
-    pub row_id: ::core::option::Option<super::super::common::v0::Tuid>,
+    pub row_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     /// The new store info.
     #[prost(message, optional, tag = "2")]
     pub info: ::core::option::Option<StoreInfo>,
 }
 impl ::prost::Name for SetStoreInfo {
     const NAME: &'static str = "SetStoreInfo";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.SetStoreInfo".into()
+        "rerun.log_msg.v1alpha1.SetStoreInfo".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.SetStoreInfo".into()
+        "/rerun.log_msg.v1alpha1.SetStoreInfo".into()
     }
 }
 /// Corresponds to `LogMsg::ArrowMsg`. Used to transmit actual data.
@@ -55,7 +55,7 @@ impl ::prost::Name for SetStoreInfo {
 pub struct ArrowMsg {
     /// The ID of the store that this message is for.
     #[prost(message, optional, tag = "1")]
-    pub store_id: ::core::option::Option<super::super::common::v0::StoreId>,
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
     /// Compression algorithm used.
     #[prost(enumeration = "Compression", tag = "2")]
     pub compression: i32,
@@ -70,12 +70,12 @@ pub struct ArrowMsg {
 }
 impl ::prost::Name for ArrowMsg {
     const NAME: &'static str = "ArrowMsg";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.ArrowMsg".into()
+        "rerun.log_msg.v1alpha1.ArrowMsg".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.ArrowMsg".into()
+        "/rerun.log_msg.v1alpha1.ArrowMsg".into()
     }
 }
 /// Corresponds to `LogMsg::BlueprintActivationCommand`.
@@ -87,7 +87,7 @@ impl ::prost::Name for ArrowMsg {
 pub struct BlueprintActivationCommand {
     /// The ID of the blueprint to activate.
     #[prost(message, optional, tag = "1")]
-    pub blueprint_id: ::core::option::Option<super::super::common::v0::StoreId>,
+    pub blueprint_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
     /// Whether to make the blueprint active immediately.
     #[prost(bool, tag = "2")]
     pub make_active: bool,
@@ -97,12 +97,12 @@ pub struct BlueprintActivationCommand {
 }
 impl ::prost::Name for BlueprintActivationCommand {
     const NAME: &'static str = "BlueprintActivationCommand";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.BlueprintActivationCommand".into()
+        "rerun.log_msg.v1alpha1.BlueprintActivationCommand".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.BlueprintActivationCommand".into()
+        "/rerun.log_msg.v1alpha1.BlueprintActivationCommand".into()
     }
 }
 /// Information about a recording or blueprint.
@@ -110,16 +110,16 @@ impl ::prost::Name for BlueprintActivationCommand {
 pub struct StoreInfo {
     /// User-chosen name of the application doing the logging.
     #[prost(message, optional, tag = "1")]
-    pub application_id: ::core::option::Option<super::super::common::v0::ApplicationId>,
+    pub application_id: ::core::option::Option<super::super::common::v1alpha1::ApplicationId>,
     /// Unique ID of the recording.
     #[prost(message, optional, tag = "2")]
-    pub store_id: ::core::option::Option<super::super::common::v0::StoreId>,
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
     /// True if the recording is one of the official Rerun examples.
     #[prost(bool, tag = "3")]
     pub is_official_example: bool,
     /// When the recording started.
     #[prost(message, optional, tag = "4")]
-    pub started: ::core::option::Option<super::super::common::v0::Time>,
+    pub started: ::core::option::Option<super::super::common::v1alpha1::Time>,
     /// Where the recording came from.
     #[prost(message, optional, tag = "5")]
     pub store_source: ::core::option::Option<StoreSource>,
@@ -129,12 +129,12 @@ pub struct StoreInfo {
 }
 impl ::prost::Name for StoreInfo {
     const NAME: &'static str = "StoreInfo";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.StoreInfo".into()
+        "rerun.log_msg.v1alpha1.StoreInfo".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.StoreInfo".into()
+        "/rerun.log_msg.v1alpha1.StoreInfo".into()
     }
 }
 /// The source of a recording or blueprint.
@@ -149,12 +149,12 @@ pub struct StoreSource {
 }
 impl ::prost::Name for StoreSource {
     const NAME: &'static str = "StoreSource";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.StoreSource".into()
+        "rerun.log_msg.v1alpha1.StoreSource".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.StoreSource".into()
+        "/rerun.log_msg.v1alpha1.StoreSource".into()
     }
 }
 /// A newtype for `StoreSource` payload.
@@ -167,12 +167,12 @@ pub struct StoreSourceExtra {
 }
 impl ::prost::Name for StoreSourceExtra {
     const NAME: &'static str = "StoreSourceExtra";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.StoreSourceExtra".into()
+        "rerun.log_msg.v1alpha1.StoreSourceExtra".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.StoreSourceExtra".into()
+        "/rerun.log_msg.v1alpha1.StoreSourceExtra".into()
     }
 }
 /// Version of the Python SDK that created the recording.
@@ -189,12 +189,12 @@ pub struct PythonVersion {
 }
 impl ::prost::Name for PythonVersion {
     const NAME: &'static str = "PythonVersion";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.PythonVersion".into()
+        "rerun.log_msg.v1alpha1.PythonVersion".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.PythonVersion".into()
+        "/rerun.log_msg.v1alpha1.PythonVersion".into()
     }
 }
 /// Information about the Rust SDK that created the recording.
@@ -209,12 +209,12 @@ pub struct CrateInfo {
 }
 impl ::prost::Name for CrateInfo {
     const NAME: &'static str = "CrateInfo";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.CrateInfo".into()
+        "rerun.log_msg.v1alpha1.CrateInfo".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.CrateInfo".into()
+        "/rerun.log_msg.v1alpha1.CrateInfo".into()
     }
 }
 /// A recording which came from a file.
@@ -225,12 +225,12 @@ pub struct FileSource {
 }
 impl ::prost::Name for FileSource {
     const NAME: &'static str = "FileSource";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.FileSource".into()
+        "rerun.log_msg.v1alpha1.FileSource".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.FileSource".into()
+        "/rerun.log_msg.v1alpha1.FileSource".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -243,12 +243,12 @@ pub struct StoreVersion {
 }
 impl ::prost::Name for StoreVersion {
     const NAME: &'static str = "StoreVersion";
-    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.log_msg.v0.StoreVersion".into()
+        "rerun.log_msg.v1alpha1.StoreVersion".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.log_msg.v0.StoreVersion".into()
+        "/rerun.log_msg.v1alpha1.StoreVersion".into()
     }
 }
 /// The type of compression used on the payload.

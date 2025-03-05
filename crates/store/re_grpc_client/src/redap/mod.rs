@@ -1,5 +1,5 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v0::{
+use re_protos::remote_store::v1alpha1::{
     storage_node_client::StorageNodeClient, CatalogEntry, GetChunksRangeRequest,
 };
 use re_uri::{Origin, RecordingEndpoint};
@@ -12,8 +12,8 @@ use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
-    common::v0::{IndexColumnSelector, RecordingId},
-    remote_store::v0::{
+    common::v1alpha1::{IndexColumnSelector, RecordingId},
+    remote_store::v1alpha1::{
         CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
         CATALOG_START_TIME_FIELD_NAME,
     },
