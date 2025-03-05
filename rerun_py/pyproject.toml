@@ -135,6 +135,7 @@ lint.select = [
   "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "FA",      # Force from __future__ import annotations
   "I",       # Isort
   "TID",     # flake8-tidy-imports
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
