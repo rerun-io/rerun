@@ -6,9 +6,9 @@ import "google/protobuf/timestamp.proto";
 
 // A collection in the catalog
 message Collection {
-    string id = 1;
-    string name = 2;
-    repeated string index_ids = 3;
-    google.protobuf.Timestamp created_at = 4;
-    google.protobuf.Timestamp updated_at = 5;
+  string id = 1;
+  string name = 2;
+  repeated string index_ids = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
 }
