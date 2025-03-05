@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["ndarray_from_tensor","tensor_from_ndarray","tensor_type"]};

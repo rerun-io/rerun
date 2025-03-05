@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["build_filter","filter","filter_record_batch","prep_null_mask_filter"],"struct":["FilterBuilder","FilterPredicate","SlicesIterator"],"type":["Filter"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["auto_color_egui","auto_color_for_entity_path"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["LINE_STRIP_TEXTURE_SIZE","POSITION_TEXTURE_SIZE"],"enum":["LineDrawDataError"],"mod":["gpu_data"],"struct":["LineBatchInfo","LineDrawData","LineRenderer","LineStripBatch","LineStripFlags","LineStripInfo"]};

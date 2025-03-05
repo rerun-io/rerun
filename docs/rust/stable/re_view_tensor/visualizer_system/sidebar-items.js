@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["tensor_data_range_heuristic"],"struct":["TensorSystem","TensorVisualization"]};

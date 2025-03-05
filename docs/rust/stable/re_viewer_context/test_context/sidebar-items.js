@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_egui_renderstate","init_shared_renderer_setup"],"static":["SHARED_WGPU_RENDERER_SETUP"],"struct":["SharedWgpuResources","TestContext"],"trait":["HarnessExt"]};

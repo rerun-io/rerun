@@ -1,0 +1,3300 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/0.15.1/common/components/">
+      
+      
+        <link rel="prev" href="../archetypes/">
+      
+      
+        <link rel="next" href="../datatypes/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>Components - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun.components" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Components
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeline_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timeline functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.components" class="md-nav__link">
+    components
+  </a>
+  
+    <nav class="md-nav" aria-label="components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.AnnotationContext" class="md-nav__link">
+    AnnotationContext
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Blob" class="md-nav__link">
+    Blob
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ClassId" class="md-nav__link">
+    ClassId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ClearIsRecursive" class="md-nav__link">
+    ClearIsRecursive
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Color" class="md-nav__link">
+    Color
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DepthMeter" class="md-nav__link">
+    DepthMeter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DisconnectedSpace" class="md-nav__link">
+    DisconnectedSpace
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DrawOrder" class="md-nav__link">
+    DrawOrder
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.HalfSizes2D" class="md-nav__link">
+    HalfSizes2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.HalfSizes3D" class="md-nav__link">
+    HalfSizes3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.InstanceKey" class="md-nav__link">
+    InstanceKey
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.KeypointId" class="md-nav__link">
+    KeypointId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.LineStrip2D" class="md-nav__link">
+    LineStrip2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.LineStrip3D" class="md-nav__link">
+    LineStrip3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MarkerShape" class="md-nav__link">
+    MarkerShape
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MarkerSize" class="md-nav__link">
+    MarkerSize
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Material" class="md-nav__link">
+    Material
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MediaType" class="md-nav__link">
+    MediaType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MeshProperties" class="md-nav__link">
+    MeshProperties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Name" class="md-nav__link">
+    Name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.OutOfTreeTransform3D" class="md-nav__link">
+    OutOfTreeTransform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.PinholeProjection" class="md-nav__link">
+    PinholeProjection
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Position2D" class="md-nav__link">
+    Position2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Position3D" class="md-nav__link">
+    Position3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Radius" class="md-nav__link">
+    Radius
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Range1D" class="md-nav__link">
+    Range1D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Resolution" class="md-nav__link">
+    Resolution
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Rotation3D" class="md-nav__link">
+    Rotation3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Scalar" class="md-nav__link">
+    Scalar
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ScalarScattering" class="md-nav__link">
+    ScalarScattering
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.StrokeWidth" class="md-nav__link">
+    StrokeWidth
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.TensorData" class="md-nav__link">
+    TensorData
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Texcoord2D" class="md-nav__link">
+    Texcoord2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Text" class="md-nav__link">
+    Text
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.TextLogLevel" class="md-nav__link">
+    TextLogLevel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Transform3D" class="md-nav__link">
+    Transform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Vector2D" class="md-nav__link">
+    Vector2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Vector3D" class="md-nav__link">
+    Vector3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ViewCoordinates" class="md-nav__link">
+    ViewCoordinates
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.VisualizerOverrides" class="md-nav__link">
+    VisualizerOverrides
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_1_12" id="__nav_1_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Blueprint
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_12">
+            <span class="md-nav__icon md-icon"></span>
+            Blueprint
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_apis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other_classes_and_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.components" class="md-nav__link">
+    components
+  </a>
+  
+    <nav class="md-nav" aria-label="components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.AnnotationContext" class="md-nav__link">
+    AnnotationContext
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Blob" class="md-nav__link">
+    Blob
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ClassId" class="md-nav__link">
+    ClassId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ClearIsRecursive" class="md-nav__link">
+    ClearIsRecursive
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Color" class="md-nav__link">
+    Color
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DepthMeter" class="md-nav__link">
+    DepthMeter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DisconnectedSpace" class="md-nav__link">
+    DisconnectedSpace
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.DrawOrder" class="md-nav__link">
+    DrawOrder
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.HalfSizes2D" class="md-nav__link">
+    HalfSizes2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.HalfSizes3D" class="md-nav__link">
+    HalfSizes3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.InstanceKey" class="md-nav__link">
+    InstanceKey
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.KeypointId" class="md-nav__link">
+    KeypointId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.LineStrip2D" class="md-nav__link">
+    LineStrip2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.LineStrip3D" class="md-nav__link">
+    LineStrip3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MarkerShape" class="md-nav__link">
+    MarkerShape
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MarkerSize" class="md-nav__link">
+    MarkerSize
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Material" class="md-nav__link">
+    Material
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MediaType" class="md-nav__link">
+    MediaType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.MeshProperties" class="md-nav__link">
+    MeshProperties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Name" class="md-nav__link">
+    Name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.OutOfTreeTransform3D" class="md-nav__link">
+    OutOfTreeTransform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.PinholeProjection" class="md-nav__link">
+    PinholeProjection
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Position2D" class="md-nav__link">
+    Position2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Position3D" class="md-nav__link">
+    Position3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Radius" class="md-nav__link">
+    Radius
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Range1D" class="md-nav__link">
+    Range1D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Resolution" class="md-nav__link">
+    Resolution
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Rotation3D" class="md-nav__link">
+    Rotation3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Scalar" class="md-nav__link">
+    Scalar
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ScalarScattering" class="md-nav__link">
+    ScalarScattering
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.StrokeWidth" class="md-nav__link">
+    StrokeWidth
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.TensorData" class="md-nav__link">
+    TensorData
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Texcoord2D" class="md-nav__link">
+    Texcoord2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Text" class="md-nav__link">
+    Text
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.TextLogLevel" class="md-nav__link">
+    TextLogLevel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Transform3D" class="md-nav__link">
+    Transform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Vector2D" class="md-nav__link">
+    Vector2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.Vector3D" class="md-nav__link">
+    Vector3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.ViewCoordinates" class="md-nav__link">
+    ViewCoordinates
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.components.VisualizerOverrides" class="md-nav__link">
+    VisualizerOverrides
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Components</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun.components" class="doc doc-heading">
+          <code>rerun.components</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.AnnotationContext" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">AnnotationContext</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.annotation_context_ext.AnnotationContextExt">AnnotationContextExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: The <code>AnnotationContext</code> provides additional information on how to display entities.</p>
+<p>Entities can use <code>ClassId</code>s and <code>KeypointId</code>s to provide annotations, and
+the labels and colors will be looked up in the appropriate
+<code>AnnotationContext</code>. We use the <em>first</em> annotation context we find in the
+path-hierarchy when searching up through the ancestors of a given entity
+path.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.AnnotationContext.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">class_map</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the AnnotationContext component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>class_map</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>List of class descriptions, mapping class indices to class names, colors etc.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.components.annotation_context.AnnotationContextLike">AnnotationContextLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Blob" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Blob</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.blob_ext.BlobExt">BlobExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A binary blob of data.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.Blob.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Blob component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.ClassId" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ClassId</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.ClassId" href="../datatypes/#rerun.datatypes.ClassId">ClassId</a></code></p>
+
+  
+      <p><strong>Component</strong>: A 16-bit ID representing a type of semantic class.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.ClearIsRecursive" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ClearIsRecursive</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.clear_is_recursive_ext.ClearIsRecursiveExt">ClearIsRecursiveExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Configures how a clear operation should behave - recursive or not.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.ClearIsRecursive.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">recursive</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ClearIsRecursive component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>recursive</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If true, also clears all recursive children entities.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.components.clear_is_recursive.ClearIsRecursiveLike">ClearIsRecursiveLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Color" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Color</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Rgba32" href="../datatypes/#rerun.datatypes.Rgba32">Rgba32</a></code></p>
+
+  
+      <p><strong>Component</strong>: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.</p>
+<p>The color is stored as a 32-bit integer, where the most significant
+byte is <code>R</code> and the least significant byte is <code>A</code>.</p>
+<p>Float colors are assumed to be in 0-1 gamma sRGB space.
+All other colors are assumed to be in 0-255 gamma sRGB space.
+If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.DepthMeter" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">DepthMeter</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.depth_meter_ext.DepthMeterExt">DepthMeterExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A component indicating how long a meter is, expressed in native units.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.DepthMeter.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the DepthMeter component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.DisconnectedSpace" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">DisconnectedSpace</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.disconnected_space_ext.DisconnectedSpaceExt">DisconnectedSpaceExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Spatially disconnect this entity from its parent.</p>
+<p>Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+making it impossible to transform the entity path into its parent's space and vice versa.
+It <em>only</em> applies to space views that work with spatial transformations, i.e. 2D &amp; 3D space views.
+This is useful for specifying that a subgraph is independent of the rest of the scene.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.DisconnectedSpace.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">is_disconnected</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Disconnect an entity from its parent.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>is_disconnected</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether or not the entity should be disconnected from the rest of the scene.
+Set to <code>True</code> to disconnect the entity from its parent.
+Set to <code>False</code> to disable the effects of this component, (re-)connecting the entity to its parent again.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>True</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.DrawOrder" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">DrawOrder</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.draw_order_ext.DrawOrderExt">DrawOrderExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Draw order used for the display order of 2D elements.</p>
+<p>Higher values are drawn on top of lower values.
+An entity can have only a single draw order component.
+Within an entity draw order is governed by the order of the components.</p>
+<p>Draw order for entities with the same draw order is generally undefined.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.DrawOrder.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the DrawOrder component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.HalfSizes2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">HalfSizes2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec2D" href="../datatypes/#rerun.datatypes.Vec2D">Vec2D</a></code></p>
+
+  
+      <p><strong>Component</strong>: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.</p>
+<p>The box extends both in negative and positive direction along each axis.
+Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.HalfSizes3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">HalfSizes3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec3D" href="../datatypes/#rerun.datatypes.Vec3D">Vec3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.</p>
+<p>The box extends both in negative and positive direction along each axis.
+Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.InstanceKey" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">InstanceKey</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.instance_key_ext.InstanceKeyExt">InstanceKeyExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A unique numeric identifier for each individual instance within a batch.</p>
+<p>Instance keys are automatically assigned by the <code>rerun</code> library and should not be set manually.</p>
+<p>The instance key is just the index of the instance within the batch,
+i.e. the first point in a point cloud has <code>InstanceKey = 0</code>, the second <code>InstanceKey = 1</code>, and so on.</p>
+<p>We plan to remove the <code>InstanceKey</code> component in the near future.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.InstanceKey.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the InstanceKey component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.KeypointId" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">KeypointId</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.KeypointId" href="../datatypes/#rerun.datatypes.KeypointId">KeypointId</a></code></p>
+
+  
+      <p><strong>Component</strong>: A 16-bit ID representing a type of semantic keypoint within a class.</p>
+<p><code>KeypointId</code>s are only meaningful within the context of a [<code>rerun.datatypes.ClassDescription</code>].</p>
+<p>Used to look up an [<code>rerun.datatypes.AnnotationInfo</code>] for a Keypoint within the
+[<code>rerun.components.AnnotationContext</code>].</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.LineStrip2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">LineStrip2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.line_strip2d_ext.LineStrip2DExt">LineStrip2DExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A line strip in 2D space.</p>
+<p>A line strip is a list of points connected by line segments. It can be used to draw
+approximations of smooth curves.</p>
+<p>The points will be connected in order, like so:
+<div class="highlight"><pre><span></span><code>       2------3     5
+      /        \   /
+0----1          \ /
+                 4
+</code></pre></div></p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.LineStrip2D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">points</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the LineStrip2D component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.LineStrip3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">LineStrip3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.line_strip3d_ext.LineStrip3DExt">LineStrip3DExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A line strip in 3D space.</p>
+<p>A line strip is a list of points connected by line segments. It can be used to draw
+approximations of smooth curves.</p>
+<p>The points will be connected in order, like so:
+<div class="highlight"><pre><span></span><code>       2------3     5
+      /        \   /
+0----1          \ /
+                 4
+</code></pre></div></p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.LineStrip3D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">points</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the LineStrip3D component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.MarkerShape" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">MarkerShape</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-external" title="enum.Enum" href="https://docs.python.org/3/library/enum.html#enum.Enum">Enum</a></code></p>
+
+  
+      <p><strong>Component</strong>: Shape of a marker.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.MarkerSize" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">MarkerSize</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.marker_size_ext.MarkerSizeExt">MarkerSizeExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Size of a marker in UI points.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.MarkerSize.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the MarkerSize component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Material" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Material</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Material" href="../datatypes/#rerun.datatypes.Material">Material</a></code></p>
+
+  
+      <p><strong>Component</strong>: Material properties of a mesh.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.MediaType" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">MediaType</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.media_type_ext.MediaTypeExt">MediaTypeExt</span></code>, <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.</p>
+<p>The complete reference of officially registered media types is maintained by the IANA and can be
+consulted at <a href="https://www.iana.org/assignments/media-types/media-types.xhtml">https://www.iana.org/assignments/media-types/media-types.xhtml</a>.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.MeshProperties" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">MeshProperties</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.MeshProperties" href="../datatypes/#rerun.datatypes.MeshProperties">MeshProperties</a></code></p>
+
+  
+      <p><strong>Component</strong>: Optional triangle indices for a mesh.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Name" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Name</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: A display name, typically for an entity or a item like a plot series.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.OutOfTreeTransform3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">OutOfTreeTransform3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Transform3D" href="../datatypes/#rerun.datatypes.Transform3D">Transform3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: An out-of-tree affine transform between two 3D spaces, represented in a given direction.</p>
+<p>"Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.PinholeProjection" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">PinholeProjection</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Mat3x3" href="../datatypes/#rerun.datatypes.Mat3x3">Mat3x3</a></code></p>
+
+  
+      <p><strong>Component</strong>: Camera projection, from image coordinates to view coordinates.</p>
+<p>Child from parent.
+Image coordinates from camera view coordinates.</p>
+
+<details class="example:" open>
+  <summary>Example:</summary>
+  <div class="highlight"><pre><span></span><code>1496.1     0.0  980.5
+   0.0  1496.1  744.5
+   0.0     0.0    1.0
+</code></pre></div>
+</details>
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Position2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Position2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec2D" href="../datatypes/#rerun.datatypes.Vec2D">Vec2D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A position in 2D space.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Position3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Position3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec3D" href="../datatypes/#rerun.datatypes.Vec3D">Vec3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A position in 3D space.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Radius" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Radius</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.radius_ext.RadiusExt">RadiusExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A Radius component.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.Radius.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Radius component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Range1D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Range1D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Component</strong>: A 1D range, specifying a lower and upper bound.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.Range1D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="nb">range</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Range1D component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Resolution" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Resolution</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec2D" href="../datatypes/#rerun.datatypes.Vec2D">Vec2D</a></code></p>
+
+  
+      <p><strong>Component</strong>: Pixel resolution width &amp; height, e.g. of a camera sensor.</p>
+<p>Typically in integer units, but for some use cases floating point may be used.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Rotation3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Rotation3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Rotation3D" href="../datatypes/#rerun.datatypes.Rotation3D">Rotation3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A 3D rotation, represented either by a quaternion or a rotation around axis.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Scalar" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Scalar</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.scalar_ext.ScalarExt">ScalarExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: A double-precision scalar.</p>
+<p>Used for time series plots.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.Scalar.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Scalar component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.ScalarScattering" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ScalarScattering</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.scalar_scattering_ext.ScalarScatteringExt">ScalarScatteringExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: If true, a scalar will be shown as individual point in a scatter plot.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.ScalarScattering.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">scattered</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ScalarScattering component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.StrokeWidth" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">StrokeWidth</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.stroke_width_ext.StrokeWidthExt">StrokeWidthExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: The width of a stroke specified in UI points.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.StrokeWidth.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">width</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the StrokeWidth component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.TensorData" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorData</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.TensorData" href="../datatypes/#rerun.datatypes.TensorData">TensorData</a></code></p>
+
+  
+      <p><strong>Component</strong>: A multi-dimensional <code>Tensor</code> of data.</p>
+<p>The number of dimensions and their respective lengths is specified by the <code>shape</code> field.
+The dimensions are ordered from outermost to innermost. For example, in the common case of
+a 2D RGB Image, the shape would be <code>[height, width, channel]</code>.</p>
+<p>These dimensions are combined with an index to look up values from the <code>buffer</code> field,
+which stores a contiguous array of typed values.</p>
+<p>Note that the buffer may be encoded in a compressed format such as <code>jpeg</code> or
+in a format with downsampled chroma, such as NV12 or YUY2.
+For file formats, the shape is used as a hint, for chroma downsampled format
+the shape has to be the shape of the decoded image.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Texcoord2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Texcoord2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec2D" href="../datatypes/#rerun.datatypes.Vec2D">Vec2D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A 2D texture UV coordinate.</p>
+<p>Texture coordinates specify a position on a 2D texture.
+A range from 0-1 covers the entire texture in the respective dimension.
+Unless configured otherwise, the texture repeats outside of this range.
+Rerun uses top-left as the origin for UV coordinates.</p>
+<p>0     U     1
+0 + --------- →
+  |           .
+V |           .
+  |           .
+1 ↓ . . . . . .</p>
+<p>This is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,
+which places the origin at the bottom-left.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Text" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Text</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: A string of text, e.g. for labels and text documents.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.TextLogLevel" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TextLogLevel</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.text_log_level_ext.TextLogLevelExt">TextLogLevelExt</span></code>, <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: The severity level of a text log message.</p>
+<p>Recommended to be one of:
+* <code>"CRITICAL"</code>
+* <code>"ERROR"</code>
+* <code>"WARN"</code>
+* <code>"INFO"</code>
+* <code>"DEBUG"</code>
+* <code>"TRACE"</code></p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Transform3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Transform3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Transform3D" href="../datatypes/#rerun.datatypes.Transform3D">Transform3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: An affine transform between two 3D spaces, represented in a given direction.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Vector2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vector2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec2D" href="../datatypes/#rerun.datatypes.Vec2D">Vec2D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A vector in 2D space.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.Vector3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vector3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Vec3D" href="../datatypes/#rerun.datatypes.Vec3D">Vec3D</a></code></p>
+
+  
+      <p><strong>Component</strong>: A vector in 3D space.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.ViewCoordinates" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ViewCoordinates</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.components.view_coordinates_ext.ViewCoordinatesExt">ViewCoordinatesExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: How we interpret the coordinate system of an entity/space.</p>
+<p>For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?</p>
+<p>The three coordinates are always ordered as [x, y, z].</p>
+<p>For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+down, and the Z axis points forward.</p>
+<p>The following constants are used to represent the different directions:
+ * Up = 1
+ * Down = 2
+ * Right = 3
+ * Left = 4
+ * Forward = 5
+ * Back = 6</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.ViewCoordinates.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">coordinates</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ViewCoordinates component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>coordinates</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The directions of the [x, y, z] axes.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.components.view_coordinates.ViewCoordinatesLike">ViewCoordinatesLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.components.VisualizerOverrides" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">VisualizerOverrides</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Component</strong>: The name of a visualizer.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.components.VisualizerOverrides.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the VisualizerOverrides component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

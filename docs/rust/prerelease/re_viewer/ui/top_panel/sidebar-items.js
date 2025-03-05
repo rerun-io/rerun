@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["frame_time_label_ui","input_latency_label_ui","memory_use_label_ui","top_bar_ui","top_panel","website_link_ui"]};
