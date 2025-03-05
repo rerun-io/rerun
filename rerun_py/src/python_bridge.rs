@@ -15,9 +15,10 @@ use pyo3::{
 };
 
 use re_log::ResultExt;
-use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
+use re_log_types::{LogMsg, SetStoreInfo};
 use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
+use re_sdk::external::re_tuid::Tuid;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
@@ -41,6 +42,8 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 }
 
 use once_cell::sync::{Lazy, OnceCell};
+
+use crate::dataframe::PyRecording;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -169,6 +172,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -1277,6 +1281,30 @@ fn send_blueprint(
     }
 }
 
+/// Send a recording to the given recording stream.
+///
+/// If the `embedded_recording` contains store info, it will be copied to the
+/// destination before sending the recording chunks.
+#[pyfunction]
+#[pyo3(signature = (embedded_recording, recording = None))]
+fn send_recording(embedded_recording: &PyRecording, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+
+    let store = embedded_recording.store.read();
+    if let Some(info) = store.info().cloned() {
+        recording.record_msg(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: Tuid::new(),
+            info,
+        }));
+    }
+
+    for chunk in store.iter_chunks() {
+        recording.send_chunk((**chunk).clone());
+    }
+}
+
 // --- Misc ---
 
 /// Return a verbose version string
@@ -1363,7 +1391,7 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 
 // --- Helpers ---
 
-fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+pub(crate) fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     let py_version = py.version_info();
     re_log_types::PythonVersion {
         major: py_version.major,
