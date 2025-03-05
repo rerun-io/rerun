@@ -82,7 +82,6 @@ features = [
 ]
 "concepts/send_recording" = [ # No output
   "cpp",
-  "rust",
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
