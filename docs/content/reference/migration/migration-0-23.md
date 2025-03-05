@@ -81,6 +81,29 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
+## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
+
+Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream?speculative-link) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
+
+```python
+# before
+rec = rr. new_recording("my_app_id")
+
+# after
+rec = rr.RecordingStream("my_app_id")
+```
+
+If you used the `spawn=True` argument, you will now have to call the `spawn()` method explicitly:
+
+```python
+# before
+rec = rr. new_recording("my_app_id", spawn=True)
+
+# after
+rec = rr.RecordingStream("my_app_id")
+rec.spawn()
+```
+
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, and `rr.connect_tcp()`
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.

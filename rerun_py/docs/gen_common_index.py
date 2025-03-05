@@ -95,6 +95,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "notebook_show",
             "legacy_notebook_show",
         ],
+        class_list=["RecordingStream"],
     ),
     Section(
         title="Logging functions",
@@ -372,7 +373,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "thread_local_stream",
             "recording_stream_generator_ctx",
         ],
-        class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
+        class_list=["LoggingHandler", "MemoryRecording"],
     ),
     Section(
         title="Utilities",
