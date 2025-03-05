@@ -733,6 +733,8 @@ class RecordingStream:
         You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
         you must only use `timedelta` for that timeline going forward.
 
+        The columnar equivalent to this function is [`rerun.IndexColumn`][].
+
         Parameters
         ----------
         timeline : str

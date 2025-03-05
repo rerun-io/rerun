@@ -74,7 +74,7 @@ class Scalar(Archetype):
 
     rr.send_columns(
         "scalars",
-        indexes=[rr.TimeSequenceColumn("step", times)],
+        indexes=[rr.IndexColumn("step", sequence=times)],
         columns=rr.Scalar.columns(scalar=scalars),
     )
     ```
