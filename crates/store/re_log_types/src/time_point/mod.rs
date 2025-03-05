@@ -233,7 +233,9 @@ impl TimeType {
 
     pub fn from_arrow_datatype(datatype: &ArrowDataType) -> Option<Self> {
         match datatype {
-            ArrowDataType::Timestamp(_, _) => Some(Self::Time),
+            // TODO(##8635): differentiate between absolute and relative time
+            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, _)
+            | ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond) => Some(Self::Time),
             ArrowDataType::Int64 => Some(Self::Sequence),
             _ => None,
         }
