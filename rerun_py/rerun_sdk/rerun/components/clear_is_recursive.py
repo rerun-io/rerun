@@ -23,7 +23,6 @@ class ClearIsRecursive(ClearIsRecursiveExt, datatypes.Bool, ComponentMixin):
     # __init__ can be found in clear_is_recursive_ext.py
 
     # Note: there are no fields here because ClearIsRecursive delegates to datatypes.Bool
-    pass
 
 
 class ClearIsRecursiveBatch(datatypes.BoolBatch, ComponentBatchMixin):

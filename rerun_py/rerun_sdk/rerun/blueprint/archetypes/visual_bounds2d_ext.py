@@ -15,7 +15,7 @@ class VisualBounds2DExt:
         *,
         x_range: datatypes.Range1DLike | None = None,
         y_range: datatypes.Range1DLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the VisualBounds2D archetype.
 

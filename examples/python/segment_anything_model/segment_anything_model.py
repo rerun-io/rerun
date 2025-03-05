@@ -47,7 +47,11 @@ def download_with_progress(url: str, dest: Path) -> None:
     total_size = int(resp.headers.get("content-length", 0))
     with open(dest, "wb") as dest_file:
         with tqdm(
-            desc="Downloading model", total=total_size, unit="iB", unit_scale=True, unit_divisor=1024
+            desc="Downloading model",
+            total=total_size,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as progress:
             for data in resp.iter_content(chunk_size):
                 dest_file.write(data)
@@ -198,7 +202,7 @@ def main() -> None:
     if len(args.images) == 0:
         logging.info("No image provided. Using default.")
         args.images = [
-            "https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/truck.jpg"
+            "https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/truck.jpg",
         ]
 
     for n, image_uri in enumerate(args.images):

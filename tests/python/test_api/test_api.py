@@ -371,7 +371,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
-        "--test", type=str, default="most", help="What test to run", choices=["most", "all"] + list(tests.keys())
+        "--test",
+        type=str,
+        default="most",
+        help="What test to run",
+        choices=["most", "all"] + list(tests.keys()),
     )
     parser.add_argument(
         "--multithread",

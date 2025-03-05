@@ -32,7 +32,7 @@ def test_pinhole() -> None:
             f"    image_from_camera={str(image_from_camera)}\n"
             f"    resolution={str(resolution)}\n"
             f"    camera_xyz={str(camera_xyz)}\n"
-            f")"
+            f")",
         )
         arch = rr.Pinhole(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
         print(f"{arch}\n")
@@ -40,7 +40,7 @@ def test_pinhole() -> None:
         assert arch.image_from_camera == PinholeProjectionBatch._converter([1, 2, 3, 4, 5, 6, 7, 8, 9])
         assert arch.resolution == ResolutionBatch._converter([1, 2] if resolution is not None else None)
         assert arch.camera_xyz == ViewCoordinatesBatch._converter(
-            rr.components.ViewCoordinates.RDF if camera_xyz is not None else None
+            rr.components.ViewCoordinates.RDF if camera_xyz is not None else None,
         )
 
 

@@ -22,7 +22,6 @@ class GridColumns(datatypes.UInt32, ComponentMixin):
     # You can define your own __init__ function as a member of GridColumnsExt in grid_columns_ext.py
 
     # Note: there are no fields here because GridColumns delegates to datatypes.UInt32
-    pass
 
 
 class GridColumnsBatch(datatypes.UInt32Batch, ComponentBatchMixin):

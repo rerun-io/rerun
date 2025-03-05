@@ -19,7 +19,7 @@ rr.send_blueprint(
             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
             end=rrb.TimeRangeBoundary.cursor_relative(),
         ),
-    )
+    ),
 )
 
 cur_time = time.time()

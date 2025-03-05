@@ -34,7 +34,7 @@ class Rgba32(Rgba32Ext):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    def __init__(self: Any, rgba: Rgba32Like):
+    def __init__(self: Any, rgba: Rgba32Like) -> None:
         """Create a new instance of the Rgba32 datatype."""
 
         # You can define your own __init__ function as a member of Rgba32Ext in rgba32_ext.py

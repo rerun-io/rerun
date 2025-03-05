@@ -92,7 +92,7 @@ class TextDocument(Archetype):
 
     """
 
-    def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
+    def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None) -> None:
         """
         Create a new instance of the TextDocument archetype.
 

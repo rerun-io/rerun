@@ -47,7 +47,7 @@ class SeriesLine(Archetype):
     rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
 
     # Log the data on a timeline called "step".
-    for t in range(0, int(tau * 2 * 100.0)):
+    for t in range(int(tau * 2 * 100.0)):
         rr.set_index("step", sequence=t)
 
         rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
@@ -73,7 +73,7 @@ class SeriesLine(Archetype):
         name: datatypes.Utf8Like | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesLine archetype.
 

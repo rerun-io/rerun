@@ -62,7 +62,7 @@ class ViewContents(Archetype):
     The last rule matching `/world/house` is `+ /world/**`, so it is included.
     """
 
-    def __init__(self: Any, query: datatypes.Utf8ArrayLike):
+    def __init__(self: Any, query: datatypes.Utf8ArrayLike) -> None:
         """
         Create a new instance of the ViewContents archetype.
 

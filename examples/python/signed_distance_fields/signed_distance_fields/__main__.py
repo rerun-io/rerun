@@ -26,7 +26,7 @@ import argparse
 import os
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import cast
+from typing import Any, Callable, cast
 
 import mesh_to_sdf
 import numpy as np
@@ -41,11 +41,11 @@ from .download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 CACHE_DIR = Path(__file__).parent.parent / "cache"
 
 
-def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-def]
+def log_timing_decorator(objpath: str, level: str) -> Callable[..., Callable[..., Any]]:
     """Times the inner method using `timeit`, and logs the result using Rerun."""
 
-    def inner(func):  # type: ignore[no-untyped-def]
-        def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def inner(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
@@ -174,11 +174,14 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generates SDFs for arbitrary meshes and logs the results using the Rerun SDK."
+        description="Generates SDFs for arbitrary meshes and logs the results using the Rerun SDK.",
     )
     parser.add_argument("--resolution", type=int, default=128, help="Specifies the resolution of the voxel volume")
     parser.add_argument(
-        "--points", type=int, default=250_000, help="Specifies the number of points for the point cloud"
+        "--points",
+        type=int,
+        default=250_000,
+        help="Specifies the number of points for the point cloud",
     )
     parser.add_argument(
         "--mesh",

@@ -44,7 +44,7 @@ class AffixFuzzer4(Archetype):
         fuzz2116: components.AffixFuzzer16ArrayLike | None = None,
         fuzz2117: components.AffixFuzzer17ArrayLike | None = None,
         fuzz2118: components.AffixFuzzer18ArrayLike | None = None,
-    ):
+    ) -> None:
         """Create a new instance of the AffixFuzzer4 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py

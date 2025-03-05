@@ -47,7 +47,7 @@ Make sure you have installed ROS2 (https://docs.ros.org/en/humble/index.html)
 and sourced /opt/ros/humble/setup.bash
 
 See: README.md for more details.
-"""
+""",
     )
     sys.exit(1)
 

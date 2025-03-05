@@ -167,7 +167,10 @@ def main() -> None:
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
     parser.add_argument(
-        "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
+        "--frames",
+        type=int,
+        default=sys.maxsize,
+        help="If specified, limits the number of frames logged",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()

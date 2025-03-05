@@ -24,7 +24,7 @@ __all__ = ["UInt16", "UInt16ArrayLike", "UInt16Batch", "UInt16Like"]
 class UInt16:
     """**Datatype**: A 16bit unsigned integer."""
 
-    def __init__(self: Any, value: UInt16Like):
+    def __init__(self: Any, value: UInt16Like) -> None:
         """Create a new instance of the UInt16 datatype."""
 
         # You can define your own __init__ function as a member of UInt16Ext in uint16_ext.py

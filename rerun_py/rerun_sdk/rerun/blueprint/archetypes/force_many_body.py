@@ -29,7 +29,7 @@ class ForceManyBody(Archetype):
 
     def __init__(
         self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None
-    ):
+    ) -> None:
         """
         Create a new instance of the ForceManyBody archetype.
 

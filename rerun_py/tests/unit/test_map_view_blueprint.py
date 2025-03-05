@@ -11,7 +11,10 @@ def test_map_view_blueprint() -> None:
     bp1 = rrb.MapView(origin="point", name="MapView", zoom=16, background="openstreetmap")
     bp2 = rrb.MapView(origin="point", name="MapView", zoom=rrb.components.ZoomLevel(16), background="openstreetmap")
     bp3 = rrb.MapView(
-        origin="point", name="MapView", zoom=rrb.archetypes.MapZoom(16), background=rrb.MapProvider.OpenStreetMap
+        origin="point",
+        name="MapView",
+        zoom=rrb.archetypes.MapZoom(16),
+        background=rrb.MapProvider.OpenStreetMap,
     )
     bp4 = rrb.MapView(
         origin="point",

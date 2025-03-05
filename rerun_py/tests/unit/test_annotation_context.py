@@ -91,8 +91,10 @@ def test_class_description(
 ) -> None:
     assert_correct_class_description(
         ClassDescription(
-            info=input, keypoint_annotations=keypoint_annotations, keypoint_connections=keypoint_connections
-        )
+            info=input,
+            keypoint_annotations=keypoint_annotations,
+            keypoint_connections=keypoint_connections,
+        ),
     )
 
 
@@ -126,13 +128,15 @@ def assert_correct_annotation_context(ctx: AnnotationContext) -> None:
         ClassDescriptionMapElem(
             class_id=1,
             class_description=ClassDescription(
-                info=(1, "label1", [1, 2, 3]), keypoint_annotations=[(3, "kp_label1", [7, 8, 9])]
+                info=(1, "label1", [1, 2, 3]),
+                keypoint_annotations=[(3, "kp_label1", [7, 8, 9])],
             ),
         ),
         ClassDescriptionMapElem(
             class_id=2,
             class_description=ClassDescription(
-                info=(2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]
+                info=(2, "label2", [4, 5, 6]),
+                keypoint_annotations=[(4, "kp_label2", [10, 11, 12])],
             ),
         ),
     ]

@@ -16,7 +16,7 @@ class PlotLegendExt:
         corner: blueprint_components.Corner2DLike | None = None,
         *,
         visible: BoolLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the PlotLegend archetype.
 

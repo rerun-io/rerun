@@ -30,7 +30,7 @@ def task(child_index: int) -> None:
     rr.log(
         "log",
         rr.TextLog(
-            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
+            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
         ),  # noqa: E501 line too long
     )
     if child_index == 0:

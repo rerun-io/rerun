@@ -62,7 +62,9 @@ class ClassDescriptionExt:
         if keypoint_connections is None:
             keypoint_connections = []
         self.__attrs_init__(
-            info=info, keypoint_annotations=keypoint_annotations, keypoint_connections=keypoint_connections
+            info=info,
+            keypoint_annotations=keypoint_annotations,
+            keypoint_connections=keypoint_connections,
         )
 
     # Implement the AsComponents protocol
@@ -119,7 +121,7 @@ class ClassDescriptionExt:
         infos_array = AnnotationInfoBatch(infos).as_arrow_array()
 
         annotation_offsets = list(
-            itertools.chain([0], itertools.accumulate(len(ann) if ann else 0 for ann in annotations))
+            itertools.chain([0], itertools.accumulate(len(ann) if ann else 0 for ann in annotations)),
         )
         # TODO(jleibs): Re-enable null support
         # annotation_null_map = pa.array([ann is None for ann in annotations], type=pa.bool_())
@@ -130,11 +132,11 @@ class ClassDescriptionExt:
         #                                              annotation_values_array,
         #                                              mask=annotation_null_map)
         annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array).cast(
-            data_type.field("keypoint_annotations").type
+            data_type.field("keypoint_annotations").type,
         )
 
         connections_offsets = list(
-            itertools.chain([0], itertools.accumulate(len(con) if con else 0 for con in connections))
+            itertools.chain([0], itertools.accumulate(len(con) if con else 0 for con in connections)),
         )
         # TODO(jleibs): Re-enable null support
         # connection_null_map = pa.array([con is None for con in connections], type=pa.bool_())
@@ -145,7 +147,7 @@ class ClassDescriptionExt:
         #                                             connection_values_array,
         #                                             mask=connection_null_map)
         connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array).cast(
-            data_type.field("keypoint_connections").type
+            data_type.field("keypoint_connections").type,
         )
 
         return pa.StructArray.from_arrays(

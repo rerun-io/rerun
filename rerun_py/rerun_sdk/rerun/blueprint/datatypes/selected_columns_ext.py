@@ -17,7 +17,8 @@ class SelectedColumnsExt:
     """Extension for [SelectedColumns][rerun.blueprint.datatypes.SelectedColumns]."""
 
     def __init__(
-        self: Any, columns: Sequence[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like]
+        self: Any,
+        columns: Sequence[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like],
     ) -> None:
         """
         Create a new instance of the `SelectedColumns` datatype.

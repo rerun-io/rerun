@@ -24,7 +24,7 @@ __all__ = ["AffixFuzzer12", "AffixFuzzer12ArrayLike", "AffixFuzzer12Batch", "Aff
 class AffixFuzzer12(ComponentMixin):
     _BATCH_TYPE = None
 
-    def __init__(self: Any, many_strings_required: AffixFuzzer12Like):
+    def __init__(self: Any, many_strings_required: AffixFuzzer12Like) -> None:
         """Create a new instance of the AffixFuzzer12 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer12Ext in affix_fuzzer12_ext.py

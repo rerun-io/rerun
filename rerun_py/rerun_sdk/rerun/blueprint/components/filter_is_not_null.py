@@ -22,7 +22,6 @@ class FilterIsNotNull(blueprint_datatypes.FilterIsNotNull, ComponentMixin):
     # You can define your own __init__ function as a member of FilterIsNotNullExt in filter_is_not_null_ext.py
 
     # Note: there are no fields here because FilterIsNotNull delegates to datatypes.FilterIsNotNull
-    pass
 
 
 class FilterIsNotNullBatch(blueprint_datatypes.FilterIsNotNullBatch, ComponentBatchMixin):

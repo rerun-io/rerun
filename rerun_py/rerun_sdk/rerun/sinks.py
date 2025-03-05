@@ -65,14 +65,15 @@ def connect_grpc(
     application_id = get_application_id(recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.connect_grpc(
@@ -84,7 +85,9 @@ def connect_grpc(
 
 
 def save(
-    path: str | pathlib.Path, default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
+    path: str | pathlib.Path,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Stream all log-data to a file.
@@ -120,14 +123,15 @@ def save(
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.save(
@@ -171,14 +175,15 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.stdout(
@@ -210,7 +215,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
 @deprecated(
     """Please migrate to `rr.serve_web(…)`.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details."""
+  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details.""",
 )
 def serve(
     *,
@@ -329,14 +334,15 @@ def serve_web(
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     # TODO(#5531): keep static data around.

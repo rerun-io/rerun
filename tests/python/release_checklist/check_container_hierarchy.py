@@ -75,7 +75,7 @@ def log_some_views() -> None:
     rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
     rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
-    for t in range(0, int(tau * 2 * 10.0)):
+    for t in range(int(tau * 2 * 10.0)):
         rr.set_index("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)

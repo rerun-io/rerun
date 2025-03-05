@@ -69,7 +69,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
     if len(wheels) > 1:
         if platform_independent:
             print(
-                f"Multiple wheels found for package {pkg} (the package was expected to be platform independent): {wheels}"
+                f"Multiple wheels found for package {pkg} (the package was expected to be platform independent): {wheels}",
             )
         else:
             print(f"Multiple wheels found for package {pkg} on platform {plat} and architecture {arch}: {wheels}")
@@ -88,7 +88,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Find and install a wheel from a folder in the specified pixi environment"
+        description="Find and install a wheel from a folder in the specified pixi environment",
     )
     parser.add_argument("--feature", required=True, help="The pixi feature to update")
     parser.add_argument("--dir", required=True, help="Directory to search")

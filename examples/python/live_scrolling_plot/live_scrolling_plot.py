@@ -31,8 +31,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    plot_paths = [f"plot_{i}" for i in range(0, args.num_plots)]
-    series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
+    plot_paths = [f"plot_{i}" for i in range(args.num_plots)]
+    series_paths = [f"series_{i}" for i in range(args.num_series_per_plot)]
 
     rr.script_setup(args, "rerun_example_live_scrolling_plot")
 
@@ -47,12 +47,12 @@ def main() -> None:
                             "time",
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-args.window_size),
                             end=rrb.TimeRangeBoundary.cursor_relative(),
-                        )
+                        ),
                     ],
                     plot_legend=rrb.PlotLegend(visible=False),
                 )
                 for plot_path in plot_paths
-            ]
+            ],
         ),
     )
 

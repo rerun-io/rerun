@@ -38,7 +38,7 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
 class KeypointPair(KeypointPairExt):
     """**Datatype**: A connection between two [`datatypes.KeypointId`][rerun.datatypes.KeypointId]s."""
 
-    def __init__(self: Any, keypoint0: datatypes.KeypointIdLike, keypoint1: datatypes.KeypointIdLike):
+    def __init__(self: Any, keypoint0: datatypes.KeypointIdLike, keypoint1: datatypes.KeypointIdLike) -> None:
         """
         Create a new instance of the KeypointPair datatype.
 

@@ -22,7 +22,6 @@ class TensorWidthDimension(datatypes.TensorDimensionSelection, ComponentMixin):
     # You can define your own __init__ function as a member of TensorWidthDimensionExt in tensor_width_dimension_ext.py
 
     # Note: there are no fields here because TensorWidthDimension delegates to datatypes.TensorDimensionSelection
-    pass
 
 
 class TensorWidthDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):

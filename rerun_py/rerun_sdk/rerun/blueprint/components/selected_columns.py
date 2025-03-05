@@ -22,7 +22,6 @@ class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
     # You can define your own __init__ function as a member of SelectedColumnsExt in selected_columns_ext.py
 
     # Note: there are no fields here because SelectedColumns delegates to datatypes.SelectedColumns
-    pass
 
 
 class SelectedColumnsBatch(blueprint_datatypes.SelectedColumnsBatch, ComponentBatchMixin):

@@ -18,7 +18,7 @@ class VideoTimestampExt:
         *,
         nanoseconds: int | None = None,
         seconds: float | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the VideoTimestamp component.
 

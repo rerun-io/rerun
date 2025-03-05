@@ -29,7 +29,7 @@ special exit code to indicate that it doesn't support anything else.
 
 To try it out, copy it in your $PATH as `rerun-loader-python-file`, then open a Python source
 file with Rerun (`rerun file.py`).
-"""
+""",
 )
 parser.add_argument("filepath", type=str)
 parser.add_argument("--application-id", type=str, help="optional recommended ID for the application")

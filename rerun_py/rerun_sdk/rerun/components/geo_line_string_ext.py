@@ -19,7 +19,7 @@ class GeoLineStringExt:
     """Extension for [GeoLineString][rerun.components.GeoLineString]."""
 
     # TODO(ab): the only purpose of this override is to make the `lat_lon` arg kw-only. Should be codegen-able?
-    def __init__(self: Any, *, lat_lon: GeoLineStringLike):
+    def __init__(self: Any, *, lat_lon: GeoLineStringLike) -> None:
         """Create a new instance of the GeoLineString component."""
 
         # You can define your own __init__ function as a member of GeoLineStringExt in geo_line_string_ext.py
@@ -59,7 +59,7 @@ class GeoLineStringExt:
                         inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
-                            "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2."
+                            "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2.",
                         )
                 # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
                 elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
@@ -74,7 +74,7 @@ class GeoLineStringExt:
                         else:
                             if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
                                 raise ValueError(
-                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}."
+                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}.",
                                 )
                             return DVec2DBatch(strip)
 

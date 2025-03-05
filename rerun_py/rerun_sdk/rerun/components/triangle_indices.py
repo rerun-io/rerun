@@ -22,7 +22,6 @@ class TriangleIndices(datatypes.UVec3D, ComponentMixin):
     # You can define your own __init__ function as a member of TriangleIndicesExt in triangle_indices_ext.py
 
     # Note: there are no fields here because TriangleIndices delegates to datatypes.UVec3D
-    pass
 
 
 class TriangleIndicesBatch(datatypes.UVec3DBatch, ComponentBatchMixin):

@@ -22,7 +22,6 @@ class AutoViews(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of AutoViewsExt in auto_views_ext.py
 
     # Note: there are no fields here because AutoViews delegates to datatypes.Bool
-    pass
 
 
 class AutoViewsBatch(datatypes.BoolBatch, ComponentBatchMixin):

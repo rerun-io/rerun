@@ -30,7 +30,7 @@ class ViewBlueprint(Archetype):
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
         visible: datatypes.BoolLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ViewBlueprint archetype.
 

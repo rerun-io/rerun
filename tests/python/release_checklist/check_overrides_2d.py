@@ -86,7 +86,7 @@ def run(args: Namespace) -> None:
             rr.components.TextBatch(["BigRed", "MidGreen", "SmolBlue"]),
             rr.components.Position2DBatch([[-2.0, 1.5], [0.0, -0.5], [2.0, 0.75]]),
             rr.components.Vector2DBatch([[-2.0, 1.0], [0.0, 2.0], [2.0, 1.0]]),
-        ]
+        ],
     }
     defaults = [
         rr.components.ColorBatch([[255, 255, 0], [0, 255, 255], [255, 0, 255]]),
@@ -137,7 +137,7 @@ def run(args: Namespace) -> None:
                             rr.components.Radius(0.1),
                             rr.components.Text("Cerberus"),
                             rr.components.Position2D([0.0, 0.0]),
-                        ]
+                        ],
                     },
                 ),
             ),

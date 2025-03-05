@@ -22,7 +22,6 @@ class EntityPath(datatypes.EntityPath, ComponentMixin):
     # You can define your own __init__ function as a member of EntityPathExt in entity_path_ext.py
 
     # Note: there are no fields here because EntityPath delegates to datatypes.EntityPath
-    pass
 
 
 class EntityPathBatch(datatypes.EntityPathBatch, ComponentBatchMixin):

@@ -37,7 +37,7 @@ def _affix_fuzzer20__s__special_field_converter_override(x: datatypes.StringComp
 
 @define(init=False)
 class AffixFuzzer20:
-    def __init__(self: Any, p: datatypes.PrimitiveComponentLike, s: datatypes.StringComponentLike):
+    def __init__(self: Any, p: datatypes.PrimitiveComponentLike, s: datatypes.StringComponentLike) -> None:
         """Create a new instance of the AffixFuzzer20 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py

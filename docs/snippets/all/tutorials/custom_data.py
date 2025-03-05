@@ -32,7 +32,8 @@ class CustomPoints3D(rr.AsComponents):
     def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = rr.Points3D(positions)
         self.confidences = ConfidenceBatch(confidences).or_with_descriptor_overrides(
-            archetype_name="user.CustomPoints3D", archetype_field_name="confidences"
+            archetype_name="user.CustomPoints3D",
+            archetype_field_name="confidences",
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:

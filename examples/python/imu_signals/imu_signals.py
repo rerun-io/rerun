@@ -57,7 +57,7 @@ def _setup_rerun() -> None:
                         "/gyroscope": [
                             rr.components.NameBatch(XYZ_AXIS_NAMES),
                             rr.components.ColorBatch(XYZ_AXIS_COLORS),
-                        ]
+                        ],
                     },
                 ),
                 rrb.TimeSeriesView(
@@ -67,13 +67,13 @@ def _setup_rerun() -> None:
                         "/accelerometer": [
                             rr.components.NameBatch(XYZ_AXIS_NAMES),
                             rr.components.ColorBatch(XYZ_AXIS_COLORS),
-                        ]
+                        ],
                     },
                 ),
             ),
             rrb.Spatial3DView(origin="/", name="World position"),
             column_shares=[0.45, 0.55],
-        )
+        ),
     )
 
 
@@ -144,7 +144,9 @@ def _log_gt_imu() -> None:
         ]
     ]
     rr.send_columns(
-        "/cam0", indexes=[times], columns=rr.Transform3D.columns(translation=translations, quaternion=quaternions)
+        "/cam0",
+        indexes=[times],
+        columns=rr.Transform3D.columns(translation=translations, quaternion=quaternions),
     )
 
 

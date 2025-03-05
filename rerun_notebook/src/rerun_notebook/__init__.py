@@ -47,7 +47,7 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
     ESM_MOD = ASSET_ENV
-    if not (ASSET_ENV.startswith("http://") or ASSET_ENV.startswith("https://")):
+    if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
@@ -84,8 +84,8 @@ class Viewer(anywidget.AnyWidget):
         height: int | None = None,
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
 
         self._width = width
@@ -102,7 +102,7 @@ class Viewer(anywidget.AnyWidget):
 
         self.on_msg(handle_msg)
 
-    def _on_ready(self):
+    def _on_ready(self) -> None:
         self._ready = True
         for data in self._data_queue:
             self.send_rrd(data)
@@ -128,14 +128,14 @@ class Viewer(anywidget.AnyWidget):
                     logging.warning(
                         f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
 If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
-"""
+""",
                     )
                     return
                 poll(1)
                 time.sleep(0.1)
 
     def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
-        new_panel_states = {k: v for k, v in self._panel_states.items()} if self._panel_states else {}
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)

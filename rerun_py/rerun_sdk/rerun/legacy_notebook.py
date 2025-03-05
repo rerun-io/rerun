@@ -96,7 +96,7 @@ def as_html(
     application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
+            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording.",
         )
 
     if app_url is None:
@@ -108,7 +108,7 @@ def as_html(
             make_default=False,
             make_thread_default=False,
             default_enabled=True,
-        )
+        ),
     )
     if blueprint is not None:
         output_stream.send_blueprint(blueprint, make_active=True)

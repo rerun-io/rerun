@@ -65,7 +65,7 @@ def test_points3d() -> None:
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
             f"    keypoint_ids={keypoint_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Points3D(
             positions,

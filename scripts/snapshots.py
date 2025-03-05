@@ -95,12 +95,13 @@ def log_failed_snapshot_tests(original_path: Path, new_path: Path, diff_path: Pa
         rr.log(
             "doc/tabs",
             rr.TextDocument(
-                "### Click on one of the tabs below to show the Original/New/Diff images.", media_type="text/markdown"
+                "### Click on one of the tabs below to show the Original/New/Diff images.",
+                media_type="text/markdown",
             ),
         )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Logs all failed snapshot tests for comparison in rerun")
     parser.add_argument("-p", "--package", type=str, help="Only consider the provided package")
     parser.add_argument("--clean", action="store_true", help="Clean snapshot files instead of displaying them")
