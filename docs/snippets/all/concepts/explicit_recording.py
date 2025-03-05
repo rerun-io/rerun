@@ -4,7 +4,7 @@ import os
 
 import rerun as rr
 
-rec = rr.new_recording("rerun_example_explicit_recording")
+rec = rr.RecordingStream("rerun_example_explicit_recording")
 
 rec.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
 

@@ -41,11 +41,10 @@ As with the other stream viewing APIs (`rr.show`, `rr.connect`, `rr.spawn`), you
 a specific recording instance to `notebook_show`
 
 ```python
-rec = rr.new_recording("rerun_example_notebook_local")
+rec = rr.RecordingStream("rerun_example_notebook_local")
 
 rec.log(...)
-
-rr.notebook_show(recording=rec)
+rec.notebook_show()
 ```
 
 ## Running in Jupyter
