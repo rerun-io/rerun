@@ -2,8 +2,8 @@ namespace rerun.components;
 
 // ---
 
-/// The name of the application that generated the recording.
-table ApplicationId (
+/// Assigns a name to a recording.
+table RecordingName (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",

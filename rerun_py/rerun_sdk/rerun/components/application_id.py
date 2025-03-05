@@ -16,7 +16,7 @@ __all__ = ["ApplicationId", "ApplicationIdBatch"]
 
 
 class ApplicationId(datatypes.Utf8, ComponentMixin):
-    """**Component**: A string of text, e.g. for labels and text documents."""
+    """**Component**: The name of the application that generated the recording."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ApplicationIdExt in application_id_ext.py

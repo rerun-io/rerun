@@ -368,7 +368,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ApplicationId as Component>::name(),
             ComponentReflection {
-                docstring_md: "A string of text, e.g. for labels and text documents.",
+                docstring_md: "The name of the application that generated the recording.",
                 custom_placeholder: Some(ApplicationId::default().to_arrow()?),
                 datatype: ApplicationId::arrow_datatype(),
             },
@@ -715,6 +715,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
                 custom_placeholder: Some(Range1D::default().to_arrow()?),
                 datatype: Range1D::arrow_datatype(),
+            },
+        ),
+        (
+            <RecordingName as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Assigns a name to a recording.",
+                custom_placeholder: Some(RecordingName::default().to_arrow()?),
+                datatype: RecordingName::arrow_datatype(),
             },
         ),
         (
@@ -1731,7 +1739,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Started", component_name :
                     "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
-                    is_required : true, },
+                    is_required : true, }, ArchetypeFieldReflection { name : "name",
+                    display_name : "Name", component_name :
+                    "rerun.components.RecordingName".into(), docstring_md :
+                    "A user-chosen name for the recording.", is_required : false, },
                 ],
             },
         ),

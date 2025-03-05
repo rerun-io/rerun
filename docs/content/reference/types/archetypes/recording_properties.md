@@ -9,6 +9,8 @@ A list of properties associated with a recording.
 
 **Required**: [`ApplicationId`](../components/application_id.md), [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md)
 
+**Optional**: [`RecordingName`](../components/recording_name.md)
+
 ## Shown in
 * [DataframeView](../views/dataframe_view.md)
 

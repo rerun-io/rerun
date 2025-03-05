@@ -7,6 +7,7 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/application_id.hpp"
+#include "../components/recording_name.hpp"
 #include "../components/recording_started_timestamp.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -51,6 +52,9 @@ namespace rerun::archetypes {
         /// Should be an absolute time, i.e. relative to Unix Epoch.
         std::optional<ComponentBatch> started;
 
+        /// A user-chosen name for the recording.
+        std::optional<ComponentBatch> name;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.RecordingPropertiesIndicator";
@@ -69,6 +73,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_started = ComponentDescriptor(
             ArchetypeName, "started",
             Loggable<rerun::components::RecordingStartedTimestamp>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `name` field.
+        static constexpr auto Descriptor_name = ComponentDescriptor(
+            ArchetypeName, "name",
+            Loggable<rerun::components::RecordingName>::Descriptor.component_name
         );
 
       public:
@@ -114,6 +123,13 @@ namespace rerun::archetypes {
             const Collection<rerun::components::RecordingStartedTimestamp>& _started
         ) && {
             started = ComponentBatch::from_loggable(_started, Descriptor_started).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// A user-chosen name for the recording.
+        RecordingProperties with_name(const Collection<rerun::components::RecordingName>& _name
+        ) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);
         }
 

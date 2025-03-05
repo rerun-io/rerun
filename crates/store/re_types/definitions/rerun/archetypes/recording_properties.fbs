@@ -13,14 +13,13 @@ table RecordingProperties (
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// The user-chosen name of the application.
-  application_id: [rerun.components.ApplicationId] ("attr.rerun.component_optional", nullable, order: 1000);
-
-  /// A user-chosen name for the recording.
-  name: [rerun.components.RecordingName] ("attr.rerun.component_optional", nullable, order: 2000);
-
+  application_id: [rerun.components.ApplicationId] ("attr.rerun.component_required", order: 1000);
 
   /// When the recording started.
   ///
   /// Should be an absolute time, i.e. relative to Unix Epoch.
-  started: [rerun.components.RecordingStartedTimestamp] ("attr.rerun.component_optional", nullable, order: 3000);
+  started: [rerun.components.RecordingStartedTimestamp] ("attr.rerun.component_required", order: 2000);
+
+  /// A user-chosen name for the recording.
+  name: [rerun.components.RecordingName] ("attr.rerun.component_optional", nullable, order: 3000);
 }

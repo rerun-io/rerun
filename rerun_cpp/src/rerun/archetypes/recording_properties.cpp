@@ -14,17 +14,22 @@ namespace rerun::archetypes {
         archetype.started =
             ComponentBatch::empty<rerun::components::RecordingStartedTimestamp>(Descriptor_started)
                 .value_or_throw();
+        archetype.name = ComponentBatch::empty<rerun::components::RecordingName>(Descriptor_name)
+                             .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> RecordingProperties::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(4);
         if (application_id.has_value()) {
             columns.push_back(application_id.value().partitioned(lengths_).value_or_throw());
         }
         if (started.has_value()) {
             columns.push_back(started.value().partitioned(lengths_).value_or_throw());
+        }
+        if (name.has_value()) {
+            columns.push_back(name.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<RecordingProperties>(
                               static_cast<uint32_t>(lengths_.size())
@@ -40,6 +45,9 @@ namespace rerun::archetypes {
         if (started.has_value()) {
             return columns(std::vector<uint32_t>(started.value().length(), 1));
         }
+        if (name.has_value()) {
+            return columns(std::vector<uint32_t>(name.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -51,13 +59,16 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
         if (archetype.application_id.has_value()) {
             cells.push_back(archetype.application_id.value());
         }
         if (archetype.started.has_value()) {
             cells.push_back(archetype.started.value());
+        }
+        if (archetype.name.has_value()) {
+            cells.push_back(archetype.name.value());
         }
         {
             auto result = ComponentBatch::from_indicator<RecordingProperties>();

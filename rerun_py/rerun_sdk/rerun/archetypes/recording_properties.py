@@ -54,7 +54,13 @@ class RecordingProperties(Archetype):
 
     """
 
-    def __init__(self: Any, application_id: datatypes.Utf8ArrayLike, started: datatypes.TimeIntArrayLike):
+    def __init__(
+        self: Any,
+        application_id: datatypes.Utf8ArrayLike,
+        started: datatypes.TimeIntArrayLike,
+        *,
+        name: datatypes.Utf8ArrayLike | None = None,
+    ):
         """
         Create a new instance of the RecordingProperties archetype.
 
@@ -66,12 +72,14 @@ class RecordingProperties(Archetype):
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
+        name:
+            A user-chosen name for the recording.
 
         """
 
         # You can define your own __init__ function as a member of RecordingPropertiesExt in recording_properties_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(application_id=application_id, started=started)
+            self.__attrs_init__(application_id=application_id, started=started, name=name)
             return
         self.__attrs_clear__()
 
@@ -80,6 +88,7 @@ class RecordingProperties(Archetype):
         self.__attrs_init__(
             application_id=None,
             started=None,
+            name=None,
         )
 
     @classmethod
@@ -96,6 +105,7 @@ class RecordingProperties(Archetype):
         clear_unset: bool = False,
         application_id: datatypes.Utf8ArrayLike | None = None,
         started: datatypes.TimeIntArrayLike | None = None,
+        name: datatypes.Utf8ArrayLike | None = None,
     ) -> RecordingProperties:
         """
         Update only some specific fields of a `RecordingProperties`.
@@ -110,6 +120,8 @@ class RecordingProperties(Archetype):
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
+        name:
+            A user-chosen name for the recording.
 
         """
 
@@ -118,6 +130,7 @@ class RecordingProperties(Archetype):
             kwargs = {
                 "application_id": application_id,
                 "started": started,
+                "name": name,
             }
 
             if clear_unset:
@@ -140,6 +153,7 @@ class RecordingProperties(Archetype):
         *,
         application_id: datatypes.Utf8ArrayLike | None = None,
         started: datatypes.TimeIntArrayLike | None = None,
+        name: datatypes.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -157,6 +171,8 @@ class RecordingProperties(Archetype):
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
+        name:
+            A user-chosen name for the recording.
 
         """
 
@@ -165,13 +181,14 @@ class RecordingProperties(Archetype):
             inst.__attrs_init__(
                 application_id=application_id,
                 started=started,
+                name=name,
             )
 
         batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"application_id": application_id, "started": started}
+        kwargs = {"application_id": application_id, "started": started, "name": name}
         columns = []
 
         for batch in batches:
@@ -211,6 +228,15 @@ class RecordingProperties(Archetype):
     # When the recording started.
     #
     # Should be an absolute time, i.e. relative to Unix Epoch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    name: components.RecordingNameBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.RecordingNameBatch._converter,  # type: ignore[misc]
+    )
+    # A user-chosen name for the recording.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
