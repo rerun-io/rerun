@@ -3,24 +3,24 @@
 pub struct WriteMessagesResponse {}
 impl ::prost::Name for WriteMessagesResponse {
     const NAME: &'static str = "WriteMessagesResponse";
-    const PACKAGE: &'static str = "rerun.sdk_comms.v0";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.sdk_comms.v0.WriteMessagesResponse".into()
+        "rerun.sdk_comms.v1alpha1.WriteMessagesResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.sdk_comms.v0.WriteMessagesResponse".into()
+        "/rerun.sdk_comms.v1alpha1.WriteMessagesResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ReadMessagesRequest {}
 impl ::prost::Name for ReadMessagesRequest {
     const NAME: &'static str = "ReadMessagesRequest";
-    const PACKAGE: &'static str = "rerun.sdk_comms.v0";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.sdk_comms.v0.ReadMessagesRequest".into()
+        "rerun.sdk_comms.v1alpha1.ReadMessagesRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.sdk_comms.v0.ReadMessagesRequest".into()
+        "/rerun.sdk_comms.v1alpha1.ReadMessagesRequest".into()
     }
 }
 /// Generated client implementations.
@@ -116,7 +116,7 @@ pub mod message_proxy_client {
         pub async fn write_messages(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::super::super::log_msg::v0::LogMsg,
+                Message = super::super::super::log_msg::v1alpha1::LogMsg,
             >,
         ) -> std::result::Result<tonic::Response<super::WriteMessagesResponse>, tonic::Status>
         {
@@ -125,11 +125,11 @@ pub mod message_proxy_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.sdk_comms.v0.MessageProxy/WriteMessages",
+                "/rerun.sdk_comms.v1alpha1.MessageProxy/WriteMessages",
             );
             let mut req = request.into_streaming_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.sdk_comms.v0.MessageProxy",
+                "rerun.sdk_comms.v1alpha1.MessageProxy",
                 "WriteMessages",
             ));
             self.inner.client_streaming(req, path, codec).await
@@ -138,7 +138,9 @@ pub mod message_proxy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ReadMessagesRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::super::super::log_msg::v0::LogMsg>>,
+            tonic::Response<
+                tonic::codec::Streaming<super::super::super::log_msg::v1alpha1::LogMsg>,
+            >,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -146,11 +148,11 @@ pub mod message_proxy_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.sdk_comms.v0.MessageProxy/ReadMessages",
+                "/rerun.sdk_comms.v1alpha1.MessageProxy/ReadMessages",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.sdk_comms.v0.MessageProxy",
+                "rerun.sdk_comms.v1alpha1.MessageProxy",
                 "ReadMessages",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -174,11 +176,16 @@ pub mod message_proxy_server {
         ///            It may allow us to amortize the overhead of the gRPC protocol.
         async fn write_messages(
             &self,
-            request: tonic::Request<tonic::Streaming<super::super::super::log_msg::v0::LogMsg>>,
+            request: tonic::Request<
+                tonic::Streaming<super::super::super::log_msg::v1alpha1::LogMsg>,
+            >,
         ) -> std::result::Result<tonic::Response<super::WriteMessagesResponse>, tonic::Status>;
         /// Server streaming response type for the ReadMessages method.
         type ReadMessagesStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::super::super::log_msg::v0::LogMsg, tonic::Status>,
+                Item = std::result::Result<
+                    super::super::super::log_msg::v1alpha1::LogMsg,
+                    tonic::Status,
+                >,
             > + std::marker::Send
             + 'static;
         async fn read_messages(
@@ -268,12 +275,12 @@ pub mod message_proxy_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/rerun.sdk_comms.v0.MessageProxy/WriteMessages" => {
+                "/rerun.sdk_comms.v1alpha1.MessageProxy/WriteMessages" => {
                     #[allow(non_camel_case_types)]
                     struct WriteMessagesSvc<T: MessageProxy>(pub Arc<T>);
                     impl<T: MessageProxy>
                         tonic::server::ClientStreamingService<
-                            super::super::super::log_msg::v0::LogMsg,
+                            super::super::super::log_msg::v1alpha1::LogMsg,
                         > for WriteMessagesSvc<T>
                     {
                         type Response = super::WriteMessagesResponse;
@@ -281,7 +288,7 @@ pub mod message_proxy_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<super::super::super::log_msg::v0::LogMsg>,
+                                tonic::Streaming<super::super::super::log_msg::v1alpha1::LogMsg>,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
@@ -313,14 +320,14 @@ pub mod message_proxy_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.sdk_comms.v0.MessageProxy/ReadMessages" => {
+                "/rerun.sdk_comms.v1alpha1.MessageProxy/ReadMessages" => {
                     #[allow(non_camel_case_types)]
                     struct ReadMessagesSvc<T: MessageProxy>(pub Arc<T>);
                     impl<T: MessageProxy>
                         tonic::server::ServerStreamingService<super::ReadMessagesRequest>
                         for ReadMessagesSvc<T>
                     {
-                        type Response = super::super::super::log_msg::v0::LogMsg;
+                        type Response = super::super::super::log_msg::v1alpha1::LogMsg;
                         type ResponseStream = T::ReadMessagesStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -386,7 +393,7 @@ pub mod message_proxy_server {
         }
     }
     /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "rerun.sdk_comms.v0.MessageProxy";
+    pub const SERVICE_NAME: &str = "rerun.sdk_comms.v1alpha1.MessageProxy";
     impl<T> tonic::server::NamedService for MessageProxyServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }

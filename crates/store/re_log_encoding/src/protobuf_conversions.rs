@@ -1,13 +1,13 @@
-impl From<re_protos::log_msg::v0::Compression> for crate::Compression {
-    fn from(value: re_protos::log_msg::v0::Compression) -> Self {
+impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
+    fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
-            re_protos::log_msg::v0::Compression::None => Self::Off,
-            re_protos::log_msg::v0::Compression::Lz4 => Self::LZ4,
+            re_protos::log_msg::v1alpha1::Compression::None => Self::Off,
+            re_protos::log_msg::v1alpha1::Compression::Lz4 => Self::LZ4,
         }
     }
 }
 
-impl From<crate::Compression> for re_protos::log_msg::v0::Compression {
+impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
     fn from(value: crate::Compression) -> Self {
         match value {
             crate::Compression::Off => Self::None,
@@ -18,12 +18,12 @@ impl From<crate::Compression> for re_protos::log_msg::v0::Compression {
 
 #[cfg(feature = "decoder")]
 pub fn log_msg_from_proto(
-    message: re_protos::log_msg::v0::LogMsg,
+    message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
     use crate::codec::{arrow::decode_arrow, CodecError};
     use crate::decoder::DecodeError;
     use re_protos::{
-        log_msg::v0::{log_msg::Msg, Encoding},
+        log_msg::v1alpha1::{log_msg::Msg, Encoding},
         missing_field,
     };
 
@@ -44,7 +44,7 @@ pub fn log_msg_from_proto(
 
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
-                .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
+                .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .into();
 
             let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
@@ -59,7 +59,7 @@ pub fn log_msg_from_proto(
                 blueprint_activation_command.try_into()?,
             ))
         }
-        None => Err(missing_field!(re_protos::log_msg::v0::LogMsg, "msg").into()),
+        None => Err(missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg").into()),
     }
 }
 
@@ -67,9 +67,9 @@ pub fn log_msg_from_proto(
 pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
     compression: crate::Compression,
-) -> Result<re_protos::log_msg::v0::LogMsg, crate::encoder::EncodeError> {
+) -> Result<re_protos::log_msg::v1alpha1::LogMsg, crate::encoder::EncodeError> {
     use crate::codec::arrow::encode_arrow;
-    use re_protos::log_msg::v0::{
+    use re_protos::log_msg::v1alpha1::{
         ArrowMsg, BlueprintActivationCommand, LogMsg as ProtoLogMsg, SetStoreInfo,
     };
 
@@ -77,7 +77,7 @@ pub fn log_msg_to_proto(
         re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
             let set_store_info: SetStoreInfo = set_store_info.into();
             ProtoLogMsg {
-                msg: Some(re_protos::log_msg::v0::log_msg::Msg::SetStoreInfo(
+                msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
                     set_store_info,
                 )),
             }
@@ -87,15 +87,15 @@ pub fn log_msg_to_proto(
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.into()),
                 compression: match compression {
-                    crate::Compression::Off => re_protos::log_msg::v0::Compression::None as i32,
-                    crate::Compression::LZ4 => re_protos::log_msg::v0::Compression::Lz4 as i32,
+                    crate::Compression::Off => re_protos::log_msg::v1alpha1::Compression::None as i32,
+                    crate::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
-                encoding: re_protos::log_msg::v0::Encoding::ArrowIpc as i32,
+                encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
                 payload: payload.data,
             };
             ProtoLogMsg {
-                msg: Some(re_protos::log_msg::v0::log_msg::Msg::ArrowMsg(arrow_msg)),
+                msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg)),
             }
         }
         re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
@@ -103,7 +103,7 @@ pub fn log_msg_to_proto(
                 blueprint_activation_command.into();
             ProtoLogMsg {
                 msg: Some(
-                    re_protos::log_msg::v0::log_msg::Msg::BlueprintActivationCommand(
+                    re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
                         blueprint_activation_command,
                     ),
                 ),

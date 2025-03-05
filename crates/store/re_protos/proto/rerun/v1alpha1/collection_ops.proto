@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package rerun.remote_store.v0;
+package rerun.remote_store.v1alpha1;
 
-import "rerun/v0/collection.proto";
+import "rerun/v1alpha1/collection.proto";
 
 message CollectionFilter {
     optional string id = 1;

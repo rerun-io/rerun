@@ -9,8 +9,8 @@ pub(crate) fn encode(
     message: &LogMsg,
     compression: Compression,
 ) -> Result<(), EncodeError> {
-    use re_protos::external::prost::Message as _;
-    use re_protos::log_msg::v0::{
+    use re_protos::external::prost::Message;
+    use re_protos::log_msg::v1alpha1::{
         self as proto, ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
     };
 

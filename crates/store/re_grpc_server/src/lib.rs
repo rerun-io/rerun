@@ -9,9 +9,9 @@ use std::pin::Pin;
 use re_byte_size::SizeBytes as _;
 use re_memory::MemoryLimit;
 use re_protos::{
-    common::v0::StoreKind as StoreKindProto,
-    log_msg::v0::LogMsg as LogMsgProto,
-    sdk_comms::v0::{message_proxy_server, ReadMessagesRequest, WriteMessagesResponse},
+    common::v1alpha1::StoreKind as StoreKindProto,
+    log_msg::v1alpha1::LogMsg as LogMsgProto,
+    sdk_comms::v1alpha1::{message_proxy_server, ReadMessagesRequest, WriteMessagesResponse},
 };
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
@@ -77,7 +77,7 @@ async fn serve_impl(
         let mut routes_builder = tonic::service::Routes::builder();
         routes_builder.add_service(
             // TODO(#8411): figure out the right size for this
-            re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(message_proxy)
+            re_protos::sdk_comms::v1alpha1::message_proxy_server::MessageProxyServer::new(message_proxy)
                 .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
                 .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
         );
@@ -370,14 +370,14 @@ impl EventLoop {
         let Some(inner) = &msg.msg else {
             re_log::error!(
                 "{}",
-                re_protos::missing_field!(re_protos::log_msg::v0::LogMsg, "msg")
+                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
             );
             return;
         };
 
         // We put store info, blueprint data, and blueprint activation commands
         // in a separate queue that does *not* get garbage collected.
-        use re_protos::log_msg::v0::log_msg::Msg;
+        use re_protos::log_msg::v1alpha1::log_msg::Msg;
         match inner {
             // Store info, blueprint activation commands
             Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
@@ -561,7 +561,7 @@ mod tests {
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
-    use re_protos::sdk_comms::v0::{
+    use re_protos::sdk_comms::v1alpha1::{
         message_proxy_client::MessageProxyClient, message_proxy_server::MessageProxyServer,
     };
     use similar_asserts::assert_eq;

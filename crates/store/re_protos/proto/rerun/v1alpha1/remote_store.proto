@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package rerun.remote_store.v0;
+package rerun.remote_store.v1alpha1;
 
-import "rerun/v0/collection_ops.proto";
-import "rerun/v0/common.proto";
+import "rerun/v1alpha1/collection_ops.proto";
+import "rerun/v1alpha1/common.proto";
 
 service StorageNode {
     // Collection APIs
@@ -15,7 +15,7 @@ service StorageNode {
 
     rpc Query(QueryRequest) returns (stream DataframePart) {}
 
-    rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
+    rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
 
     // Index APIs
 
@@ -23,9 +23,9 @@ service StorageNode {
 
     rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-    rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v0.RerunChunk) {}
+    rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
 
-    rpc GetChunksRange(GetChunksRangeRequest) returns (stream rerun.common.v0.RerunChunk) {}
+    rpc GetChunksRange(GetChunksRangeRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
 
     // The response to `SearchIndex` a RecordBatch with 3 columns:
     // - 'resource_id' column with the id of the resource
@@ -71,7 +71,7 @@ service StorageNode {
 // DataframePart is arrow IPC encoded RecordBatch
 message DataframePart {
     // encoder version used to encode the data
-    rerun.common.v0.EncoderVersion encoder_version = 1;
+    rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
 
     // Data payload is Arrow IPC encoded RecordBatch
     bytes payload = 1000;
@@ -84,11 +84,11 @@ message GetChunksRangeRequest {
     // which catalog entry do we want to fetch the chunks from
     CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
     // timeline for which we specify the time range
-    rerun.common.v0.IndexColumnSelector time_index = 3;
+    rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
     // time range for which we want to fetch the chunks
-    rerun.common.v0.TimeRange time_range = 4;
+    rerun.common.v1alpha1.TimeRange time_range = 4;
 }
 
 // ---------------- GetChunk ---------------------
@@ -97,9 +97,9 @@ message GetChunksRequest {
     // which catalog entry do we want to fetch the chunks from
     CatalogEntry entry = 1;
     // recording id from which we're want to fetch the chunk ids
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
     // batch of chunk ids for which we want to stream back chunks
-    repeated rerun.common.v0.Tuid chunk_ids = 3;
+    repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 }
 
 // ---------------- CreateIndex ------------------
@@ -107,7 +107,7 @@ message GetChunksRequest {
 // used to define which column we want to index
 message IndexColumn {
     // The path of the entity.
-    rerun.common.v0.EntityPath entity_path = 1;
+    rerun.common.v1alpha1.EntityPath entity_path = 1;
     // Optional name of the `Archetype` associated with this data.
     optional string archetype_name = 2;
     // Optional name of the field within `Archetype` associated with this data.
@@ -128,7 +128,7 @@ message CreateIndexRequest {
     // will query the timepoints
     // TODO(zehiko) this might go away and we might just index
     // across all the timelines
-    rerun.common.v0.IndexColumnSelector time_index = 4;
+    rerun.common.v1alpha1.IndexColumnSelector time_index = 4;
 }
 
 message ReIndexRequest {
@@ -246,7 +246,7 @@ message ListManifestsRequest {
 }
 
 message ListManifestsResponse {
-    rerun.common.v0.EncoderVersion encoder_version = 1;
+    rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
 
     // The record batch of the response, encoded according to `encoder_version`.
     bytes payload = 2;
@@ -267,7 +267,7 @@ message QueryManifestRequest {
     CatalogEntry entry = 1;
 
     // What resource are we querying the manifest for?
-    rerun.common.v0.RecordingId resource_id = 100;
+    rerun.common.v1alpha1.RecordingId resource_id = 100;
 
     // What columns of the manifest are we interested in?
     ColumnProjection columns = 200;
@@ -309,10 +309,10 @@ message QueryManifestRequest {
 
 message QueryManifestLatestAtRelevantChunks {
     // Which entity paths are we interested in?
-    repeated rerun.common.v0.EntityPath entity_paths = 10;
+    repeated rerun.common.v1alpha1.EntityPath entity_paths = 10;
 
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 20;
+    rerun.common.v1alpha1.IndexColumnSelector index = 20;
 
     // What index value are we looking for?
     int64 at = 30;
@@ -331,13 +331,13 @@ message QueryManifestLatestAtRelevantChunks {
 
 message QueryManifestRangeRelevantChunks {
     // Which entity paths are we interested in?
-    repeated rerun.common.v0.EntityPath entity_paths = 10;
+    repeated rerun.common.v1alpha1.EntityPath entity_paths = 10;
 
     // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v0.IndexColumnSelector index = 20;
+    rerun.common.v1alpha1.IndexColumnSelector index = 20;
 
     // What index range are we looking for?
-    rerun.common.v0.TimeRange index_range = 30;
+    rerun.common.v1alpha1.TimeRange index_range = 30;
 
     // Which components are we interested in?
     //
@@ -403,11 +403,11 @@ message GetRecordingSchemaRequest {
     // which catalog entry do we want to fetch the schema from
     CatalogEntry entry = 1;
     // recording id from which we're want to fetch the schema
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
 }
 
 message GetRecordingSchemaResponse {
-    rerun.common.v0.Schema schema = 2;
+    rerun.common.v1alpha1.Schema schema = 2;
 }
 
 // ---------------- RegisterRecording ------------------
@@ -432,7 +432,7 @@ message UnregisterRecordingRequest {
     // which catalog entry do we want to unregister the recording from
     CatalogEntry entry = 1;
     // unique identifier of the recording
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
 }
 message UnregisterRecordingResponse {}
 
@@ -459,9 +459,9 @@ message QueryRequest {
     // which catalog entry do we want to query
     CatalogEntry entry = 1;
     // unique identifier of the recording
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
     // query to execute
-    rerun.common.v0.Query query = 3;
+    rerun.common.v1alpha1.Query query = 3;
 }
 
 // ----------------- QueryCatalog -----------------
@@ -483,11 +483,11 @@ message ColumnProjection {
 message CatalogFilter {
     // Filtering is very simple right now, we can only select
     // recordings by their ids.
-    repeated rerun.common.v0.RecordingId recording_ids = 1;
+    repeated rerun.common.v1alpha1.RecordingId recording_ids = 1;
 }
 
 message QueryCatalogResponse {
-    rerun.common.v0.EncoderVersion encoder_version = 1;
+    rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
     // raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
     bytes payload = 2;
 }
@@ -502,7 +502,7 @@ message FetchRecordingRequest {
     // which catalog entry do we want to fetch the recording from
     CatalogEntry entry = 1;
     // recording id from which we're want to fetch the recording
-    rerun.common.v0.RecordingId recording_id = 2;
+    rerun.common.v1alpha1.RecordingId recording_id = 2;
 }
 
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
@@ -511,7 +511,7 @@ message FetchRecordingResponse {
     // TODO(zehiko) we need to expand this to become something like 'encoder options'
     // as we will need to specify additional options like compression, including schema
     // in payload, etc.
-    rerun.common.v0.EncoderVersion encoder_version = 1;
+    rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
     // payload is raw bytes that the relevant codec can interpret
     bytes payload = 2;
 }

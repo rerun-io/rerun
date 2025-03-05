@@ -11,7 +11,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/build/re_types_builder/src/reflection.rs",
     "crates/store/re_dataframe/src/query.rs",
     "crates/store/re_protos/proto/schema_snapshot.yaml",
-    "crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",
+    "crates/store/re_protos/src/v1alpha1/rerun.remote_store.v1alpha1.rs",
     "crates/store/re_types/src/datatypes/tensor_buffer.rs",
     "crates/store/re_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",

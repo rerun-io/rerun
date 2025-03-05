@@ -1,8 +1,8 @@
 use re_log_encoding::protobuf_conversions::log_msg_from_proto;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v0::message_proxy_client::MessageProxyClient;
-use re_protos::sdk_comms::v0::ReadMessagesRequest;
-use tokio_stream::StreamExt as _;
+use re_protos::sdk_comms::v1alpha1::message_proxy_client::MessageProxyClient;
+use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
+use tokio_stream::StreamExt;
 
 use crate::StreamError;
 use crate::TonicStatusError;

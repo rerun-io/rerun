@@ -28,8 +28,8 @@ use re_grpc_client::TonicStatusError;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
-    common::v0::{EntityPath, IndexColumnSelector, RecordingId},
-    remote_store::v0::{
+    common::v1alpha1::{EntityPath, IndexColumnSelector, RecordingId},
+    remote_store::v1alpha1::{
         index_properties::Props, storage_node_client::StorageNodeClient, CatalogEntry,
         CatalogFilter, ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest,
         IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
@@ -154,7 +154,7 @@ impl PyStorageNodeClient {
         id: StoreId,
         query: QueryExpression,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let query: re_protos::common::v0::Query = query.into();
+        let query: re_protos::common::v1alpha1::Query = query.into();
 
         let batches = self.runtime.block_on(async {
             // TODO(#8536): Avoid the need to collect here.
@@ -424,7 +424,7 @@ impl PyStorageNodeClient {
         self.runtime.block_on(async {
             let time_selector: TimeColumnSelector = time_index.into();
             let column_selector: ComponentColumnSelector = column.into();
-            let distance_metric: re_protos::remote_store::v0::VectorDistanceMetric =
+            let distance_metric: re_protos::remote_store::v1alpha1::VectorDistanceMetric =
                 distance_metric.try_into()?;
 
             let index_column = IndexColumn {
@@ -437,15 +437,15 @@ impl PyStorageNodeClient {
             };
 
             let time_index = IndexColumnSelector {
-                timeline: Some(re_protos::common::v0::Timeline {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
                     name: time_selector.timeline.to_string(),
                 }),
             };
 
             self.client
-                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
                     entry: Some(CatalogEntry { name: entry }),
-                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
                         props: Some(Props::Vector(VectorIvfPqIndex {
                             num_partitions,
                             num_sub_vectors,
@@ -505,17 +505,17 @@ impl PyStorageNodeClient {
             };
 
             let time_index = IndexColumnSelector {
-                timeline: Some(re_protos::common::v0::Timeline {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
                     name: time_selector.timeline.to_string(),
                 }),
             };
 
             self.client
-                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
                     entry: Some(CatalogEntry { name: entry }),
-                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
                         props: Some(Props::Inverted(
-                            re_protos::remote_store::v0::InvertedIndex {
+                            re_protos::remote_store::v1alpha1::InvertedIndex {
                                 store_position,
                                 base_tokenizer: base_tokenizer.to_owned(),
                             },
@@ -577,10 +577,10 @@ impl PyStorageNodeClient {
                         archetype_field_name: None,
                         component_name: column_selector.component_name,
                     }),
-                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
                         props: Some(
-                            re_protos::remote_store::v0::index_query_properties::Props::Vector(
-                                re_protos::remote_store::v0::VectorIndexQuery { top_k },
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Vector(
+                                re_protos::remote_store::v1alpha1::VectorIndexQuery { top_k },
                             ),
                         ),
                     }),
@@ -679,10 +679,10 @@ impl PyStorageNodeClient {
                         archetype_field_name: None,
                         component_name: column_selector.component_name,
                     }),
-                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
                         props: Some(
-                            re_protos::remote_store::v0::index_query_properties::Props::Inverted(
-                                re_protos::remote_store::v0::InvertedIndexQuery {},
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Inverted(
+                                re_protos::remote_store::v1alpha1::InvertedIndexQuery {},
                             ),
                         ),
                     }),
@@ -889,7 +889,7 @@ enum PyVectorDistanceMetric {
     Hamming,
 }
 
-impl From<PyVectorDistanceMetric> for re_protos::remote_store::v0::VectorDistanceMetric {
+impl From<PyVectorDistanceMetric> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
     fn from(metric: PyVectorDistanceMetric) -> Self {
         match metric {
             PyVectorDistanceMetric::L2 => Self::L2,
@@ -910,7 +910,7 @@ enum VectorDistanceMetricLike {
     CatchAll(String),
 }
 
-impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDistanceMetric {
+impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
     type Error = PyErr;
 
     fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
@@ -931,7 +931,7 @@ impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDi
 
 impl From<PyVectorDistanceMetric> for i32 {
     fn from(metric: PyVectorDistanceMetric) -> Self {
-        let proto_typed = re_protos::remote_store::v0::VectorDistanceMetric::from(metric);
+        let proto_typed = re_protos::remote_store::v1alpha1::VectorDistanceMetric::from(metric);
 
         proto_typed as Self
     }

@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package rerun.log_msg.v0;
+package rerun.log_msg.v1alpha1;
 
-import "rerun/v0/common.proto";
+import "rerun/v1alpha1/common.proto";
 
 // TODO(#8631): Remove `LogMsg`
 message LogMsg {
@@ -21,7 +21,7 @@ message LogMsg {
 // Corresponds to `LogMsg::SetStoreInfo`. Used to identify a recording.
 message SetStoreInfo {
     // A time-based UID that is used to determine how a `StoreInfo` fits in the global ordering of events.
-    rerun.common.v0.Tuid row_id = 1;
+    rerun.common.v1alpha1.Tuid row_id = 1;
 
     // The new store info.
     StoreInfo info = 2;
@@ -48,7 +48,7 @@ enum Encoding {
 // Corresponds to `LogMsg::ArrowMsg`. Used to transmit actual data.
 message ArrowMsg {
     // The ID of the store that this message is for.
-    rerun.common.v0.StoreId store_id = 1;
+    rerun.common.v1alpha1.StoreId store_id = 1;
 
     // Compression algorithm used.
     Compression compression = 2;
@@ -69,7 +69,7 @@ message ArrowMsg {
 // a confusing user experience, or inconsistent results due to heuristics.
 message BlueprintActivationCommand {
     // The ID of the blueprint to activate.
-    rerun.common.v0.StoreId blueprint_id = 1;
+    rerun.common.v1alpha1.StoreId blueprint_id = 1;
 
     // Whether to make the blueprint active immediately.
     bool make_active = 2;
@@ -81,16 +81,16 @@ message BlueprintActivationCommand {
 // Information about a recording or blueprint.
 message StoreInfo {
     // User-chosen name of the application doing the logging.
-    rerun.common.v0.ApplicationId application_id = 1;
+    rerun.common.v1alpha1.ApplicationId application_id = 1;
 
     // Unique ID of the recording.
-    rerun.common.v0.StoreId store_id = 2;
+    rerun.common.v1alpha1.StoreId store_id = 2;
 
     // True if the recording is one of the official Rerun examples.
     bool is_official_example = 3;
 
     // When the recording started.
-    rerun.common.v0.Time started = 4;
+    rerun.common.v1alpha1.Time started = 4;
 
     // Where the recording came from.
     StoreSource store_source = 5;

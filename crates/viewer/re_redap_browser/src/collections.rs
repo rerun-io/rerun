@@ -3,7 +3,7 @@ use tokio_stream::StreamExt as _;
 
 use re_grpc_client::{redap, StreamError, TonicStatusError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::remote_store::v0::{CatalogEntry, QueryCatalogRequest};
+use re_protos::remote_store::v1alpha1::{CatalogEntry, QueryCatalogRequest};
 use re_sorbet::{BatchType, SorbetBatch};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::AsyncRuntimeHandle;
