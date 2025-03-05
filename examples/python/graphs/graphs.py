@@ -182,8 +182,8 @@ def log_blueprint() -> None:
                     ),
                     rrb.TextDocumentView(origin="description", name="Description"),
                 ),
-            )
-        )
+            ),
+        ),
     )
 
 

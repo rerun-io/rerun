@@ -23,7 +23,7 @@ __all__ = ["Bool", "BoolArrayLike", "BoolBatch", "BoolLike"]
 class Bool:
     """**Datatype**: A single boolean."""
 
-    def __init__(self: Any, value: BoolLike):
+    def __init__(self: Any, value: BoolLike) -> None:
         """Create a new instance of the Bool datatype."""
 
         # You can define your own __init__ function as a member of BoolExt in bool_ext.py

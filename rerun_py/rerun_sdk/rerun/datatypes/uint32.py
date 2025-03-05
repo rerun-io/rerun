@@ -24,7 +24,7 @@ __all__ = ["UInt32", "UInt32ArrayLike", "UInt32Batch", "UInt32Like"]
 class UInt32:
     """**Datatype**: A 32bit unsigned integer."""
 
-    def __init__(self: Any, value: UInt32Like):
+    def __init__(self: Any, value: UInt32Like) -> None:
         """Create a new instance of the UInt32 datatype."""
 
         # You can define your own __init__ function as a member of UInt32Ext in uint32_ext.py

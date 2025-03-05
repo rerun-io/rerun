@@ -67,7 +67,9 @@ def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, 
 
 
 def test_bench_transforms_over_time_individual(
-    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray
+    rand_trans: npt.NDArray,
+    rand_quats: npt.NDArray,
+    rand_scales: npt.NDArray,
 ) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
@@ -82,7 +84,10 @@ def test_bench_transforms_over_time_individual(
 
 
 def test_bench_transforms_over_time_batched(
-    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray, num_transforms_per_batch: int
+    rand_trans: npt.NDArray,
+    rand_quats: npt.NDArray,
+    rand_scales: npt.NDArray,
+    num_transforms_per_batch: int,
 ) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
@@ -124,7 +129,11 @@ def test_bench_transforms_over_time(benchmark: Any, num_transforms: int, num_tra
 
     if num_transforms_per_batch > 1:
         benchmark(
-            test_bench_transforms_over_time_batched, rand_trans, rand_quats, rand_scales, num_transforms_per_batch
+            test_bench_transforms_over_time_batched,
+            rand_trans,
+            rand_quats,
+            rand_scales,
+            num_transforms_per_batch,
         )
     else:
         benchmark(test_bench_transforms_over_time_individual, rand_trans, rand_quats, rand_scales)

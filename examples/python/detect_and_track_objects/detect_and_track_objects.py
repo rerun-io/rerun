@@ -107,7 +107,9 @@ class Detector:
         processed_sizes = [(scaled_height, scaled_width)]
         segmentation_mask = self.feature_extractor.post_process_semantic_segmentation(outputs, processed_sizes)[0]
         detections = self.feature_extractor.post_process_object_detection(
-            outputs, threshold=0.8, target_sizes=processed_sizes
+            outputs,
+            threshold=0.8,
+            target_sizes=processed_sizes,
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
@@ -130,7 +132,7 @@ class Detector:
                         bbox_xywh=bbox_xywh,
                         image_width=scaled_width,
                         image_height=scaled_height,
-                    )
+                    ),
                 )
 
         return objects_to_track
@@ -195,7 +197,9 @@ class Tracker:
 
         if success:
             self.tracked.bbox_xywh = clip_bbox_to_image(
-                bbox_xywh=bbox_xywh, image_width=self.tracked.image_width, image_height=self.tracked.image_height
+                bbox_xywh=bbox_xywh,
+                image_width=self.tracked.image_width,
+                image_height=self.tracked.image_height,
             )
         else:
             logging.info("Tracker update failed for tracker with id #%d", self.tracking_id)

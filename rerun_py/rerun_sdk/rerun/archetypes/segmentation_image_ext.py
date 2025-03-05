@@ -44,7 +44,7 @@ class SegmentationImageExt:
         image: ImageLike,
         *,
         opacity: Float32Like | None = None,
-    ):
+    ) -> None:
         image = _to_numpy(image)
 
         shape = image.shape

@@ -8,7 +8,7 @@ rr.init("rerun_example_transform3d_hierarchy", spawn=True)
 
 # One space with the sun in the center, and another one with the planet.
 rr.send_blueprint(
-    rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
+    rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
 )
 
 rr.set_index("sim_time", timedelta=0)
@@ -31,7 +31,7 @@ rr.log("sun/planet_path", rr.LineStrips3D(circle * d_planet))
 rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
 # Movement via transforms.
-for i in range(0, 6 * 120):
+for i in range(6 * 120):
     time = i / 120.0
     rr.set_index("sim_time", timedelta=time)
     r_moon = time * 5.0

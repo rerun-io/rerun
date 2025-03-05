@@ -27,7 +27,6 @@ class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
     # You can define your own __init__ function as a member of PoseRotationAxisAngleExt in pose_rotation_axis_angle_ext.py
 
     # Note: there are no fields here because PoseRotationAxisAngle delegates to datatypes.RotationAxisAngle
-    pass
 
 
 class PoseRotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):

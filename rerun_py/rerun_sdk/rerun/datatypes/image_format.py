@@ -32,7 +32,7 @@ class ImageFormat(ImageFormatExt):
         pixel_format: datatypes.PixelFormatLike | None = None,
         color_model: datatypes.ColorModelLike | None = None,
         channel_datatype: datatypes.ChannelDatatypeLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ImageFormat datatype.
 

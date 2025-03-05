@@ -38,7 +38,7 @@ class EncodedImageExt:
         media_type: datatypes.Utf8Like | None = None,
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the EncodedImage archetype.
 

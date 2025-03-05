@@ -67,7 +67,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     """
 
-    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike):
+    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike) -> None:
         """
         Create a new instance of the ViewCoordinates archetype.
 

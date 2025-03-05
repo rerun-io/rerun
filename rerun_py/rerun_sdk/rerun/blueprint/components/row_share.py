@@ -22,7 +22,6 @@ class RowShare(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of RowShareExt in row_share_ext.py
 
     # Note: there are no fields here because RowShare delegates to datatypes.Float32
-    pass
 
 
 class RowShareBatch(datatypes.Float32Batch, ComponentBatchMixin):

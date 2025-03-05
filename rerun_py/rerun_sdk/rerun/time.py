@@ -20,13 +20,19 @@ def set_index(timeline: str, *, recording: RecordingStream | None = None, sequen
 
 @overload
 def set_index(
-    timeline: str, *, recording: RecordingStream | None = None, timedelta: int | float | timedelta | np.timedelta64
+    timeline: str,
+    *,
+    recording: RecordingStream | None = None,
+    timedelta: int | float | timedelta | np.timedelta64,
 ) -> None: ...
 
 
 @overload
 def set_index(
-    timeline: str, *, recording: RecordingStream | None = None, datetime: int | float | datetime | np.datetime64
+    timeline: str,
+    *,
+    recording: RecordingStream | None = None,
+    datetime: int | float | datetime | np.datetime64,
 ) -> None: ...
 
 
@@ -77,7 +83,7 @@ def set_index(
     """
     if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
         raise ValueError(
-            "set_index: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+            "set_index: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
         )
 
     if sequence is not None:
@@ -115,7 +121,7 @@ def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
         return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_index: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}"
+            f"set_index: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}",
         )
 
 
@@ -135,13 +141,13 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
         return date_time.astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_index: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}"
+            f"set_index: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}",
         )
 
 
 @deprecated(
     """Use `set_index(sequence=…)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
     """
@@ -181,7 +187,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 @deprecated(
     """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
     """
@@ -229,7 +235,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 @deprecated(
     """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
     """

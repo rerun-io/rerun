@@ -22,7 +22,6 @@ class Range1D(datatypes.Range1D, ComponentMixin):
     # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py
 
     # Note: there are no fields here because Range1D delegates to datatypes.Range1D
-    pass
 
 
 class Range1DBatch(datatypes.Range1DBatch, ComponentBatchMixin):

@@ -14,7 +14,7 @@ class TensorDimensionSelectionExt:
     """Extension for [TensorDimensionSelection][rerun.datatypes.TensorDimensionSelection]."""
 
     # TODO(#2641): this is needed until we support default values.
-    def __init__(self: Any, dimension: int, *, invert: bool = False):
+    def __init__(self: Any, dimension: int, *, invert: bool = False) -> None:
         """
         Create a new instance of the TensorDimensionSelection datatype.
 

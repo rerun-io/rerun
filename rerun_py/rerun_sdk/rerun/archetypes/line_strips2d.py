@@ -110,7 +110,7 @@ class LineStrips2D(Archetype):
         show_labels: datatypes.BoolLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the LineStrips2D archetype.
 

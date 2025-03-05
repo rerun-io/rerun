@@ -21,7 +21,6 @@ class AffixFuzzer21(datatypes.AffixFuzzer21, ComponentMixin):
     # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
 
     # Note: there are no fields here because AffixFuzzer21 delegates to datatypes.AffixFuzzer21
-    pass
 
 
 class AffixFuzzer21Batch(datatypes.AffixFuzzer21Batch, ComponentBatchMixin):

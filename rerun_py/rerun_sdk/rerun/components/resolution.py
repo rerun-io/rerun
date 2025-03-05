@@ -26,7 +26,6 @@ class Resolution(datatypes.Vec2D, ComponentMixin):
     # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
 
     # Note: there are no fields here because Resolution delegates to datatypes.Vec2D
-    pass
 
 
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):

@@ -70,7 +70,7 @@ def test_points2d() -> None:
             f"    draw_order={draw_order!r}\n"
             f"    class_ids={class_ids!r}\n"
             f"    keypoint_ids={keypoint_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Points2D(
             positions,

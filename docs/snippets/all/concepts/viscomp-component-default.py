@@ -14,7 +14,7 @@ rr.send_blueprint(
         overrides={
             "boxes/1": [
                 rr.components.Color([0, 255, 0]),
-            ]
+            ],
         },
         # Add a default value for all Color components in this view
         defaults=[rr.components.Color([0, 0, 255])],

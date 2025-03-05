@@ -49,7 +49,7 @@ class AffixFuzzer1:
         many_floats_optional: npt.ArrayLike | None = None,
         many_strings_optional: list[str] | None = None,
         from_parent: bool | None = None,
-    ):
+    ) -> None:
         """Create a new instance of the AffixFuzzer1 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py

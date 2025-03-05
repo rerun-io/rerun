@@ -81,5 +81,5 @@ def test_viewport_blueprint() -> None:
         assert arch.auto_layout == AutoLayoutBatch._converter(none_empty_or_value(auto_layout, True))
         assert arch.auto_views == AutoViewsBatch._converter(none_empty_or_value(auto_views, False))
         assert arch.past_viewer_recommendations == ViewerRecommendationHashBatch._converter(
-            none_empty_or_value(past_viewer_recommendations, [123, 321])
+            none_empty_or_value(past_viewer_recommendations, [123, 321]),
         )

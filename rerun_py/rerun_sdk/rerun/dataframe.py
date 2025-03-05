@@ -39,7 +39,7 @@ RERUN_KIND_INDEX = b"index"
 
 
 class RawIndexColumn(TimeColumnLike):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
         self.metadata = metadata
         self.col = col
 
@@ -54,7 +54,7 @@ class RawIndexColumn(TimeColumnLike):
 
 
 class RawComponentBatchLike(ComponentColumn):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
         self.metadata = metadata
         self.col = col
 

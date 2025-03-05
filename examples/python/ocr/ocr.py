@@ -30,7 +30,11 @@ DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 SAMPLE_IMAGE_URLs = ["https://storage.googleapis.com/rerun-example-datasets/ocr/paper.png"]
 
 LayoutStructure: TypeAlias = tuple[
-    list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]
+    list[str],
+    list[str],
+    list[rrb.Spatial2DView],
+    list[rrb.Spatial2DView],
+    list[rrb.Spatial2DView],
 ]
 
 # Supportive Classes
@@ -121,7 +125,7 @@ Layout Class:
 
 
 class Layout:
-    def __init__(self, page_number: int, show_unknown: bool = False):
+    def __init__(self, page_number: int, show_unknown: bool = False) -> None:
         self.counts = {layout_type: 0 for layout_type in LayoutType}
         self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
@@ -276,7 +280,9 @@ def log_detections(layout_type: LayoutType, record: dict[str, Any], page_path: s
             rr.log(
                 f"{page_path}/Detections/{detection['id']}",
                 rr.Boxes2D(
-                    array=detection["box"], array_format=rr.Box2DFormat.XYXY, class_ids=[str(layout_type.number)]
+                    array=detection["box"],
+                    array_format=rr.Box2DFormat.XYXY,
+                    class_ids=[str(layout_type.number)],
                 ),
                 rr.AnyValues(DetectionID=detection["id"], Text=detection["text"], Confidence=detection["confidence"]),
             )
@@ -303,7 +309,9 @@ def update_zoom_paths(
 
         # Add to zoom paths
         view = rrb.Spatial2DView(
-            name=record["name"].title(), contents=[f"{page_path}/Image/**"] + current_paths, visual_bounds=bounds
+            name=record["name"].title(),
+            contents=[f"{page_path}/Image/**"] + current_paths,
+            visual_bounds=bounds,
         )
         zoom_paths.append(view)
 
@@ -350,7 +358,7 @@ def generate_blueprint(
                 rrb.Horizontal(*section_tabs),
                 name=page_path,
                 row_shares=[4, 3],
-            )
+            ),
         )
 
     return rrb.Blueprint(
@@ -383,7 +391,7 @@ def detect_and_log_layouts(file_path: str) -> None:
             process_layout_records(
                 layouts[-1],
                 page_path,
-            )
+            ),
         )
         logging.info("Sending blueprint...")
         blueprint = generate_blueprint(layouts, processed_layouts)
@@ -452,7 +460,7 @@ def download_file(url: str, path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="OCR Example - Layout Analysis and Text Detections. It automatically downloads the PaddleOCR libraries and models."
+        description="OCR Example - Layout Analysis and Text Detections. It automatically downloads the PaddleOCR libraries and models.",
     )
 
     parser.add_argument(

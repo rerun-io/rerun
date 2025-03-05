@@ -56,7 +56,11 @@ def measure_thumbnail(url: str) -> Any:
 
 
 def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | Path | None = None
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: int | None = None,
+    cwd: str | Path | None = None,
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
@@ -161,7 +165,7 @@ def build_examples() -> None:
         "-p", "re_dev_tools", "--",
         "build-examples", "rrd", "example_data",
         # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
-        "--channel", "main"
+        "--channel", "main",
     ]
     run(cmd, cwd=RERUN_DIR)
 
@@ -171,7 +175,7 @@ def build_examples() -> None:
         "-p", "re_dev_tools", "--",
         "build-examples", "manifest", "example_data/examples_manifest.json",
         # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
-        "--channel", "main"
+        "--channel", "main",
     ]
     run(cmd, cwd=RERUN_DIR)
     # fmt: on
@@ -218,7 +222,7 @@ def render_examples(examples: list[Example]) -> None:
 
 
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
+    def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
 

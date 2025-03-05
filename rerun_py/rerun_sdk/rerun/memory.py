@@ -34,7 +34,7 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
     return MemoryRecording(
         bindings.memory_recording(
             recording=recording.to_native() if recording is not None else None,
-        )
+        ),
     )
 
 

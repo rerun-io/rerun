@@ -56,7 +56,10 @@ def run_canny(num_frames: int | None) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Streams a local system camera and runs the canny edge detector.")
     parser.add_argument(
-        "--device", type=int, default=0, help="Which camera device to use. (Passed to `cv2.VideoCapture()`)"
+        "--device",
+        type=int,
+        default=0,
+        help="Which camera device to use. (Passed to `cv2.VideoCapture()`)",
     )
     parser.add_argument("--num-frames", type=int, default=None, help="The number of frames to log")
 

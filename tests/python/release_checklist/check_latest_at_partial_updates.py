@@ -63,7 +63,7 @@ def blueprint() -> rrb.BlueprintLike:
                     rrb.TextDocumentView(origin="expected"),
                     row_shares=[1, 3],
                 ),
-            ]
+            ],
         ),
     )
 

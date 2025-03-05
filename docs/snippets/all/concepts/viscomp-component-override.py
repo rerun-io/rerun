@@ -15,7 +15,7 @@ rr.send_blueprint(
         overrides={
             "boxes/1": [
                 rr.components.Color([0, 255, 0]),
-            ]
+            ],
         },
     ),
 )

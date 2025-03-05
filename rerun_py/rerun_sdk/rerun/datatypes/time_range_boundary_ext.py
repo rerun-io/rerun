@@ -33,7 +33,11 @@ class TimeRangeBoundaryExt:
 
     @staticmethod
     def cursor_relative(
-        offset: TimeInt | None = None, *, seq: int | None = None, seconds: float | None = None, nanos: int | None = None
+        offset: TimeInt | None = None,
+        *,
+        seq: int | None = None,
+        seconds: float | None = None,
+        nanos: int | None = None,
     ) -> TimeRangeBoundary:
         """
         Boundary that is relative to the timeline cursor.
@@ -107,7 +111,11 @@ class TimeRangeBoundaryExt:
 
     @staticmethod
     def absolute(
-        time: TimeInt | None = None, *, seq: int | None = None, seconds: float | None = None, nanos: int | None = None
+        time: TimeInt | None = None,
+        *,
+        seq: int | None = None,
+        seconds: float | None = None,
+        nanos: int | None = None,
     ) -> TimeRangeBoundary:
         """
         Boundary that is at an absolute time.

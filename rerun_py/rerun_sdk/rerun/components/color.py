@@ -32,7 +32,6 @@ class Color(ColorExt, datatypes.Rgba32, ComponentMixin):
     # You can define your own __init__ function as a member of ColorExt in color_ext.py
 
     # Note: there are no fields here because Color delegates to datatypes.Rgba32
-    pass
 
 
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):

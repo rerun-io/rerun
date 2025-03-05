@@ -84,7 +84,7 @@ def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> list[str]:
         "CAM_BACK": 4,
         "CAM_BACK_LEFT": 5,
     }
-    return sorted(list(sensor_names), key=lambda sensor_name: ordering.get(sensor_name, float("inf")))
+    return sorted(sensor_names, key=lambda sensor_name: ordering.get(sensor_name, float("inf")))
 
 
 def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) -> None:
@@ -123,7 +123,10 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
 
 
 def log_lidar_and_ego_pose(
-    location: str, first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float
+    location: str,
+    first_lidar_token: str,
+    nusc: nuscenes.NuScenes,
+    max_timestamp_us: float,
 ) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token

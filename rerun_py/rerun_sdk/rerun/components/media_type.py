@@ -28,7 +28,6 @@ class MediaType(MediaTypeExt, datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
 
     # Note: there are no fields here because MediaType delegates to datatypes.Utf8
-    pass
 
 
 class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
