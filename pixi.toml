@@ -492,7 +492,7 @@ parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
-maturin = "1.8.1"
+maturin = "==1.8.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"
