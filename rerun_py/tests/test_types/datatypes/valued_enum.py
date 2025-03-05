@@ -56,7 +56,10 @@ class ValuedEnum(Enum):
 
 
 ValuedEnumLike = Union[ValuedEnum, Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"], int]
-ValuedEnumArrayLike = Union[ValuedEnumLike, Sequence[ValuedEnumLike]]
+ValuedEnumArrayLike = Union[
+    ValuedEnumLike,
+    Sequence[ValuedEnumLike],
+]
 
 
 class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):

@@ -139,7 +139,9 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.Transform3D]:
 
     # Create tuple in format log_transform3d expects
     camera_from_world = rr.Transform3D(
-        translation=translation, rotation=rr.Quaternion(xyzw=rotation.as_quat()), from_parent=True
+        translation=translation,
+        rotation=rr.Quaternion(xyzw=rotation.as_quat()),
+        from_parent=True,
     )
 
     return (ts, camera_from_world)

@@ -73,7 +73,10 @@ def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray[np.float64
 
 
 def log_region_boundaries_for_country(
-    country_code: str, level: int, color: tuple[float, float, float], crs: CRS
+    country_code: str,
+    level: int,
+    color: tuple[float, float, float],
+    crs: CRS,
 ) -> None:
     """Log some boundaries for the given country and level."""
 

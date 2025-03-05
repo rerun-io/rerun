@@ -167,7 +167,9 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"xyz": xyz}
+        kwargs = {
+            "xyz": xyz,
+        }
         columns = []
 
         for batch in batches:

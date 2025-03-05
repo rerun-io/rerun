@@ -92,7 +92,10 @@ AggregationPolicyLike = Union[
     ],
     int,
 ]
-AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
+AggregationPolicyArrayLike = Union[
+    AggregationPolicyLike,
+    Sequence[AggregationPolicyLike],
+]
 
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):

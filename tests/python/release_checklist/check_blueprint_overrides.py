@@ -56,7 +56,7 @@ def run(args: Namespace) -> None:
                     ],
                 },
             ),
-        )
+        ),
     )
     rr.send_blueprint(blueprint, make_active=True, make_default=True)
 

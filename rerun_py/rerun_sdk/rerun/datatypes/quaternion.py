@@ -35,7 +35,9 @@ class Quaternion(QuaternionExt):
 
     # __init__ can be found in quaternion_ext.py
 
-    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyzw: npt.NDArray[np.float32] = field(
+        converter=to_np_float32,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of QuaternionExt in quaternion_ext.py
@@ -44,7 +46,11 @@ class Quaternion(QuaternionExt):
 
 QuaternionLike = Quaternion
 QuaternionArrayLike = Union[
-    Quaternion, Sequence[QuaternionLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]
+    Quaternion,
+    Sequence[QuaternionLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[float]],
 ]
 
 

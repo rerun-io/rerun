@@ -34,7 +34,9 @@ class Vec2D(Vec2DExt):
         # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py
         self.__attrs_init__(xy=xy)
 
-    xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xy: npt.NDArray[np.float32] = field(
+        converter=to_np_float32,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec2DExt in vec2d_ext.py
@@ -42,12 +44,22 @@ class Vec2D(Vec2DExt):
 
 
 if TYPE_CHECKING:
-    Vec2DLike = Union[Vec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    Vec2DLike = Union[
+        Vec2D,
+        npt.NDArray[Any],
+        npt.ArrayLike,
+        Sequence[float],
+    ]
 else:
     Vec2DLike = Any
 
 Vec2DArrayLike = Union[
-    Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+    Vec2D,
+    Sequence[Vec2DLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[float]],
+    Sequence[float],
 ]
 
 

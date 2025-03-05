@@ -59,7 +59,7 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
         self.__attrs_init__(class_id=class_id, class_description=class_description)
 
     class_id: datatypes.ClassId = field(
-        converter=_class_description_map_elem__class_id__special_field_converter_override
+        converter=_class_description_map_elem__class_id__special_field_converter_override,
     )
     # The key: the [`components.ClassId`][rerun.components.ClassId].
     #
@@ -72,7 +72,10 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
 
 
 if TYPE_CHECKING:
-    ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
+    ClassDescriptionMapElemLike = Union[
+        ClassDescriptionMapElem,
+        datatypes.ClassDescriptionLike,
+    ]
 else:
     ClassDescriptionMapElemLike = Any
 
@@ -110,7 +113,7 @@ class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
                             ]),
                             nullable=False,
                             metadata={},
-                        )
+                        ),
                     ),
                     nullable=False,
                     metadata={},
@@ -126,7 +129,7 @@ class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
                             ]),
                             nullable=False,
                             metadata={},
-                        )
+                        ),
                     ),
                     nullable=False,
                     metadata={},

@@ -27,7 +27,9 @@ class Angle(AngleExt):
 
     # __init__ can be found in angle_ext.py
 
-    radians: float = field(converter=float)
+    radians: float = field(
+        converter=float,
+    )
     # Angle in radians. One turn is equal to 2π (or τ) radians.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -44,11 +46,21 @@ class Angle(AngleExt):
 
 
 if TYPE_CHECKING:
-    AngleLike = Union[Angle, float, int]
+    AngleLike = Union[
+        Angle,
+        float,
+        int,
+    ]
 else:
     AngleLike = Any
 
-AngleArrayLike = Union[Angle, Sequence[AngleLike], npt.ArrayLike, Sequence[float], Sequence[int]]
+AngleArrayLike = Union[
+    Angle,
+    Sequence[AngleLike],
+    npt.ArrayLike,
+    Sequence[float],
+    Sequence[int],
+]
 
 
 class AngleBatch(BaseBatch[AngleArrayLike]):

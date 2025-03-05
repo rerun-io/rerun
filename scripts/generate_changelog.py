@@ -173,7 +173,7 @@ def main() -> None:
             pool.imap(fetch_pr_info_from_commit_info, commit_infos),
             total=len(commit_infos),
             desc="Fetch PR info commits",
-        )
+        ),
     )
 
     chronological = []

@@ -48,20 +48,25 @@ class ComponentColumnSelector(ComponentColumnSelectorExt):
     # __init__ can be found in component_column_selector_ext.py
 
     entity_path: datatypes.EntityPath = field(
-        converter=_component_column_selector__entity_path__special_field_converter_override
+        converter=_component_column_selector__entity_path__special_field_converter_override,
     )
     # The entity path for this component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    component: datatypes.Utf8 = field(converter=_component_column_selector__component__special_field_converter_override)
+    component: datatypes.Utf8 = field(
+        converter=_component_column_selector__component__special_field_converter_override,
+    )
     # The name of the component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
-    ComponentColumnSelectorLike = Union[ComponentColumnSelector, str]
+    ComponentColumnSelectorLike = Union[
+        ComponentColumnSelector,
+        str,
+    ]
 else:
     ComponentColumnSelectorLike = Any
 

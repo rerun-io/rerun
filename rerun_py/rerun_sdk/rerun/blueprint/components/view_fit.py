@@ -56,9 +56,14 @@ class ViewFit(Enum):
 
 
 ViewFitLike = Union[
-    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"], int
+    ViewFit,
+    Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"],
+    int,
 ]
-ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
+ViewFitArrayLike = Union[
+    ViewFitLike,
+    Sequence[ViewFitLike],
+]
 
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):

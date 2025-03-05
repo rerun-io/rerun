@@ -35,7 +35,10 @@ class AffixFuzzer10(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer10Ext in affix_fuzzer10_ext.py
         self.__attrs_init__(single_string_optional=single_string_optional)
 
-    single_string_optional: str | None = field(default=None, converter=str_or_none)
+    single_string_optional: str | None = field(
+        default=None,
+        converter=str_or_none,
+    )
 
 
 AffixFuzzer10Like = AffixFuzzer10

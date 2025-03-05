@@ -65,7 +65,9 @@ class Mat4x4(Mat4x4Ext):
 
     # __init__ can be found in mat4x4_ext.py
 
-    flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    flat_columns: npt.NDArray[np.float32] = field(
+        converter=to_np_float32,
+    )
     # Flat list of matrix coefficients in column-major order.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -76,7 +78,10 @@ class Mat4x4(Mat4x4Ext):
 
 
 if TYPE_CHECKING:
-    Mat4x4Like = Union[Mat4x4, npt.ArrayLike]
+    Mat4x4Like = Union[
+        Mat4x4,
+        npt.ArrayLike,
+    ]
 else:
     Mat4x4Like = Any
 

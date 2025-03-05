@@ -914,7 +914,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                     new_header = fix_header_casing(m.group(2))
                     if new_header != m.group(2):
                         errors.append(
-                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'.",
                         )
                         line = m.group(1) + new_header + "\n"
 
@@ -923,7 +923,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_title = fix_header_casing(m.group(1))
                 if new_title != m.group(1):
                     errors.append(
-                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'."
+                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'.",
                     )
                     line = f'title = "{new_title}"\n'
 
@@ -938,7 +938,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 # Check that <h1> is not used in example READMEs
                 if line.startswith("#") and not line.startswith("##"):
                     errors.append(
-                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
+                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title.",
                     )
 
         lines_out.append(line)

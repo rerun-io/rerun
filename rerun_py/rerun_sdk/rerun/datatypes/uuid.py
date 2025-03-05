@@ -42,7 +42,9 @@ class Uuid(UuidExt):
         # You can define your own __init__ function as a member of UuidExt in uuid_ext.py
         self.__attrs_init__(bytes=bytes)
 
-    bytes: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    bytes: npt.NDArray[np.uint8] = field(
+        converter=to_np_uint8,
+    )
     # The raw bytes representing the UUID.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -53,12 +55,24 @@ class Uuid(UuidExt):
 
 
 if TYPE_CHECKING:
-    UuidLike = Union[Uuid, npt.NDArray[Any], npt.ArrayLike, Sequence[int], bytes]
+    UuidLike = Union[
+        Uuid,
+        npt.NDArray[Any],
+        npt.ArrayLike,
+        Sequence[int],
+        bytes,
+    ]
 else:
     UuidLike = Any
 
 UuidArrayLike = Union[
-    Uuid, Sequence[UuidLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int], Sequence[bytes]
+    Uuid,
+    Sequence[UuidLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[int]],
+    Sequence[int],
+    Sequence[bytes],
 ]
 
 

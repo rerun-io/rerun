@@ -99,7 +99,9 @@ class ComponentDescriptor:
         archetype_name = archetype_name if archetype_name is not None else self.archetype_name
         archetype_field_name = archetype_field_name if archetype_field_name is not None else self.archetype_field_name
         return ComponentDescriptor(
-            component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            component_name,
+            archetype_name=archetype_name,
+            archetype_field_name=archetype_field_name,
         )
 
     def or_with_overrides(self, *, archetype_name: str | None, archetype_field_name: str | None) -> ComponentDescriptor:
@@ -110,7 +112,9 @@ class ComponentDescriptor:
             self.archetype_field_name if self.archetype_field_name is not None else archetype_field_name
         )
         return ComponentDescriptor(
-            component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            component_name,
+            archetype_name=archetype_name,
+            archetype_field_name=archetype_field_name,
         )
 
 
@@ -516,7 +520,10 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(self, descriptor)
 
     def with_descriptor_overrides(
-        self, *, archetype_name: str | None, archetype_field_name: str | None
+        self,
+        *,
+        archetype_name: str | None,
+        archetype_field_name: str | None,
     ) -> DescribedComponentBatch:
         """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
         descriptor = self.component_descriptor()
@@ -528,12 +535,17 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(
             self,
             ComponentDescriptor(
-                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+                component_name,
+                archetype_name=archetype_name,
+                archetype_field_name=archetype_field_name,
             ),
         )
 
     def or_with_descriptor_overrides(
-        self, *, archetype_name: str | None, archetype_field_name: str | None
+        self,
+        *,
+        archetype_name: str | None,
+        archetype_field_name: str | None,
     ) -> DescribedComponentBatch:
         """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
         descriptor = self.component_descriptor()
@@ -545,7 +557,9 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(
             self,
             ComponentDescriptor(
-                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+                component_name,
+                archetype_name=archetype_name,
+                archetype_field_name=archetype_field_name,
             ),
         )
 

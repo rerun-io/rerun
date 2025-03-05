@@ -623,13 +623,19 @@ def main() -> None:
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
     target_version_update_group = version_parser.add_mutually_exclusive_group()
     target_version_update_group.add_argument(
-        "--bump", type=Bump, choices=list(Bump), help="Bump version according to semver"
+        "--bump",
+        type=Bump,
+        choices=list(Bump),
+        help="Bump version according to semver",
     )
     target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
     dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
     dev_parser.add_argument(
-        "--no-dev", dest="dev", action="store_false", help="Remove `+dev` from build metadata (if present)"
+        "--no-dev",
+        dest="dev",
+        action="store_false",
+        help="Remove `+dev` from build metadata (if present)",
     )
     version_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     version_parser.add_argument(
@@ -649,14 +655,22 @@ def main() -> None:
 
     get_version_parser = cmds_parser.add_parser("get-version", help="Get the current crate version")
     get_version_parser.add_argument(
-        "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
+        "--finalize",
+        action="store_true",
+        help="Return version finalized if it is a pre-release",
     )
     get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
     get_version_parser.add_argument(
-        "--from", type=Target, choices=list(Target), help="Get version from git or crates.io", dest="target"
+        "--from",
+        type=Target,
+        choices=list(Target),
+        help="Get version from git or crates.io",
+        dest="target",
     )
     get_version_parser.add_argument(
-        "--skip-prerelease", action="store_true", help="If target is cratesio, return the first non-prerelease version"
+        "--skip-prerelease",
+        action="store_true",
+        help="If target is cratesio, return the first non-prerelease version",
     )
 
     args = parser.parse_args()

@@ -85,7 +85,7 @@ class GestureDetectorLogger:
                 rr.ClassDescription(
                     info=rr.AnnotationInfo(id=0, label="Hand3D"),
                     keypoint_connections=mp.solutions.hands.HAND_CONNECTIONS,
-                )
+                ),
             ),
             static=True,
         )
@@ -93,7 +93,9 @@ class GestureDetectorLogger:
 
     @staticmethod
     def convert_landmarks_to_image_coordinates(
-        hand_landmarks: list[list[NormalizedLandmark]], width: int, height: int
+        hand_landmarks: list[list[NormalizedLandmark]],
+        width: int,
+        height: int,
     ) -> list[tuple[int, int]]:
         return [(int(lm.x * width), int(lm.y * height)) for hand_landmark in hand_landmarks for lm in hand_landmark]
 
@@ -259,7 +261,7 @@ def main() -> None:
 
     # Set up argument parser with description
     parser = argparse.ArgumentParser(
-        description="Uses the MediaPipe Gesture Recognition to track a hand and recognize gestures in image or video."
+        description="Uses the MediaPipe Gesture Recognition to track a hand and recognize gestures in image or video.",
     )
 
     parser.add_argument(

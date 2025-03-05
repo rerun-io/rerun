@@ -248,7 +248,7 @@ def main() -> None:
     commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[args.github_release]
 
     print(
-        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…'
+        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',
     )
 
     assets = fetch_binary_assets(

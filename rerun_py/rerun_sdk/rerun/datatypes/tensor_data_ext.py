@@ -142,7 +142,7 @@ class TensorDataExt:
         expected_buffer_size = prod(d for d in self.shape)
         if len(self.buffer.inner) != expected_buffer_size:
             raise ValueError(
-                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
+                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}",
             )
 
     ################################################################################

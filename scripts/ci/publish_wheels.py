@@ -55,7 +55,7 @@ def publish_notebook_asset() -> None:
                 # Extract the specified file to the target directory
                 archive.extract("rerun_notebook/static/widget.js", "extracted")
                 bucket.blob(f"version/{wheel_version}/widget.js").upload_from_filename(
-                    "extracted/rerun_notebook/static/widget.js"
+                    "extracted/rerun_notebook/static/widget.js",
                 )
 
 

@@ -33,7 +33,9 @@ class VisibleTimeRange(VisibleTimeRangeExt):
 
     # __init__ can be found in visible_time_range_ext.py
 
-    timeline: datatypes.Utf8 = field(converter=_visible_time_range__timeline__special_field_converter_override)
+    timeline: datatypes.Utf8 = field(
+        converter=_visible_time_range__timeline__special_field_converter_override,
+    )
     # Name of the timeline this applies to.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

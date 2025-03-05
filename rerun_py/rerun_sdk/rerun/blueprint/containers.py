@@ -36,7 +36,11 @@ class Horizontal(Container):
 
         """
         super().__init__(
-            *args, contents=contents, kind=ContainerKind.Horizontal, column_shares=column_shares, name=name
+            *args,
+            contents=contents,
+            kind=ContainerKind.Horizontal,
+            column_shares=column_shares,
+            name=name,
         )
 
 

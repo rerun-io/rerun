@@ -121,7 +121,9 @@ def _send_warning_or_raise(
         _rerun_exception_ctx.sending_warning = False
     else:
         warnings.warn(
-            "Encountered Error while sending warning", category=RerunWarning, stacklevel=depth_to_user_code + 1
+            "Encountered Error while sending warning",
+            category=RerunWarning,
+            stacklevel=depth_to_user_code + 1,
         )
 
 

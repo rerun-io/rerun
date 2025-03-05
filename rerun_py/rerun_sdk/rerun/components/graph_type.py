@@ -53,7 +53,10 @@ class GraphType(Enum):
 
 
 GraphTypeLike = Union[GraphType, Literal["Directed", "Undirected", "directed", "undirected"], int]
-GraphTypeArrayLike = Union[GraphTypeLike, Sequence[GraphTypeLike]]
+GraphTypeArrayLike = Union[
+    GraphTypeLike,
+    Sequence[GraphTypeLike],
+]
 
 
 class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):

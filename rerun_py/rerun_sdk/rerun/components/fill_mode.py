@@ -72,9 +72,14 @@ class FillMode(Enum):
 
 
 FillModeLike = Union[
-    FillMode, Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"], int
+    FillMode,
+    Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"],
+    int,
 ]
-FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
+FillModeArrayLike = Union[
+    FillModeLike,
+    Sequence[FillModeLike],
+]
 
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):

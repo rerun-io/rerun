@@ -97,6 +97,9 @@ lint.ignore = [
   "ANN202",
   "ANN401",
 
+  # Conflicts with the formatter, as per ruff itself
+  "COM812",
+
   # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
   "D1",
 
@@ -126,6 +129,7 @@ lint.select = [
   "A",   # Avoid shadowing built-ins
   "ANN", # Ensure all code is properly annotated.
   "B",   # flake8-bugbear lints
+  "COM", # Trailing-comma-related rules
   "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
   "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)

@@ -186,7 +186,8 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                     pass
             # Get property getters
             for method_name, method_obj in inspect.getmembers(
-                obj, lambda o: o.__class__.__name__ == "getset_descriptor"
+                obj,
+                lambda o: o.__class__.__name__ == "getset_descriptor",
             ):
                 api_def = APIDef(
                     method_name,

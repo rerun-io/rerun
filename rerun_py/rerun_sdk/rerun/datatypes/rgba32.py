@@ -56,11 +56,21 @@ class Rgba32(Rgba32Ext):
 
 
 if TYPE_CHECKING:
-    Rgba32Like = Union[Rgba32, int, Sequence[Union[int, float]], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
+    Rgba32Like = Union[
+        Rgba32,
+        int,
+        Sequence[Union[int, float]],
+        npt.NDArray[Union[np.uint8, np.float32, np.float64]],
+    ]
 else:
     Rgba32Like = Any
 
-Rgba32ArrayLike = Union[Rgba32, Sequence[Rgba32Like], int, npt.ArrayLike]
+Rgba32ArrayLike = Union[
+    Rgba32,
+    Sequence[Rgba32Like],
+    int,
+    npt.ArrayLike,
+]
 
 
 class Rgba32Batch(BaseBatch[Rgba32ArrayLike]):

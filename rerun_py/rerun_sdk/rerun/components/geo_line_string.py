@@ -36,11 +36,19 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    GeoLineStringLike = Union[GeoLineString, datatypes.DVec2DArrayLike, npt.NDArray[np.float64]]
+    GeoLineStringLike = Union[
+        GeoLineString,
+        datatypes.DVec2DArrayLike,
+        npt.NDArray[np.float64],
+    ]
 else:
     GeoLineStringLike = Any
 
-GeoLineStringArrayLike = Union[GeoLineString, Sequence[GeoLineStringLike], npt.NDArray[np.float64]]
+GeoLineStringArrayLike = Union[
+    GeoLineString,
+    Sequence[GeoLineStringLike],
+    npt.NDArray[np.float64],
+]
 
 
 class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin):
@@ -50,7 +58,7 @@ class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin)
             pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
             nullable=False,
             metadata={},
-        )
+        ),
     )
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.GeoLineString")
 

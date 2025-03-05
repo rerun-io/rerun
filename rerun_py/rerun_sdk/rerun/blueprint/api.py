@@ -301,7 +301,11 @@ class Panel:
     """
 
     def __init__(
-        self, *, blueprint_path: str, expanded: bool | None = None, state: PanelStateLike | None = None
+        self,
+        *,
+        blueprint_path: str,
+        expanded: bool | None = None,
+        state: PanelStateLike | None = None,
     ) -> None:
         """
         Construct a new panel.
@@ -566,7 +570,7 @@ class Blueprint:
 
     @deprecated(
         """Please migrate to `connect_grpc(…)`.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
+        See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details.""",
     )
     def connect(
         self,
@@ -636,7 +640,7 @@ class Blueprint:
                 make_default=False,
                 make_thread_default=False,
                 default_enabled=True,
-            )
+            ),
         )
         blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
@@ -666,7 +670,7 @@ class Blueprint:
                 make_default=False,
                 make_thread_default=False,
                 default_enabled=True,
-            )
+            ),
         )
         blueprint_stream.set_index("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
@@ -674,7 +678,11 @@ class Blueprint:
         bindings.save_blueprint(path, blueprint_stream.to_native())
 
     def spawn(
-        self, application_id: str, port: int = 9876, memory_limit: str = "75%", hide_welcome_screen: bool = False
+        self,
+        application_id: str,
+        port: int = 9876,
+        memory_limit: str = "75%",
+        hide_welcome_screen: bool = False,
     ) -> None:
         """
         Spawn a Rerun viewer with this blueprint.
@@ -722,7 +730,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
             make_default=False,
             make_thread_default=False,
             default_enabled=True,
-        )
+        ),
     )
 
     blueprint_stream.set_index("blueprint", sequence=0)

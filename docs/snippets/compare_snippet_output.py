@@ -104,7 +104,7 @@ def main() -> None:
         pass  # No need to build the C++ SDK
     elif args.no_cpp_build:
         print(
-            "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!"
+            "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!",
         )
     else:
         build_cpp_snippets()

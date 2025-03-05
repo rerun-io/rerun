@@ -239,7 +239,7 @@ class FaceLandmarkerLogger:
                 rr.ClassDescription(
                     info=rr.AnnotationInfo(id=i),
                     keypoint_connections=klass,
-                )
+                ),
             )
 
         rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
@@ -271,7 +271,7 @@ class FaceLandmarkerLogger:
             rr.log("blendshapes", rr.Clear(recursive=True), static=ALL_STATIC)
 
         for i, (landmark, blendshapes) in enumerate(
-            zip(detection_result.face_landmarks, detection_result.face_blendshapes)
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes),
         ):
             if len(landmark) == 0 or len(blendshapes) == 0:
                 rr.log(

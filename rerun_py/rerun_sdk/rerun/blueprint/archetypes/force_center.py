@@ -24,7 +24,10 @@ class ForceCenter(Archetype):
     """**Archetype**: Tries to move the center of mass of the graph to the origin."""
 
     def __init__(
-        self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None
+        self: Any,
+        *,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
     ) -> None:
         """
         Create a new instance of the ForceCenter archetype.

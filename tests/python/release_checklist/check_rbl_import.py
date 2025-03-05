@@ -63,7 +63,8 @@ def log_plots() -> None:
             "trig/cos",
             rr.Scalar(cos_of_t),
             rr.SeriesLine(
-                width=5, color=lerp(np.array([0.0, 1.0, 1.0]), np.array([0.0, 0.0, 1.0]), (cos_of_t + 1.0) * 0.5)
+                width=5,
+                color=lerp(np.array([0.0, 1.0, 1.0]), np.array([0.0, 0.0, 1.0]), (cos_of_t + 1.0) * 0.5),
             ),
         )
 

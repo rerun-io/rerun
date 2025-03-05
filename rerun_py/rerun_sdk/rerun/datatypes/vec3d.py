@@ -34,7 +34,9 @@ class Vec3D(Vec3DExt):
         # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
         self.__attrs_init__(xyz=xyz)
 
-    xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyz: npt.NDArray[np.float32] = field(
+        converter=to_np_float32,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec3DExt in vec3d_ext.py
@@ -42,12 +44,22 @@ class Vec3D(Vec3DExt):
 
 
 if TYPE_CHECKING:
-    Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    Vec3DLike = Union[
+        Vec3D,
+        npt.NDArray[Any],
+        npt.ArrayLike,
+        Sequence[float],
+    ]
 else:
     Vec3DLike = Any
 
 Vec3DArrayLike = Union[
-    Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+    Vec3D,
+    Sequence[Vec3DLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[float]],
+    Sequence[float],
 ]
 
 

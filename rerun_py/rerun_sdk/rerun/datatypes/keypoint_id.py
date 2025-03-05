@@ -37,7 +37,9 @@ class KeypointId:
         # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
         self.__attrs_init__(id=id)
 
-    id: int = field(converter=int)
+    id: int = field(
+        converter=int,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of KeypointIdExt in keypoint_id_ext.py
@@ -51,11 +53,19 @@ class KeypointId:
 
 
 if TYPE_CHECKING:
-    KeypointIdLike = Union[KeypointId, int]
+    KeypointIdLike = Union[
+        KeypointId,
+        int,
+    ]
 else:
     KeypointIdLike = Any
 
-KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
+KeypointIdArrayLike = Union[
+    KeypointId,
+    Sequence[KeypointIdLike],
+    int,
+    npt.ArrayLike,
+]
 
 
 class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):

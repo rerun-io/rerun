@@ -47,12 +47,12 @@ def main() -> None:
                             "time",
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-args.window_size),
                             end=rrb.TimeRangeBoundary.cursor_relative(),
-                        )
+                        ),
                     ],
                     plot_legend=rrb.PlotLegend(visible=False),
                 )
                 for plot_path in plot_paths
-            ]
+            ],
         ),
     )
 

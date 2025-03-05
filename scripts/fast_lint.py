@@ -71,7 +71,7 @@ class LintJob:
             logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
         else:
             logging.info(
-                f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{subprocess.list2cmdline(full_cmd)}\n{proc.stdout}\n----------"
+                f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{subprocess.list2cmdline(full_cmd)}\n{proc.stdout}\n----------",
             )
 
         return proc.returncode == 0

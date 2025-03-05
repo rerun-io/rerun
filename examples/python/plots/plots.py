@@ -86,7 +86,9 @@ def log_spiral() -> None:
     # want this in column major, and numpy is row-major by default
     scalars = np.array((x, y)).T
     rr.send_columns(
-        "spiral", indexes=[rr.IndexColumn("frame_nr", sequence=times)], columns=[*rr.Scalar.columns(scalar=scalars)]
+        "spiral",
+        indexes=[rr.IndexColumn("frame_nr", sequence=times)],
+        columns=[*rr.Scalar.columns(scalar=scalars)],
     )
 
 
@@ -117,7 +119,7 @@ def log_classification() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
+        description="demonstrates how to integrate python's native `logging` with the Rerun SDK",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()

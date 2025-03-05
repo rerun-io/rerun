@@ -68,7 +68,10 @@ BackgroundKindLike = Union[
     Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"],
     int,
 ]
-BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
+BackgroundKindArrayLike = Union[
+    BackgroundKindLike,
+    Sequence[BackgroundKindLike],
+]
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):

@@ -50,7 +50,10 @@ class AnnotationInfo(AnnotationInfoExt):
     """
 
     def __init__(
-        self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.Rgba32Like | None = None
+        self: Any,
+        id: int,
+        label: datatypes.Utf8Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
     ) -> None:
         """
         Create a new instance of the AnnotationInfo datatype.
@@ -69,20 +72,24 @@ class AnnotationInfo(AnnotationInfoExt):
         # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
         self.__attrs_init__(id=id, label=label, color=color)
 
-    id: int = field(converter=int)
+    id: int = field(
+        converter=int,
+    )
     # [`datatypes.ClassId`][rerun.datatypes.ClassId] or [`datatypes.KeypointId`][rerun.datatypes.KeypointId] to which this annotation info belongs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     label: datatypes.Utf8 | None = field(
-        default=None, converter=_annotation_info__label__special_field_converter_override
+        default=None,
+        converter=_annotation_info__label__special_field_converter_override,
     )
     # The label that will be shown in the UI.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: datatypes.Rgba32 | None = field(
-        default=None, converter=_annotation_info__color__special_field_converter_override
+        default=None,
+        converter=_annotation_info__color__special_field_converter_override,
     )
     # The color that will be applied to the annotated entity.
     #
@@ -90,7 +97,12 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, tuple[int, str], tuple[int, str, datatypes.Rgba32Like]]
+    AnnotationInfoLike = Union[
+        AnnotationInfo,
+        int,
+        tuple[int, str],
+        tuple[int, str, datatypes.Rgba32Like],
+    ]
 else:
     AnnotationInfoLike = Any
 

@@ -41,7 +41,9 @@ def specimen_two_rows_span_two_chunks_sparse() -> None:
     """Two rows spanning two chunks with partially matching timestamps (so sparse results)."""
 
     rr.send_columns(
-        "/rows_span_two_chunks_sparse", frame_times(0, 2, 3), rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)])
+        "/rows_span_two_chunks_sparse",
+        frame_times(0, 2, 3),
+        rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)]),
     )
     rr.send_columns("/rows_span_two_chunks_sparse", frame_times(0, 2, 4), rr.Points2D.columns(radii=[10, 11, 12]))
 
@@ -167,7 +169,7 @@ def specimen_archetype_chunk_with_clear() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Logs a bunch of chunks of various typologies. Use `RERUN_CHUNK_MAX_BYTES=0`!"
+        description="Logs a bunch of chunks of various typologies. Use `RERUN_CHUNK_MAX_BYTES=0`!",
     )
     parser.add_argument("--filter", type=str, help="Only run specimens whose name contains this substring")
     rr.script_add_args(parser)

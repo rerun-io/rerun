@@ -66,12 +66,16 @@ class ImageFormat(ImageFormatExt):
             channel_datatype=channel_datatype,
         )
 
-    width: int = field(converter=int)
+    width: int = field(
+        converter=int,
+    )
     # The width of the image in pixels.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    height: int = field(converter=int)
+    height: int = field(
+        converter=int,
+    )
     # The height of the image in pixels.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

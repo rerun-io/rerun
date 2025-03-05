@@ -88,7 +88,7 @@ class IndexColumn(TimeColumnLike):
         """
         if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
             raise ValueError(
-                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
@@ -113,7 +113,7 @@ class IndexColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
     """
@@ -147,7 +147,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
     """
@@ -181,7 +181,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
     """
@@ -270,7 +270,7 @@ def send_columns(
             expected_length = len(time_column)
         elif len(time_column) != expected_length:
             raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}",
             )
 
         timelines_args[timeline_name] = time_column
@@ -283,7 +283,7 @@ def send_columns(
             expected_length = len(arrow_list_array)
         elif len(arrow_list_array) != expected_length:
             raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}"
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}",
             )
 
         columns_args[component_descr] = arrow_list_array

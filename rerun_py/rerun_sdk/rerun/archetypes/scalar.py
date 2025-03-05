@@ -190,7 +190,9 @@ class Scalar(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"scalar": scalar}
+        kwargs = {
+            "scalar": scalar,
+        }
         columns = []
 
         for batch in batches:

@@ -30,7 +30,9 @@ class EntityPath:
         # You can define your own __init__ function as a member of EntityPathExt in entity_path_ext.py
         self.__attrs_init__(path=path)
 
-    path: str = field(converter=str)
+    path: str = field(
+        converter=str,
+    )
 
     def __str__(self) -> str:
         return str(self.path)
@@ -40,11 +42,18 @@ class EntityPath:
 
 
 if TYPE_CHECKING:
-    EntityPathLike = Union[EntityPath, str]
+    EntityPathLike = Union[
+        EntityPath,
+        str,
+    ]
 else:
     EntityPathLike = Any
 
-EntityPathArrayLike = Union[EntityPath, Sequence[EntityPathLike], Sequence[str]]
+EntityPathArrayLike = Union[
+    EntityPath,
+    Sequence[EntityPathLike],
+    Sequence[str],
+]
 
 
 class EntityPathBatch(BaseBatch[EntityPathArrayLike]):

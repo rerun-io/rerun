@@ -124,7 +124,7 @@ class NoClosingTagError(Error):
               <source>
             </video>
             ```
-            """
+            """,
         )
 
 
@@ -161,7 +161,7 @@ class NoPrecedingBlankLineError(Error):
               <source>
             </video>
             ```
-            """
+            """,
         )
 
 
@@ -196,7 +196,7 @@ class BlankLinesError(Error):
               <source>      ## blank line is gone
             </picture>
             ```
-            """
+            """,
         )
 
 
@@ -225,7 +225,7 @@ class BacktickLinkError(Error):
             ```
             [Some link](https://github.com/rerun-io/rerun)
             ```
-            """
+            """,
         )
 
 

@@ -95,7 +95,8 @@ def log_failed_snapshot_tests(original_path: Path, new_path: Path, diff_path: Pa
         rr.log(
             "doc/tabs",
             rr.TextDocument(
-                "### Click on one of the tabs below to show the Original/New/Diff images.", media_type="text/markdown"
+                "### Click on one of the tabs below to show the Original/New/Diff images.",
+                media_type="text/markdown",
             ),
         )
 

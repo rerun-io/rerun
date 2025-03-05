@@ -40,7 +40,8 @@ class SelectedColumns(SelectedColumnsExt):
 
 if TYPE_CHECKING:
     SelectedColumnsLike = Union[
-        SelectedColumns, Sequence[Union[blueprint_datatypes.ComponentColumnSelectorLike, datatypes.Utf8Like]]
+        SelectedColumns,
+        Sequence[Union[blueprint_datatypes.ComponentColumnSelectorLike, datatypes.Utf8Like]],
     ]
 else:
     SelectedColumnsLike = Any
@@ -70,7 +71,7 @@ class SelectedColumnsBatch(BaseBatch[SelectedColumnsArrayLike]):
                     ]),
                     nullable=False,
                     metadata={},
-                )
+                ),
             ),
             nullable=False,
             metadata={},

@@ -40,7 +40,9 @@ class Plane3D(Plane3DExt):
 
     # __init__ can be found in plane3d_ext.py
 
-    xyzd: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyzd: npt.NDArray[np.float32] = field(
+        converter=to_np_float32,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
@@ -48,7 +50,13 @@ class Plane3D(Plane3DExt):
 
 
 Plane3DLike = Plane3D
-Plane3DArrayLike = Union[Plane3D, Sequence[Plane3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]]
+Plane3DArrayLike = Union[
+    Plane3D,
+    Sequence[Plane3DLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[float]],
+]
 
 
 class Plane3DBatch(BaseBatch[Plane3DArrayLike]):

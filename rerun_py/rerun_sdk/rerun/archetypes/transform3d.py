@@ -83,7 +83,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     # One space with the sun in the center, and another one with the planet.
     rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
+        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
     )
 
     rr.set_index("sim_time", timedelta=0)

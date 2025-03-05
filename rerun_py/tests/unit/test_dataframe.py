@@ -314,7 +314,7 @@ class TestDataframe:
             pa.array(
                 [0, 5, 9],
                 type=pa.int64(),
-            )
+            ),
         ])
 
         assert table.column("my_index").equals(expected_index)

@@ -598,7 +598,9 @@ class StorageNodeClient:
     """
 
     def query_catalog(
-        self, columns: Optional[list[str]] = None, recording_ids: Optional[list[str]] = None
+        self,
+        columns: Optional[list[str]] = None,
+        recording_ids: Optional[list[str]] = None,
     ) -> pa.RecordBatchReader:
         """
         Get the metadata for recordings in the storage node.

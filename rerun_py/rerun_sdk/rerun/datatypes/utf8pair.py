@@ -56,23 +56,34 @@ class Utf8Pair(Utf8PairExt):
         # You can define your own __init__ function as a member of Utf8PairExt in utf8pair_ext.py
         self.__attrs_init__(first=first, second=second)
 
-    first: datatypes.Utf8 = field(converter=_utf8pair__first__special_field_converter_override)
+    first: datatypes.Utf8 = field(
+        converter=_utf8pair__first__special_field_converter_override,
+    )
     # The first string.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    second: datatypes.Utf8 = field(converter=_utf8pair__second__special_field_converter_override)
+    second: datatypes.Utf8 = field(
+        converter=_utf8pair__second__special_field_converter_override,
+    )
     # The second string.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
-    Utf8PairLike = Union[Utf8Pair, tuple[datatypes.Utf8Like, datatypes.Utf8Like]]
+    Utf8PairLike = Union[
+        Utf8Pair,
+        tuple[datatypes.Utf8Like, datatypes.Utf8Like],
+    ]
 else:
     Utf8PairLike = Any
 
-Utf8PairArrayLike = Union[Utf8Pair, Sequence[Utf8PairLike], npt.NDArray[np.str_]]
+Utf8PairArrayLike = Union[
+    Utf8Pair,
+    Sequence[Utf8PairLike],
+    npt.NDArray[np.str_],
+]
 
 
 class Utf8PairBatch(BaseBatch[Utf8PairArrayLike]):

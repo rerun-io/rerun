@@ -174,11 +174,14 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generates SDFs for arbitrary meshes and logs the results using the Rerun SDK."
+        description="Generates SDFs for arbitrary meshes and logs the results using the Rerun SDK.",
     )
     parser.add_argument("--resolution", type=int, default=128, help="Specifies the resolution of the voxel volume")
     parser.add_argument(
-        "--points", type=int, default=250_000, help="Specifies the number of points for the point cloud"
+        "--points",
+        type=int,
+        default=250_000,
+        help="Specifies the number of points for the point cloud",
     )
     parser.add_argument(
         "--mesh",

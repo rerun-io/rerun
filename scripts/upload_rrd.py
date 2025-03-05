@@ -53,7 +53,11 @@ class Uploader:
         self.bucket = gcs.bucket("rerun-rrd")
 
     def upload_data(
-        self, data: bytes, gcs_path: str, content_type: str | None = None, content_encoding: str | None = None
+        self,
+        data: bytes,
+        gcs_path: str,
+        content_type: str | None = None,
+        content_encoding: str | None = None,
     ) -> None:
         """
         Low-level upload of data.
@@ -103,7 +107,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("path", type=str, help="Recording .rrd to upload")
     parser.add_argument(
-        "--name", type=str, required=False, help="Name of the recording. If not supplied, the file name is used."
+        "--name",
+        type=str,
+        required=False,
+        help="Name of the recording. If not supplied, the file name is used.",
     )
     parser.add_argument("--version", type=str, required=True, help="The Rerun version, e.g. '0.15.0'.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")

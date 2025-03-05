@@ -169,7 +169,10 @@ class Tensor(TensorExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"data": data, "value_range": value_range}
+        kwargs = {
+            "data": data,
+            "value_range": value_range,
+        }
         columns = []
 
         for batch in batches:

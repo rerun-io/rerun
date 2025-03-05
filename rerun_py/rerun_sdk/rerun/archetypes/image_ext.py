@@ -224,7 +224,7 @@ class ImageExt:
                 num_expected_channels = channel_count_from_color_model[str(color_model).lower()]
                 if channels != num_expected_channels:
                     _send_warning_or_raise(
-                        f"Expected {num_expected_channels} channels for {color_model}; got {channels} channels"
+                        f"Expected {num_expected_channels} channels for {color_model}; got {channels} channels",
                     )
             except KeyError:
                 _send_warning_or_raise(f"Unknown ColorModel: '{color_model}'")
@@ -287,14 +287,14 @@ class ImageExt:
 
             if image_format.color_model not in (ColorModel.L, ColorModel.RGB, ColorModel.BGR):
                 raise ValueError(
-                    f"Cannot JPEG compress an image of type {image_format.color_model}. Only L (monochrome), RGB and BGR are supported."
+                    f"Cannot JPEG compress an image of type {image_format.color_model}. Only L (monochrome), RGB and BGR are supported.",
                 )
 
             if image_format.channel_datatype != ChannelDatatype.U8:
                 # See: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
                 # Note that modes F and I do not support jpeg compression
                 raise ValueError(
-                    f"Cannot JPEG compress an image of datatype {image_format.channel_datatype}. Only U8 is supported."
+                    f"Cannot JPEG compress an image of datatype {image_format.channel_datatype}. Only U8 is supported.",
                 )
 
             buf = None

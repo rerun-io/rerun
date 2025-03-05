@@ -32,7 +32,9 @@ class AffixFuzzer17(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer17Ext in affix_fuzzer17_ext.py
         self.__attrs_init__(many_optional_unions=many_optional_unions)
 
-    many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(default=None)
+    many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(
+        default=None,
+    )
 
 
 AffixFuzzer17Like = AffixFuzzer17
@@ -87,7 +89,7 @@ class AffixFuzzer17Batch(BaseBatch[AffixFuzzer17ArrayLike], ComponentBatchMixin)
                             ]),
                             nullable=False,
                             metadata={},
-                        )
+                        ),
                     ),
                     nullable=False,
                     metadata={},
@@ -102,14 +104,14 @@ class AffixFuzzer17Batch(BaseBatch[AffixFuzzer17ArrayLike], ComponentBatchMixin)
             ]),
             nullable=True,
             metadata={},
-        )
+        ),
     )
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer17")
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer17ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer17 not implemented: We lack codegen for arrow-serialization of general structs"
+            "Arrow serialization of AffixFuzzer17 not implemented: We lack codegen for arrow-serialization of general structs",
         )  # You need to implement native_to_pa_array_override in affix_fuzzer17_ext.py
 
 

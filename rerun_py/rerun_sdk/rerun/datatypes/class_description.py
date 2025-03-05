@@ -68,7 +68,10 @@ class ClassDescription(ClassDescriptionExt):
 
 
 if TYPE_CHECKING:
-    ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
+    ClassDescriptionLike = Union[
+        ClassDescription,
+        datatypes.AnnotationInfoLike,
+    ]
 else:
     ClassDescriptionLike = Any
 
@@ -102,7 +105,7 @@ class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
                     ]),
                     nullable=False,
                     metadata={},
-                )
+                ),
             ),
             nullable=False,
             metadata={},
@@ -118,7 +121,7 @@ class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
                     ]),
                     nullable=False,
                     metadata={},
-                )
+                ),
             ),
             nullable=False,
             metadata={},

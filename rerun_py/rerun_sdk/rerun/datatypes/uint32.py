@@ -30,7 +30,9 @@ class UInt32:
         # You can define your own __init__ function as a member of UInt32Ext in uint32_ext.py
         self.__attrs_init__(value=value)
 
-    value: int = field(converter=int)
+    value: int = field(
+        converter=int,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt32Ext in uint32_ext.py
@@ -44,11 +46,19 @@ class UInt32:
 
 
 if TYPE_CHECKING:
-    UInt32Like = Union[UInt32, int]
+    UInt32Like = Union[
+        UInt32,
+        int,
+    ]
 else:
     UInt32Like = Any
 
-UInt32ArrayLike = Union[UInt32, Sequence[UInt32Like], int, npt.NDArray[np.uint32]]
+UInt32ArrayLike = Union[
+    UInt32,
+    Sequence[UInt32Like],
+    int,
+    npt.NDArray[np.uint32],
+]
 
 
 class UInt32Batch(BaseBatch[UInt32ArrayLike]):

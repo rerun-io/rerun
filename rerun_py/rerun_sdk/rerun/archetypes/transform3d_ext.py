@@ -82,7 +82,7 @@ class Transform3DExt:
             if rotation is not None:
                 if quaternion is not None or rotation_axis_angle is not None:
                     raise ValueError(
-                        "`rotation` parameter can't be combined with `quaternion` or `rotation_axis_angle`."
+                        "`rotation` parameter can't be combined with `quaternion` or `rotation_axis_angle`.",
                     )
 
                 is_rotation_axis_angle = False

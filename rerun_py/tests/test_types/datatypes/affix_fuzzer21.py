@@ -30,8 +30,12 @@ class AffixFuzzer21:
         # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
         self.__attrs_init__(single_half=single_half, many_halves=many_halves)
 
-    single_half: float = field(converter=float)
-    many_halves: npt.NDArray[np.float16] = field(converter=to_np_float16)
+    single_half: float = field(
+        converter=float,
+    )
+    many_halves: npt.NDArray[np.float16] = field(
+        converter=to_np_float16,
+    )
 
 
 AffixFuzzer21Like = AffixFuzzer21
@@ -55,5 +59,5 @@ class AffixFuzzer21Batch(BaseBatch[AffixFuzzer21ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer21ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer21 not implemented: We lack codegen for arrow-serialization of general structs"
+            "Arrow serialization of AffixFuzzer21 not implemented: We lack codegen for arrow-serialization of general structs",
         )  # You need to implement native_to_pa_array_override in affix_fuzzer21_ext.py

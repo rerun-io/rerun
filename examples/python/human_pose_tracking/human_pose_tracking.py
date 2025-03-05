@@ -55,7 +55,7 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
                 info=rr.AnnotationInfo(id=1, label="Person"),
                 keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
                 keypoint_connections=mp_pose.POSE_CONNECTIONS,
-            )
+            ),
         ),
         static=True,
     )

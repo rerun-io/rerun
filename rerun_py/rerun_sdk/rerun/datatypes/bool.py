@@ -32,11 +32,16 @@ class Bool:
     def __bool__(self) -> bool:
         return self.value
 
-    value: bool = field(converter=bool)
+    value: bool = field(
+        converter=bool,
+    )
 
 
 if TYPE_CHECKING:
-    BoolLike = Union[Bool, bool]
+    BoolLike = Union[
+        Bool,
+        bool,
+    ]
 else:
     BoolLike = Any
 

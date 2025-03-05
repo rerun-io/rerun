@@ -116,7 +116,7 @@ def main() -> None:
                 ]),
                 rrb.BlueprintPanel(state="collapsed"),
                 rrb.SelectionPanel(state="collapsed"),
-            )
+            ),
         )
 
     time_per_sim_step = 1.0 / args.freq
@@ -221,7 +221,7 @@ def main() -> None:
             print(
                 f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
 (freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
-load={round(max_load * 100.0, 3)}%)"
+load={round(max_load * 100.0, 3)}%)",
             )
 
             elapsed_debt = total_elapsed % 1  # just keep the fractional part
@@ -234,7 +234,7 @@ load={round(max_load * 100.0, 3)}%)"
         print(
             f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
 (freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
-load={round(max_load * 100.0, 3)}%)"
+load={round(max_load * 100.0, 3)}%)",
         )
 
     rr.script_teardown(args)

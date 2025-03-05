@@ -42,7 +42,9 @@ class MultiEnum:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    value2: datatypes.ValuedEnum | None = field(default=None)
+    value2: datatypes.ValuedEnum | None = field(
+        default=None,
+    )
     # The second value.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

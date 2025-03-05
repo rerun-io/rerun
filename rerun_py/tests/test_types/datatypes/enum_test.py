@@ -66,7 +66,10 @@ EnumTestLike = Union[
     Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"],
     int,
 ]
-EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
+EnumTestArrayLike = Union[
+    EnumTestLike,
+    Sequence[EnumTestLike],
+]
 
 
 class EnumTestBatch(BaseBatch[EnumTestArrayLike]):

@@ -43,7 +43,7 @@ def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) 
     angular_distance = dist / EARTH_RADIUS_METERS
 
     target_lat = math.asin(
-        math.sin(lat) * math.cos(angular_distance) + math.cos(lat) * math.sin(angular_distance) * math.cos(bearing)
+        math.sin(lat) * math.cos(angular_distance) + math.cos(lat) * math.sin(angular_distance) * math.cos(bearing),
     )
     target_lon = lon + math.atan2(
         math.sin(bearing) * math.sin(angular_distance) * math.cos(lat),

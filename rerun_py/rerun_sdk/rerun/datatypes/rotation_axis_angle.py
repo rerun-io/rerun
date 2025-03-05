@@ -33,7 +33,9 @@ class RotationAxisAngle(RotationAxisAngleExt):
 
     # __init__ can be found in rotation_axis_angle_ext.py
 
-    axis: datatypes.Vec3D = field(converter=_rotation_axis_angle__axis__special_field_converter_override)
+    axis: datatypes.Vec3D = field(
+        converter=_rotation_axis_angle__axis__special_field_converter_override,
+    )
     # Axis to rotate around.
     #
     # This is not required to be normalized.

@@ -34,7 +34,9 @@ class Range1D(Range1DExt):
         # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py
         self.__attrs_init__(range=range)
 
-    range: npt.NDArray[np.float64] = field(converter=to_np_float64)
+    range: npt.NDArray[np.float64] = field(
+        converter=to_np_float64,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Range1DExt in range1d_ext.py
@@ -42,12 +44,23 @@ class Range1D(Range1DExt):
 
 
 if TYPE_CHECKING:
-    Range1DLike = Union[Range1D, npt.NDArray[Any], npt.ArrayLike, Sequence[float], slice]
+    Range1DLike = Union[
+        Range1D,
+        npt.NDArray[Any],
+        npt.ArrayLike,
+        Sequence[float],
+        slice,
+    ]
 else:
     Range1DLike = Any
 
 Range1DArrayLike = Union[
-    Range1D, Sequence[Range1DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+    Range1D,
+    Sequence[Range1DLike],
+    npt.NDArray[Any],
+    npt.ArrayLike,
+    Sequence[Sequence[float]],
+    Sequence[float],
 ]
 
 

@@ -123,7 +123,10 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
 
 
 def log_lidar_and_ego_pose(
-    location: str, first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float
+    location: str,
+    first_lidar_token: str,
+    nusc: nuscenes.NuScenes,
+    max_timestamp_us: float,
 ) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token

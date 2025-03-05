@@ -119,7 +119,11 @@ class SeriesPoint(Archetype):
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                color=color, marker=marker, name=name, visible_series=visible_series, marker_size=marker_size
+                color=color,
+                marker=marker,
+                name=name,
+                visible_series=visible_series,
+                marker_size=marker_size,
             )
             return
         self.__attrs_clear__()

@@ -32,7 +32,9 @@ class AffixFuzzer9(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer9Ext in affix_fuzzer9_ext.py
         self.__attrs_init__(single_string_required=single_string_required)
 
-    single_string_required: str = field(converter=str)
+    single_string_required: str = field(
+        converter=str,
+    )
 
     def __str__(self) -> str:
         return str(self.single_string_required)

@@ -105,7 +105,10 @@ class Mesh3DExt:
                         datatype = ChannelDatatype.from_np_dtype(albedo_texture.dtype)
                         albedo_texture_buffer = albedo_texture.tobytes()
                         albedo_texture_format = ImageFormat(
-                            width=w, height=h, color_model=color_model, channel_datatype=datatype
+                            width=w,
+                            height=h,
+                            color_model=color_model,
+                            channel_datatype=datatype,
                         )
                     except KeyError:
                         _send_warning_or_raise(f"Unsupported dtype {albedo_texture.dtype} for Mesh3D:s albedo texture")

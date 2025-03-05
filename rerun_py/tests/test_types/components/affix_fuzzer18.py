@@ -32,7 +32,9 @@ class AffixFuzzer18(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer18Ext in affix_fuzzer18_ext.py
         self.__attrs_init__(many_optional_unions=many_optional_unions)
 
-    many_optional_unions: list[datatypes.AffixFuzzer4] | None = field(default=None)
+    many_optional_unions: list[datatypes.AffixFuzzer4] | None = field(
+        default=None,
+    )
 
 
 AffixFuzzer18Like = AffixFuzzer18
@@ -91,7 +93,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                                     ]),
                                     nullable=False,
                                     metadata={},
-                                )
+                                ),
                             ),
                             nullable=False,
                             metadata={},
@@ -122,18 +124,27 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                                             "item",
                                             pa.struct([
                                                 pa.field(
-                                                    "single_float_optional", pa.float32(), nullable=True, metadata={}
+                                                    "single_float_optional",
+                                                    pa.float32(),
+                                                    nullable=True,
+                                                    metadata={},
                                                 ),
                                                 pa.field(
-                                                    "single_string_required", pa.utf8(), nullable=False, metadata={}
+                                                    "single_string_required",
+                                                    pa.utf8(),
+                                                    nullable=False,
+                                                    metadata={},
                                                 ),
                                                 pa.field(
-                                                    "single_string_optional", pa.utf8(), nullable=True, metadata={}
+                                                    "single_string_optional",
+                                                    pa.utf8(),
+                                                    nullable=True,
+                                                    metadata={},
                                                 ),
                                                 pa.field(
                                                     "many_floats_optional",
                                                     pa.list_(
-                                                        pa.field("item", pa.float32(), nullable=False, metadata={})
+                                                        pa.field("item", pa.float32(), nullable=False, metadata={}),
                                                     ),
                                                     nullable=True,
                                                     metadata={},
@@ -154,7 +165,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                                                 pa.field(
                                                     "almost_flattened_scalar",
                                                     pa.struct([
-                                                        pa.field("value", pa.float32(), nullable=False, metadata={})
+                                                        pa.field("value", pa.float32(), nullable=False, metadata={}),
                                                     ]),
                                                     nullable=False,
                                                     metadata={},
@@ -163,7 +174,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                                             ]),
                                             nullable=False,
                                             metadata={},
-                                        )
+                                        ),
                                     ),
                                     nullable=False,
                                     metadata={},
@@ -178,7 +189,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                             ]),
                             nullable=True,
                             metadata={},
-                        )
+                        ),
                     ),
                     nullable=False,
                     metadata={},
@@ -186,14 +197,14 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
             ]),
             nullable=True,
             metadata={},
-        )
+        ),
     )
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer18")
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer18ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer18 not implemented: We lack codegen for arrow-serialization of general structs"
+            "Arrow serialization of AffixFuzzer18 not implemented: We lack codegen for arrow-serialization of general structs",
         )  # You need to implement native_to_pa_array_override in affix_fuzzer18_ext.py
 
 

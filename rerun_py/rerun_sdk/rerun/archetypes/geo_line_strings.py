@@ -177,7 +177,11 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"line_strings": line_strings, "radii": radii, "colors": colors}
+        kwargs = {
+            "line_strings": line_strings,
+            "radii": radii,
+            "colors": colors,
+        }
         columns = []
 
         for batch in batches:

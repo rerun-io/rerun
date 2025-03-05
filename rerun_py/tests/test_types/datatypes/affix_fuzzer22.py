@@ -30,7 +30,9 @@ class AffixFuzzer22:
         # You can define your own __init__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
         self.__attrs_init__(fixed_sized_native=fixed_sized_native)
 
-    fixed_sized_native: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    fixed_sized_native: npt.NDArray[np.uint8] = field(
+        converter=to_np_uint8,
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
@@ -51,11 +53,11 @@ class AffixFuzzer22Batch(BaseBatch[AffixFuzzer22ArrayLike]):
             pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 4),
             nullable=False,
             metadata={},
-        )
+        ),
     ])
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer22ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer22 not implemented: We lack codegen for arrow-serialization of general structs"
+            "Arrow serialization of AffixFuzzer22 not implemented: We lack codegen for arrow-serialization of general structs",
         )  # You need to implement native_to_pa_array_override in affix_fuzzer22_ext.py

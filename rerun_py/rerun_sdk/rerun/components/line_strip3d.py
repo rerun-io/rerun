@@ -54,11 +54,19 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    LineStrip3DLike = Union[LineStrip3D, datatypes.Vec3DArrayLike, npt.NDArray[np.float32]]
+    LineStrip3DLike = Union[
+        LineStrip3D,
+        datatypes.Vec3DArrayLike,
+        npt.NDArray[np.float32],
+    ]
 else:
     LineStrip3DLike = Any
 
-LineStrip3DArrayLike = Union[LineStrip3D, Sequence[LineStrip3DLike], npt.NDArray[np.float32]]
+LineStrip3DArrayLike = Union[
+    LineStrip3D,
+    Sequence[LineStrip3DLike],
+    npt.NDArray[np.float32],
+]
 
 
 class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
@@ -68,7 +76,7 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
             pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
             nullable=False,
             metadata={},
-        )
+        ),
     )
     _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.LineStrip3D")
 

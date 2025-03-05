@@ -16,7 +16,7 @@ rr.send_blueprint(
                 # Specify which visualizer to use.
                 rrb.VisualizerOverrides(rrb.visualizers.Points2D),
                 rr.components.Color([0, 255, 0]),
-            ]
+            ],
         },
         defaults=[rr.components.Color([0, 0, 255])],
     ),

@@ -28,7 +28,11 @@ TARGET_DIR = Path("target/debug")
 
 
 def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: int | None = None,
+    cwd: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
     assert result.returncode == 0, (
@@ -197,7 +201,7 @@ def check_for_vulkan_sdk() -> None:
     vulkan_sdk_path = os.environ.get("VULKAN_SDK")
     if vulkan_sdk_path is None:
         print(
-            "ERROR: VULKAN_SDK is not set. The sdk needs to be installed prior including runtime & vulkaninfo utility."
+            "ERROR: VULKAN_SDK is not set. The sdk needs to be installed prior including runtime & vulkaninfo utility.",
         )
         sys.exit(1)
 

@@ -69,7 +69,7 @@ def doclines(coords: ViewCoordinates) -> list[str]:
     if is_left_handed(coords):
         docs.append("")
         docs.append(
-            "⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."
+            "⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032).",
         )
     return docs
 
@@ -364,7 +364,10 @@ def main() -> None:
         help="Generate the cpp code for the view coordinates.",
     )
     parser.add_argument(
-        "--preview", action="store_true", default=False, help="Just print the preview of the generated sections"
+        "--preview",
+        action="store_true",
+        default=False,
+        help="Just print the preview of the generated sections",
     )
     args = parser.parse_args()
 

@@ -44,7 +44,9 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
         # You can define your own __init__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py
         self.__attrs_init__(dimension=dimension)
 
-    dimension: int = field(converter=int)
+    dimension: int = field(
+        converter=int,
+    )
     # The dimension number.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -61,12 +63,17 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
 
 
 if TYPE_CHECKING:
-    TensorDimensionIndexSliderLike = Union[TensorDimensionIndexSlider, int]
+    TensorDimensionIndexSliderLike = Union[
+        TensorDimensionIndexSlider,
+        int,
+    ]
 else:
     TensorDimensionIndexSliderLike = Any
 
 TensorDimensionIndexSliderArrayLike = Union[
-    TensorDimensionIndexSlider, Sequence[TensorDimensionIndexSliderLike], npt.ArrayLike
+    TensorDimensionIndexSlider,
+    Sequence[TensorDimensionIndexSliderLike],
+    npt.ArrayLike,
 ]
 
 

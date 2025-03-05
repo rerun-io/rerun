@@ -64,7 +64,10 @@ class ColorModel(Enum):
 
 
 ColorModelLike = Union[ColorModel, Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"], int]
-ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
+ColorModelArrayLike = Union[
+    ColorModelLike,
+    Sequence[ColorModelLike],
+]
 
 
 class ColorModelBatch(BaseBatch[ColorModelArrayLike]):

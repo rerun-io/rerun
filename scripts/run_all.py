@@ -353,7 +353,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
     parser.add_argument(
-        "--install-requirements", action="store_true", help="Install Python requirements for each example."
+        "--install-requirements",
+        action="store_true",
+        help="Install Python requirements for each example.",
     )
     parser.add_argument("--web", action="store_true", help="Run examples in a web viewer.")
     parser.add_argument(
@@ -362,7 +364,9 @@ def main() -> None:
         help="Run examples and save them to disk as rrd.",
     )
     parser.add_argument(
-        "--load", action="store_true", help="Run examples using rrd files previously saved via `--save`."
+        "--load",
+        action="store_true",
+        help="Run examples using rrd files previously saved via `--save`.",
     )
     parser.add_argument("--fast", action="store_true", help="Run only examples which complete quickly.")
     parser.add_argument("--parallel", action="store_true", help="Run all examples in parallel.")

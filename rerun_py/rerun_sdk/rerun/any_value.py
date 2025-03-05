@@ -102,7 +102,10 @@ class AnyBatchValue(ComponentBatchLike):
 
     @classmethod
     def column(
-        cls, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+        cls,
+        descriptor: str | ComponentDescriptor,
+        value: Any,
+        drop_untyped_nones: bool = True,
     ) -> ComponentColumn:
         """
         Construct a new column-oriented AnyBatchValue.
