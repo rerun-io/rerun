@@ -336,11 +336,9 @@ impl OutlineMaskProcessor {
     pub fn start_mask_render_pass<'a>(
         &'a self,
         encoder_scope: &'a mut ScopedCommandEncoder<'_>,
-        device: &wgpu::Device,
     ) -> ScopedRenderPass<'a> {
         encoder_scope.scoped_render_pass(
             format!("{} - mask pass", self.label),
-            device,
             wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -369,7 +367,6 @@ impl OutlineMaskProcessor {
         &self,
         pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         encoder: &mut ScopedCommandEncoder<'_>,
-        device: &wgpu::Device,
     ) -> Result<(), PoolError> {
         let ops = wgpu::Operations {
             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), // Clear is the closest to "don't care"
@@ -380,7 +377,6 @@ impl OutlineMaskProcessor {
         {
             let mut jumpflooding_init = encoder.scoped_render_pass(
                 "jumpflooding_init",
-                device,
                 wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -405,7 +401,6 @@ impl OutlineMaskProcessor {
         for (i, bind_group) in self.bind_group_jumpflooding_steps.iter().enumerate() {
             let mut jumpflooding_step = encoder.scoped_render_pass(
                 format!("jumpflooding_step {i}"),
-                device,
                 wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {

@@ -22,7 +22,8 @@ use crate::{
         GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc, TextureDesc,
     },
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext, ScopedRenderPass,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
+    ScopedCommandEncoder, ScopedRenderPass,
 };
 
 use parking_lot::Mutex;
@@ -308,14 +309,12 @@ impl PickingLayerProcessor {
     pub fn begin_render_pass<'a>(
         &'a self,
         view_name: &str,
-        scope: &'a mut wgpu_profiler::Scope<'_, wgpu::CommandEncoder>,
-        device: &wgpu::Device,
+        scope: &'a mut ScopedCommandEncoder<'_>,
     ) -> ScopedRenderPass<'a> {
         re_tracing::profile_function!();
 
         let mut pass = scope.scoped_render_pass(
             format!("{view_name} - picking_layer pass"),
-            device,
             wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {

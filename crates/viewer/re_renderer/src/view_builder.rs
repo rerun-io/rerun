@@ -630,9 +630,7 @@ impl ViewBuilder {
                 label: Some(&setup.name),
             });
 
-        let mut encoder_scope = ctx
-            .profiler
-            .scope(setup.name.clone(), &mut encoder, &ctx.device);
+        let mut encoder_scope = ctx.profiler.scope(setup.name.clone(), &mut encoder);
 
         {
             re_tracing::profile_scope!("main target pass");
@@ -641,7 +639,6 @@ impl ViewBuilder {
 
             let mut pass = encoder_scope.scoped_render_pass(
                 format!("{} - main pass", setup.name),
-                &ctx.device,
                 wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -691,11 +688,7 @@ impl ViewBuilder {
 
         if let Some(picking_processor) = &self.picking_processor {
             {
-                let mut pass = picking_processor.begin_render_pass(
-                    &setup.name,
-                    &mut encoder_scope,
-                    &ctx.device,
-                );
+                let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder_scope);
                 // PickingProcessor has as custom frame uniform buffer.
                 //
                 // TODO(andreas): Formalize this somehow.
@@ -725,21 +718,17 @@ impl ViewBuilder {
             re_tracing::profile_scope!("outlines");
             {
                 re_tracing::profile_scope!("outline mask pass");
-                let mut pass =
-                    outline_mask_processor.start_mask_render_pass(&mut encoder_scope, &ctx.device);
+                let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder_scope);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
             }
-            outline_mask_processor.compute_outlines(&pipelines, &mut encoder_scope, &ctx.device)?;
+            outline_mask_processor.compute_outlines(&pipelines, &mut encoder_scope)?;
         }
 
         if let Some(screenshot_processor) = &self.screenshot_processor {
             {
-                let mut pass = screenshot_processor.begin_render_pass(
-                    &setup.name,
-                    &mut encoder_scope,
-                    &ctx.device,
-                );
+                let mut pass =
+                    screenshot_processor.begin_render_pass(&setup.name, &mut encoder_scope);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(
                     &renderers,

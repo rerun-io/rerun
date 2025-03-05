@@ -267,11 +267,14 @@ impl RenderContext {
             Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
         ));
 
-        let profiler = wgpu_profiler::GpuProfiler::new(wgpu_profiler::GpuProfilerSettings {
-            enable_debug_groups: true, // Enable debug groups always as they are invaluable for profiling traces with other tools.
-            enable_timer_queries: false, // Has to be enabled explicitly.
-            max_num_pending_frames: 3,
-        })?;
+        let profiler = wgpu_profiler::GpuProfiler::new(
+            &device,
+            wgpu_profiler::GpuProfilerSettings {
+                enable_debug_groups: true, // Enable debug groups always as they are invaluable for profiling traces with other tools.
+                enable_timer_queries: false, // Has to be enabled explicitly.
+                max_num_pending_frames: 3,
+            },
+        )?;
 
         Ok(Self {
             device,

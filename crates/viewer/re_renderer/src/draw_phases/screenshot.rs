@@ -81,11 +81,9 @@ impl ScreenshotProcessor {
         &'a self,
         view_name: &String,
         encoder_scope: &'a mut wgpu_profiler::Scope<'_, wgpu::CommandEncoder>,
-        device: &wgpu::Device,
     ) -> ScopedRenderPass<'a> {
         encoder_scope.scoped_render_pass(
             format!("{view_name} - screenshot"),
-            device,
             wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
