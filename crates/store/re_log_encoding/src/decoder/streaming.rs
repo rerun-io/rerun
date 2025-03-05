@@ -86,6 +86,17 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
         })
     }
 
+    pub fn new_with_options(version: CrateVersion, options: EncodingOptions, reader: R) -> Self {
+        Self {
+            version,
+            options,
+            reader,
+            unprocessed_bytes: BytesMut::new(),
+            expect_more_data: false,
+            num_bytes_read: FileHeader::SIZE as _,
+        }
+    }
+
     /// Returns true if `data` can be successfully decoded into a `FileHeader`.
     fn peek_file_header(data: &[u8]) -> bool {
         let mut read = std::io::Cursor::new(data);
