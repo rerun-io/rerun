@@ -772,14 +772,14 @@ def is_emoji(s: str) -> bool:
     )
 
 
-def test_is_emoji():
+def test_is_emoji() -> None:
     assert not is_emoji("A")
     assert not is_emoji("Ö")
     assert is_emoji("😀")
     assert is_emoji("⚠️")
 
 
-def test_split_words():
+def test_split_words() -> None:
     test_cases = [
         ("hello world", ["hello", " ", "world"]),
         ("hello foo@rerun.io", ["hello", " ", "foo@rerun.io"]),
@@ -987,7 +987,7 @@ def _index_to_line_nr(content: str, index: int) -> int:
 class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = os.path.realpath(path)
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:

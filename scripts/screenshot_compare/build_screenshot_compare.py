@@ -218,7 +218,7 @@ def render_examples(examples: list[Example]) -> None:
 
 
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
+    def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
 

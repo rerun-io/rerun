@@ -71,7 +71,7 @@ class ImageExt:
         # Any any of these:
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new image with a given format.
 

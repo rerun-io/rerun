@@ -50,7 +50,7 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
 def update() -> None:
     with ThreadPoolExecutor() as ex:
 
-        def work(example: Example):
+        def work(example: Example) -> None:
             width, height = get_thumbnail_dimensions(example.fm["thumbnail"])
 
             if "thumbnail_dimensions" not in example.fm:
@@ -83,7 +83,7 @@ def check() -> None:
     bad = False
     with ThreadPoolExecutor() as ex:
 
-        def work(example: Example):
+        def work(example: Example) -> None:
             nonlocal bad
             if not example.fm.get("thumbnail_dimensions"):
                 print(f"{example.path} has no `thumbnail_dimensions`")

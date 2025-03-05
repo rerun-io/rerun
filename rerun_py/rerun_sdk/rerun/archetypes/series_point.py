@@ -91,7 +91,7 @@ class SeriesPoint(Archetype):
         name: datatypes.Utf8Like | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesPoint archetype.
 

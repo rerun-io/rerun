@@ -17,7 +17,7 @@ class Horizontal(Container):
         contents: Optional[Iterable[Container | View]] = None,
         column_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new horizontal container.
 
@@ -49,7 +49,7 @@ class Vertical(Container):
         contents: Optional[Iterable[Container | View]] = None,
         row_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new vertical container.
 
@@ -81,7 +81,7 @@ class Grid(Container):
         row_shares: Optional[Float32ArrayLike] = None,
         grid_columns: Optional[int] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new grid container.
 
@@ -124,7 +124,7 @@ class Tabs(Container):
         contents: Optional[Iterable[Container | View]] = None,
         active_tab: Optional[int | str] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new tab container.
 

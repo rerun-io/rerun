@@ -208,7 +208,7 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         raise AssertionError(f"Unknown language: {language}")
 
 
-def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):
+def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None) -> None:
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
@@ -227,7 +227,7 @@ def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | 
     print("")
 
 
-def build_python_sdk(build_env: dict[str, str]):
+def build_python_sdk(build_env: dict[str, str]) -> None:
     print("----------------------------------------------------------")
     print("Building rerun-sdk for Python…")
     start_time = time.time()
@@ -237,7 +237,7 @@ def build_python_sdk(build_env: dict[str, str]):
     print("")
 
 
-def build_cpp_snippets():
+def build_cpp_snippets() -> None:
     print("----------------------------------------------------------")
     print("Build rerun_c & rerun_prebuilt_cpp…")
     start_time = time.time()

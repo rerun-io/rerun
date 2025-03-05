@@ -19,7 +19,7 @@ class RateLimiter:
     This implementation attempts to mimic <https://github.com/rust-lang/crates.io/blob/e66c852d3db3f0dfafa1f9a01e7806f0b2ad1465/src/rate_limiter.rs>
     """
 
-    def __init__(self, max_tokens: int, refill_interval_sec: float):
+    def __init__(self, max_tokens: int, refill_interval_sec: float) -> None:
         self.start_tokens = max_tokens
         self.tokens_per_second = 1.0 / refill_interval_sec
         self.start_time = time.time()
@@ -41,7 +41,7 @@ _T = TypeVar("_T", bound=Hashable)
 
 
 class DAG(Generic[_T]):
-    def __init__(self, dependency_graph: dict[_T, list[_T]]):
+    def __init__(self, dependency_graph: dict[_T, list[_T]]) -> None:
         """
         Construct a directed acyclic graph from an adjacency list.
 
@@ -136,7 +136,7 @@ class DAG(Generic[_T]):
 
 
 class _NodeState(Generic[_T]):
-    def __init__(self, node: _T):
+    def __init__(self, node: _T) -> None:
         self.node = node
 
         self.started: bool = False
@@ -150,7 +150,7 @@ class _NodeState(Generic[_T]):
 
 
 class _State(Generic[_T]):
-    def __init__(self, dag: DAG[_T]):
+    def __init__(self, dag: DAG[_T]) -> None:
         self._node_states: dict[_T, _NodeState[_T]] = {}
         self._queue: list[_T] = []
         self._num_finished: int = 0

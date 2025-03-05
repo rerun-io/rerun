@@ -29,6 +29,7 @@ import argparse
 import json
 import os
 from collections import defaultdict
+from typing import Any
 
 import requests
 
@@ -127,7 +128,7 @@ for res in results:
     backtraces[backtrace].append(res.pop("properties"))
 
 
-def count_uniques(backtrace):
+def count_uniques(backtrace: dict[str, Any]) -> int:
     return len({prop["user_id"] for prop in backtrace[1]})
 
 

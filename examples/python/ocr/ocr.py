@@ -121,7 +121,7 @@ Layout Class:
 
 
 class Layout:
-    def __init__(self, page_number: int, show_unknown: bool = False):
+    def __init__(self, page_number: int, show_unknown: bool = False) -> None:
         self.counts = {layout_type: 0 for layout_type in LayoutType}
         self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""

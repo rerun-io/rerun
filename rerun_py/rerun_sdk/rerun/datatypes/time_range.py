@@ -41,7 +41,7 @@ def _time_range__end__special_field_converter_override(
 class TimeRange:
     """**Datatype**: Visible time range bounds for a specific timeline."""
 
-    def __init__(self: Any, start: datatypes.TimeRangeBoundaryLike, end: datatypes.TimeRangeBoundaryLike):
+    def __init__(self: Any, start: datatypes.TimeRangeBoundaryLike, end: datatypes.TimeRangeBoundaryLike) -> None:
         """
         Create a new instance of the TimeRange datatype.
 

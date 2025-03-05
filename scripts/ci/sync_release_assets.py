@@ -182,7 +182,7 @@ def fetch_binary_assets(
     return assets
 
 
-def remove_release_assets(release: GitRelease):
+def remove_release_assets(release: GitRelease) -> None:
     print("Removing pre-existing release assets…")
 
     for asset in release.get_assets():
@@ -190,7 +190,7 @@ def remove_release_assets(release: GitRelease):
         asset.delete_asset()
 
 
-def update_release_assets(release: GitRelease, assets: Assets):
+def update_release_assets(release: GitRelease, assets: Assets) -> None:
     print("Updating release assets…")
 
     for name, blob in assets.items():

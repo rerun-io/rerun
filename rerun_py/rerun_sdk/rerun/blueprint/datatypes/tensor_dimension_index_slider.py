@@ -30,7 +30,7 @@ __all__ = [
 class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
     """**Datatype**: Defines a slider for the index of some dimension."""
 
-    def __init__(self: Any, dimension: TensorDimensionIndexSliderLike):
+    def __init__(self: Any, dimension: TensorDimensionIndexSliderLike) -> None:
         """
         Create a new instance of the TensorDimensionIndexSlider datatype.
 

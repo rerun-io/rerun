@@ -137,7 +137,7 @@ class VideoFrame:
 
 
 class VideoSource:
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.capture = cv2.VideoCapture(path)
 
         if not self.capture.isOpened():

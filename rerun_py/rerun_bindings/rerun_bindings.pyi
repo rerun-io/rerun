@@ -49,7 +49,7 @@ class IndexColumnSelector:
     generally correspond to Rerun timelines.
     """
 
-    def __init__(self, index: str):
+    def __init__(self, index: str) -> None:
         """
         Create a new `IndexColumnSelector`.
 
@@ -114,7 +114,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike):
+    def __init__(self, entity_path: str, component: ComponentLike) -> None:
         """
         Create a new `ComponentColumnSelector`.
 

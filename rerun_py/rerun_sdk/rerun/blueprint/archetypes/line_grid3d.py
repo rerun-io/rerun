@@ -31,7 +31,7 @@ class LineGrid3D(Archetype):
         plane: datatypes.Plane3DLike | None = None,
         stroke_width: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the LineGrid3D archetype.
 

@@ -28,7 +28,7 @@ __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike"]
 class Vec2D(Vec2DExt):
     """**Datatype**: A vector in 2D space."""
 
-    def __init__(self: Any, xy: Vec2DLike):
+    def __init__(self: Any, xy: Vec2DLike) -> None:
         """Create a new instance of the Vec2D datatype."""
 
         # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py

@@ -50,7 +50,7 @@ class BarChart(BarChartExt, Archetype):
 
     """
 
-    def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None):
+    def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None) -> None:
         """
         Create a new instance of the BarChart archetype.
 

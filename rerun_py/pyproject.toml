@@ -87,6 +87,12 @@ extend-exclude = [
 ]
 
 lint.ignore = [
+  # Too many violations to fix
+  # TODO(ab): fix 'em nonetheless!
+  "ANN001",
+  "ANN202",
+  "ANN401",
+
   # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
   "D1",
 
@@ -113,10 +119,11 @@ lint.ignore = [
 
 line-length = 120
 lint.select = [
-  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
+  "ANN",
   "B",       # flake8-bugbear lints
   "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
   "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
   "I",       # Isort
   "TID",     # flake8-tidy-imports

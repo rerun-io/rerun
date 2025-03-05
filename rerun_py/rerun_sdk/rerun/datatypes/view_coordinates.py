@@ -47,7 +47,7 @@ class ViewCoordinates(ViewCoordinatesExt):
      * Back = 6
     """
 
-    def __init__(self: Any, coordinates: ViewCoordinatesLike):
+    def __init__(self: Any, coordinates: ViewCoordinatesLike) -> None:
         """
         Create a new instance of the ViewCoordinates datatype.
 

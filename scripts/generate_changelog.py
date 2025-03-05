@@ -41,7 +41,7 @@ OFFICIAL_RERUN_DEVS = [
 ]
 
 
-def eprint(*args, **kwargs) -> None:  # type: ignore
+def eprint(*args: Any, **kwargs: Any) -> None:  # type: ignore
     print(*args, file=sys.stderr, **kwargs)  # type: ignore
 
 

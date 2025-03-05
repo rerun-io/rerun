@@ -32,7 +32,7 @@ class TensorDimensionIndexSelection:
     Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
     """
 
-    def __init__(self: Any, dimension: int, index: int):
+    def __init__(self: Any, dimension: int, index: int) -> None:
         """
         Create a new instance of the TensorDimensionIndexSelection datatype.
 

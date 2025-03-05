@@ -65,7 +65,7 @@ class AnnotationContext(Archetype):
 
     """
 
-    def __init__(self: Any, context: components.AnnotationContextLike):
+    def __init__(self: Any, context: components.AnnotationContextLike) -> None:
         """
         Create a new instance of the AnnotationContext archetype.
 

@@ -27,10 +27,6 @@ The full source code for this example is available [on GitHub](https://github.co
 """.strip()
 
 
-def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
-    return max(smallest, min(n, largest))
-
-
 def log_bar_chart() -> None:
     rr.set_index("frame_nr", sequence=0)
     # Log a gauss bell as a bar chart
@@ -54,7 +50,7 @@ def log_parabola() -> None:
         rr.set_index("frame_nr", sequence=t)
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        width = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
+        width = np.clip(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]

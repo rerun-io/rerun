@@ -83,7 +83,7 @@ class InstancePoses3D(Archetype):
         quaternions: datatypes.QuaternionArrayLike | None = None,
         scales: datatypes.Vec3DArrayLike | None = None,
         mat3x3: datatypes.Mat3x3ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the InstancePoses3D archetype.
 

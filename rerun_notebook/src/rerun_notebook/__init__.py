@@ -84,8 +84,8 @@ class Viewer(anywidget.AnyWidget):
         height: int | None = None,
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
 
         self._width = width
@@ -102,7 +102,7 @@ class Viewer(anywidget.AnyWidget):
 
         self.on_msg(handle_msg)
 
-    def _on_ready(self):
+    def _on_ready(self) -> None:
         self._ready = True
         for data in self._data_queue:
             self.send_rrd(data)

@@ -218,7 +218,7 @@ class Logger(typing.Protocol):
 class MeasurementLogger:
     """Logger class that uses regular `rr.log` calls."""
 
-    def __init__(self, proj: pyproj.Transformer, raw: bool):
+    def __init__(self, proj: pyproj.Transformer, raw: bool) -> None:
         self._proj = proj
         self._raw = raw
 
@@ -282,7 +282,7 @@ class MeasurementLogger:
 class MeasurementBatchLogger:
     """Logger class that batches measurements and uses `rr.send_columns` calls."""
 
-    def __init__(self, proj: pyproj.Transformer, batch_size: int = 8192):
+    def __init__(self, proj: pyproj.Transformer, batch_size: int = 8192) -> None:
         self._proj = proj
         self._batch_size = batch_size
         self._measurements: list[Measurement] = []

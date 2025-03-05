@@ -37,7 +37,7 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, class_map: AnnotationContextLike):
+    def __init__(self: Any, class_map: AnnotationContextLike) -> None:
         """
         Create a new instance of the AnnotationContext component.
 

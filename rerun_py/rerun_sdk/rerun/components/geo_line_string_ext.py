@@ -19,7 +19,7 @@ class GeoLineStringExt:
     """Extension for [GeoLineString][rerun.components.GeoLineString]."""
 
     # TODO(ab): the only purpose of this override is to make the `lat_lon` arg kw-only. Should be codegen-able?
-    def __init__(self: Any, *, lat_lon: GeoLineStringLike):
+    def __init__(self: Any, *, lat_lon: GeoLineStringLike) -> None:
         """Create a new instance of the GeoLineString component."""
 
         # You can define your own __init__ function as a member of GeoLineStringExt in geo_line_string_ext.py

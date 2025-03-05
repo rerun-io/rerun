@@ -15,7 +15,7 @@ class VisibleTimeRangeExt:
         *,
         start: datatypes.TimeRangeBoundary | None = None,
         end: datatypes.TimeRangeBoundary | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the VisibleTimeRange datatype.
 

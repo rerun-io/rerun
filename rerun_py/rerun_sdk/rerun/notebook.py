@@ -59,7 +59,7 @@ class Viewer:
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool = True,
-    ):
+    ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
 

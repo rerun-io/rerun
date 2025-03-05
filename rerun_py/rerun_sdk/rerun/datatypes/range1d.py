@@ -28,7 +28,7 @@ __all__ = ["Range1D", "Range1DArrayLike", "Range1DBatch", "Range1DLike"]
 class Range1D(Range1DExt):
     """**Datatype**: A 1D range, specifying a lower and upper bound."""
 
-    def __init__(self: Any, range: Range1DLike):
+    def __init__(self: Any, range: Range1DLike) -> None:
         """Create a new instance of the Range1D datatype."""
 
         # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py

@@ -2403,7 +2403,10 @@ fn quote_init_method(
     objects: &Objects,
 ) -> String {
     let parameters = compute_init_parameters(obj, objects);
-    let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
+    let head = format!(
+        "def __init__(self: Any, {}) -> None:",
+        parameters.join(", ")
+    );
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let mut doc_string_lines = vec![format!(

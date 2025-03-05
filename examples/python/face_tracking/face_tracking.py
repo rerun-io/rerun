@@ -8,9 +8,9 @@ import itertools
 import logging
 import math
 import os
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, Optional
 
 import cv2
 import mediapipe as mp
@@ -110,7 +110,7 @@ class FaceDetectorLogger:
         "blaze_face_short_range.tflite"
     )
 
-    def __init__(self, video_mode: bool = False):
+    def __init__(self, video_mode: bool = False) -> None:
         self._video_mode = video_mode
 
         # download model if necessary
@@ -186,7 +186,7 @@ class FaceLandmarkerLogger:
         "face_landmarker.task"
     )
 
-    def __init__(self, video_mode: bool = False, num_faces: int = 1):
+    def __init__(self, video_mode: bool = False, num_faces: int = 1) -> None:
         self._video_mode = video_mode
 
         # download model if necessary
@@ -258,7 +258,7 @@ class FaceLandmarkerLogger:
             else self._detector.detect(image)
         )
 
-        def is_empty(i):  # type: ignore[no-untyped-def]
+        def is_empty(i: Iterator[Any]) -> Optional[bool]:
             try:
                 next(i)
                 return False

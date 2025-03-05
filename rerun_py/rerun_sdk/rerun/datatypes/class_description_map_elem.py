@@ -42,7 +42,7 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     This is internal to [`components.AnnotationContext`][rerun.components.AnnotationContext].
     """
 
-    def __init__(self: Any, class_id: datatypes.ClassIdLike, class_description: datatypes.ClassDescriptionLike):
+    def __init__(self: Any, class_id: datatypes.ClassIdLike, class_description: datatypes.ClassDescriptionLike) -> None:
         """
         Create a new instance of the ClassDescriptionMapElem datatype.
 
