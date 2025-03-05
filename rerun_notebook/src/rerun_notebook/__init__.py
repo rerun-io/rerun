@@ -5,7 +5,8 @@ import logging
 import os
 import pathlib
 import time
-from typing import Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import Any, Literal
 
 import anywidget
 import jupyter_ui_poll

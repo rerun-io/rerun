@@ -88,7 +88,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                 rr.Mesh3D(
                     vertex_positions=mesh.vertices,
                     vertex_colors=vertex_colors,
-                    vertex_normals=mesh.vertex_normals,  # type: ignore[arg-type]
+                    vertex_normals=mesh.vertex_normals,
                     vertex_texcoords=vertex_texcoords,
                     albedo_texture=albedo_texture,
                     triangle_indices=mesh.faces,

@@ -93,7 +93,7 @@ def log_region_boundaries_for_country(
     # cspell:disable-next-line
     map_data = gpd.read_file(MAP_DATA_DIR / f"NUTS_RG_01M_2021_4326_LEVL_{level}.json").set_crs("epsg:4326").to_crs(crs)
 
-    for i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
+    for _i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
         entity_path = f"region_boundaries/{country_code}/{level}/{row.NUTS_ID}"
         lines = shapely_geom_to_numpy(row.geometry)
         rr.log(entity_path + "/2D", rr.LineStrips2D(lines, colors=color), static=True)

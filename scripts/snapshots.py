@@ -10,9 +10,9 @@ pixi run snapshot --help
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterator
 from pathlib import Path
 from sys import stderr
-from typing import Iterator
 
 import numpy as np
 import PIL.Image as Image

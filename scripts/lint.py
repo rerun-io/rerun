@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
@@ -39,7 +39,7 @@ anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
-Frontmatter = Dict[str, Any]
+Frontmatter = dict[str, Any]
 
 
 def is_valid_todo_part(part: str) -> bool:
@@ -806,7 +806,7 @@ def fix_header_casing(s: str) -> str:
 
     words = s.strip().split(" ")
 
-    for i, word in enumerate(words):
+    for word in words:
         if word == "":
             continue
 
@@ -857,7 +857,7 @@ def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
 
-    for i, word in enumerate(split_words(s)):
+    for word in split_words(s):
         if word.startswith("`"):
             inline_code_block = True
         if word.endswith("`"):

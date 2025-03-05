@@ -7,9 +7,10 @@ import argparse
 import json
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 import cv2
 import numpy as np
@@ -176,7 +177,7 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.legacy.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -218,7 +219,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()

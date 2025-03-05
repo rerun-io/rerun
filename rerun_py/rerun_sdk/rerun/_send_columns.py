@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Iterable, Protocol, TypeVar, overload
+from typing import Protocol, TypeVar, overload
 
 import numpy as np
 import pyarrow as pa

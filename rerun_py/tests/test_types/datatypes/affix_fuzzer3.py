@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -24,7 +25,7 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixF
 class AffixFuzzer3:
     # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: Union[None, float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
+    inner: None | float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
     """
     Must be one of:
 
