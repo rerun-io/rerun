@@ -6,7 +6,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_different_indices");
     rec.spawn().exit_on_failure();
 
-    rec.set_time_sequence("frame_nr", 42);
+    rec.set_index_sequence("frame_nr", 42);
     rec.set_time_seconds("elapsed", 12.0);
     rec.set_time_seconds("time", 1'741'017'564);                   // seconds since unix epoch
     rec.set_time_nanos("precise_time", 1'741'017'564'987'654'321); // Nanos since unix epoch

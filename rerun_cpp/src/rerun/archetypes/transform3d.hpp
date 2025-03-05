@@ -168,7 +168,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.set_time_sequence("tick", 0);
+    ///     rec.set_index_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
@@ -176,7 +176,7 @@ namespace rerun::archetypes {
     ///     );
     ///
     ///     for (int t = 0; t <100; t++) {
-    ///         rec.set_time_sequence("tick", t + 1);
+    ///         rec.set_index_sequence("tick", t + 1);
     ///         rec.log(
     ///             "box",
     ///             rerun::Transform3D()
@@ -210,7 +210,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.set_time_sequence("tick", 0);
+    ///     rec.set_index_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),

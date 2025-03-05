@@ -241,7 +241,7 @@ namespace rerun {
         /// Used for all subsequent logging performed from this same thread, until the next call
         /// to one of the time setting methods.
         ///
-        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+        /// For example: `rec.set_index_sequence("frame_nr", frame_nr)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_index_sequence, set_index_duration, set_index_duration_secs, set_index_duration_nanos, set_index_timestamp, set_index_timestamp_seconds_since_epoch, set_index_timestamp_nanos_since_epoch
@@ -342,7 +342,7 @@ namespace rerun {
         /// Used for all subsequent logging performed from this same thread, until the next call
         /// to one of the time setting methods.
         ///
-        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+        /// For example: `rec.set_index_sequence("frame_nr", frame_nr)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_seconds, set_time_nanos, reset_time, set_time, disable_timeline

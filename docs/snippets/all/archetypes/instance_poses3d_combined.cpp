@@ -5,7 +5,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_instance_pose3d_combined");
-    rec.set_time_sequence("frame", 0);
+    rec.set_index_sequence("frame", 0);
 
     // Log a box and points further down in the hierarchy.
     rec.log("world/box", rerun::Boxes3D::from_half_sizes({{1.0, 1.0, 1.0}}));
@@ -15,14 +15,15 @@ int main() {
     );
 
     for (int i = 0; i < 180; ++i) {
-        rec.set_time_sequence("frame", i);
+        rec.set_index_sequence("frame", i);
 
         // Log a regular transform which affects both the box and the points.
         rec.log(
             "world/box",
             rerun::Transform3D::from_rotation(rerun::RotationAxisAngle{
                 {0.0f, 0.0f, 1.0f},
-                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)})
+                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)
+            })
         );
 
         // Log an instance pose which affects only the box.

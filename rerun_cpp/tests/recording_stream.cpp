@@ -150,10 +150,10 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                                       {{1.0, 2.0}, {4.0, 5.0}}
                     ).value_or_throw();
-                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                                      {rerun::Color(0xFF0000FF)}
-                    )
-                                      .value_or_throw();
+                    auto batch1 =
+                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
+                                                                           })
+                            .value_or_throw();
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -172,9 +172,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                         {{1.0, 2.0}, {4.0, 5.0}}
                     );
-                    auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                        {rerun::Color(0xFF0000FF)}
-                    );
+                    auto batch1 =
+                        rerun::ComponentBatch::from_loggable<rerun::Color>({rerun::Color(0xFF0000FF)
+                        });
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
                         stream.log_static("log_archetype-splat", batch0);
@@ -186,7 +186,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1};
+                            batch1
+                        };
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
@@ -492,7 +493,7 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     rerun::RecordingStream stream("test");
 
     SECTION("Setting time sequence does not log errors") {
-        check_logged_error([&] { stream.set_time_sequence("my sequence", 1); });
+        check_logged_error([&] { stream.set_index_sequence("my sequence", 1); });
     }
     SECTION("Setting time seconds does not log errors") {
         check_logged_error([&] { stream.set_time_seconds("my sequence", 1.0); });
@@ -518,7 +519,7 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
 
     SECTION("Disabling timeline does not log errors") {
         check_logged_error([&] { stream.disable_timeline("doesn't exist"); });
-        check_logged_error([&] { stream.set_time_sequence("exists!", 123); });
+        check_logged_error([&] { stream.set_index_sequence("exists!", 123); });
         check_logged_error([&] { stream.disable_timeline("exists"); });
     }
 }
