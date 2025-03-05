@@ -23,4 +23,4 @@ breaking:
   # See <https://buf.build/docs/configuration/v1/buf-yaml/?h=ignore_unstable_packages#ignore_unstable_packages>.
   ignore_unstable_packages: false
 modules:
-  - path: redap_protos/proto
+  - path: crates/store/re_protos/proto
