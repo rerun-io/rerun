@@ -20,7 +20,7 @@ class AssetVideoExt:
         path: str | pathlib.Path | None = None,
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the AssetVideo archetype.
 

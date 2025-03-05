@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["DVec2D", "DVec2DArrayLike", "DVec2DBatch", "DVec2DLike"]
 class DVec2D(DVec2DExt):
     """**Datatype**: A double-precision vector in 2D space."""
 
-    def __init__(self: Any, xy: DVec2DLike):
+    def __init__(self: Any, xy: DVec2DLike) -> None:
         """Create a new instance of the DVec2D datatype."""
 
         # You can define your own __init__ function as a member of DVec2DExt in dvec2d_ext.py

@@ -22,7 +22,6 @@ class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, Compo
     # You can define your own __init__ function as a member of ComponentColumnSelectorExt in component_column_selector_ext.py
 
     # Note: there are no fields here because ComponentColumnSelector delegates to datatypes.ComponentColumnSelector
-    pass
 
 
 class ComponentColumnSelectorBatch(blueprint_datatypes.ComponentColumnSelectorBatch, ComponentBatchMixin):

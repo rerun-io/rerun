@@ -19,7 +19,7 @@ class Points3DExt:
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Points3D archetype.
 

@@ -22,7 +22,6 @@ class ActiveTab(datatypes.EntityPath, ComponentMixin):
     # You can define your own __init__ function as a member of ActiveTabExt in active_tab_ext.py
 
     # Note: there are no fields here because ActiveTab delegates to datatypes.EntityPath
-    pass
 
 
 class ActiveTabBatch(datatypes.EntityPathBatch, ComponentBatchMixin):

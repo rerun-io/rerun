@@ -53,7 +53,7 @@ def log_plots() -> None:
 
     rr.log("plots/cos", rr.SeriesPoint())
 
-    for t in range(0, int(tau * 2 * 10.0)):
+    for t in range(int(tau * 2 * 10.0)):
         rr.set_index("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)

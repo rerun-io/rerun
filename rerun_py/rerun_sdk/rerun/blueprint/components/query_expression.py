@@ -33,7 +33,6 @@ class QueryExpression(datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of QueryExpressionExt in query_expression_ext.py
 
     # Note: there are no fields here because QueryExpression delegates to datatypes.Utf8
-    pass
 
 
 class QueryExpressionBatch(datatypes.Utf8Batch, ComponentBatchMixin):

@@ -83,7 +83,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     # One space with the sun in the center, and another one with the planet.
     rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
+        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
     )
 
     rr.set_index("sim_time", timedelta=0)
@@ -106,7 +106,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
     # Movement via transforms.
-    for i in range(0, 6 * 120):
+    for i in range(6 * 120):
         time = i / 120.0
         rr.set_index("sim_time", timedelta=time)
         r_moon = time * 5.0
@@ -200,7 +200,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.send_columns(
         "box",
-        indexes=[rr.TimeSequenceColumn("tick", range(1, 101))],
+        indexes=[rr.IndexColumn("tick", sequence=range(1, 101))],
         columns=rr.Transform3D.columns(
             translation=[[0, 0, t / 10.0] for t in range(100)],
             rotation_axis_angle=[

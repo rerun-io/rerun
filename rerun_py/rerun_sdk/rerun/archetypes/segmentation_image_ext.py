@@ -44,7 +44,7 @@ class SegmentationImageExt:
         image: ImageLike,
         *,
         opacity: Float32Like | None = None,
-    ):
+    ) -> None:
         image = _to_numpy(image)
 
         shape = image.shape
@@ -62,7 +62,7 @@ class SegmentationImageExt:
         try:
             datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {image.dtype} for SegmentationImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for SegmentationImage") from None
 
         self.__attrs_init__(
             buffer=image.tobytes(),

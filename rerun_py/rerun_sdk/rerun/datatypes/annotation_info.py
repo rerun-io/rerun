@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -50,7 +51,7 @@ class AnnotationInfo(AnnotationInfoExt):
 
     def __init__(
         self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.Rgba32Like | None = None
-    ):
+    ) -> None:
         """
         Create a new instance of the AnnotationInfo datatype.
 
@@ -89,7 +90,7 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]]
+    AnnotationInfoLike = Union[AnnotationInfo, int, tuple[int, str], tuple[int, str, datatypes.Rgba32Like]]
 else:
     AnnotationInfoLike = Any
 

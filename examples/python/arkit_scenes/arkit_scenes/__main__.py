@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import cv2
 import numpy as np
@@ -26,7 +26,7 @@ The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scenes).
 """.strip()
 
-Color = Tuple[float, float, float, float]
+Color = tuple[float, float, float, float]
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
 ORIENTATION = {
@@ -139,7 +139,9 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.Transform3D]:
 
     # Create tuple in format log_transform3d expects
     camera_from_world = rr.Transform3D(
-        translation=translation, rotation=rr.Quaternion(xyzw=rotation.as_quat()), from_parent=True
+        translation=translation,
+        rotation=rr.Quaternion(xyzw=rotation.as_quat()),
+        from_parent=True,
     )
 
     return (ts, camera_from_world)

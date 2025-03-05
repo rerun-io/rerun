@@ -109,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        indexes=[rr.TimeSecondsColumn("time", times)],
+        indexes=[rr.IndexColumn("time", timedelta=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),
@@ -132,14 +132,14 @@ class Points3D(Points3DExt, Archetype):
 
     rr.init("rerun_example_points3d_partial_updates", spawn=True)
 
-    positions = [[i, 0, 0] for i in range(0, 10)]
+    positions = [[i, 0, 0] for i in range(10)]
 
     rr.set_index("frame", sequence=0)
     rr.log("points", rr.Points3D(positions))
 
-    for i in range(0, 10):
-        colors = [[20, 200, 20] if n < i else [200, 20, 20] for n in range(0, 10)]
-        radii = [0.6 if n < i else 0.2 for n in range(0, 10)]
+    for i in range(10):
+        colors = [[20, 200, 20] if n < i else [200, 20, 20] for n in range(10)]
+        radii = [0.6 if n < i else 0.2 for n in range(10)]
 
         # Update only the colors and radii, leaving everything else as-is.
         rr.set_index("frame", sequence=i)

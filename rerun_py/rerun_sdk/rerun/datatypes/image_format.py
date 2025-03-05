@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import pyarrow as pa
@@ -31,7 +32,7 @@ class ImageFormat(ImageFormatExt):
         pixel_format: datatypes.PixelFormatLike | None = None,
         color_model: datatypes.ColorModelLike | None = None,
         channel_datatype: datatypes.ChannelDatatypeLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ImageFormat datatype.
 

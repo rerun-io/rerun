@@ -46,7 +46,8 @@ class DatasetSpec:
 DATASETS = {
     "olympic": DatasetSpec("olympic_flame", "https://data.pix4d.com/misc/example_datasets/olympic_flame.zip"),
     "rainwater": DatasetSpec(
-        "catch_rainwater_demo", "https://data.pix4d.com/misc/example_datasets/catch_rainwater_demo.zip"
+        "catch_rainwater_demo",
+        "https://data.pix4d.com/misc/example_datasets/catch_rainwater_demo.zip",
     ),
     "rivaz": DatasetSpec("rivaz_demo", "https://data.pix4d.com/misc/example_datasets/rivaz_demo.zip"),
 }
@@ -137,7 +138,7 @@ class OPFProject:
             zip(
                 self.project.camera_list.cameras,
                 self.project.calibration.calibrated_cameras.cameras,
-            )
+            ),
         ):
             if not str(camera.uri).endswith(".jpg"):
                 continue
@@ -199,7 +200,7 @@ def main() -> None:
     logging.getLogger().setLevel("INFO")
 
     parser = argparse.ArgumentParser(
-        description="Load an Open Photogrammetry Format (OPF) project and display the cameras and point cloud."
+        description="Load an Open Photogrammetry Format (OPF) project and display the cameras and point cloud.",
     )
     parser.add_argument(
         "--dataset",

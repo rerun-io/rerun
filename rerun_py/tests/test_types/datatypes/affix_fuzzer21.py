@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "Aff
 
 @define(init=False)
 class AffixFuzzer21:
-    def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike):
+    def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike) -> None:
         """Create a new instance of the AffixFuzzer21 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py

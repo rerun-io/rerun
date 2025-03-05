@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike"]
 class ClassId:
     """**Datatype**: A 16-bit ID representing a type of semantic class."""
 
-    def __init__(self: Any, id: ClassIdLike):
+    def __init__(self: Any, id: ClassIdLike) -> None:
         """Create a new instance of the ClassId datatype."""
 
         # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py

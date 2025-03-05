@@ -9,9 +9,9 @@ import math
 import os
 import sys
 import time
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -40,7 +40,10 @@ class SampleARFrame:
 
 
 def read_ar_frames(
-    dirpath: Path, num_frames: int, run_forever: bool, per_frame_sleep: float
+    dirpath: Path,
+    num_frames: int,
+    run_forever: bool,
+    per_frame_sleep: float,
 ) -> Iterator[SampleARFrame]:
     """
     Loads up to `num_frames` consecutive ARFrames from the given path on disk.
@@ -188,11 +191,17 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument(
-        "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
+        "--frames",
+        type=int,
+        default=sys.maxsize,
+        help="If specified, limits the number of frames logged",
     )
     parser.add_argument("--run-forever", action="store_true", help="Run forever, continually logging data.")
     parser.add_argument(
-        "--per-frame-sleep", type=float, default=0.1, help="Sleep this much for each frame read, if --run-forever"
+        "--per-frame-sleep",
+        type=float,
+        default=0.1,
+        help="Sleep this much for each frame read, if --run-forever",
     )
     parser.add_argument(
         "--recording",
@@ -207,7 +216,10 @@ def main() -> None:
         help="Reprocess video frames even if they already exist",
     )
     parser.add_argument(
-        "--dataset-dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
+        "--dataset-dir",
+        type=Path,
+        default=LOCAL_DATASET_DIR,
+        help="Directory to save example videos to.",
     )
 
     rr.script_add_args(parser)

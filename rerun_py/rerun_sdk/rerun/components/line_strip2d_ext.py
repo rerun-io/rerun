@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sized
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
@@ -47,12 +47,12 @@ class LineStrip2DExt:
                 # Is it a single strip or several?
                 # It could be a sequence of the style `[[0, 0], [1, 1]]` which is a single strip.
                 if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
-                    if len(data[0]) == 2:  # type: ignore[arg-type]
+                    if len(data[0]) == 2:
                         # If any of the following elements are not sequence of length 2, Vec2DBatch should raise an error.
                         inners = [Vec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
-                            "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2."
+                            "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2.",
                         )
                 # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
                 elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
@@ -67,7 +67,7 @@ class LineStrip2DExt:
                         else:
                             if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
                                 raise ValueError(
-                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}."
+                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}.",
                                 )
                             return Vec2DBatch(strip)
 

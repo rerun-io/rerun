@@ -74,7 +74,7 @@ class Scalar(Archetype):
 
     rr.send_columns(
         "scalars",
-        indexes=[rr.TimeSequenceColumn("step", times)],
+        indexes=[rr.IndexColumn("step", sequence=times)],
         columns=rr.Scalar.columns(scalar=scalars),
     )
     ```
@@ -90,7 +90,7 @@ class Scalar(Archetype):
 
     """
 
-    def __init__(self: Any, scalar: datatypes.Float64Like):
+    def __init__(self: Any, scalar: datatypes.Float64Like) -> None:
         """
         Create a new instance of the Scalar archetype.
 

@@ -23,7 +23,6 @@ class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D, ComponentMixin):
     # __init__ can be found in visual_bounds2d_ext.py
 
     # Note: there are no fields here because VisualBounds2D delegates to datatypes.Range2D
-    pass
 
 
 class VisualBounds2DBatch(datatypes.Range2DBatch, ComponentBatchMixin):

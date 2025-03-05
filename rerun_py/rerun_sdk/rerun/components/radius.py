@@ -32,7 +32,6 @@ class Radius(RadiusExt, datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
 
     # Note: there are no fields here because Radius delegates to datatypes.Float32
-    pass
 
 
 class RadiusBatch(datatypes.Float32Batch, ComponentBatchMixin):

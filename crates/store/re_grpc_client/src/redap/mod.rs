@@ -1,5 +1,7 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, CatalogEntry};
+use re_protos::remote_store::v0::{
+    storage_node_client::StorageNodeClient, CatalogEntry, GetChunksRangeRequest,
+};
 use re_uri::{Origin, RecordingEndpoint};
 use tokio_stream::StreamExt as _;
 
@@ -12,8 +14,8 @@ use re_log_types::{
 use re_protos::{
     common::v0::{IndexColumnSelector, RecordingId},
     remote_store::v0::{
-        CatalogFilter, FetchRecordingRequest, GetChunkIdsRequest, GetChunksRequest,
-        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
+        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
+        CATALOG_START_TIME_FIELD_NAME,
     },
 };
 
@@ -210,8 +212,8 @@ pub async fn stream_recording_async(
     re_log::debug!("Fetching {}…", endpoint.recording_id);
 
     let mut chunk_stream = if let Some(time_range) = &endpoint.time_range {
-        let chunk_id_stream = client
-            .get_chunk_ids(GetChunkIdsRequest {
+        client
+            .get_chunks_range(GetChunksRangeRequest {
                 entry: Some(CatalogEntry {
                     name: "default".to_owned(), /* TODO(zehiko) 9116 */
                 }),
@@ -229,25 +231,6 @@ pub async fn stream_recording_async(
                     )
                     .into(),
                 ),
-            })
-            .await?
-            .into_inner();
-        let chunk_ids = chunk_id_stream
-            .collect::<Result<Vec<_>, tonic::Status>>()
-            .await?
-            .into_iter()
-            .flat_map(|r| r.chunk_ids)
-            .collect::<Vec<_>>();
-
-        client
-            .get_chunks(GetChunksRequest {
-                entry: Some(CatalogEntry {
-                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
-                }),
-                recording_id: Some(RecordingId {
-                    id: endpoint.recording_id.clone(),
-                }),
-                chunk_ids,
             })
             .await?
             .into_inner()

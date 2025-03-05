@@ -29,7 +29,7 @@ class ForcePosition(Archetype):
         enabled: datatypes.BoolLike | None = None,
         strength: datatypes.Float64Like | None = None,
         position: datatypes.Vec2DLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ForcePosition archetype.
 

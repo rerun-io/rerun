@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pyarrow as pa
 import rerun_bindings as bindings
@@ -148,7 +149,7 @@ def log(
     else:
         raise TypeError(
             f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
-            f"but got {type(entity)} instead."
+            f"but got {type(entity)} instead.",
         )
 
     for ext in extra:
@@ -159,7 +160,7 @@ def log(
         else:
             raise TypeError(
                 f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
-                f"but got {type(entity)} instead."
+                f"but got {type(entity)} instead.",
             )
 
     _log_components(
@@ -172,7 +173,7 @@ def log(
 
 @deprecated(
     """Use `log` with partial update APIs instead.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
+  See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details.""",
 )
 @catch_and_log_exceptions()
 def log_components(

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Vec4D", "Vec4DArrayLike", "Vec4DBatch", "Vec4DLike"]
 class Vec4D(Vec4DExt):
     """**Datatype**: A vector in 4D space."""
 
-    def __init__(self: Any, xyzw: Vec4DLike):
+    def __init__(self: Any, xyzw: Vec4DLike) -> None:
         """Create a new instance of the Vec4D datatype."""
 
         # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py

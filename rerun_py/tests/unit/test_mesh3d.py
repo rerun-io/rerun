@@ -88,7 +88,7 @@ def test_mesh3d() -> None:
             f"    triangle_indices={triangle_indices}\n"
             f"    albedo_factor={albedo_factor}\n"
             f"    class_ids={class_ids}\n"
-            f")"
+            f")",
         )
         arch = rr.Mesh3D(
             vertex_positions=vertex_positions,

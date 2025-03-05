@@ -26,7 +26,6 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
     # You can define your own __init__ function as a member of ForceStrengthExt in force_strength_ext.py
 
     # Note: there are no fields here because ForceStrength delegates to datatypes.Float64
-    pass
 
 
 class ForceStrengthBatch(datatypes.Float64Batch, ComponentBatchMixin):

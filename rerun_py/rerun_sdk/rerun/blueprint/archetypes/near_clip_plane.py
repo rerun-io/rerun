@@ -23,7 +23,7 @@ __all__ = ["NearClipPlane"]
 class NearClipPlane(Archetype):
     """**Archetype**: Controls the distance to the near clip plane in 3D scene units."""
 
-    def __init__(self: Any, near_clip_plane: datatypes.Float32Like):
+    def __init__(self: Any, near_clip_plane: datatypes.Float32Like) -> None:
         """
         Create a new instance of the NearClipPlane archetype.
 

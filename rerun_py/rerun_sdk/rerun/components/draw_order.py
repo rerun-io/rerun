@@ -29,7 +29,6 @@ class DrawOrder(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
 
     # Note: there are no fields here because DrawOrder delegates to datatypes.Float32
-    pass
 
 
 class DrawOrderBatch(datatypes.Float32Batch, ComponentBatchMixin):

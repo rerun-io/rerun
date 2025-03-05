@@ -26,7 +26,6 @@ class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
     # You can define your own __init__ function as a member of ViewerRecommendationHashExt in viewer_recommendation_hash_ext.py
 
     # Note: there are no fields here because ViewerRecommendationHash delegates to datatypes.UInt64
-    pass
 
 
 class ViewerRecommendationHashBatch(datatypes.UInt64Batch, ComponentBatchMixin):

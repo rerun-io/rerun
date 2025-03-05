@@ -63,7 +63,7 @@ class ImageFormat:
     which has to be specified specifying in order to set the RGB size of the image.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
     def __str__(self) -> str:
@@ -162,6 +162,7 @@ def ImageEncoded(
             "`ImageEncoded` is deprecated. Use `Image` (for NV12 and YUY2) or `EncodedImage` (for PNG, JPEG, …) instead."
         ),
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     if (path is None) == (contents is None):

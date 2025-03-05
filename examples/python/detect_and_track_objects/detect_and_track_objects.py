@@ -7,9 +7,10 @@ import argparse
 import json
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 import cv2
 import numpy as np
@@ -106,7 +107,9 @@ class Detector:
         processed_sizes = [(scaled_height, scaled_width)]
         segmentation_mask = self.feature_extractor.post_process_semantic_segmentation(outputs, processed_sizes)[0]
         detections = self.feature_extractor.post_process_object_detection(
-            outputs, threshold=0.8, target_sizes=processed_sizes
+            outputs,
+            threshold=0.8,
+            target_sizes=processed_sizes,
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
@@ -129,7 +132,7 @@ class Detector:
                         bbox_xywh=bbox_xywh,
                         image_width=scaled_width,
                         image_height=scaled_height,
-                    )
+                    ),
                 )
 
         return objects_to_track
@@ -176,7 +179,7 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.legacy.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -194,7 +197,9 @@ class Tracker:
 
         if success:
             self.tracked.bbox_xywh = clip_bbox_to_image(
-                bbox_xywh=bbox_xywh, image_width=self.tracked.image_width, image_height=self.tracked.image_height
+                bbox_xywh=bbox_xywh,
+                image_width=self.tracked.image_width,
+                image_height=self.tracked.image_height,
             )
         else:
             logging.info("Tracker update failed for tracker with id #%d", self.tracking_id)
@@ -218,7 +223,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()

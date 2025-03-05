@@ -9,7 +9,7 @@ class ClearIsRecursiveExt:
     def __init__(
         self: Any,
         recursive: bool = True,
-    ):
+    ) -> None:
         """
         Disconnect an entity from its parent.
 

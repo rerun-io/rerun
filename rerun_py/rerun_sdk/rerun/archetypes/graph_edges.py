@@ -39,7 +39,9 @@ class GraphEdges(Archetype):
     rr.log(
         "simple",
         rr.GraphNodes(
-            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+            node_ids=["a", "b", "c"],
+            positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
+            labels=["A", "B", "C"],
         ),
         rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
     )
@@ -56,7 +58,9 @@ class GraphEdges(Archetype):
 
     """
 
-    def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):
+    def __init__(
+        self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
+    ) -> None:
         """
         Create a new instance of the GraphEdges archetype.
 

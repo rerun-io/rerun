@@ -99,7 +99,8 @@ class Boxes3DExt:
             if rotations is not None:
                 if quaternions is not None or rotation_axis_angles is not None:
                     _send_warning_or_raise(
-                        "Cannot specify both `rotations` and `quaternions` or `rotation_axis_angles`.", 1
+                        "Cannot specify both `rotations` and `quaternions` or `rotation_axis_angles`.",
+                        1,
                     )
                 else:
                     try:

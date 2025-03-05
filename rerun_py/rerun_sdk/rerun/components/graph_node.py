@@ -22,7 +22,6 @@ class GraphNode(datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of GraphNodeExt in graph_node_ext.py
 
     # Note: there are no fields here because GraphNode delegates to datatypes.Utf8
-    pass
 
 
 class GraphNodeBatch(datatypes.Utf8Batch, ComponentBatchMixin):

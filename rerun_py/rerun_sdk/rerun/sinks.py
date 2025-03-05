@@ -3,14 +3,18 @@ from __future__ import annotations
 import logging
 import pathlib
 import warnings
+from typing import TYPE_CHECKING
 
-import rerun_bindings as bindings  # type: ignore[attr-defined]
+import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
+
+if TYPE_CHECKING:
+    from rerun.recording_stream import RecordingStream
+
 
 # --- Sinks ---
 
@@ -23,7 +27,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details.""",
 )
 def connect(
     addr: str | None = None,
@@ -68,7 +72,7 @@ def connect(
 
 @deprecated(
     """Please migrate to `connect_grpc(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details.""",
 )
 def connect_tcp(
     addr: str | None = None,
@@ -146,17 +150,20 @@ def connect_grpc(
         logging.warning("Rerun is disabled - connect() call ignored")
         return
 
-    application_id = get_application_id(recording=recording)  # NOLINT
+    from rerun.recording_stream import get_application_id
+
+    application_id = get_application_id(recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.connect_grpc(
@@ -168,7 +175,9 @@ def connect_grpc(
 
 
 def save(
-    path: str | pathlib.Path, default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
+    path: str | pathlib.Path,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Stream all log-data to a file.
@@ -199,17 +208,20 @@ def save(
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.save(
@@ -248,17 +260,20 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     bindings.stdout(
@@ -290,7 +305,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
 @deprecated(
     """Please migrate to `rr.serve_web(…)`.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details."""
+  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details.""",
 )
 def serve(
     *,
@@ -343,6 +358,7 @@ def serve(
     warnings.warn(
         message=("`serve` is deprecated. Use `serve_web` instead."),
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     return serve_web(
@@ -403,17 +419,20 @@ def serve_web(
         logging.warning("Rerun is disabled - serve() call ignored")
         return
 
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
         )
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if default_blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(
-            application_id=application_id, blueprint=default_blueprint
+            application_id=application_id,
+            blueprint=default_blueprint,
         ).storage
 
     # TODO(#5531): keep static data around.
@@ -457,6 +476,9 @@ def send_blueprint(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    from rerun.recording_stream import get_application_id
+
     application_id = get_application_id(recording=recording)  # NOLINT
 
     if application_id is None:

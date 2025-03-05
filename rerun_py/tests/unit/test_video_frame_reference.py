@@ -23,11 +23,11 @@ def test_video_frame_reference() -> None:
 
     # Correct usages:
     assert rr.VideoFrameReference(seconds=12.3).timestamp == rr.components.VideoTimestampBatch(
-        rr.components.VideoTimestamp(seconds=12.3)
+        rr.components.VideoTimestamp(seconds=12.3),
     )
     assert rr.VideoFrameReference(nanoseconds=123).timestamp == rr.components.VideoTimestampBatch(
-        rr.components.VideoTimestamp(nanoseconds=123)
+        rr.components.VideoTimestamp(nanoseconds=123),
     )
     assert rr.VideoFrameReference(
-        timestamp=rr.components.VideoTimestamp(nanoseconds=123)
+        timestamp=rr.components.VideoTimestamp(nanoseconds=123),
     ).timestamp == rr.components.VideoTimestampBatch(rr.components.VideoTimestamp(nanoseconds=123))

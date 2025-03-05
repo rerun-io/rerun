@@ -23,7 +23,7 @@ __all__ = ["MapZoom"]
 class MapZoom(Archetype):
     """**Archetype**: Configuration of the map view zoom level."""
 
-    def __init__(self: Any, zoom: datatypes.Float64Like):
+    def __init__(self: Any, zoom: datatypes.Float64Like) -> None:
         """
         Create a new instance of the MapZoom archetype.
 

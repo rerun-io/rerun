@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -36,7 +37,7 @@ def _range2d__y_range__special_field_converter_override(x: datatypes.Range1DLike
 class Range2D:
     """**Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners."""
 
-    def __init__(self: Any, x_range: datatypes.Range1DLike, y_range: datatypes.Range1DLike):
+    def __init__(self: Any, x_range: datatypes.Range1DLike, y_range: datatypes.Range1DLike) -> None:
         """
         Create a new instance of the Range2D datatype.
 

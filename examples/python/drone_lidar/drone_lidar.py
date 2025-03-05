@@ -53,7 +53,11 @@ def unzip_file_from_archive_with_progress(zip_data: typing.BinaryIO, file_name: 
         total_size = file_info.file_size
 
         with tqdm(
-            total=total_size, desc=f"Extracting file {file_name}", unit="iB", unit_scale=True, unit_divisor=1024
+            total=total_size,
+            desc=f"Extracting file {file_name}",
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as progress:
             with zip_ref.open(file_name) as source, open(dest_dir / file_name, "wb") as target:
                 for chunk in iter(lambda: source.read(1024 * 1024), b""):
@@ -64,12 +68,14 @@ def unzip_file_from_archive_with_progress(zip_data: typing.BinaryIO, file_name: 
 def download_dataset() -> None:
     if not LIDAR_DATA_FILE.exists():
         unzip_file_from_archive_with_progress(
-            download_with_progress(LIDAR_DATA_URL, LIDAR_DATA_FILE.name), LIDAR_DATA_FILE.name, LIDAR_DATA_FILE.parent
+            download_with_progress(LIDAR_DATA_URL, LIDAR_DATA_FILE.name),
+            LIDAR_DATA_FILE.name,
+            LIDAR_DATA_FILE.parent,
         )
 
     if not TRAJECTORY_DATA_FILE.exists():
         TRAJECTORY_DATA_FILE.write_bytes(
-            download_with_progress(TRAJECTORY_DATA_URL, TRAJECTORY_DATA_FILE.name).getvalue()
+            download_with_progress(TRAJECTORY_DATA_URL, TRAJECTORY_DATA_FILE.name).getvalue(),
         )
 
 
@@ -112,7 +118,7 @@ def log_lidar_data() -> None:
     # log all positions at once using the computed partitions
     rr.send_columns(
         "/lidar",
-        [rr.TimeSecondsColumn("time", non_repeating_times)],
+        [rr.IndexColumn("time", timedelta=non_repeating_times)],
         rr.Points3D.columns(positions=positions).partition(partitions),
     )
 
@@ -131,7 +137,7 @@ def log_drone_trajectory() -> None:
 
     rr.send_columns(
         "/drone",
-        [rr.TimeSecondsColumn("time", timestamp)],
+        [rr.IndexColumn("time", timedelta=timestamp)],
         rr.Points3D.columns(positions=positions),
     )
 
@@ -156,7 +162,7 @@ def main() -> None:
                 timeline="time",
                 start=rrb.TimeRangeBoundary.cursor_relative(seconds=-60.0),
                 end=rrb.TimeRangeBoundary.cursor_relative(),
-            )
+            ),
         ],
     )
 

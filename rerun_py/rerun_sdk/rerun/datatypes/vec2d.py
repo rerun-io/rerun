@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike"]
 class Vec2D(Vec2DExt):
     """**Datatype**: A vector in 2D space."""
 
-    def __init__(self: Any, xy: Vec2DLike):
+    def __init__(self: Any, xy: Vec2DLike) -> None:
         """Create a new instance of the Vec2D datatype."""
 
         # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py

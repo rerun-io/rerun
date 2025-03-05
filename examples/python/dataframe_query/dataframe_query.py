@@ -36,7 +36,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument("path_to_rrd", type=str, help="Path to the .rrd file")
     parser.add_argument(
-        "entity_path_filter", type=str, nargs="?", default="/**", help="Optional entity path filter expression"
+        "entity_path_filter",
+        type=str,
+        nargs="?",
+        default="/**",
+        help="Optional entity path filter expression",
     )
     args = parser.parse_args()
 

@@ -141,13 +141,16 @@ def download_progress(url: str, dst: Path) -> None:
     total = int(resp.headers.get("content-length", 0))
     chunk_size = 1024 * 1024
     # Can also replace 'file' with a io.BytesIO object
-    with open(dst, "wb") as file, tqdm(
-        desc=dst.name,
-        total=total,
-        unit="iB",
-        unit_scale=True,
-        unit_divisor=1024,
-    ) as bar:
+    with (
+        open(dst, "wb") as file,
+        tqdm(
+            desc=dst.name,
+            total=total,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar,
+    ):
         for data in resp.iter_content(chunk_size=chunk_size):
             size = file.write(data)
             bar.update(size)
@@ -164,7 +167,10 @@ def main() -> None:
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
     parser.add_argument(
-        "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
+        "--frames",
+        type=int,
+        default=sys.maxsize,
+        help="If specified, limits the number of frames logged",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
@@ -24,8 +25,9 @@ class TensorDimensionIndexSliderExt:
             [
                 pa.array(
                     np.asarray(
-                        [x.dimension if isinstance(x, TensorDimensionIndexSlider) else x for x in data], dtype=np.uint32
-                    )
+                        [x.dimension if isinstance(x, TensorDimensionIndexSlider) else x for x in data],
+                        dtype=np.uint32,
+                    ),
                 ),
             ],
             fields=list(data_type),

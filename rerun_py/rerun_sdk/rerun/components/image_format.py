@@ -22,7 +22,6 @@ class ImageFormat(datatypes.ImageFormat, ComponentMixin):
     # You can define your own __init__ function as a member of ImageFormatExt in image_format_ext.py
 
     # Note: there are no fields here because ImageFormat delegates to datatypes.ImageFormat
-    pass
 
 
 class ImageFormatBatch(datatypes.ImageFormatBatch, ComponentBatchMixin):
