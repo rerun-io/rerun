@@ -84,7 +84,6 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization functions",
         func_list=[
             "init",
-            "connect",
             "connect_grpc",
             "disconnect",
             "save",

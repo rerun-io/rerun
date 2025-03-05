@@ -5,7 +5,6 @@ from collections.abc import Iterable
 from typing import Optional, Union
 
 import rerun_bindings as bindings
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer
@@ -567,42 +566,6 @@ class Blueprint:
         from rerun.notebook import Viewer
 
         Viewer(blueprint=self).display()
-
-    @deprecated(
-        """Please migrate to `connect_grpc(…)`.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-22 for more details.""",
-    )
-    def connect(
-        self,
-        application_id: str,
-        *,
-        url: str | None = None,
-        make_active: bool = True,
-        make_default: bool = True,
-    ) -> None:
-        """
-        Connect to a remote Rerun Viewer on the given HTTP(S) URL and send this blueprint.
-
-        Parameters
-        ----------
-        application_id:
-            The application ID to use for this blueprint. This must match the application ID used
-            when initiating rerun for any data logging you wish to associate with this blueprint.
-        url:
-            The HTTP(S) URL to connect to
-        make_active:
-            Immediately make this the active blueprint for the associated `app_id`.
-            Note that setting this to `false` does not mean the blueprint may not still end
-            up becoming active. In particular, if `make_default` is true and there is no other
-            currently active blueprint.
-        make_default:
-            Make this the default blueprint for the `app_id`.
-            The default blueprint will be used as the template when the user resets the
-            blueprint for the app. It will also become the active blueprint if no other
-            blueprint is currently active.
-
-        """
-        return self.connect_grpc(application_id, url=url, make_active=make_active, make_default=make_default)
 
     def connect_grpc(
         self,
