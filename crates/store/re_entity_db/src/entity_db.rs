@@ -9,14 +9,14 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, SetStoreInfo,
-    StoreId, StoreInfo, StoreKind, TimeType,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
-use re_types_core::components::{ApplicationId, RecordingName, RecordingStartedTimestamp};
+use re_types_core::components;
 
 use crate::{Error, TimesPerTimeline};
 
@@ -147,14 +147,15 @@ impl EntityDb {
     }
 
     pub fn application_id(&self) -> Option<ApplicationId> {
+        self.recording_property::<components::ApplicationId>()
+            .map(ApplicationId::from)
+    }
+
+    pub fn recording_name(&self) -> Option<components::RecordingName> {
         self.recording_property()
     }
 
-    pub fn recording_name(&self) -> Option<RecordingName> {
-        self.recording_property()
-    }
-
-    pub fn recording_started(&self) -> Option<RecordingStartedTimestamp> {
+    pub fn recording_started(&self) -> Option<components::RecordingStartedTimestamp> {
         self.recording_property()
     }
 

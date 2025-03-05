@@ -37,12 +37,11 @@ use std::sync::Arc;
 
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
-use re_types_core::components::ApplicationId;
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::instance::Instance;
 pub use self::path::*;
-pub use self::recording_properties::RecordingProperties;
+pub use self::recording_properties::{ApplicationId, RecordingProperties};
 pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{

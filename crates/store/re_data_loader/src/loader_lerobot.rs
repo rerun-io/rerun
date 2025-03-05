@@ -14,11 +14,11 @@ use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
-use re_log_types::{RecordingProperties, StoreId};
+use re_log_types::{ApplicationId, RecordingProperties, StoreId};
 use re_types::archetypes::{
     AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
 };
-use re_types::components::{ApplicationId, Scalar, VideoTimestamp};
+use re_types::components::{Scalar, VideoTimestamp};
 use re_types::datatypes::Utf8;
 use re_types::external::re_types_core::archetypes;
 use re_types::{Archetype, Component, ComponentBatch};
@@ -56,7 +56,7 @@ impl DataLoader for LeRobotDatasetLoader {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(ApplicationId(Utf8::from(format!("{filepath:?}"))));
+            .unwrap_or(format!("{filepath:?}").into());
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!

@@ -134,9 +134,7 @@ impl ViewportBlueprint {
 
         // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
         // Only enable auto-views if this is the app-default blueprint
-        let is_app_default_blueprint = blueprint_db
-            .store_info()
-            .is_some_and(|ri| ri.is_app_default_blueprint());
+        let is_app_default_blueprint = blueprint_db.is_app_default_blueprint();
         let auto_layout =
             AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
         let auto_views =
@@ -249,7 +247,7 @@ impl ViewportBlueprint {
                 .hub
                 .store_bundle()
                 .entity_dbs()
-                .any(|db| db.app_id() == Some(app_id.clone())),
+                .any(|db| db.application_id() == Some(app_id.clone())),
 
             Item::DataSource(_)
             | Item::StoreId(_)

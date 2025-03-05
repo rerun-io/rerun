@@ -194,22 +194,3 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
         }
     }
 }
-
-// ----------------------------------------------------------------------------
-
-// TODO: Still needed?
-#[track_caller]
-fn called_from_official_rust_example() -> bool {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let caller = core::panic::Location::caller();
-    let mut path = std::path::PathBuf::from(caller.file());
-    let mut is_official_example = false;
-    for _ in 0..4 {
-        path.pop(); // first iteration is always a file path in our examples
-        if path.join(SENTINEL_FILENAME).exists() {
-            is_official_example = true;
-        }
-    }
-    is_official_example
-}

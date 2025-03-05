@@ -15,11 +15,10 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
     TimeType, Timeline, TimelineName,
 };
-use re_types_core::components::ApplicationId;
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
@@ -121,8 +120,6 @@ pub struct RecordingStreamBuilder {
     enabled: Option<bool>,
 
     batcher_config: Option<ChunkBatcherConfig>,
-
-    is_official_example: bool,
 }
 
 impl RecordingStreamBuilder {
@@ -140,7 +137,6 @@ impl RecordingStreamBuilder {
     #[track_caller]
     pub fn new(application_id: impl Into<ApplicationId>) -> Self {
         let application_id = application_id.into();
-        let is_official_example = crate::called_from_official_rust_example();
 
         Self {
             application_id,
@@ -152,7 +148,6 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
-            is_official_example, // TODO: Remove
         }
     }
 
@@ -225,14 +220,6 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn store_source(mut self, store_source: StoreSource) -> Self {
         self.store_source = Some(store_source);
-        self
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    #[doc(hidden)]
-    #[inline]
-    pub fn is_official_example(mut self, is_official_example: bool) -> Self {
-        self.is_official_example = is_official_example;
         self
     }
 
@@ -656,7 +643,6 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
-            is_official_example,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));

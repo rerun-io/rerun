@@ -208,7 +208,9 @@ impl StoreHub {
             let active_blueprint_id = self
                 .active_blueprint_by_app_id
                 .entry(app_id.clone())
-                .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+                .or_insert_with(|| {
+                    StoreId::from_string(StoreKind::Blueprint, app_id.clone().into())
+                });
 
             // Get or create the blueprint:
             self.store_bundle.blueprint_entry(active_blueprint_id);
@@ -270,15 +272,15 @@ impl StoreHub {
 
         match removed_store.store_kind() {
             StoreKind::Recording => {
-                if let Some(app_id) = removed_store.app_id() {
+                if let Some(app_id) = removed_store.application_id() {
                     let any_other_recordings_for_this_app = self
                         .store_bundle
                         .recordings()
-                        .any(|rec| rec.app_id() == Some(app_id.clone()));
+                        .any(|rec| rec.application_id() == Some(app_id.clone()));
 
                     if !any_other_recordings_for_this_app {
                         re_log::trace!("Removed last recording of {app_id}. Closing app.");
-                        self.close_app(&app_id);
+                        self.close_app(&app_id.into());
                     }
                 }
             }
@@ -322,7 +324,7 @@ impl StoreHub {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
         self.store_bundle.retain(|db| {
-            if db.app_id() == Some(Self::welcome_screen_app_id()) {
+            if db.application_id() == Some(Self::welcome_screen_app_id()) {
                 store_ids_retained.insert(db.store_id().clone());
                 true
             } else {
@@ -361,9 +363,9 @@ impl StoreHub {
         for rec in self
             .store_bundle
             .recordings()
-            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
+            .sorted_by_key(|entity_db| entity_db.recording_started())
         {
-            if rec.app_id() == Some(app_id.clone()) {
+            if rec.application_id() == Some(app_id.clone()) {
                 self.active_rec_id = Some(rec.store_id().clone());
                 return;
             }
@@ -378,7 +380,7 @@ impl StoreHub {
 
         let mut store_ids_removed = HashSet::default();
         self.store_bundle.retain(|db| {
-            if db.app_id() == Some(app_id.clone()) {
+            if db.application_id() == Some(app_id.clone()) {
                 store_ids_removed.insert(db.store_id().clone());
                 false
             } else {
@@ -448,7 +450,7 @@ impl StoreHub {
             .store_bundle
             .get(&recording_id)
             .as_ref()
-            .and_then(|recording| recording.app_id())
+            .and_then(|recording| recording.application_id())
         {
             self.set_active_app(app_id);
         }
@@ -809,8 +811,8 @@ impl StoreHub {
                     StoreKind::Blueprint => {}
                 }
 
-                if store.app_id() != Some(app_id.clone()) {
-                    if let Some(store_app_id) = store.app_id() {
+                if store.application_id() != Some(app_id.clone()) {
+                    if let Some(store_app_id) = store.application_id() {
                         anyhow::bail!("Found app_id {store_app_id}; expected {app_id}");
                     } else {
                         anyhow::bail!("Found store without an app_id");

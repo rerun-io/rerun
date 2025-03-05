@@ -5,8 +5,7 @@ use std::sync::Arc;
 use once_cell::sync::Lazy;
 
 use re_chunk::{Chunk, ChunkResult};
-use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
-use re_types::components::ApplicationId;
+use re_log_types::{ApplicationId, ArrowMsg, EntityPath, LogMsg, TimePoint};
 
 // ----------------------------------------------------------------------------
 
