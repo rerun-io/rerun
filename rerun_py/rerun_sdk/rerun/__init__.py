@@ -170,7 +170,6 @@ from .script_helpers import (
     script_teardown as script_teardown,
 )
 from .sinks import (
-    connect as connect,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
     save as save,
