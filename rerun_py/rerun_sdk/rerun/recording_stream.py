@@ -703,7 +703,7 @@ class RecordingStream:
         )
 
     @overload
-    def set_index(self, timeline: str, *, sequence: int) -> None: ...
+    def set_index(self, timeline: str, *, seq: int) -> None: ...
 
     @overload
     def set_index(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
@@ -715,7 +715,7 @@ class RecordingStream:
         self,
         timeline: str,
         *,
-        sequence: int | None = None,
+        seq: int | None = None,
         timedelta: int | float | timedelta | np.timedelta64 | None = None,
         datetime: int | float | datetime | np.datetime64 | None = None,
     ) -> None:
@@ -725,11 +725,11 @@ class RecordingStream:
         Used for all subsequent logging on the same thread, until the next call to
         [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
-        For example: `set_index("frame_nr", sequence=frame_nr)`.
+        For example: `set_index("frame_nr", seq=frame_nr)`.
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
+        You are expected to set exactly ONE of the arguments `seq`, `timedelta`, or `datetime`.
         You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
         you must only use `timedelta` for that timeline going forward.
 
@@ -739,7 +739,7 @@ class RecordingStream:
         ----------
         timeline : str
             The name of the timeline to set the time for.
-        sequence:
+        seq:
             Used for sequential indices, like `frame_nr`.
             Must be an integer.
         timedelta:
@@ -759,7 +759,7 @@ class RecordingStream:
         set_index(  # type: ignore[call-overload]
             timeline=timeline,
             timedelta=timedelta,
-            sequence=sequence,
+            seq=seq,
             datetime=datetime,
             recording=self,
         )
