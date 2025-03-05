@@ -77,9 +77,11 @@ async fn serve_impl(
         let mut routes_builder = tonic::service::Routes::builder();
         routes_builder.add_service(
             // TODO(#8411): figure out the right size for this
-            re_protos::sdk_comms::v1alpha1::message_proxy_server::MessageProxyServer::new(message_proxy)
-                .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
-                .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+            re_protos::sdk_comms::v1alpha1::message_proxy_server::MessageProxyServer::new(
+                message_proxy,
+            )
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
         );
         routes_builder.routes()
     };

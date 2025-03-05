@@ -37,7 +37,7 @@ def compute_directory_hash(directory):
     return sha256.hexdigest()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compute the SHA-256 hash of a file or directory and optionally verify it."
     )

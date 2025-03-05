@@ -266,10 +266,7 @@ pb-lint = "buf lint --error-format=json"
 
 pb-breaking = "buf breaking --error-format=json --against '.git#branch=origin/main'"
 
-pb-check = { depends-on = [
-  "pb-lint",
-  "pb-breaking",
-] }
+pb-check = { depends-on = ["pb-lint", "pb-breaking"] }
 
 # ------------------------------------------------------------------------------------------
 
@@ -550,11 +547,11 @@ wheel = ">=0.38,<0.39"
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-buf = "1.*" # not available for linux-aarch64
+buf = "1.*"             # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-buf = "1.*" # not available for linux-aarch64
+buf = "1.*"             # not available for linux-aarch64
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
