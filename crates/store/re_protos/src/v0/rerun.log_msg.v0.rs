@@ -108,23 +108,18 @@ impl ::prost::Name for BlueprintActivationCommand {
 /// Information about a recording or blueprint.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreInfo {
-    /// User-chosen name of the application doing the logging.
-    #[prost(message, optional, tag = "1")]
-    pub application_id: ::core::option::Option<super::super::common::v0::ApplicationId>,
     /// Unique ID of the recording.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub store_id: ::core::option::Option<super::super::common::v0::StoreId>,
-    /// True if the recording is one of the official Rerun examples.
-    #[prost(bool, tag = "3")]
-    pub is_official_example: bool,
-    /// When the recording started.
-    #[prost(message, optional, tag = "4")]
-    pub started: ::core::option::Option<super::super::common::v0::Time>,
     /// Where the recording came from.
-    #[prost(message, optional, tag = "5")]
+    /// TODO(grtlr): Will be removed after #9178.
+    #[deprecated]
+    #[prost(message, optional, tag = "2")]
     pub store_source: ::core::option::Option<StoreSource>,
     /// Version of the store crate.
-    #[prost(message, optional, tag = "6")]
+    /// TODO(grtlr): Will be removed after #9178.
+    #[deprecated]
+    #[prost(message, optional, tag = "3")]
     pub store_version: ::core::option::Option<StoreVersion>,
 }
 impl ::prost::Name for StoreInfo {

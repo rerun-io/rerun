@@ -21,7 +21,7 @@ use crate::{DeserializationError, DeserializationResult};
 /// **Component**: When the recording started.
 ///
 /// Should be an absolute time, i.e. relative to Unix Epoch.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct RecordingStartedTimestamp(pub crate::datatypes::TimeInt);
 

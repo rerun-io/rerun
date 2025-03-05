@@ -113,6 +113,13 @@ impl EntityPath {
     }
 
     #[inline]
+    pub fn recording_properties() -> Self {
+        // TODO(#9193): We probably want to come up with a namespace for
+        // reserved paths.
+        Self::from(vec![EntityPathPart::new("_recording_properties")])
+    }
+
+    #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
     }

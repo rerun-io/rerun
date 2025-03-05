@@ -305,10 +305,6 @@ pub struct SetStoreInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreInfo {
-    /// The user-chosen name of the application doing the logging.
-    #[deprecated]
-    pub application_id: ApplicationId,
-
     /// Should be unique for each recording.
     pub store_id: StoreId,
 
@@ -322,16 +318,6 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// True if the recording is one of the official Rerun examples.
-    // TODO: This should be a good example for a custom attribute.
-    pub is_official_example: bool,
-
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    #[deprecated]
-    pub started: Time,
-
     pub store_source: StoreSource,
 
     /// The Rerun version used to encoded the RRD data.
@@ -340,14 +326,6 @@ pub struct StoreInfo {
     // would probably only lead to more issues down the line.
     #[cfg_attr(feature = "serde", serde(skip))]
     pub store_version: Option<CrateVersion>,
-}
-
-impl StoreInfo {
-    /// Whether this `StoreInfo` is the default used when a user is not explicitly
-    /// creating their own blueprint.
-    pub fn is_app_default_blueprint(&self) -> bool {
-        self.application_id.as_str() == self.store_id.as_str()
-    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -612,13 +590,6 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     )
 }
 
-impl SizeBytes for ApplicationId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-}
-
 impl SizeBytes for StoreId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -683,17 +654,13 @@ impl SizeBytes for StoreInfo {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            application_id,
             store_id,
             cloned_from: _,
-            is_official_example: _,
-            started: _,
             store_source,
             store_version,
         } = self;
 
-        application_id.heap_size_bytes()
-            + store_id.heap_size_bytes()
+        store_id.heap_size_bytes()
             + store_source.heap_size_bytes()
             + store_version.heap_size_bytes()
     }

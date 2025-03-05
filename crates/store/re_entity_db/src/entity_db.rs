@@ -9,14 +9,14 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, SetStoreInfo,
+    StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
-use re_types_core::components;
+use re_types_core::components::{ApplicationId, RecordingName, RecordingStartedTimestamp};
 
 use crate::{Error, TimesPerTimeline};
 
@@ -137,20 +137,32 @@ impl EntityDb {
         self.store_info_msg().map(|msg| &msg.info)
     }
 
-    pub fn app_id(&self) -> Option<ApplicationId> {
-        self.latest_at_component::<ApplicationId>(
-            &EntityPath::root(), // TODO: change
+    fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
+        self.latest_at_component::<C>(
+            &EntityPath::recording_properties(),
+            // TODO(grtlr): Does `log_time` make sense here?
             &LatestAtQuery::latest("log_time".into()),
         )
-        .map(|(_, app_id)| app_id)
+        .map(|(_, value)| value)
+    }
+
+    pub fn application_id(&self) -> Option<ApplicationId> {
+        self.recording_property()
+    }
+
+    pub fn recording_name(&self) -> Option<RecordingName> {
+        self.recording_property()
     }
 
     pub fn recording_started(&self) -> Option<RecordingStartedTimestamp> {
-        self.latest_at_component::<RecordingStartedTimestamp>(
-            &EntityPath::root(), // TODO: change
-            &LatestAtQuery::latest("log_time".into()),
-        )
-        .map(|(_, app_id)| app_id)
+        self.recording_property()
+    }
+
+    /// Whether this `StoreInfo` is the default used when a user is not explicitly
+    /// creating their own blueprint.
+    pub fn is_app_default_blueprint(&self) -> bool {
+        self.application_id()
+            .map_or(false, |id| id.as_str() == self.store_id().as_str())
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -572,8 +584,11 @@ impl EntityDb {
 
     /// Key used for sorting recordings in the UI.
     pub fn sort_key(&self) -> impl Ord + '_ {
-        self.store_info()
-            .map(|info| (info.application_id.0.as_str(), info.started))
+        (
+            self.application_id(),
+            self.recording_name(),
+            self.recording_started(),
+        )
     }
 
     /// Export the contents of the current database to a sequence of messages.

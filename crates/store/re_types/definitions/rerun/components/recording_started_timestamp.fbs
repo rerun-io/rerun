@@ -9,7 +9,7 @@ namespace rerun.components;
 table RecordingStartedTimestamp (
   "attr.arrow.transparent",
   "attr.python.array_aliases": "npt.NDArray[np.int64]",
-  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.override_crate": "re_types_core",
   "attr.rust.repr": "transparent"
 ) {

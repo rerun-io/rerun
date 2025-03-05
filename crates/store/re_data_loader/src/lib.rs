@@ -6,6 +6,7 @@ use once_cell::sync::Lazy;
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
+use re_types::components::ApplicationId;
 
 // ----------------------------------------------------------------------------
 
@@ -58,10 +59,10 @@ pub use self::{
 #[derive(Debug, Clone)]
 pub struct DataLoaderSettings {
     /// The recommended [`re_log_types::ApplicationId`] to log the data to, based on the surrounding context.
-    pub application_id: Option<re_log_types::ApplicationId>,
+    pub application_id: Option<ApplicationId>,
 
     /// The [`re_log_types::ApplicationId`] that is currently opened in the viewer, if any.
-    pub opened_application_id: Option<re_log_types::ApplicationId>,
+    pub opened_application_id: Option<ApplicationId>,
 
     /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
     ///

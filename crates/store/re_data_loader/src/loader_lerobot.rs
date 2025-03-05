@@ -11,14 +11,17 @@ use itertools::Either;
 use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    ArrowArray, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint,
+    Timeline,
 };
 
-use re_log_types::{ApplicationId, StoreId};
+use re_log_types::{RecordingProperties, StoreId};
 use re_types::archetypes::{
     AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
 };
-use re_types::components::{Scalar, VideoTimestamp};
+use re_types::components::{ApplicationId, Scalar, VideoTimestamp};
+use re_types::datatypes::Utf8;
+use re_types::external::re_types_core::archetypes;
 use re_types::{Archetype, Component, ComponentBatch};
 
 use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex};
@@ -54,7 +57,7 @@ impl DataLoader for LeRobotDatasetLoader {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(ApplicationId(format!("{filepath:?}")));
+            .unwrap_or(ApplicationId(Utf8::from(format!("{filepath:?}"))));
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -97,13 +100,33 @@ fn load_and_stream(
     tx: &Sender<crate::LoadedData>,
 ) {
     // set up all recordings
-    let episodes = prepare_episode_chunks(dataset, application_id, tx);
+    let episodes = prepare_episode_chunks(dataset, tx);
 
     for (episode, store_id) in &episodes {
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                for chunk in chunks {
+                let properties: archetypes::RecordingProperties = RecordingProperties {
+                    application_id: application_id.clone(),
+                    recording_started: re_log_types::Time::now(),
+                    recording_name: Some(format!("episode_{}", episode.0)),
+                }
+                .into();
+
+                debug_assert!(TimePoint::default().is_static());
+
+                let Ok(initial_chunk) = Chunk::builder(EntityPath::recording_properties())
+                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                    .build()
+                else {
+                    re_log::error!(
+                        "Failed to build recording properties chunk for episode {}",
+                        episode.0
+                    );
+                    return;
+                };
+
+                for chunk in std::iter::once(initial_chunk).chain(chunks.into_iter()) {
                     let data = LoadedData::Chunk(
                         LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
                         store_id.clone(),
@@ -129,7 +152,6 @@ fn load_and_stream(
 /// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
 fn prepare_episode_chunks(
     dataset: &LeRobotDataset,
-    application_id: &ApplicationId,
     tx: &Sender<crate::LoadedData>,
 ) -> Vec<(EpisodeIndex, StoreId)> {
     let mut store_ids = vec![];
@@ -143,11 +165,7 @@ fn prepare_episode_chunks(
         );
         let set_store_info = LoadedData::LogMsg(
             LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
-            prepare_store_info(
-                application_id.clone(),
-                &store_id,
-                re_log_types::FileSource::Sdk,
-            ),
+            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
         );
 
         if tx.send(set_store_info).is_err() {

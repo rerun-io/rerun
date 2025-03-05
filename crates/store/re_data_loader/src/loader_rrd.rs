@@ -2,7 +2,8 @@ use re_log_encoding::decoder::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
-use re_log_types::{ApplicationId, StoreId};
+use re_log_types::StoreId;
+use re_types::components::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};
 
@@ -131,9 +132,10 @@ impl crate::DataLoader for RrdLoader {
         };
 
         // * We never want to patch blueprints' store IDs, only their app IDs.
-        // * We neer use import semantics at all for .rrd files.
+        // * We never use import semantics at all for .rrd files.
         let forced_application_id = if extension == "rbl" {
-            settings.opened_application_id.as_ref()
+            settings.opened_application_id.as_ref();
+            unimplemented!()
         } else {
             None
         };
@@ -174,9 +176,6 @@ fn decode_and_stream<R: std::io::Read>(
                 re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
                     re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
                         info: re_log_types::StoreInfo {
-                            application_id: forced_application_id
-                                .cloned()
-                                .unwrap_or(set_store_info.info.application_id),
                             store_id: forced_store_id
                                 .cloned()
                                 .unwrap_or(set_store_info.info.store_id),

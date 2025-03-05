@@ -665,7 +665,7 @@ impl RecordingStreamBuilder {
         });
 
         let properties = RecordingProperties {
-            application_name: application_id.clone(), // TODO
+            application_id: application_id.clone(), // TODO
             recording_started: Time::now(),
             recording_name: None,
         };
@@ -952,14 +952,14 @@ impl RecordingStream {
             });
 
         let app_id =
-            re_types_core::components::ApplicationId::from(properties.application_name.as_str());
+            re_types_core::components::ApplicationId::from(properties.application_id.as_str());
         let nanos = properties.recording_started.clone().nanos_since_epoch();
         let started = re_types_core::components::RecordingStartedTimestamp::from(
             TimeInt::from_nanos(nanos.try_into().unwrap()),
         );
 
         re_log::debug!(
-            app_id = %properties.application_name,
+            app_id = %properties.application_id,
             rec_id = %info.store_id,
             "setting recording info",
         );

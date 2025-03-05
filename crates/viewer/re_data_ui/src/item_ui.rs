@@ -737,7 +737,7 @@ pub fn entity_db_button_ui(
 
     let app_id_prefix = if include_app_id {
         entity_db
-            .app_id()
+            .application_id()
             .map_or(String::default(), |app_id| format!("{app_id} - "))
     } else {
         String::default()

@@ -118,20 +118,6 @@ impl TryFrom<crate::common::v0::IndexColumnSelector> for re_log_types::TimelineN
     }
 }
 
-impl From<crate::common::v0::ApplicationId> for re_log_types::ApplicationId {
-    #[inline]
-    fn from(value: crate::common::v0::ApplicationId) -> Self {
-        Self(value.id)
-    }
-}
-
-impl From<re_log_types::ApplicationId> for crate::common::v0::ApplicationId {
-    #[inline]
-    fn from(value: re_log_types::ApplicationId) -> Self {
-        Self { id: value.0 }
-    }
-}
-
 impl From<crate::common::v0::StoreKind> for re_log_types::StoreKind {
     #[inline]
     fn from(value: crate::common::v0::StoreKind) -> Self {
@@ -372,11 +358,9 @@ impl TryFrom<crate::log_msg::v0::FileSource> for re_log_types::FileSource {
 impl From<re_log_types::StoreInfo> for crate::log_msg::v0::StoreInfo {
     #[inline]
     fn from(value: re_log_types::StoreInfo) -> Self {
+        #[expect(deprecated)]
         Self {
-            application_id: Some(value.application_id.into()),
             store_id: Some(value.store_id.into()),
-            is_official_example: value.is_official_example,
-            started: Some(value.started.into()),
             store_source: Some(value.store_source.into()),
             store_version: value
                 .store_version
@@ -392,22 +376,11 @@ impl TryFrom<crate::log_msg::v0::StoreInfo> for re_log_types::StoreInfo {
 
     #[inline]
     fn try_from(value: crate::log_msg::v0::StoreInfo) -> Result<Self, Self::Error> {
-        let application_id: re_log_types::ApplicationId = value
-            .application_id
-            .ok_or(missing_field!(
-                crate::log_msg::v0::StoreInfo,
-                "application_id",
-            ))?
-            .into();
         let store_id: re_log_types::StoreId = value
             .store_id
             .ok_or(missing_field!(crate::log_msg::v0::StoreInfo, "store_id",))?
             .into();
-        let is_official_example = value.is_official_example;
-        let started: re_log_types::Time = value
-            .started
-            .ok_or(missing_field!(crate::log_msg::v0::StoreInfo, "started"))?
-            .into();
+        #[expect(deprecated)]
         let store_source: re_log_types::StoreSource = value
             .store_source
             .ok_or(missing_field!(
@@ -415,16 +388,14 @@ impl TryFrom<crate::log_msg::v0::StoreInfo> for re_log_types::StoreInfo {
                 "store_source",
             ))?
             .try_into()?;
+        #[expect(deprecated)]
         let store_version = value
             .store_version
             .map(|v| re_build_info::CrateVersion::from_bytes(v.crate_version_bits.to_le_bytes()));
 
         Ok(Self {
-            application_id,
             store_id,
             cloned_from: None,
-            is_official_example,
-            started,
             store_source,
             store_version,
         })
