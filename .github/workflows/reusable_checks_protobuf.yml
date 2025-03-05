@@ -1,0 +1,59 @@
+name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-checks_protobuf
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  pb-check:
+    name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.39.0
+
+      - name: Fetch latest main (so we can grab the current schema snapshot)
+        run: time git fetch origin main # yes, we need full --depth for `buf` to work
+
+      # TODO(cmc): I would prefer some kind of continue-on-error behavior here, but every
+      # "native" solution I've tried sucked, and I really don't want to introduce yet another
+      # layer of scripting right now.
+
+      # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
+      # than a pure git solution in the future. For now, convenience wins.
+      #
+      # - name: Schema snapshot out-of-sync
+      #   run: pixi run pb-snapshot-check
+      #   # continue-on-error: true
+
+      - name: Breaking changes
+        run: pixi run pb-breaking
+        # continue-on-error: true
+
+      - name: Lints
+        run: pixi run pb-lint
+        # continue-on-error: true
+
+      - name: Formatting
+        run: pixi run pb-fmt-check
+        # continue-on-error: true
