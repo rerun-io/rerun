@@ -23,8 +23,13 @@ if TYPE_CHECKING:
     from ._send_columns import TimeColumnLike
 
 
-# ---
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
+
+
+@deprecated(
+    """Please migrate to `rr.RecordingStream(…)`.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
+)
 def new_recording(
     application_id: str,
     *,
@@ -103,81 +108,29 @@ def new_recording(
     RecordingStream
         A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
 
-    Examples
-    --------
-    Using a recording stream object directly.
-    ```python
-    from uuid import uuid4
-    stream = rr.new_recording("my_app", recording_id=uuid4())
-    stream.connect_grpc()
-    stream.log("hello", rr.TextLog("Hello world"))
-    ```
-
-    Setting up a new global recording explicitly.
-    ```python
-    from uuid import uuid4
-    rr.new_recording("my_app", make_default=True, recording_id=uuid4())
-    rr.connect_grpc()
-    rr.log("hello", rr.TextLog("Hello world"))
-    ```
-
     """
 
-    application_path = None
-
-    # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
-    # only need to be written once and just work for all languages out of the box… unfortunately
-    # we lose most of the details of the python part of the backtrace once we go over the bridge.
-    #
-    # Still, better than nothing!
-    try:
-        import inspect
-        import pathlib
-
-        # We're trying to grab the filesystem path of the example script that called `init()`.
-        # The tricky part is that we don't know how many layers are between this script and the
-        # original caller, so we have to walk the stack and look for anything that might look like
-        # an official Rerun example.
-
-        MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
-        FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
-
-        stack = inspect.stack()
-        for frame in stack[:MAX_FRAMES]:
-            filename = frame[FRAME_FILENAME_INDEX]
-            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
-            if "rerun/examples" in str(path):
-                application_path = path
-    except Exception:
-        pass
-
-    if recording_id is not None:
-        recording_id = str(recording_id)
-
-    recording = RecordingStream(
-        bindings.new_recording(
-            application_id=application_id,
-            recording_id=recording_id,
-            make_default=make_default,
-            make_thread_default=make_thread_default,
-            application_path=application_path,
-            default_enabled=default_enabled,
-        ),
+    recording_stream = RecordingStream(
+        application_id,
+        recording_id=recording_id,
+        make_default=make_default,
+        make_thread_default=make_thread_default,
+        default_enabled=default_enabled,
     )
 
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn(recording=recording)  # NOLINT
+        _spawn(recording=recording_stream)  # NOLINT
 
-    return recording
+    return recording_stream
 
 
 active_recording_stream: contextvars.ContextVar[RecordingStream] = contextvars.ContextVar("active_recording_stream")
 """
 A context variable that tracks the currently active recording stream.
 
-Used to managed and detect interactions between generators and RecordingStream context-manager objects.
+Used to manage and detect interactions between generators and RecordingStream context-manager objects.
 """
 
 
@@ -293,7 +246,7 @@ class RecordingStream:
     A RecordingStream is used to send data to Rerun.
 
     You can instantiate a RecordingStream by calling either [`rerun.init`][] (to create a global
-    recording) or [`rerun.new_recording`][] (for more advanced use cases).
+    recording) or [`rerun.RecordingStream`][] (for more advanced use cases).
 
     Multithreading
     --------------
@@ -356,8 +309,131 @@ class RecordingStream:
 
     """
 
-    def __init__(self, inner: bindings.PyRecordingStream) -> None:
-        self.inner = inner
+    def __init__(
+        self,
+        application_id: str,
+        *,
+        recording_id: str | uuid.UUID | None = None,
+        make_default: bool = False,
+        make_thread_default: bool = False,
+        default_enabled: bool = True,
+    ) -> None:
+        """
+        Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
+
+        If you only need a single global recording, [`rerun.init`][] might be simpler.
+
+        Note that new recording streams always begin connected to a buffered sink.
+        To send the data to a viewer or file you will likely want to call [`rerun.connect_grpc`][] or [`rerun.save`][]
+        explicitly.
+
+        !!! Warning
+            If you don't specify a `recording_id`, it will default to a random value that is generated once
+            at the start of the process.
+            That value will be kept around for the whole lifetime of the process, and even inherited by all
+            its subprocesses, if any.
+
+            This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
+            that the following code will _not_ create two distinct recordings:
+            ```
+            rr.init("my_app")
+            rr.init("my_app")
+            ```
+
+            To create distinct recordings from the same process, specify distinct recording IDs:
+            ```
+            from uuid import uuid4
+            rec = rr.RecordingStream(application_id="test", recording_id=uuid4())
+            rec = rr.RecordingStream(application_id="test", recording_id=uuid4())
+            ```
+
+        Parameters
+        ----------
+        application_id : str
+            Your Rerun recordings will be categorized by this application id, so
+            try to pick a unique one for each application that uses the Rerun SDK.
+
+            For example, if you have one application doing object detection
+            and another doing camera calibration, you could have
+            `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+        recording_id : Optional[str]
+            Set the recording ID that this process is logging to, as a UUIDv4.
+
+            The default recording_id is based on `multiprocessing.current_process().authkey`
+            which means that all processes spawned with `multiprocessing`
+            will have the same default recording_id.
+
+            If you are not using `multiprocessing` and still want several different Python
+            processes to log to the same Rerun instance (and be part of the same recording),
+            you will need to manually assign them all the same recording_id.
+            Any random UUIDv4 will work, or copy the recording id for the parent process.
+        make_default : bool
+            If true (_not_ the default), the newly initialized recording will replace the current
+            active one (if any) in the global scope.
+        make_thread_default : bool
+            If true (_not_ the default), the newly initialized recording will replace the current
+            active one (if any) in the thread-local scope.
+        default_enabled : bool
+            Should Rerun logging be on by default?
+            Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+
+        Returns
+        -------
+        RecordingStream
+            A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
+
+        Examples
+        --------
+        Using a recording stream object directly.
+        ```python
+        from uuid import uuid4
+        stream = rr.RecordingStream("my_app", recording_id=uuid4())
+        stream.connect_grpc()
+        stream.log("hello", rr.TextLog("Hello world"))
+        ```
+
+        """
+
+        application_path = None
+
+        # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
+        # only need to be written once and just work for all languages out of the box… unfortunately
+        # we lose most of the details of the python part of the backtrace once we go over the bridge.
+        #
+        # Still, better than nothing!
+        try:
+            import inspect
+            import pathlib
+
+            # We're trying to grab the filesystem path of the example script that called `init()`.
+            # The tricky part is that we don't know how many layers are between this script and the
+            # original caller, so we have to walk the stack and look for anything that might look like
+            # an official Rerun example.
+
+            MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
+            FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
+
+            stack = inspect.stack()
+            for frame in stack[:MAX_FRAMES]:
+                filename = frame[FRAME_FILENAME_INDEX]
+                path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
+                if "rerun/examples" in str(path):
+                    application_path = path
+        except Exception:
+            pass
+
+        if recording_id is not None:
+            recording_id = str(recording_id)
+
+        self.inner = bindings.new_recording(
+            application_id=application_id,
+            recording_id=recording_id,
+            make_default=make_default,
+            make_thread_default=make_thread_default,
+            application_path=application_path,
+            default_enabled=default_enabled,
+        )
+
         self._prev: RecordingStream | None = None
         self.context_token: contextvars.Token[RecordingStream] | None = None
 
@@ -1290,7 +1366,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                 # The basic idea is to only ever hold the context object open while
                 # the generator is actively running, but to release it prior to yielding.
                 gen = func(*args, **kwargs)
-                stream = new_recording(application_id, recording_id=uuid.uuid4())
+                stream = RecordingStream(application_id, recording_id=uuid.uuid4())
                 try:
                     with stream:
                         value = next(gen)  # Start the generator inside the context
@@ -1308,7 +1384,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
-                with new_recording(application_id, recording_id=uuid.uuid4()):
+                with RecordingStream(application_id, recording_id=uuid.uuid4()):
                     gen = func(*args, **kwargs)
                     return gen
 
@@ -1338,7 +1414,7 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
     ```python
     @rr.recording_stream.recording_stream_generator_ctx
     def my_generator(name: str) -> Iterator[None]:
-        with rr.new_recording(name):
+        with rr.RecordingStream(name):
             rr.save(f"{name}.rrd")
             for i in range(10):
                 rr.log("stream", rr.TextLog(f"{name} {i}"))

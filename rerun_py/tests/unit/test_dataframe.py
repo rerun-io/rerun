@@ -16,7 +16,7 @@ def test_load_recording() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rrd = tmpdir + "/tmp.rrd"
 
-        with rr.new_recording("rerun_example_test_recording") as rec:
+        with rr.RecordingStream("rerun_example_test_recording") as rec:
             rec.save(rrd)
             rec.set_index("my_index", sequence=1)
             rec.log("log", rr.TextLog("Hello"))
@@ -49,7 +49,7 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.new_recording(APP_ID, recording_id=RECORDING_ID) as rec:
+            with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
                 rec.save(rrd)
                 rec.set_index("my_index", sequence=1)
                 rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
@@ -388,7 +388,7 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.new_recording("rerun_example_test_recording") as rec:
+            with rr.RecordingStream("rerun_example_test_recording") as rec:
                 rec.save(rrd)
                 rr.dataframe.send_dataframe(df, rec=rec)
 
