@@ -1,0 +1,26 @@
+# Config for <https://buf.build>.
+#
+# This is intentionally put at the root of the repository rather than specifically in the proto folder because:
+# A) It makes working with all the `buf` tooling much nicer for users of the codebase.
+# B) We don't know how the way we store our proto files will evolve.
+# This is worth a bit of root pollution.
+#
+# For details on buf.yaml configuration, visit <https://buf.build/docs/configuration/v2/buf-yaml>.
+version: v2
+lint:
+  use:
+    - STANDARD
+  except:
+    # This is a source-code level issue, and a language-specific one at that.
+    # See <https://buf.build/docs/lint/rules/?h=#enum_value_prefix>.
+    - ENUM_VALUE_PREFIX
+  enum_zero_value_suffix: UNSPECIFIED # see <https://buf.build/docs/lint/rules/?h=enum_zero_value#enum_zero_value_suffix>
+breaking:
+  use:
+    - WIRE_JSON # We don't care about source-code breaks, we have a compiler for that.
+    - FILE_NO_DELETE # Otherwise removing entire files won't trigger anything, which is very misleading.
+  # All our packages are considered unstable right now since everything's tagged vNalphaM
+  # See <https://buf.build/docs/configuration/v1/buf-yaml/?h=ignore_unstable_packages#ignore_unstable_packages>.
+  ignore_unstable_packages: false
+modules:
+  - path: redap_protos/proto
