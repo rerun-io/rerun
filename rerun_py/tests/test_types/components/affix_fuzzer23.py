@@ -21,7 +21,6 @@ class AffixFuzzer23(datatypes.MultiEnum, ComponentMixin):
     # You can define your own __init__ function as a member of AffixFuzzer23Ext in affix_fuzzer23_ext.py
 
     # Note: there are no fields here because AffixFuzzer23 delegates to datatypes.MultiEnum
-    pass
 
 
 class AffixFuzzer23Batch(datatypes.MultiEnumBatch, ComponentBatchMixin):

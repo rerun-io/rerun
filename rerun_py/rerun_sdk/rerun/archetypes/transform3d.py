@@ -106,7 +106,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
     # Movement via transforms.
-    for i in range(0, 6 * 120):
+    for i in range(6 * 120):
         time = i / 120.0
         rr.set_index("sim_time", timedelta=time)
         r_moon = time * 5.0

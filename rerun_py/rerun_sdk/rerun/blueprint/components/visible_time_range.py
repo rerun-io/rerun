@@ -26,7 +26,6 @@ class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
     # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
 
     # Note: there are no fields here because VisibleTimeRange delegates to datatypes.VisibleTimeRange
-    pass
 
 
 class VisibleTimeRangeBatch(datatypes.VisibleTimeRangeBatch, ComponentBatchMixin):

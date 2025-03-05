@@ -21,7 +21,7 @@ def log_readme() -> None:
 
 
 def log_many_entities() -> None:
-    for i in range(0, 1000):
+    for i in range(1000):
         rr.log(f"points/{i}", rr.Points2D([(i, i)]))
 
 

@@ -26,7 +26,6 @@ class SeriesVisible(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of SeriesVisibleExt in series_visible_ext.py
 
     # Note: there are no fields here because SeriesVisible delegates to datatypes.Bool
-    pass
 
 
 class SeriesVisibleBatch(datatypes.BoolBatch, ComponentBatchMixin):

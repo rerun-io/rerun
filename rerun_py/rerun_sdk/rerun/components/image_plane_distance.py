@@ -26,7 +26,6 @@ class ImagePlaneDistance(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of ImagePlaneDistanceExt in image_plane_distance_ext.py
 
     # Note: there are no fields here because ImagePlaneDistance delegates to datatypes.Float32
-    pass
 
 
 class ImagePlaneDistanceBatch(datatypes.Float32Batch, ComponentBatchMixin):

@@ -71,8 +71,6 @@ def set_strict_mode(mode: bool) -> None:
 class RerunWarning(Warning):
     """A custom warning class that we use to identify warnings that are emitted by the Rerun SDK itself."""
 
-    pass
-
 
 def _build_warning_context_string(skip_first: int) -> str:
     """Builds a string describing the user context of a warning."""

@@ -111,7 +111,7 @@ class DAG(Generic[_T]):
                         raise
 
             # start all workers
-            futures = [p.submit(worker, n) for n in range(0, num_workers)]
+            futures = [p.submit(worker, n) for n in range(num_workers)]
 
             while not shutdown.is_set():
                 if state._is_done():

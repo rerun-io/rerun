@@ -440,17 +440,7 @@ re_docstring = re.compile(r"^\s*///")
 
 def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
     def is_empty(line: str) -> bool:
-        return (
-            line == ""
-            or line.startswith("#")
-            or line.startswith("//")
-            or line.endswith("{")
-            or line.endswith("(")
-            or line.endswith("\\")
-            or line.endswith('r"')
-            or line.endswith('r#"')
-            or line.endswith("]")
-        )
+        return line == "" or line.startswith(("#", "//")) or line.endswith(("{", "(", "\\", 'r"', 'r#"', "]"))
 
     """Only for Rust files."""
     if re_declaration.match(line) or re_attribute.match(line) or re_docstring.match(line):
@@ -578,8 +568,6 @@ def test_lint_vertical_spacing() -> None:
         errors, _ = lint_vertical_spacing(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
 
-    pass
-
 
 # -----------------------------------------------------------------------------
 
@@ -661,8 +649,6 @@ def test_lint_workspace_deps() -> None:
     for code in should_fail:
         errors, _ = lint_workspace_deps(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
-
-    pass
 
 
 # -----------------------------------------------------------------------------
@@ -830,7 +816,7 @@ def fix_header_casing(s: str) -> str:
             except ValueError:
                 idx = None
 
-            if word.endswith("?") or word.endswith("!") or word.endswith("."):
+            if word.endswith(("?", "!", ".")):
                 last_punctuation = word[-1]
                 word = word[:-1]
             elif idx is not None:
@@ -1080,7 +1066,7 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Missing `#pragma once` in C++ header file"))
             num_errors += 1
 
-    if filepath.endswith(".rs") or filepath.endswith(".fbs"):
+    if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))

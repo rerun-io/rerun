@@ -26,7 +26,6 @@ class Interactive(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of InteractiveExt in interactive_ext.py
 
     # Note: there are no fields here because Interactive delegates to datatypes.Bool
-    pass
 
 
 class InteractiveBatch(datatypes.BoolBatch, ComponentBatchMixin):

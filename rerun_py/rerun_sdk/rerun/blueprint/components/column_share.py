@@ -22,7 +22,6 @@ class ColumnShare(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of ColumnShareExt in column_share_ext.py
 
     # Note: there are no fields here because ColumnShare delegates to datatypes.Float32
-    pass
 
 
 class ColumnShareBatch(datatypes.Float32Batch, ComponentBatchMixin):

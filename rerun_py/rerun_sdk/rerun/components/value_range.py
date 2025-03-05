@@ -22,7 +22,6 @@ class ValueRange(datatypes.Range1D, ComponentMixin):
     # You can define your own __init__ function as a member of ValueRangeExt in value_range_ext.py
 
     # Note: there are no fields here because ValueRange delegates to datatypes.Range1D
-    pass
 
 
 class ValueRangeBatch(datatypes.Range1DBatch, ComponentBatchMixin):

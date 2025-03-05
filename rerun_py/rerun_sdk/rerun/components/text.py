@@ -22,7 +22,6 @@ class Text(datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of TextExt in text_ext.py
 
     # Note: there are no fields here because Text delegates to datatypes.Utf8
-    pass
 
 
 class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
