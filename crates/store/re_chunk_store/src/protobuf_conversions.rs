@@ -2,7 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use re_protos::{missing_field, TypeConversionError};
 
-impl TryFrom<re_protos::common::v1alpha1::ComponentColumnSelector> for crate::ComponentColumnSelector {
+impl TryFrom<re_protos::common::v1alpha1::ComponentColumnSelector>
+    for crate::ComponentColumnSelector
+{
     type Error = TypeConversionError;
 
     fn try_from(
@@ -34,7 +36,9 @@ impl TryFrom<re_protos::common::v1alpha1::ComponentColumnSelector> for crate::Co
 impl TryFrom<re_protos::common::v1alpha1::TimeColumnSelector> for crate::TimeColumnSelector {
     type Error = TypeConversionError;
 
-    fn try_from(value: re_protos::common::v1alpha1::TimeColumnSelector) -> Result<Self, Self::Error> {
+    fn try_from(
+        value: re_protos::common::v1alpha1::TimeColumnSelector,
+    ) -> Result<Self, Self::Error> {
         let timeline = value.timeline.ok_or(missing_field!(
             re_protos::common::v1alpha1::TimeColumnSelector,
             "timeline",
@@ -246,11 +250,11 @@ impl From<crate::QueryExpression> for re_protos::common::v1alpha1::Query {
                     }),
                 }
             }),
-            column_selection: value
-                .selection
-                .map(|cs| re_protos::common::v1alpha1::ColumnSelection {
+            column_selection: value.selection.map(|cs| {
+                re_protos::common::v1alpha1::ColumnSelection {
                     columns: cs.into_iter().map(|c| c.into()).collect(),
-                }),
+                }
+            }),
             sparse_fill_strategy: re_protos::common::v1alpha1::SparseFillStrategy::None.into(), // TODO(zehiko) implement
         }
     }

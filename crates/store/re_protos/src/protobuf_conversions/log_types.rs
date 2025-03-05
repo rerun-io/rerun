@@ -79,7 +79,10 @@ impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::ResolvedTime
     fn try_from(value: crate::common::v1alpha1::IndexRange) -> Result<Self, Self::Error> {
         value
             .time_range
-            .ok_or(missing_field!(crate::common::v1alpha1::IndexRange, "time_range"))
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::IndexRange,
+                "time_range"
+            ))
             .map(|time_range| Self::new(time_range.start, time_range.end))
     }
 }
@@ -202,9 +205,10 @@ impl From<re_log_types::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
                 crate::log_msg::v1alpha1::StoreSourceKind::UnknownKind as i32,
                 Vec::new(),
             ),
-            re_log_types::StoreSource::CSdk => {
-                (crate::log_msg::v1alpha1::StoreSourceKind::CSdk as i32, Vec::new())
-            }
+            re_log_types::StoreSource::CSdk => (
+                crate::log_msg::v1alpha1::StoreSourceKind::CSdk as i32,
+                Vec::new(),
+            ),
             re_log_types::StoreSource::PythonSdk(python_version) => (
                 crate::log_msg::v1alpha1::StoreSourceKind::PythonSdk as i32,
                 crate::log_msg::v1alpha1::PythonVersion::from(python_version).encode_to_vec(),
@@ -253,9 +257,10 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_types::StoreSourc
             StoreSourceKind::UnknownKind => Ok(Self::Unknown),
             StoreSourceKind::CSdk => Ok(Self::CSdk),
             StoreSourceKind::PythonSdk => {
-                let extra = value
-                    .extra
-                    .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreSource, "extra"))?;
+                let extra = value.extra.ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::StoreSource,
+                    "extra"
+                ))?;
                 let python_version =
                     crate::log_msg::v1alpha1::PythonVersion::decode(&mut &extra.payload[..])?;
                 Ok(Self::PythonSdk(re_log_types::PythonVersion::try_from(
@@ -263,31 +268,37 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_types::StoreSourc
                 )?))
             }
             StoreSourceKind::RustSdk => {
-                let extra = value
-                    .extra
-                    .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreSource, "extra"))?;
-                let crate_info = crate::log_msg::v1alpha1::CrateInfo::decode(&mut &extra.payload[..])?;
+                let extra = value.extra.ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::StoreSource,
+                    "extra"
+                ))?;
+                let crate_info =
+                    crate::log_msg::v1alpha1::CrateInfo::decode(&mut &extra.payload[..])?;
                 Ok(Self::RustSdk {
                     rustc_version: crate_info.rustc_version,
                     llvm_version: crate_info.llvm_version,
                 })
             }
             StoreSourceKind::File => {
-                let extra = value
-                    .extra
-                    .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreSource, "extra"))?;
-                let file_source = crate::log_msg::v1alpha1::FileSource::decode(&mut &extra.payload[..])?;
+                let extra = value.extra.ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::StoreSource,
+                    "extra"
+                ))?;
+                let file_source =
+                    crate::log_msg::v1alpha1::FileSource::decode(&mut &extra.payload[..])?;
                 Ok(Self::File {
                     file_source: re_log_types::FileSource::try_from(file_source)?,
                 })
             }
             StoreSourceKind::Viewer => Ok(Self::Viewer),
             StoreSourceKind::Other => {
-                let description = value
-                    .extra
-                    .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreSource, "extra"))?;
-                let description = String::from_utf8(description.payload)
-                    .map_err(|err| invalid_field!(crate::log_msg::v1alpha1::StoreSource, "extra", err))?;
+                let description = value.extra.ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::StoreSource,
+                    "extra"
+                ))?;
+                let description = String::from_utf8(description.payload).map_err(|err| {
+                    invalid_field!(crate::log_msg::v1alpha1::StoreSource, "extra", err)
+                })?;
                 Ok(Self::Other(description))
             }
         }
@@ -401,12 +412,18 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             .into();
         let store_id: re_log_types::StoreId = value
             .store_id
-            .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreInfo, "store_id",))?
+            .ok_or(missing_field!(
+                crate::log_msg::v1alpha1::StoreInfo,
+                "store_id",
+            ))?
             .into();
         let is_official_example = value.is_official_example;
         let started: re_log_types::Time = value
             .started
-            .ok_or(missing_field!(crate::log_msg::v1alpha1::StoreInfo, "started"))?
+            .ok_or(missing_field!(
+                crate::log_msg::v1alpha1::StoreInfo,
+                "started"
+            ))?
             .into();
         let store_source: re_log_types::StoreSource = value
             .store_source
@@ -449,11 +466,17 @@ impl TryFrom<crate::log_msg::v1alpha1::SetStoreInfo> for re_log_types::SetStoreI
         Ok(Self {
             row_id: value
                 .row_id
-                .ok_or(missing_field!(crate::log_msg::v1alpha1::SetStoreInfo, "row_id",))?
+                .ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::SetStoreInfo,
+                    "row_id",
+                ))?
                 .into(),
             info: value
                 .info
-                .ok_or(missing_field!(crate::log_msg::v1alpha1::SetStoreInfo, "info"))?
+                .ok_or(missing_field!(
+                    crate::log_msg::v1alpha1::SetStoreInfo,
+                    "info"
+                ))?
                 .try_into()?,
         })
     }
@@ -558,7 +581,8 @@ mod tests {
     #[test]
     fn application_id_conversion() {
         let application_id = re_log_types::ApplicationId("test".to_owned());
-        let proto_application_id: crate::common::v1alpha1::ApplicationId = application_id.clone().into();
+        let proto_application_id: crate::common::v1alpha1::ApplicationId =
+            application_id.clone().into();
         let application_id2: re_log_types::ApplicationId = proto_application_id.into();
         assert_eq!(application_id, application_id2);
     }
@@ -660,7 +684,8 @@ mod tests {
                 store_version: None,
             },
         };
-        let proto_set_store_info: crate::log_msg::v1alpha1::SetStoreInfo = set_store_info.clone().into();
+        let proto_set_store_info: crate::log_msg::v1alpha1::SetStoreInfo =
+            set_store_info.clone().into();
         let set_store_info2: re_log_types::SetStoreInfo = proto_set_store_info.try_into().unwrap();
         assert_eq!(set_store_info, set_store_info2);
     }

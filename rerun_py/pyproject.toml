@@ -63,6 +63,8 @@ extend-exclude = [
   "venv/",
   "target/",
 
+  "scripts/ci/compare_path_digest.py",
+
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
   "docs/snippets/all/archetypes/text_document.py",
   "docs/snippets/all/views/text_document.py",

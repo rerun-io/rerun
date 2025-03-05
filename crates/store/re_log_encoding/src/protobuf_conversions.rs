@@ -87,15 +87,21 @@ pub fn log_msg_to_proto(
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.into()),
                 compression: match compression {
-                    crate::Compression::Off => re_protos::log_msg::v1alpha1::Compression::None as i32,
-                    crate::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
+                    crate::Compression::Off => {
+                        re_protos::log_msg::v1alpha1::Compression::None as i32
+                    }
+                    crate::Compression::LZ4 => {
+                        re_protos::log_msg::v1alpha1::Compression::Lz4 as i32
+                    }
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
                 payload: payload.data,
             };
             ProtoLogMsg {
-                msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg)),
+                msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
+                    arrow_msg,
+                )),
             }
         }
         re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
