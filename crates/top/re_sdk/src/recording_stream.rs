@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    TimeType, Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -1458,7 +1458,7 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
+                now.insert_cell(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, time) in now {

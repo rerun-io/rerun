@@ -1,6 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
-use super::{TimeInt, Timeline, TimelineName};
+use super::{IndexCell, TimeInt, Timeline, TimelineName};
 
 /// A point in time on any number of [`Timeline`]s.
 ///
@@ -31,6 +31,19 @@ impl TimePoint {
         })
     }
 
+    #[inline]
+    pub fn insert_cell(
+        &mut self,
+        timeline_name: impl Into<TimelineName>,
+        cell: impl Into<IndexCell>,
+    ) {
+        let cell = cell.into();
+        let timeline = Timeline::new(timeline_name, cell.typ);
+        let time_int = TimeInt::from(cell.value);
+        self.insert(timeline, time_int);
+    }
+
+    #[deprecated]
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Option<TimeInt> {
         self.0.retain(|existing_timeline, _| {
