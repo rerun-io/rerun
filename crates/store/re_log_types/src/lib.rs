@@ -20,16 +20,13 @@
 pub mod arrow_msg;
 pub mod example_components;
 pub mod hash;
+mod index;
 pub mod path;
-pub mod time_point;
 
 // mod data_cell;
 // mod data_row;
 // mod data_table;
 mod instance;
-mod resolved_time_range;
-mod time;
-mod time_real;
 mod vec_deque_ext;
 
 use std::sync::Arc;
@@ -37,16 +34,16 @@ use std::sync::Arc;
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
-pub use self::instance::Instance;
-pub use self::path::*;
-pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
-pub use self::time::{Duration, Time, TimeZone};
-pub use self::time_point::{
-    NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,
+pub use self::{
+    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
+    index::{
+        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt, TimePoint,
+        TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
+    },
+    instance::Instance,
+    path::*,
+    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
 };
-pub use self::time_real::TimeReal;
-pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
     pub use arrow;

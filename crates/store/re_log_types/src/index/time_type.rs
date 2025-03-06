@@ -1,0 +1,156 @@
+use std::sync::Arc;
+
+use arrow::datatypes::DataType as ArrowDataType;
+
+use crate::{ResolvedTimeRange, Time, TimeZone};
+
+use super::TimeInt;
+
+/// The type of a [`TimeInt`] or [`crate::Timeline`].
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TimeType {
+    /// Normal wall time, encoded as nanoseconds.
+    Time,
+
+    /// Used e.g. for frames in a film.
+    Sequence,
+}
+
+impl std::fmt::Display for TimeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Time => f.write_str("time"),
+            Self::Sequence => f.write_str("sequence"),
+        }
+    }
+}
+
+impl TimeType {
+    #[inline]
+    pub(crate) fn hash(&self) -> u64 {
+        match self {
+            Self::Time => 0,
+            Self::Sequence => 1,
+        }
+    }
+
+    pub fn format_sequence(time_int: TimeInt) -> String {
+        Self::Sequence.format(time_int, TimeZone::Utc)
+    }
+
+    pub fn parse_sequence(s: &str) -> Option<TimeInt> {
+        match s {
+            "<static>" => Some(TimeInt::STATIC),
+            "−∞" => Some(TimeInt::MIN),
+            "+∞" => Some(TimeInt::MAX),
+            _ => {
+                let s = s.strip_prefix('#').unwrap_or(s);
+                re_format::parse_i64(s).map(TimeInt::new_temporal)
+            }
+        }
+    }
+
+    pub fn format(
+        &self,
+        time_int: impl Into<TimeInt>,
+        time_zone_for_timestamps: TimeZone,
+    ) -> String {
+        let time_int = time_int.into();
+        match time_int {
+            TimeInt::STATIC => "<static>".into(),
+            TimeInt::MIN => "−∞".into(),
+            TimeInt::MAX => "+∞".into(),
+            _ => match self {
+                Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
+                Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
+            },
+        }
+    }
+
+    #[inline]
+    pub fn format_utc(&self, time_int: TimeInt) -> String {
+        self.format(time_int, TimeZone::Utc)
+    }
+
+    #[inline]
+    pub fn format_range(
+        &self,
+        time_range: ResolvedTimeRange,
+        time_zone_for_timestamps: TimeZone,
+    ) -> String {
+        format!(
+            "{}..={}",
+            self.format(time_range.min(), time_zone_for_timestamps),
+            self.format(time_range.max(), time_zone_for_timestamps)
+        )
+    }
+
+    #[inline]
+    pub fn format_range_utc(&self, time_range: ResolvedTimeRange) -> String {
+        self.format_range(time_range, TimeZone::Utc)
+    }
+
+    /// Returns the appropriate arrow datatype to represent this timeline.
+    #[inline]
+    pub fn datatype(self) -> ArrowDataType {
+        match self {
+            Self::Time => ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None),
+            Self::Sequence => ArrowDataType::Int64,
+        }
+    }
+
+    pub fn from_arrow_datatype(datatype: &ArrowDataType) -> Option<Self> {
+        match datatype {
+            // TODO(#8635): differentiate between absolute and relative time
+            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, _)
+            | ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond) => Some(Self::Time),
+            ArrowDataType::Int64 => Some(Self::Sequence),
+            _ => None,
+        }
+    }
+
+    /// Returns an array with the appropriate datatype.
+    pub fn make_arrow_array(
+        self,
+        times: impl Into<arrow::buffer::ScalarBuffer<i64>>,
+    ) -> arrow::array::ArrayRef {
+        let times = times.into();
+        match self {
+            Self::Time => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
+            Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
+        }
+    }
+
+    /// Returns an array with the appropriate datatype, using `None` for [`TimeInt::STATIC`].
+    pub fn make_arrow_array_from_time_ints(
+        self,
+        times: impl Iterator<Item = TimeInt>,
+    ) -> arrow::array::ArrayRef {
+        match self {
+            Self::Time => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::TimestampNanosecondArray>(),
+            ),
+
+            Self::Sequence => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::Int64Array>(),
+            ),
+        }
+    }
+}

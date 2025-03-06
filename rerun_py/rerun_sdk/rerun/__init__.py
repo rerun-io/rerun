@@ -174,7 +174,6 @@ from .sinks import (
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
-    serve as serve,
     serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
