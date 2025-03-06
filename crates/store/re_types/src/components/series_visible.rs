@@ -18,9 +18,9 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Like `Visible`, but for time series.
+/// **Component**: Like [`components::Visible`][crate::components::Visible], but for time series.
 ///
-/// TODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.
+/// TODO(#6889): This is a temporary workaround. Right now we can't use [`components::Visible`][crate::components::Visible] since it would conflict with the entity-wide visibility state.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct SeriesVisible(pub crate::datatypes::Bool);
