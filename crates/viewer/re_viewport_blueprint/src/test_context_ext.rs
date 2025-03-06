@@ -1,7 +1,7 @@
 use ahash::HashMap;
 
 use re_viewer_context::{
-    test_context::TestContext, Contents, ViewClassExt, ViewerContext, VisitorControlFlow,
+    test_context::TestContext, Contents, ViewClassExt as _, ViewerContext, VisitorControlFlow,
 };
 
 use crate::ViewportBlueprint;

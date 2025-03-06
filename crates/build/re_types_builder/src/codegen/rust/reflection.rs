@@ -38,6 +38,8 @@ pub fn generate_reflection(
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::wildcard_imports)]\n\n");
     code.push_str("#![allow(unused_imports)]\n");
+    code.push_str("#![expect(clippy::empty_line_after_doc_comments)]\n");
+    code.push('\n');
     for namespace in imports {
         code.push_str(&format!("use {namespace};\n"));
     }

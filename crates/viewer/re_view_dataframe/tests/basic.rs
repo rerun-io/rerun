@@ -3,11 +3,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{Timeline, TimelineName};
 use re_types::archetypes::Scalar;
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt;
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

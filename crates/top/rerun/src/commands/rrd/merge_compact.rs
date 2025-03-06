@@ -1,4 +1,4 @@
-use std::io::{IsTerminal, Write};
+use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;

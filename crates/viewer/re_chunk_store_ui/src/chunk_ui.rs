@@ -3,13 +3,13 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, RecordBatch as ArrowRecordBatch};
 use egui_extras::{Column, TableRow};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 
 use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 

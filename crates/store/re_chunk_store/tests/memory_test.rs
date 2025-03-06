@@ -73,7 +73,7 @@ use re_chunk::{
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, TimeType, Timeline};
-use re_types::{components::Scalar, Component as _, Loggable};
+use re_types::{components::Scalar, Component as _, Loggable as _};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]

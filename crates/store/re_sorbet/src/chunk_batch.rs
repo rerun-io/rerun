@@ -1,6 +1,7 @@
 use arrow::{
     array::{
-        ArrayRef as ArrowArrayRef, AsArray, FixedSizeBinaryArray, RecordBatch as ArrowRecordBatch,
+        ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray,
+        RecordBatch as ArrowRecordBatch,
     },
     datatypes::Fields as ArrowFields,
 };

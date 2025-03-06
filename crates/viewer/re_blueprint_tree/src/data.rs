@@ -10,7 +10,7 @@
 
 use std::ops::{ControlFlow, Range};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;

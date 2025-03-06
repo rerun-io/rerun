@@ -224,7 +224,7 @@ struct RetryableFileReader {
 impl RetryableFileReader {
     fn new(filepath: &std::path::Path) -> Result<Self, crate::DataLoaderError> {
         use anyhow::Context as _;
-        use notify::{RecursiveMode, Watcher};
+        use notify::{RecursiveMode, Watcher as _};
 
         let file = std::fs::File::open(filepath)
             .with_context(|| format!("Failed to open file {filepath:?}"))?;

@@ -326,10 +326,7 @@ pub fn collect_snippets_for_api_docs<'a>(
             .collect_vec();
 
         // Remove multi-line Python docstrings, otherwise we can't embed this.
-        if content
-            .first()
-            .map_or(false, |line| line.trim() == "\"\"\"")
-        {
+        if content.first().is_some_and(|line| line.trim() == "\"\"\"") {
             if let Some((i, _)) = content
                 .iter()
                 .skip(1)

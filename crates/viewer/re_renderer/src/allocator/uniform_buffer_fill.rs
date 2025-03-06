@@ -1,4 +1,4 @@
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 
 use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 

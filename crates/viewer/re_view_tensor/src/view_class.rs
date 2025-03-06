@@ -10,7 +10,7 @@ use re_types::{
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorData,
-    View, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
 use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};

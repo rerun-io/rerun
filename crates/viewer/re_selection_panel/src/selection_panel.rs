@@ -12,7 +12,7 @@ use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, UiExt,
+    ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,

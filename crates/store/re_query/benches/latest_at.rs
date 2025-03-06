@@ -4,10 +4,10 @@
 use std::sync::Arc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::{Chunk, RowId, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
 use re_query::clamped_zip_1x1;
 use re_query::{LatestAtResults, QueryCache};

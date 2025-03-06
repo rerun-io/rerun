@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_data_ui::item_ui;

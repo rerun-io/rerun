@@ -1,5 +1,5 @@
 use egui::{color_picker, Vec2};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{

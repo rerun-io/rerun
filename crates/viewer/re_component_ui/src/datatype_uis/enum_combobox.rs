@@ -1,4 +1,4 @@
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::response_utils::response_with_changes_of_inner;

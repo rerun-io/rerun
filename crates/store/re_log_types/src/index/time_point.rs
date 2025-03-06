@@ -169,26 +169,3 @@ impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint
         )
     }
 }
-
-// ----------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use crate::{TimeInt, TimeType};
-
-    #[test]
-    fn test_format_parse() {
-        let cases = [
-            (TimeInt::STATIC, "<static>"),
-            (TimeInt::MIN, "−∞"),
-            (TimeInt::MAX, "+∞"),
-            (TimeInt::new_temporal(-42), "#−42"),
-            (TimeInt::new_temporal(12345), "#12 345"),
-        ];
-
-        for (int, s) in cases {
-            assert_eq!(TimeType::format_sequence(int), s);
-            assert_eq!(TimeType::parse_sequence(s), Some(int));
-        }
-    }
-}

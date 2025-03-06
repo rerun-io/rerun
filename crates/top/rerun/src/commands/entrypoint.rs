@@ -1,12 +1,12 @@
 use std::net::IpAddr;
 
-use clap::{CommandFactory, Subcommand};
-use itertools::Itertools;
+use clap::{CommandFactory as _, Subcommand};
+use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
-use re_sdk::sink::LogSink;
+use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{commands::RrdCommands, CallSource};

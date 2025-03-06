@@ -13,9 +13,9 @@ use re_types::{
 };
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
-    QueryContext, TypedComponentFallbackProvider, ViewClass, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    QueryContext, TypedComponentFallbackProvider, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{

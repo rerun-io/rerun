@@ -5,8 +5,8 @@ use egui::Vec2;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
-    build_frame_nr, example_components::MyPoint, external::re_types_core::Component, EntityPath,
-    TimeInt, TimePoint, TimeType, Timeline,
+    build_frame_nr, example_components::MyPoint, external::re_types_core::Component as _,
+    EntityPath, TimeInt, TimePoint, TimeType, Timeline,
 };
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;

@@ -8,7 +8,7 @@ use crate::design_tokens;
 use crate::icons;
 use crate::ColorToken;
 use crate::Scale;
-use crate::UiExt;
+use crate::UiExt as _;
 
 fn now() -> OffsetDateTime {
     OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())

@@ -1,9 +1,9 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
-use std::{collections::BTreeMap, fmt::Write};
+use std::{collections::BTreeMap, fmt::Write as _};
 
 use camino::Utf8PathBuf;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo, Target},

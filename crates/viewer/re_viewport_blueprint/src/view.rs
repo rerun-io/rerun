@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use itertools::{FoldWhile, Itertools};
+use itertools::{FoldWhile, Itertools as _};
 use parking_lot::Mutex;
 use re_types::{ComponentDescriptor, ViewClassIdentifier};
 

@@ -104,7 +104,7 @@ pub fn color_spiral(
 /// Returns sRGB polynomial approximation from Turbo color map, assuming `t` is normalized.
 fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
     #![allow(clippy::excessive_precision)]
-    use glam::{Vec2, Vec4, Vec4Swizzles};
+    use glam::{Vec2, Vec4, Vec4Swizzles as _};
 
     const R4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);
     const G4: Vec4 = Vec4::new(0.09140261, 2.19418839, 4.84296658, -14.18503333);
