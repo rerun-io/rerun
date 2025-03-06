@@ -309,45 +309,6 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// See also [`Self::connect_tcp_opts`] if you wish to configure the TCP connection.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_tcp()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.23.0", note = "use connect_grpc() instead")]
-    pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc()
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_tcp_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.23.0", note = "use connect_grpc() instead")]
-    pub fn connect_tcp_opts(
-        self,
-        addr: std::net::SocketAddr,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"), flush_timeout)
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
     /// See also [`Self::connect_grpc_opts`] if you wish to configure the connection.
     ///
     /// ## Example

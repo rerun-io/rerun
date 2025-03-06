@@ -22161,11 +22161,11 @@ packages:
   - isort ; extra == 'dev'
   - autoflake ; extra == 'dev'
   - twine>=1.13.0 ; extra == 'dev'
-  - twine>=1.13.0 ; extra == 'release'
   - pytest ; extra == 'test'
   - black ; extra == 'test'
   - isort ; extra == 'test'
   - autoflake ; extra == 'test'
+  - twine>=1.13.0 ; extra == 'release'
   requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/80/b6/4ee320d7c313da3774eff225875eb278f7e6bb26a9cd8e680b8dbc38fdea/mkdocstrings-0.26.2-py3-none-any.whl
   name: mkdocstrings

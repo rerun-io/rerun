@@ -108,3 +108,15 @@ Calls to `rr.log_components()` API are now superseded by the new partial update 
 Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc?speculative-link).
 
 Calls to `rr.serve()` must be changed to [`rr.serve_web()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.serve_web?speculative-link).
+
+## 🌊 C++: removed `connect` and `connect_tcp` from `RecordingStream`
+
+Calls to these functions must be changed to `connect_grpc`. Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun_1_1RecordingStream.html?speculative-link) for more information.
+
+## 🦀 Rust: removed `connect` and `connect_tcp` from `RecordingStream` and `RecordingStreamBuilder`
+
+Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
+
+Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
