@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import warnings
 from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 
@@ -210,74 +208,6 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
     bindings.disconnect(
         recording=recording.to_native() if recording is not None else None,
-    )
-
-
-@deprecated(
-    """Please migrate to `rr.serve_web(…)`.
-  See: https://www.rerun.io/docs/reference/migration/migration-0-20 for more details.""",
-)
-def serve(
-    *,
-    open_browser: bool = True,
-    web_port: int | None = None,
-    grpc_port: int | None = None,
-    default_blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-    server_memory_limit: str = "25%",
-) -> None:
-    """
-    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
-
-    !!! Warning "Deprecated"
-        Please migrate to [rerun.serve_web][].
-        See [the migration guide](https://www.rerun.io/docs/reference/migration/migration-0-20) for more details.
-
-    You can also connect to this server with the native viewer using `rerun localhost:9090`.
-
-    The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    Once reached, the earliest logged data will be dropped.
-    Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
-
-    This function returns immediately.
-
-    Parameters
-    ----------
-    open_browser:
-        Open the default browser to the viewer.
-    web_port:
-        The port to serve the web viewer on (defaults to 9090).
-    grpc_port:
-        The port to serve the gRPC server on (defaults to 9876)
-    default_blueprint:
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
-        immediately, instead use the [`rerun.send_blueprint`][] API.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    server_memory_limit:
-        Maximum amount of memory to use for buffering log data for clients that connect late.
-        This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
-
-    """
-
-    warnings.warn(
-        message=("`serve` is deprecated. Use `serve_web` instead."),
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return serve_web(
-        open_browser=open_browser,
-        web_port=web_port,
-        grpc_port=grpc_port,
-        default_blueprint=default_blueprint,
-        recording=recording,  # NOLINT
-        server_memory_limit=server_memory_limit,
     )
 
 
