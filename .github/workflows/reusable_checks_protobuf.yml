@@ -44,12 +44,12 @@ jobs:
       #
       - name: Breaking changes
         run: pixi run pb-breaking
-        if: success() || failure()  # trigger this step even if the previous one failed
+        if: success() || failure() # trigger this step even if the previous one failed
 
       - name: Lints
         run: pixi run pb-lint
-        if: success() || failure()  # trigger this step even if the previous one failed
+        if: success() || failure() # trigger this step even if the previous one failed
 
       - name: Formatting
         run: pixi run pb-fmt-check
-        if: success() || failure()  # trigger this step even if the previous one failed
+        if: success() || failure() # trigger this step even if the previous one failed
