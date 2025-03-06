@@ -665,7 +665,6 @@ rgbd = { path = "examples/python/rgbd", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
-signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 

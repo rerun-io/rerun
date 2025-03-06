@@ -2596,7 +2596,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -2986,7 +2985,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -3369,7 +3367,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -3802,7 +3799,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       osx-arm64:
@@ -4145,7 +4141,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       win-64:
@@ -4488,7 +4483,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
   py:
@@ -7471,7 +7465,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       osx-arm64:
@@ -7954,7 +7947,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       win-64:
@@ -8418,7 +8410,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
   wheel-test-min:
@@ -27063,18 +27054,6 @@ packages:
   version: 1.5.4
   sha256: 7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686
   requires_python: '>=3.7'
-- pypi: examples/python/signed_distance_fields
-  name: signed-distance-fields
-  version: 0.1.0
-  sha256: 6db4b61c075b1b6c0b9320a93fb534e771d995131da20489a1be3f2c55be2818
-  requires_dist:
-  - mesh-to-sdf @ git+https://github.com/marian42/mesh_to_sdf.git
-  - numpy
-  - requests>=2.31,<3
-  - rerun-sdk
-  - scikit-learn>=1.1.3
-  - trimesh
-  editable: true
 - conda: https://conda.anaconda.org/conda-forge/osx-64/sigtool-0.1.3-h88f4db0_0.tar.bz2
   sha256: 46fdeadf8f8d725819c4306838cdfd1099cd8fe3e17bd78862a5dfdcd6de61cf
   md5: fbfb84b9de9a6939cb165c02c69b1865
