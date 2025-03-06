@@ -4,7 +4,7 @@ use re_types::{
     blueprint::{archetypes::PlotLegend, components::Corner2D},
     components::Visible,
     datatypes::TensorBuffer,
-    View, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText};
 use re_view::{
@@ -14,7 +14,7 @@ use re_view::{
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewState, ViewStateExt, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 

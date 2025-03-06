@@ -168,13 +168,13 @@ int main(int argc, char** argv) {
     for (auto offset : offsets) {
         std::optional<rerun::TimeColumn> time_column;
         if (temporal_batch_size.has_value()) {
-            time_column = rerun::TimeColumn::from_seconds(
+            time_column = rerun::TimeColumn::from_duration_seconds(
                 "sim_time",
                 rerun::borrow(sim_times.data() + offset, *temporal_batch_size),
                 rerun::SortingStatus::Sorted
             );
         } else {
-            rec.set_time_seconds("sim_time", sim_times[offset]);
+            rec.set_index_duration_secs("sim_time", sim_times[offset]);
         }
 
         // Log

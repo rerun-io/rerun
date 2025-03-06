@@ -9,9 +9,10 @@ type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisua
 /// Closure to draw the right column of the property.
 type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a;
 
-/// [`ListItemContent`] to display property-like, two-column content, with the left column
-/// containing a label (along with an optional icon) and the right column containing some custom
-/// value (which may be editable).
+/// [`ListItemContent`] to display property-like, two-column content.
+///
+/// The left column contains a label (along with an optional icon)
+/// and the right column containing some custom value (which may be editable).
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
     min_desired_width: f32,

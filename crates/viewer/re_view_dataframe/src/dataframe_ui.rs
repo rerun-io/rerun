@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use arrow::array::ArrayRef;
 use egui::NumExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
@@ -12,7 +12,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};
+use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};

@@ -1,4 +1,4 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::{TryFrom, TryInto as _};
 
 use egui_tiles::TileId;
 

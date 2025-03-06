@@ -5,7 +5,7 @@
 
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_blueprint_tree::data::BlueprintTreeData;
 use re_blueprint_tree::BlueprintTree;
@@ -15,8 +15,8 @@ use re_log_types::{build_frame_nr, EntityPath, Timeline};
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt;
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";

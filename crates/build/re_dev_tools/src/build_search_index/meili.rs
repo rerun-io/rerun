@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use url::Url;
 
 use super::ingest::Document;

@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_chunk_store::RowId;
 use re_renderer::{mesh::GpuMesh, RenderContext};
 use re_types::{components::MediaType, datatypes};

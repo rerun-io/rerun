@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::io::Cursor;
-use std::io::Read;
+use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;

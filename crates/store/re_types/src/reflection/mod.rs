@@ -3,6 +3,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 #![allow(unused_imports)]
+#![expect(clippy::empty_line_after_doc_comments)]
+
 use crate::blueprint::components::*;
 use crate::components::*;
 use re_types_core::components::*;

@@ -2261,7 +2261,7 @@ mod tests {
                 let fut = self.0.next_row_batch_async();
                 let fut = std::pin::pin!(fut);
 
-                use std::future::Future;
+                use std::future::Future as _;
                 fut.poll(cx)
             }
         }

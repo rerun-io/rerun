@@ -1,4 +1,4 @@
-use egui::NumExt;
+use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_entity_db::InstancePath;
 

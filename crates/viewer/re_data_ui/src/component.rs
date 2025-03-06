@@ -1,9 +1,9 @@
-use egui::NumExt;
+use egui::NumExt as _;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, Instance, TimeInt};
-use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt};
+use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;

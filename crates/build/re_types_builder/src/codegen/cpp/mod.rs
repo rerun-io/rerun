@@ -6,7 +6,7 @@ mod method;
 use std::collections::HashSet;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;

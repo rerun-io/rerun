@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
@@ -16,7 +16,7 @@ use re_log_types::{
     EntityPath, TimePoint,
 };
 use re_query::QueryCache;
-use re_types::Archetype;
+use re_types::Archetype as _;
 use re_types_core::Component as _;
 
 // ---

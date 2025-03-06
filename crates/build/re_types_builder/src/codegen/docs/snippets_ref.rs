@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::Context;
+use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
@@ -413,7 +413,7 @@ fn collect_snippets_recursively<'o>(
         }
 
         // We only track the Python one. We'll derive the other two from there, if they exist at all.
-        if !path.extension().is_some_and(|p| p == "py") {
+        if path.extension().is_none_or(|p| p != "py") {
             continue;
         }
 
@@ -424,7 +424,7 @@ fn collect_snippets_recursively<'o>(
                 .lines()
                 .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
                 .collect_vec();
-            if lines.first().map_or(false, |line| line.trim() == "\"\"\"") {
+            if lines.first().is_some_and(|line| line.trim() == "\"\"\"") {
                 // Multi-line Python docstrings.
                 lines.iter().skip(1).take(1).next()
             } else {

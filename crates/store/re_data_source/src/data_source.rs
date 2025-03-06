@@ -45,7 +45,7 @@ impl DataSource {
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
-    #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
+    #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
     pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {

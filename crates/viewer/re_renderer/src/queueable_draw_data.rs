@@ -1,7 +1,7 @@
 use crate::{
     context::Renderers,
     draw_phases::DrawPhase,
-    renderer::{DrawData, DrawError, Renderer},
+    renderer::{DrawData, DrawError, Renderer as _},
     wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 

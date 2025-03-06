@@ -1,7 +1,7 @@
 use arrow::array::{
     Array as ArrowArray, ArrayRef as ArrowArrayRef, StringArray as ArrowStringArray,
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;

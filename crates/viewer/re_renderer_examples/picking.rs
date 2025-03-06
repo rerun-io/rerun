@@ -1,7 +1,7 @@
 //! Demonstrates the dedicated picking layer support.
 
 use itertools::Itertools as _;
-use rand::Rng;
+use rand::Rng as _;
 use re_renderer::{
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},

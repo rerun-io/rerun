@@ -8,7 +8,16 @@ Previously, you could (confusingly) have two timelines with the same name, as lo
 This is no longer possible.
 Timelines are now uniquely identified by name, and if you use different types on the same timeline, you will get a logged warning, and the _latest_ type will be used to interpret the full set of time data.
 
-## 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
+## Rename some timeline-related things as "index"
+We're planning on adding support for different types of indices in the future, so to that point we're slowly migrating our API to refer to these things as _indices_ rather than _timelines_.
+
+## Differentiate between timestamps and durations
+We've added a explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
+
+Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
+Now you need to be explicit.
+
+### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
 We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
 
 Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.
@@ -26,7 +35,7 @@ To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as wel
 * [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime)
 * [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64)
 
-### Migrating
+#### Migrating
 ##### `rr.set_sequence("foo", 42)`
 New: `rr.set_index("foo", sequence=42)`
 
@@ -53,11 +62,11 @@ Either:
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
 
-## 🐍 Python: replaced `rr.Time*Column` with `rr.IndexColumn`
+### 🐍 Python: replaced `rr.Time*Column` with `rr.IndexColumn`
 Similarly to the above new `set_index` API, there is also a new `IndexColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
 The migration is very similar to the above.
 
-### Migration
+#### Migration
 ##### `rr.TimeSequenceColumn("foo", values)`
 New: `rr.IndexColumn("foo", sequence=values)`
 
@@ -80,6 +89,15 @@ Either:
 * `rr.IndexColumn("foo", timedelta=np.timedelta64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
+
+### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+We've deprecated the following functions, with the following replacements:
+* `set_time_sequence` -> `set_index_sequence`
+* `set_time` -> `set_index_duration` or `set_index_timestamp`
+* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
+* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+
+`TimeColumn` also has deprecated functions.
 
 ## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
@@ -117,3 +135,15 @@ Calls to `rr.log_components()` API are now superseded by the new partial update 
 Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc?speculative-link).
 
 Calls to `rr.serve()` must be changed to [`rr.serve_web()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.serve_web?speculative-link).
+
+## 🌊 C++: removed `connect` and `connect_tcp` from `RecordingStream`
+
+Calls to these functions must be changed to `connect_grpc`. Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun_1_1RecordingStream.html?speculative-link) for more information.
+
+## 🦀 Rust: removed `connect` and `connect_tcp` from `RecordingStream` and `RecordingStreamBuilder`
+
+Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
+
+Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.

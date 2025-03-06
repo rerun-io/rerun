@@ -1,7 +1,7 @@
 //! Core list item functionality.
 
-use egui::emath::GuiRounding;
-use egui::{NumExt, Response, Shape, Ui};
+use egui::emath::GuiRounding as _;
+use egui::{NumExt as _, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::{DesignTokens, UiExt as _};

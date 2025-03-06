@@ -1,12 +1,12 @@
 use std::{
-    io::Read,
+    io::Read as _,
     sync::{atomic::AtomicBool, Arc},
 };
 
 use ahash::HashMap;
 use once_cell::sync::Lazy;
 
-use crate::{DataLoader, LoadedData};
+use crate::{DataLoader as _, LoadedData};
 
 // ---
 

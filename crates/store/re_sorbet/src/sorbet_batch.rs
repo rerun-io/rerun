@@ -1,13 +1,13 @@
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, AsArray, ListArray as ArrowListArray,
+        Array as _, ArrayRef as ArrowArrayRef, AsArray as _, ListArray as ArrowListArray,
         RecordBatch as ArrowRecordBatch, RecordBatchOptions, StructArray as ArrowStructArray,
     },
     datatypes::{FieldRef as ArrowFieldRef, Fields as ArrowFields, Schema as ArrowSchema},
     error::ArrowError,
 };
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 
 use crate::{
     ArrowBatchMetadata, ColumnDescriptorRef, ComponentColumnDescriptor, IndexColumnDescriptor,

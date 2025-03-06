@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_chunk::TimelineName;
 use smallvec::SmallVec;

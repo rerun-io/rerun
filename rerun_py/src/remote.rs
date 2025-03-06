@@ -15,7 +15,7 @@ use pyo3::{
     types::PyDict,
     Bound, PyResult,
 };
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, TimelineName};
@@ -25,7 +25,7 @@ use re_dataframe::{
     TimeColumnSelector, ViewContentsSelector,
 };
 use re_grpc_client::TonicStatusError;
-use re_log_encoding::codec::wire::{decoder::Decode, encoder::Encode};
+use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
     common::v0::{EntityPath, IndexColumnSelector, RecordingId},
