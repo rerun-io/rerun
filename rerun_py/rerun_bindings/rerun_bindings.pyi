@@ -799,16 +799,46 @@ def connect(addr: str) -> StorageNodeClient:
 # TODO(#9187): this will be entirely replaced with `RecrodingStream` is itself written in Rust
 
 class PyRecordingStream:
-    def is_forked_child(self) -> bool: ...
+    def is_forked_child(self) -> bool:
+        """
+        Determine if this stream is operating in the context of a forked child process.
+
+        This means the stream was created in the parent process. It now exists in the child
+        process by way of fork, but it is effectively a zombie since its batcher and sink
+        threads would not have been copied.
+
+        Calling operations such as flush or set_sink will result in an error.
+        """
 
 class PyMemorySinkStorage:
-    def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes: ...
-    def num_msgs(self) -> int: ...
-    def drain_as_bytes(self) -> bytes: ...
+    def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
+        """
+        Concatenate the contents of the [`MemorySinkStorage`] as bytes.
+
+        Note: This will do a blocking flush before returning!
+        """
+    def num_msgs(self) -> int:
+        """
+        Count the number of pending messages in the [`MemorySinkStorage`].
+
+        This will do a blocking flush before returning!
+        """
+    def drain_as_bytes(self) -> bytes:
+        """
+        Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
+
+        This will do a blocking flush before returning!
+        """
 
 class PyBinarySinkStorage:
-    def read(self, *, flush: bool = True) -> bytes: ...
-    def flush(self) -> None: ...
+    def read(self, *, flush: bool = True) -> bytes:
+        """
+        Read the bytes from the binary sink.
+
+        If `flush` is `true`, the sink will be flushed before reading.
+        """
+    def flush(self) -> None:
+        """Flush the binary sink manually."""
 
 # // init
 # m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -824,24 +854,33 @@ def new_recording(
     make_thread_default: bool = True,
     application_path: Optional[str | os.PathLike[str]] = None,
     default_enabled: bool = True,
-) -> PyRecordingStream: ...
+) -> PyRecordingStream:
+    """Create a new recording stream."""
+
 def new_blueprint(
     application_id: str,
     make_default: bool = True,
     make_thread_default: bool = True,
     default_enabled: bool = True,
-) -> PyRecordingStream: ...
-def shutdown() -> None: ...
-def cleanup_if_forked_child() -> None: ...
+) -> PyRecordingStream:
+    """Create a new blueprint stream."""
+
+def shutdown() -> None:
+    """Shutdown the Rerun SDK."""
+
+def cleanup_if_forked_child() -> None:
+    """Cleans up internal state if this is the child of a forked process."""
+
 def spawn(
     port: int = 9876,
-    memory_limit: str = "75%",
+    memory_limit: str = ...,
     hide_welcome_screen: bool = False,
-    executable_name: str = "rerun",
+    executable_name: str = ...,
     executable_path: Optional[str] = None,
-    extra_args: list[str] = [],
-    extra_env: list[tuple[str, str]] = [],
-) -> None: ...
+    extra_args: list[str] = ...,
+    extra_env: list[tuple[str, str]] = ...,
+) -> None:
+    """Spawn a new viewer."""
 
 # // recordings
 # m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
@@ -857,20 +896,59 @@ def spawn(
 # m.add_function(wrap_pyfunction!(get_thread_local_blueprint_recording, m)?)?;
 # m.add_function(wrap_pyfunction!(set_thread_local_blueprint_recording, m)?)?;
 
-def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]: ...
-def get_recording_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]: ...
-def get_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
-def get_global_data_recording() -> Optional[PyRecordingStream]: ...
-def set_global_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
-def get_thread_local_data_recording() -> Optional[PyRecordingStream]: ...
-def set_thread_local_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
-def get_blueprint_recording(overrides: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
-def get_global_blueprint_recording() -> Optional[PyRecordingStream]: ...
-def set_global_blueprint_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
-def get_thread_local_blueprint_recording() -> Optional[PyRecordingStream]: ...
+def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+    """Get the current recording stream's application ID."""
+
+def get_recording_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+    """Get the current recording stream's recording ID."""
+
+def get_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
+
+def get_global_data_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the global scope, if any."""
+
+def set_global_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the global scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_thread_local_data_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the thread-local scope, if any."""
+
+def set_thread_local_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the thread-local scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_blueprint_recording(overrides: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
+
+def get_global_blueprint_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the global scope, if any."""
+
+def set_global_blueprint_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the global scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_thread_local_blueprint_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the thread-local scope, if any."""
+
 def set_thread_local_blueprint_recording(
     recording: Optional[PyRecordingStream] = None,
-) -> Optional[PyRecordingStream]: ...
+) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the thread-local scope with the specified one.
+
+    Returns the previous one, if any.
+    """
 
 # // sinks
 # m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
@@ -886,35 +964,53 @@ def set_thread_local_blueprint_recording(
 # m.add_function(wrap_pyfunction!(disconnect, m)?)?;
 # m.add_function(wrap_pyfunction!(flush, m)?)?;
 
-def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool: ...
-def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]: ...
+def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
+    """Whether the recording stream enabled."""
+
+def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
+    """Create a new binary stream sink, and return the associated binary stream."""
+
 def connect_grpc(
-    url: Optional[str] = None,
-    flush_timeout_sec: Optional[float] = None,
+    url: Optional[str],
+    flush_timeout_sec: Optional[float] = ...,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL."""
+
 def connect_grpc_blueprint(
-    url: Optional[str] = None,
-    make_active: bool = False,
-    make_default: bool = False,
-    blueprint_stream: PyRecordingStream = ...,
-) -> None: ...
+    url: Optional[str],
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: PyRecordingStream,
+) -> None:
+    """Special binding for directly sending a blueprint stream to a connection."""
+
 def save(
     path: str,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
-def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None: ...
+) -> None:
+    """Save the recording stream to a file."""
+
+def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
+    """Special binding for directly savings a blueprint stream to a file."""
+
 def stdout(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
-def memory_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyMemorySinkStorage]: ...
+) -> None:
+    """Save to stdout."""
+
+def memory_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyMemorySinkStorage]:
+    """Create an in-memory rrd file."""
+
 def set_callback_sink(
     callback: Callable[[bytes], Any],
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Set callback sink."""
+
 def serve_web(
     open_browser: bool,
     web_port: Optional[int],
@@ -922,9 +1018,19 @@ def serve_web(
     server_memory_limit: str,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
-def disconnect(recording: Optional[PyRecordingStream] = None) -> None: ...
-def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None: ...
+) -> None:
+    """Serve a web-viewer."""
+
+def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
+    """
+    Disconnect from remote server (if any).
+
+    Subsequent log messages will be buffered and either sent on the next call to `connect`,
+    or shown with `show`.
+    """
+
+def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:
+    """Block until outstanding data has been flushed to the sink."""
 
 # // time
 # m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
@@ -937,22 +1043,31 @@ def set_time_sequence(
     timeline: str,
     sequence: int,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Set the current time for this thread as an integer sequence."""
+
 def set_time_seconds(
     timeline: str,
     seconds: float,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Set the current time for this thread in second."""
+
 def set_time_nanos(
     timeline: str,
     nanos: int,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Set the current time for this thread in nanoseconds."""
+
 def disable_timeline(
     timeline: str,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
-def reset_time(recording: Optional[PyRecordingStream] = None) -> None: ...
+) -> None:
+    """Clear time information for the specified timeline on this thread."""
+
+def reset_time(recording: Optional[PyRecordingStream] = None) -> None:
+    """Clear all timeline information on this thread."""
 
 # // log any
 # m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
@@ -966,32 +1081,52 @@ def log_arrow_msg(
     components: dict[Any, Any],
     static_: bool,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Log an arrow message."""
+
 def send_arrow_chunk(
     entity_path: str,
     timelines: dict[Any, Any],
     components: dict[Any, Any],
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """
+    Directly send an arrow chunk to the recording stream.
+
+    Params
+    ------
+    entity_path: `str`
+        The entity path to log the chunk to.
+    timelines: `Dict[str, arrow::Int64Array]`
+        A dictionary mapping timeline names to their values.
+    components: `Dict[str, arrow::ListArray]`
+        A dictionary mapping component names to their values.
+    """
+
 def log_file_from_path(
     file_path: str | os.PathLike[str],
     entity_path_prefix: Optional[str] = None,
     static_: bool = False,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Log a file by path."""
+
 def log_file_from_contents(
     file_path: str | os.PathLike[str],
     file_contents: bytes,
     entity_path_prefix: Optional[str] = None,
     static_: bool = False,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Log a file by contents."""
+
 def send_blueprint(
     blueprint: PyMemorySinkStorage,
     make_active: bool = False,
     make_default: bool = True,
     recording: Optional[PyRecordingStream] = None,
-) -> None: ...
+) -> None:
+    """Send a blueprint to the given recording stream."""
 
 # // misc
 # m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -1000,13 +1135,32 @@ def send_blueprint(
 # m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
 # m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
-def version() -> str: ...
-def get_app_url() -> str: ...
-def start_web_viewer_server(port: int) -> None: ...
-def escape_entity_path_part(part: str) -> str: ...
-def new_entity_path(parts: list[str]) -> str: ...
+def version() -> str:
+    """Return a verbose version string."""
 
-# m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
-def asset_video_read_frame_timestamps_ns(
-    video_bytes_arrow_array: Any, media_type: Optional[str] = None
-) -> list[int]: ...
+def get_app_url() -> str:
+    """
+    Get an url to an instance of the web-viewer.
+
+    This may point to app.rerun.io or localhost depending on
+    whether [`start_web_viewer_server()`] was called.
+    """
+
+def start_web_viewer_server(port: int) -> None:
+    """Start a web server to host the run web-assets."""
+
+def escape_entity_path_part(part: str) -> str:
+    """Escape an entity path."""
+
+def new_entity_path(parts: list[str]) -> str:
+    """Create an entity path."""
+
+def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
+    """
+    Reads the timestamps of all frames in a video asset.
+
+    Implementation note:
+    On the Python side we start out with a pyarrow array of bytes. Converting it to
+    Python `bytes` can be done with `to_pybytes` but this requires copying the data.
+    So instead, we pass the arrow array directly.
+    """

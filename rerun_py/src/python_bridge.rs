@@ -113,6 +113,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
+    m.add_class::<PyBinarySinkStorage>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -191,6 +192,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 // --- Init ---
 
+/// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
 #[allow(clippy::too_many_arguments)]
@@ -265,6 +267,7 @@ fn new_recording(
     Ok(PyRecordingStream(recording))
 }
 
+/// Create a new blueprint stream.
 #[allow(clippy::fn_params_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
@@ -317,6 +320,7 @@ fn new_blueprint(
     Ok(PyRecordingStream(blueprint))
 }
 
+/// Shutdown the Rerun SDK.
 #[pyfunction]
 fn shutdown(py: Python<'_>) {
     re_log::debug!("Shutting down the Rerun SDK");
@@ -370,6 +374,7 @@ impl std::ops::Deref for PyRecordingStream {
     }
 }
 
+/// Get the current recording stream's application ID.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
@@ -378,6 +383,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
         .map(|info| info.application_id.to_string())
 }
 
+/// Get the current recording stream's recording ID.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
@@ -386,8 +392,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
         .map(|info| info.store_id.to_string())
 }
 
-/// Returns the currently active data recording in the global scope, if any; fallbacks to the
-/// specified recording otherwise, if any.
+/// Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
@@ -470,8 +475,7 @@ fn set_thread_local_data_recording(
     })
 }
 
-/// Returns the currently active blueprint recording in the global scope, if any; fallbacks to the
-/// specified recording otherwise, if any.
+/// Returns the currently active blueprint recording in the global scope, if any; fallbacks to the specified recording otherwise, if any.
 #[pyfunction]
 #[pyo3(signature = (overrides=None))]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
@@ -550,6 +554,7 @@ fn set_thread_local_blueprint_recording(
 
 // --- Sinks ---
 
+/// Whether the recording stream enabled.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
@@ -569,6 +574,7 @@ fn send_mem_sink_as_default_blueprint(
     }
 }
 
+/// Spawn a new viewer.
 #[pyfunction]
 #[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
 fn spawn(
@@ -594,6 +600,7 @@ fn spawn(
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+/// Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL.
 #[pyfunction]
 #[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect_grpc(
@@ -675,6 +682,7 @@ fn connect_grpc_blueprint(
     }
 }
 
+/// Save the recording stream to a file.
 #[pyfunction]
 #[pyo3(signature = (path, default_blueprint = None, recording = None))]
 fn save(
@@ -744,6 +752,7 @@ fn save_blueprint(
     }
 }
 
+/// Save to stdout.
 #[pyfunction]
 #[pyo3(signature = (default_blueprint = None, recording = None))]
 fn stdout(
@@ -785,7 +794,7 @@ fn stdout(
     })
 }
 
-/// Create an in-memory rrd file
+/// Create an in-memory rrd file.
 #[pyfunction]
 #[pyo3(signature = (recording = None))]
 fn memory_recording(
@@ -804,6 +813,7 @@ fn memory_recording(
     })
 }
 
+/// Set callback sink.
 #[pyfunction]
 #[pyo3(signature = (callback, recording = None))]
 fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, py: Python<'_>) {
@@ -1033,7 +1043,7 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     });
 }
 
-/// Block until outstanding data has been flushed to the sink
+/// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
 #[pyo3(signature = (blocking, recording=None))]
 fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) {
@@ -1053,6 +1063,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 // --- Time ---
 
+/// Set the current time for this thread as an integer sequence.
 #[pyfunction]
 #[pyo3(signature = (timeline, sequence, recording=None))]
 fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
@@ -1062,6 +1073,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     recording.set_time_sequence(timeline, sequence);
 }
 
+/// Set the current time for this thread in second.
 // TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, seconds, recording=None))]
@@ -1072,6 +1084,7 @@ fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecording
     recording.set_time_seconds(timeline, seconds);
 }
 
+/// Set the current time for this thread in nanoseconds.
 // TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
@@ -1082,6 +1095,7 @@ fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStre
     recording.set_time_nanos(timeline, nanos);
 }
 
+/// Clear time information for the specified timeline on this thread.
 #[pyfunction]
 #[pyo3(signature = (timeline, recording=None))]
 fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
@@ -1091,6 +1105,7 @@ fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
     recording.disable_timeline(timeline);
 }
 
+/// Clear all timeline information on this thread.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn reset_time(recording: Option<&PyRecordingStream>) {
@@ -1102,6 +1117,7 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
 
 // --- Log special ---
 
+/// Log an arrow message.
 #[pyfunction]
 #[pyo3(signature = (
     entity_path,
@@ -1176,6 +1192,7 @@ fn send_arrow_chunk(
     Ok(())
 }
 
+/// Log a file by path.
 #[pyfunction]
 #[pyo3(signature = (
     file_path,
@@ -1193,6 +1210,7 @@ fn log_file_from_path(
     log_file(py, file_path, None, entity_path_prefix, static_, recording)
 }
 
+/// Log a file by contents.
 #[pyfunction]
 #[pyo3(signature = (
     file_path,
@@ -1279,13 +1297,13 @@ fn send_blueprint(
 
 // --- Misc ---
 
-/// Return a verbose version string
+/// Return a verbose version string.
 #[pyfunction]
 fn version() -> String {
     re_build_info::build_info!().to_string()
 }
 
-/// Get a url to an instance of the web-viewer
+/// Get an url to an instance of the web-viewer.
 ///
 /// This may point to app.rerun.io or localhost depending on
 /// whether [`start_web_viewer_server()`] was called.
@@ -1315,7 +1333,7 @@ fn get_app_url() -> String {
 }
 
 // TODO(jleibs) expose this as a python type
-/// Start a web server to host the run web-assets
+/// Start a web server to host the run web-assets.
 #[pyfunction]
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
     #[allow(clippy::unnecessary_wraps)]
@@ -1344,11 +1362,13 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
     }
 }
 
+/// Escape an entity path.
 #[pyfunction]
 fn escape_entity_path_part(part: &str) -> String {
     EntityPathPart::from(part).escaped_string()
 }
 
+/// Create an entity path.
 #[pyfunction]
 fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
     let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
