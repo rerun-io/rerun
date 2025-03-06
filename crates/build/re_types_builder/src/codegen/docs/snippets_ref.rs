@@ -413,7 +413,7 @@ fn collect_snippets_recursively<'o>(
         }
 
         // We only track the Python one. We'll derive the other two from there, if they exist at all.
-        if !path.extension().is_some_and(|p| p == "py") {
+        if path.extension().is_none_or(|p| p != "py") {
             continue;
         }
 

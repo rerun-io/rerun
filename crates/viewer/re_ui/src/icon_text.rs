@@ -45,7 +45,7 @@ impl<'a> IconText<'a> {
     }
 }
 
-impl<'a> From<Icon> for IconTextItem<'a> {
+impl From<Icon> for IconTextItem<'_> {
     fn from(icon: Icon) -> Self {
         IconTextItem::Icon(icon)
     }
@@ -57,7 +57,7 @@ impl<'a> From<&'a str> for IconTextItem<'a> {
     }
 }
 
-impl<'a> From<String> for IconTextItem<'a> {
+impl From<String> for IconTextItem<'_> {
     fn from(text: String) -> Self {
         IconTextItem::Text(text.into())
     }
