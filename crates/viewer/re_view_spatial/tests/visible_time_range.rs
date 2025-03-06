@@ -120,42 +120,42 @@ fn intra_timestamp_test() {
     };
 
     run_visible_time_range_test(
-        "intra_timestamp/42:42",
+        "intra_timestamp/42_42",
         intra_timestamp_data,
         Some(range_absolute(42, 42)),
         None,
     );
 
     run_visible_time_range_test(
-        "intra_timestamp/43:44",
+        "intra_timestamp/43_44",
         intra_timestamp_data,
         Some(range_absolute(43, 44)),
         None,
     );
 
     run_visible_time_range_test(
-        "intra_timestamp/42:44",
+        "intra_timestamp/42_44",
         intra_timestamp_data,
         Some(range_absolute(42, 44)),
         None,
     );
 
     run_visible_time_range_test(
-        "intra_timestamp/43:45",
+        "intra_timestamp/43_45",
         intra_timestamp_data,
         Some(range_absolute(43, 45)),
         None,
     );
 
     run_visible_time_range_test(
-        "intra_timestamp/46:46",
+        "intra_timestamp/46_46",
         intra_timestamp_data,
         Some(range_absolute(46, 46)),
         None,
     );
 
     run_visible_time_range_test(
-        "intra_timestamp/infinity:infinity",
+        "intra_timestamp/infinity_infinity",
         intra_timestamp_data,
         Some(VisibleTimeRange {
             timeline: "frame".into(),
