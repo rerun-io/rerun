@@ -1,5 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
+use re_types::archetypes::Points2D;
 use re_types::datatypes::VisibleTimeRange;
 use re_types::Archetype as _;
 use re_view_spatial::SpatialView2D;
