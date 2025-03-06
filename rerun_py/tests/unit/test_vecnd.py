@@ -19,6 +19,8 @@ from rerun.datatypes import (
     Vec4DLike,
 )
 
+import rerun as rr
+
 from .common_arrays import (
     vec2ds_arrays,
     vec2ds_expected,
@@ -121,6 +123,8 @@ VEC_2D_INVALID_ARRAYS_INPUT = [
 
 @pytest.mark.parametrize("data", VEC_2D_INVALID_ARRAYS_INPUT)
 def test_vec2d_array_invalid(data: Vec2DArrayLike) -> None:
+    rr.set_strict_mode(True)
+
     with pytest.raises(ValueError):
         Vec2DBatch(data)
     with pytest.raises(ValueError):
@@ -141,6 +145,8 @@ VEC_3D_INVALID_ARRAYS_INPUT = [
 
 @pytest.mark.parametrize("data", VEC_3D_INVALID_ARRAYS_INPUT)
 def test_vec3d_array_invalid(data: Vec3DArrayLike) -> None:
+    rr.set_strict_mode(True)
+
     with pytest.raises(ValueError):
         Vec3DBatch(data)
     with pytest.raises(ValueError):
@@ -162,6 +168,8 @@ VEC_4D_INVALID_ARRAYS_INPUT = [
 
 @pytest.mark.parametrize("data", VEC_4D_INVALID_ARRAYS_INPUT)
 def test_vec4d_array_invalid(data: Vec4DArrayLike) -> None:
+    rr.set_strict_mode(True)
+
     with pytest.raises(ValueError):
         Vec4DBatch(data)
     with pytest.raises(ValueError):
