@@ -11,7 +11,6 @@ use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{Contents, RecommendedView, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
-use std::ops::ControlFlow;
 
 #[test]
 fn test_range_selection_in_blueprint_tree() {
