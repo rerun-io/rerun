@@ -1,7 +1,7 @@
 import os
 from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import pyarrow as pa
 
@@ -28,6 +28,7 @@ class IndexColumnDescriptor:
     column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
     """
 
+    @property
     def name(self) -> str:
         """
         The name of the index.
@@ -58,6 +59,7 @@ class IndexColumnSelector:
 
         """
 
+    @property
     def name(self) -> str:
         """
         The name of the index.
@@ -135,7 +137,7 @@ class ComponentColumnSelector:
         This property is read-only.
         """
 
-class VectorDistanceMetric(Enum):
+class VectorDistanceMetric(Enum):  # type: ignore[misc]
     """Which distance metric for use for vector index."""
 
     L2: VectorDistanceMetric
@@ -523,7 +525,7 @@ class RRDArchive:
     def all_recordings(self) -> list[Recording]:
         """All the recordings in the archive."""
 
-def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
+def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
     """
     Load a single recording from an RRD file.
 
@@ -531,7 +533,7 @@ def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike
+    path_to_rrd : str | os.PathLike[str]
         The path to the file to load.
 
     Returns
@@ -541,13 +543,13 @@ def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
 
     """
 
-def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
+def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
     Load a rerun archive from an RRD file.
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike
+    path_to_rrd : str | os.PathLike[str]
         The path to the file to load.
 
     Returns
@@ -792,3 +794,219 @@ def connect(addr: str) -> StorageNodeClient:
         The connected client.
 
     """
+
+# AI generated stubs for `PyRecordingStream` related class and functions
+# TODO(#9187): this will be entirely replaced with `RecrodingStream` is itself written in Rust
+
+class PyRecordingStream:
+    def is_forked_child(self) -> bool: ...
+
+class PyMemorySinkStorage:
+    def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes: ...
+    def num_msgs(self) -> int: ...
+    def drain_as_bytes(self) -> bytes: ...
+
+class PyBinarySinkStorage:
+    def read(self, *, flush: bool = True) -> bytes: ...
+    def flush(self) -> None: ...
+
+# // init
+# m.add_function(wrap_pyfunction!(new_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(new_blueprint, m)?)?;
+# m.add_function(wrap_pyfunction!(shutdown, m)?)?;
+# m.add_function(wrap_pyfunction!(cleanup_if_forked_child, m)?)?;
+# m.add_function(wrap_pyfunction!(spawn, m)?)?;
+
+def new_recording(
+    application_id: str,
+    recording_id: Optional[str] = None,
+    make_default: bool = True,
+    make_thread_default: bool = True,
+    application_path: Optional[str | os.PathLike[str]] = None,
+    default_enabled: bool = True,
+) -> PyRecordingStream: ...
+def new_blueprint(
+    application_id: str,
+    make_default: bool = True,
+    make_thread_default: bool = True,
+    default_enabled: bool = True,
+) -> PyRecordingStream: ...
+def shutdown() -> None: ...
+def cleanup_if_forked_child() -> None: ...
+def spawn(
+    port: int = 9876,
+    memory_limit: str = "75%",
+    hide_welcome_screen: bool = False,
+    executable_name: str = "rerun",
+    executable_path: Optional[str] = None,
+    extra_args: list[str] = [],
+    extra_env: list[tuple[str, str]] = [],
+) -> None: ...
+
+# // recordings
+# m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
+# m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
+# m.add_function(wrap_pyfunction!(get_data_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(get_global_data_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(set_global_data_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(get_thread_local_data_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(set_thread_local_data_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(get_blueprint_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(get_global_blueprint_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(set_global_blueprint_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(get_thread_local_blueprint_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(set_thread_local_blueprint_recording, m)?)?;
+
+def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]: ...
+def get_recording_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]: ...
+def get_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
+def get_global_data_recording() -> Optional[PyRecordingStream]: ...
+def set_global_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
+def get_thread_local_data_recording() -> Optional[PyRecordingStream]: ...
+def set_thread_local_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
+def get_blueprint_recording(overrides: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
+def get_global_blueprint_recording() -> Optional[PyRecordingStream]: ...
+def set_global_blueprint_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]: ...
+def get_thread_local_blueprint_recording() -> Optional[PyRecordingStream]: ...
+def set_thread_local_blueprint_recording(
+    recording: Optional[PyRecordingStream] = None,
+) -> Optional[PyRecordingStream]: ...
+
+# // sinks
+# m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
+# m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
+# m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
+# m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
+# m.add_function(wrap_pyfunction!(save, m)?)?;
+# m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
+# m.add_function(wrap_pyfunction!(stdout, m)?)?;
+# m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
+# m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
+# m.add_function(wrap_pyfunction!(serve_web, m)?)?;
+# m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+# m.add_function(wrap_pyfunction!(flush, m)?)?;
+
+def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool: ...
+def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]: ...
+def connect_grpc(
+    url: Optional[str] = None,
+    flush_timeout_sec: Optional[float] = None,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def connect_grpc_blueprint(
+    url: Optional[str] = None,
+    make_active: bool = False,
+    make_default: bool = False,
+    blueprint_stream: PyRecordingStream = ...,
+) -> None: ...
+def save(
+    path: str,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None: ...
+def stdout(
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def memory_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyMemorySinkStorage]: ...
+def set_callback_sink(
+    callback: Callable[[bytes], Any],
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def serve_web(
+    open_browser: bool,
+    web_port: Optional[int],
+    grpc_port: Optional[int],
+    server_memory_limit: str,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def disconnect(recording: Optional[PyRecordingStream] = None) -> None: ...
+def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None: ...
+
+# // time
+# m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
+# m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
+# m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+# m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
+# m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+
+def set_time_sequence(
+    timeline: str,
+    sequence: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def set_time_seconds(
+    timeline: str,
+    seconds: float,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def set_time_nanos(
+    timeline: str,
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def disable_timeline(
+    timeline: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def reset_time(recording: Optional[PyRecordingStream] = None) -> None: ...
+
+# // log any
+# m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+# m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
+# m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
+# m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
+# m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
+
+def log_arrow_msg(
+    entity_path: str,
+    components: dict[Any, Any],
+    static_: bool,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def send_arrow_chunk(
+    entity_path: str,
+    timelines: dict[Any, Any],
+    components: dict[Any, Any],
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def log_file_from_path(
+    file_path: str | os.PathLike[str],
+    entity_path_prefix: Optional[str] = None,
+    static_: bool = False,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def log_file_from_contents(
+    file_path: str | os.PathLike[str],
+    file_contents: bytes,
+    entity_path_prefix: Optional[str] = None,
+    static_: bool = False,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+def send_blueprint(
+    blueprint: PyMemorySinkStorage,
+    make_active: bool = False,
+    make_default: bool = True,
+    recording: Optional[PyRecordingStream] = None,
+) -> None: ...
+
+# // misc
+# m.add_function(wrap_pyfunction!(version, m)?)?;
+# m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
+# m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
+# m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
+# m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
+
+def version() -> str: ...
+def get_app_url() -> str: ...
+def start_web_viewer_server(port: int) -> None: ...
+def escape_entity_path_part(part: str) -> str: ...
+def new_entity_path(parts: list[str]) -> str: ...
+
+# m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
+def asset_video_read_frame_timestamps_ns(
+    video_bytes_arrow_array: Any, media_type: Optional[str] = None
+) -> list[int]: ...

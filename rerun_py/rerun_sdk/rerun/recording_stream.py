@@ -167,7 +167,10 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
         An object that can be used to flush or read the data.
 
     """
-    return BinaryStream(bindings.binary_stream(recording=recording.to_native() if recording is not None else None))
+    inner = bindings.binary_stream(recording=recording.to_native() if recording is not None else None)
+    if inner is None:
+        raise RuntimeError("No recording stream was provided and set as current")
+    return BinaryStream(inner)
 
 
 def is_enabled(
@@ -437,6 +440,14 @@ class RecordingStream:
         self._prev: RecordingStream | None = None
         self.context_token: contextvars.Token[RecordingStream] | None = None
 
+    @classmethod
+    def _from_native(cls, native_recording: bindings.PyRecordingStream) -> RecordingStream:
+        self = cls.__new__(cls)
+        self.inner = native_recording
+        self._prev = None
+        self.context_token = None
+        return self
+
     def __enter__(self) -> RecordingStream:
         self.context_token = active_recording_stream.set(self)
         self._prev = set_thread_local_data_recording(self)
@@ -468,8 +479,8 @@ class RecordingStream:
             )
 
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
-    def to_native(self: RecordingStream | None) -> bindings.PyRecordingStream | None:
-        return self.inner if self is not None else None
+    def to_native(self) -> bindings.PyRecordingStream:
+        return self.inner
 
     def flush(self, blocking: bool = True) -> None:
         """
@@ -484,13 +495,13 @@ class RecordingStream:
         bindings.flush(blocking, recording=self.to_native())
 
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
-        recording = RecordingStream.to_native(self)
+        recording = self.to_native()
         # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
         # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still
         # detect this case and prevent a hang internally, but will do so with a warning that we should avoid.
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
-        if recording is not None and not recording.is_forked_child():
+        if not recording.is_forked_child():
             bindings.flush(blocking=False, recording=recording)  # NOLINT
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
@@ -1207,7 +1218,7 @@ class RecordingStream:
 class BinaryStream:
     """An encoded stream of bytes that can be saved as an rrd or sent to the viewer."""
 
-    def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
+    def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
         self.storage = storage
 
     def read(self, *, flush: bool = True) -> bytes:
@@ -1261,7 +1272,7 @@ def get_data_recording(
 
     """
     result = bindings.get_data_recording(recording=recording.to_native() if recording is not None else None)
-    return RecordingStream(result) if result is not None else None
+    return RecordingStream._from_native(result) if result is not None else None
 
 
 def get_global_data_recording() -> RecordingStream | None:
@@ -1275,7 +1286,7 @@ def get_global_data_recording() -> RecordingStream | None:
 
     """
     result = bindings.get_global_data_recording()
-    return RecordingStream(result) if result is not None else None
+    return RecordingStream._from_native(result) if result is not None else None
 
 
 def set_global_data_recording(recording: RecordingStream) -> RecordingStream | None:
@@ -1289,7 +1300,7 @@ def set_global_data_recording(recording: RecordingStream) -> RecordingStream | N
 
     """
     result = bindings.set_global_data_recording(recording.to_native())
-    return RecordingStream(result) if result is not None else None
+    return RecordingStream._from_native(result) if result is not None else None
 
 
 def get_thread_local_data_recording() -> RecordingStream | None:
@@ -1303,7 +1314,7 @@ def get_thread_local_data_recording() -> RecordingStream | None:
 
     """
     result = bindings.get_thread_local_data_recording()
-    return RecordingStream(result) if result is not None else None
+    return RecordingStream._from_native(result) if result is not None else None
 
 
 def set_thread_local_data_recording(recording: RecordingStream | None) -> RecordingStream | None:
@@ -1319,7 +1330,7 @@ def set_thread_local_data_recording(recording: RecordingStream | None) -> Record
     result = bindings.set_thread_local_data_recording(
         recording=recording.to_native() if recording is not None else None,
     )
-    return RecordingStream(result) if result is not None else None
+    return RecordingStream._from_native(result) if result is not None else None
 
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])

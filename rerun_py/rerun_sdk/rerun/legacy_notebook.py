@@ -102,7 +102,7 @@ def as_html(
     if app_url is None:
         app_url = bindings.get_app_url()
 
-    output_stream = RecordingStream(
+    output_stream = RecordingStream._from_native(
         bindings.new_recording(
             application_id=application_id,
             make_default=False,

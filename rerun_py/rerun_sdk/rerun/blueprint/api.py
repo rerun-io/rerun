@@ -597,7 +597,7 @@ class Blueprint:
             blueprint is currently active.
 
         """
-        blueprint_stream = RecordingStream(
+        blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
                 application_id=application_id,
                 make_default=False,
@@ -627,7 +627,7 @@ class Blueprint:
         if path is None:
             path = f"{application_id}.rbl"
 
-        blueprint_stream = RecordingStream(
+        blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
                 application_id=application_id,
                 make_default=False,
@@ -687,7 +687,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     # We only use this stream object directly, so don't need to make it
     # default or thread default. Making it the thread-default will also
     # lead to an unnecessary warning on mac/win.
-    blueprint_stream = RecordingStream(
+    blueprint_stream = RecordingStream._from_native(
         bindings.new_blueprint(
             application_id=application_id,
             make_default=False,
