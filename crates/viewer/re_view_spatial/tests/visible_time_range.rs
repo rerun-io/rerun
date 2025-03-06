@@ -28,88 +28,76 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             frame(42),
-            &Points2D::new([(0.0, 0.0), (1.0, 1.0)]).with_colors([[255, 0, 0]]),
+            &Points2D::update_fields()
+                .with_positions([(0.0, 0.0), (1.0, 1.0)])
+                .with_colors([0xFF0000FF]),
         )
     });
+
     test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
+        builder.with_archetype(
             RowId::new(),
             frame(42),
-            [(
-                Points2D::descriptor_radii(),
-                Some(&components::Radius::from(0.1) as _),
-            )],
+            &Points2D::update_fields().with_radii([0.1]),
         )
     });
+
     test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
+        builder.with_archetype(
             RowId::new(),
             frame(44),
-            [(
-                Points2D::descriptor_colors(),
-                Some(&components::Color::from([0, 0, 255]) as _),
-            )],
+            &Points2D::update_fields().with_colors([0x0000FFFF]),
+        )
+    });
+
+    test_context.log_entity(points_path.clone(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            frame(45),
+            &Points2D::update_fields().with_positions([(0.0, 1.0), (1.0, 0.0)]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(45),
-            &Points2D::new([(0.0, 1.0), (1.0, 0.0)]),
+            &Points2D::update_fields().with_radii([0.2]),
         )
     });
+
     test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
-            RowId::new(),
-            frame(45),
-            [(
-                Points2D::descriptor_radii(),
-                Some(&components::Radius::from(0.2) as _),
-            )],
-        )
-    });
-    test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
+        builder.with_archetype(
             RowId::new(),
             frame(46),
-            [(
-                Points2D::descriptor_radii(),
-                Some(&components::Radius::from(0.2) as _),
-            )],
+            &Points2D::update_fields().with_radii([0.2]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::new([(0.0, 2.0), (1.0, 2.0)]),
-        )
-    });
-    test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
-            RowId::new(),
-            frame(46),
-            [(
-                Points2D::descriptor_radii(),
-                Some(&components::Radius::from(0.15) as _),
-            )],
-        )
-    });
-    test_context.log_entity(points_path.clone(), |builder| {
-        builder.with_sparse_component_batches(
-            RowId::new(),
-            frame(46),
-            [(
-                Points2D::descriptor_colors(),
-                Some(&components::Color::from([0, 255, 0]) as _),
-            )],
+            &Points2D::update_fields().with_positions([(0.0, 2.0), (1.0, 2.0)]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::new([(2.0, 2.0), (2.0, 0.0)]),
+            &Points2D::update_fields().with_radii([0.15]),
+        )
+    });
+    test_context.log_entity(points_path.clone(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            frame(46),
+            &Points2D::update_fields().with_colors([0x00FF00FF]),
+        )
+    });
+    test_context.log_entity(points_path.clone(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            frame(46),
+            &Points2D::update_fields().with_positions([(2.0, 2.0), (2.0, 0.0)]),
         )
     });
 
