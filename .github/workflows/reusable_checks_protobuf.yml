@@ -11,6 +11,11 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_protobuf
   cancel-in-progress: true
 
+env:
+  # Make sure that git will not try and perform any kind of LFS filtering, otherwise
+  # this will completely break `buf` which invokes `git` under the hood.
+  GIT_LFS_SKIP_SMUDGE: 1
+
 defaults:
   run:
     shell: bash
