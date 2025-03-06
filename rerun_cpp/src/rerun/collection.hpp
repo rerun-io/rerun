@@ -355,15 +355,6 @@ namespace rerun {
             return data() + size();
         }
 
-        /// Returns a pointer to the first element, if any, else `nullptr`.
-        const TElement* first() const {
-            if (empty()) {
-                return nullptr;
-            } else {
-                return begin();
-            }
-        }
-
         /// Random read access to the underlying data.
         const TElement& operator[](size_t i) const {
             assert(i < size());
