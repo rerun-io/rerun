@@ -1,0 +1,15 @@
+namespace rerun.components;
+
+// ---
+
+/// The name of the application that generated the recording.
+table ApplicationId (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.override_crate": "re_types_core",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

@@ -20,9 +20,11 @@ utf8
 ## Used by
 
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
+* [`ApplicationId`](../components/application_id.md)
 * [`GraphNode`](../components/graph_node.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
+* [`RecordingName`](../components/recording_name.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`Utf8Pair`](../datatypes/utf8pair.md)
