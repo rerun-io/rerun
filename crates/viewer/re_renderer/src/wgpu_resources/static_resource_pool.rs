@@ -141,7 +141,7 @@ impl<Handle: Key, Res> StaticResourcePoolReadLockAccessor<'_, Handle, Res> {
 mod tests {
     use std::cell::Cell;
 
-    use slotmap::Key;
+    use slotmap::Key as _;
 
     use super::StaticResourcePool;
     use crate::wgpu_resources::resource::PoolError;

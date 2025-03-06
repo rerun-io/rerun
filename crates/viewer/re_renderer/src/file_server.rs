@@ -97,7 +97,7 @@ mod file_server_impl {
     use ahash::{HashMap, HashSet};
     use anyhow::Context as _;
     use crossbeam::channel::Receiver;
-    use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+    use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher as _};
     use parking_lot::RwLock;
     use std::path::{Path, PathBuf};
 

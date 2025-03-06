@@ -6,7 +6,7 @@ use re_types::{
 };
 use re_ui::{
     list_item::{self, PropertyContent},
-    UiExt,
+    UiExt as _,
 };
 use re_viewer_context::UiLayout;
 

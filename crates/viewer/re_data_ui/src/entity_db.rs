@@ -1,4 +1,4 @@
-use re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;

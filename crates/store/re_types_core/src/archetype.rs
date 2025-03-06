@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Component, Loggable, LoggableBatch};
+use crate::{Component as _, Loggable as _, LoggableBatch as _};
 
 // ---
 

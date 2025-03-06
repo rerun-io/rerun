@@ -1,4 +1,4 @@
-use arrow::array::Array as ArrowArray;
+use arrow::array::Array as _;
 
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentName;

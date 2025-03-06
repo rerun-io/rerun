@@ -9,7 +9,7 @@ use re_chunk_store::{
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
     components::{PinholeProjection, ViewCoordinates},
-    Component,
+    Component as _,
 };
 
 bitflags::bitflags! {

@@ -1,18 +1,18 @@
 use ahash::HashSet;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Component, View,
+    blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
     ViewClassIdentifier,
 };
 use re_ui::{list_item, Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,

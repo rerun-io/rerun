@@ -7,7 +7,7 @@ use re_byte_size::SizeBytes;
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Archetype, ComponentBatch, LoggableBatch};
+use crate::{Archetype as _, ComponentBatch as _, LoggableBatch as _};
 
 // ---
 

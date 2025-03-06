@@ -8,7 +8,7 @@ use crate::{
 use arrow::array::ListArray as ArrowListArray;
 
 #[allow(unused_imports)] // used in docstrings
-use crate::Archetype;
+use crate::Archetype as _;
 
 // ---
 
@@ -253,7 +253,7 @@ impl From<SerializedComponentBatch> for SerializedComponentColumn {
     #[inline]
     fn from(batch: SerializedComponentBatch) -> Self {
         use arrow::{
-            array::{Array, ListArray},
+            array::{Array as _, ListArray},
             buffer::OffsetBuffer,
             datatypes::Field,
         };

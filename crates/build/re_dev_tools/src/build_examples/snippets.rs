@@ -7,8 +7,8 @@ use std::process::Command;
 
 use camino::Utf8Path;
 use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
+use rayon::prelude::IntoParallelIterator as _;
+use rayon::prelude::ParallelIterator as _;
 
 use super::wait_for_output;
 

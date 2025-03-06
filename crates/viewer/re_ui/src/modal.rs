@@ -1,4 +1,4 @@
-use eframe::emath::NumExt;
+use eframe::emath::NumExt as _;
 
 use crate::{DesignTokens, UiExt as _};
 

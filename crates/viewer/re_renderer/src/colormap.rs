@@ -1,6 +1,6 @@
 #![allow(clippy::excessive_precision)]
 
-use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
+use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles as _};
 
 // ---
 

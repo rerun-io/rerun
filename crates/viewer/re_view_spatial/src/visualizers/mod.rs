@@ -50,7 +50,7 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, IdentifiedViewSystem, MaybeVisualizableEntities, ViewClassRegistryError,
+    auto_color_egui, IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
     VisualizableFilterContext, VisualizerCollection,
 };

@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
-    codegen::{autogen_warning, common::StringExt},
+    codegen::{autogen_warning, common::StringExt as _},
     Object, ObjectKind, Objects, Reporter,
 };
 

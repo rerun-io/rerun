@@ -1,7 +1,5 @@
-use arrow::array::{
-    Array as ArrowArray, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
-};
-use itertools::Itertools;
+use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch};
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};

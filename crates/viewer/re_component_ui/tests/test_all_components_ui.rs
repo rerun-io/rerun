@@ -5,7 +5,7 @@ use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 use arrow::array::ArrayRef;
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_component_ui::create_component_ui_registry;
@@ -16,7 +16,7 @@ use re_types::{
     datatypes::{ChannelDatatype, PixelFormat},
 };
 use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     external::re_chunk_store::{external::re_chunk, LatestAtQuery},
     test_context::TestContext,

@@ -1,9 +1,9 @@
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use anyhow::Context as _;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 use crate::{rerun_if_changed, rerun_if_changed_or_doesnt_exist};
 

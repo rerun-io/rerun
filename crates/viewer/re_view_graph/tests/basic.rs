@@ -6,7 +6,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_types::archetypes;
 use re_view_graph::GraphView;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
+use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
 
 #[test]

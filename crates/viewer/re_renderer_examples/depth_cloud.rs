@@ -16,7 +16,7 @@
 use std::f32::consts::TAU;
 
 use glam::Vec3;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_math::IsoTransform;
 use re_renderer::{
     renderer::{

@@ -9,7 +9,7 @@ use re_types::{
     components::{Color, Text, TextLogLevel},
     Component as _,
 };
-use re_view::{range_with_blueprint_resolved_data, RangeResultsExt};
+use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerQueryInfo, VisualizerSystem,

@@ -7,7 +7,7 @@ use crate::ChunkStoreGeneration;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
+use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber as _, RowId};
 
 // ---
 

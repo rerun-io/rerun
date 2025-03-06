@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
 
-use re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes as _;
 use re_memory::MemoryLimit;
 use re_protos::{
     common::v0::StoreKind as StoreKindProto,

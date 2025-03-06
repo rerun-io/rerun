@@ -1,6 +1,6 @@
 //! Demonstrates outline rendering.
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_renderer::{
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},

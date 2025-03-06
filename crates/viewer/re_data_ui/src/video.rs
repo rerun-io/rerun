@@ -6,7 +6,7 @@ use re_renderer::{
 use re_types::components::VideoTimestamp;
 use re_ui::{
     list_item::{self, PropertyContent},
-    DesignTokens, UiExt,
+    DesignTokens, UiExt as _,
 };
 use re_video::{decode::FrameInfo, VideoData};
 use re_viewer_context::UiLayout;
