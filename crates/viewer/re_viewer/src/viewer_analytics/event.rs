@@ -56,21 +56,20 @@ pub fn open_recording(
         let re_log_types::StoreInfo {
             application_id,
             store_id,
-            is_official_example,
             store_source,
             store_version,
-
             cloned_from: _,
-            started: _,
         } = store_info;
 
-        let application_id_preprocessed = if *is_official_example {
+        let is_official_example = application_id.to_string().starts_with("rerun_example_");
+
+        let application_id_preprocessed = if is_official_example {
             Id::Official(application_id.0.clone())
         } else {
             Id::Hashed(Property::from(application_id.0.clone()).hashed())
         };
 
-        let recording_id_preprocessed = if *is_official_example {
+        let recording_id_preprocessed = if is_official_example {
             Id::Official(store_id.to_string())
         } else {
             Id::Hashed(Property::from(store_id.to_string()).hashed())

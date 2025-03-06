@@ -187,16 +187,12 @@ mod sizes {
             let Self {
                 application_id,
                 store_id,
-                is_official_example,
-                started,
                 store_source,
                 store_version,
             } = self;
 
             application_id.heap_size_bytes()
                 + store_id.heap_size_bytes()
-                + is_official_example.heap_size_bytes()
-                + started.heap_size_bytes()
                 + store_source.heap_size_bytes()
                 + store_version.heap_size_bytes()
         }

@@ -3,19 +3,20 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, Time, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
+use re_types_core::components;
 
 use crate::{Error, TimesPerTimeline};
 
@@ -138,6 +139,24 @@ impl EntityDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
+    }
+
+    fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
+        self.latest_at_component::<C>(
+            &EntityPath::recording_properties(),
+            // TODO(grtlr): Does `log_time` make sense here?
+            &LatestAtQuery::latest(Timeline::log_tick().name().clone()),
+        )
+        .map(|(_, value)| value)
+    }
+
+    pub fn recording_name(&self) -> Option<components::RecordingName> {
+        self.recording_property()
+    }
+
+    pub fn recording_started(&self) -> Option<Time> {
+        self.recording_property::<components::RecordingStartedTimestamp>()
+            .map(|time| Time::from_ns_since_epoch(time.0 .0))
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -560,7 +579,7 @@ impl EntityDb {
     /// Key used for sorting recordings in the UI.
     pub fn sort_key(&self) -> impl Ord + '_ {
         self.store_info()
-            .map(|info| (info.application_id.0.as_str(), info.started))
+            .map(|info| (info.application_id.0.as_str(), self.recording_started()))
     }
 
     /// Export the contents of the current database to a sequence of messages.

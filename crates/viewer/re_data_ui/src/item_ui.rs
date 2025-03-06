@@ -743,16 +743,19 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let creation_time = entity_db
-        .store_info()
-        .and_then(|info| {
-            info.started
-                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
-        })
-        .unwrap_or("<unknown time>".to_owned());
+    let recording_name = if let Some(recording_name) = entity_db.recording_name() {
+        Some(format!("{recording_name}"))
+    } else {
+        entity_db
+            .recording_started()
+            .and_then(|started: re_log_types::Time| {
+                started.format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
+            })
+    }
+    .unwrap_or("<unknown>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{creation_time} - {size}");
+    let title = format!("{app_id_prefix}{recording_name} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());

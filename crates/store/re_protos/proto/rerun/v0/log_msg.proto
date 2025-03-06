@@ -87,10 +87,12 @@ message StoreInfo {
     rerun.common.v0.StoreId store_id = 2;
 
     // True if the recording is one of the official Rerun examples.
-    bool is_official_example = 3;
+    // bool is_official_example = 3;
+    reserved 3;
 
     // When the recording started.
-    rerun.common.v0.Time started = 4;
+    // rerun.common.v0.Time started = 4;
+    reserved 4;
 
     // Where the recording came from.
     StoreSource store_source = 5;
