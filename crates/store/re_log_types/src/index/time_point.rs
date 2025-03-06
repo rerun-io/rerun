@@ -52,7 +52,6 @@ impl TimePoint {
         }
     }
 
-    // #[deprecated] // TODO
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) {
         let cell = IndexCell::new(
@@ -73,7 +72,6 @@ impl TimePoint {
         self
     }
 
-    // #[deprecated] // TODO
     #[must_use]
     #[inline]
     pub fn with(mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Self {

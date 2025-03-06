@@ -2117,9 +2117,32 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let seconds = seconds.into();
-        // TODO: clamp with warning
-        self.set_time_nanos(timeline, (1e9 * seconds).round() as i64);
+        let f = move |inner: &RecordingStreamInner| {
+            let mut seconds = seconds.into();
+            if seconds.is_nan() {
+                re_log::error!("set_time_seconds() called with NaN");
+                seconds = 0.0;
+            }
+
+            let nanos = 1e9 * seconds;
+            let nanos_clamped = nanos.clamp(NonMinI64::MIN.get() as _, NonMinI64::MAX.get() as _);
+
+            if nanos != nanos_clamped {
+                re_log::warn_once!(
+                    "set_time_seconds() called with out-of-range value {seconds:?}. Clamping to valid range."
+                );
+            }
+
+            ThreadInfo::set_thread_time(
+                &inner.info.store_id,
+                timeline.into(),
+                IndexCell::from_duration_nanos(nanos_clamped.round() as i64),
+            );
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
+        }
     }
 
     /// Set the current time of the recording, for the current calling thread.
