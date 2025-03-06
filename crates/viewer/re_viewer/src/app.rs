@@ -1484,11 +1484,10 @@ impl App {
                         );
                     }
                     StoreKind::Blueprint => {
-                        if let Some(info) = entity_db.store_info() {
+                        if let Some(app_id) = entity_db.application_id() {
                             re_log::trace!(
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
-                            let app_id = info.application_id.clone();
                             if cmd.make_default {
                                 store_hub
                                     .set_default_blueprint_for_app(&app_id, store_id)
@@ -2141,8 +2140,8 @@ impl eframe::App for App {
             let apps: std::collections::BTreeSet<ApplicationId> = store_hub
                 .store_bundle()
                 .entity_dbs()
-                .filter_map(|db| db.app_id())
-                .filter(|app_id| app_id.clone() != StoreHub::welcome_screen_app_id())
+                .filter_map(|db| db.application_id())
+                .filter(|app_id| app_id != &StoreHub::welcome_screen_app_id())
                 .collect();
             if let Some(app_id) = apps.first() {
                 store_hub.set_active_app(app_id.clone());

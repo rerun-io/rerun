@@ -3,7 +3,7 @@ use re_log_types::ApplicationId;
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
 pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
-    re_viewer_context::santitize_file_name(&app_id.0.to_lowercase())
+    re_viewer_context::santitize_file_name(&app_id.to_string().to_lowercase())
 }
 
 /// Determine the default path for a blueprint based on its `ApplicationId`
@@ -44,10 +44,10 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 
     // If the sanitization actually did something, we no longer have a uniqueness guarantee,
     // so insert the hash.
-    if sanitized_app_id != app_id.0 {
+    if sanitized_app_id != app_id.to_string() {
         // Hash the original app-id.
 
-        let hash = ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(&app_id.0);
+        let hash = ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(app_id.to_string());
 
         sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
     }

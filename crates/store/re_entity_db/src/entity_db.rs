@@ -10,7 +10,7 @@ use re_chunk_store::{
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, Time, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -155,8 +155,9 @@ impl EntityDb {
         self.recording_property()
     }
 
-    pub fn recording_started(&self) -> Option<components::RecordingStartedTimestamp> {
-        self.recording_property()
+    pub fn recording_started(&self) -> Option<Time> {
+        self.recording_property::<components::RecordingStartedTimestamp>()
+            .map(|time| Time::from_ns_since_epoch(time.0 .0))
     }
 
     /// Whether this `StoreInfo` is the default used when a user is not explicitly

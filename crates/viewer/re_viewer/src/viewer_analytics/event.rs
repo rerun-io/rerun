@@ -52,28 +52,31 @@ pub fn open_recording(
     app_env: &AppEnvironment,
     entity_db: &re_entity_db::EntityDb,
 ) -> Option<OpenRecording> {
-    let store_info = entity_db.store_info().map(|store_info| {
+    let store_info = entity_db.store_info().and_then(|store_info| {
         let re_log_types::StoreInfo {
-            application_id,
             store_id,
-            is_official_example,
             store_source,
             store_version,
-
             cloned_from: _,
-            started: _,
         } = store_info;
 
-        let application_id_preprocessed = if *is_official_example {
-            Id::Official(application_id.0.clone())
-        } else {
-            Id::Hashed(Property::from(application_id.0.clone()).hashed())
+        let Some(application_id) = entity_db.application_id() else {
+            re_log::warn!("trying to log analytics events without an application id");
+            return None;
         };
 
-        let recording_id_preprocessed = if *is_official_example {
-            Id::Official(store_id.to_string())
+        let is_official_example = application_id.as_str().starts_with("rerun_example_");
+
+        let (application_id_preprocessed, recording_id_preprocessed) = if is_official_example {
+            (
+                Id::Official(application_id.to_string()),
+                Id::Official(store_id.to_string()),
+            )
         } else {
-            Id::Hashed(Property::from(store_id.to_string()).hashed())
+            (
+                Id::Hashed(Property::from(application_id.to_string()).hashed()),
+                Id::Hashed(Property::from(store_id.to_string()).hashed()),
+            )
         };
 
         use re_log_types::StoreSource as S;
@@ -125,7 +128,7 @@ pub fn open_recording(
 
         let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
 
-        StoreInfo {
+        Some(StoreInfo {
             application_id: application_id_preprocessed,
             recording_id: recording_id_preprocessed,
             store_source: store_source_preprocessed,
@@ -135,7 +138,7 @@ pub fn open_recording(
             python_version: python_version_preprocessed,
             is_official_example: app_id_starts_with_rerun_example,
             app_id_starts_with_rerun_example,
-        }
+        })
     });
 
     let data_source = entity_db.data_source.as_ref().map(|v| match v {

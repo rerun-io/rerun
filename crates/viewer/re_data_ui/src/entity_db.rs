@@ -2,7 +2,6 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::{ChunkStoreConfig, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreKind};
-use re_types::{components::RecordingStartedTimestamp, Component as _};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -23,8 +22,8 @@ impl crate::DataUi for EntityDb {
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
             }
-            if let Some(store_info) = self.store_info() {
-                string += &format!(", {}", store_info.application_id);
+            if let Some(application_id) = self.application_id() {
+                string += &format!(", {}", application_id);
             }
             ui.label(string);
             return;
@@ -39,11 +38,8 @@ impl crate::DataUi for EntityDb {
 
             if let Some(store_info) = self.store_info() {
                 let re_log_types::StoreInfo {
-                    application_id,
                     store_id,
                     cloned_from,
-                    is_official_example: _,
-                    started,
                     store_source,
                     store_version,
                 } = store_info;
@@ -53,10 +49,6 @@ impl crate::DataUi for EntityDb {
                     crate::item_ui::store_id_button_ui(ctx, ui, cloned_from, ui_layout);
                     ui.end_row();
                 }
-
-                ui.grid_left_hand_label("Application ID");
-                app_id_button_ui(ctx, ui, application_id);
-                ui.end_row();
 
                 ui.grid_left_hand_label("Source");
                 ui.label(store_source.to_string());
@@ -74,10 +66,6 @@ impl crate::DataUi for EntityDb {
 
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind.to_string());
-                ui.end_row();
-
-                ui.grid_left_hand_label("Created");
-                ui.label(started.format(ctx.app_options().time_zone));
                 ui.end_row();
             }
 

@@ -744,10 +744,9 @@ pub fn entity_db_button_ui(
     };
 
     let creation_time = entity_db
-        .store_info()
-        .and_then(|info| {
-            info.started
-                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
+        .recording_started()
+        .and_then(|started| {
+            started.format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
         })
         .unwrap_or("<unknown time>".to_owned());
 

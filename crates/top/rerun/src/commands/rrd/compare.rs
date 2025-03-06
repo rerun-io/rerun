@@ -163,7 +163,7 @@ fn compute_uber_table(
 
     Ok((
         store
-            .app_id()
+            .application_id()
             .unwrap_or_else(re_log_types::ApplicationId::unknown),
         engine.store().iter_chunks().map(Arc::clone).collect_vec(),
     ))

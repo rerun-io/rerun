@@ -11,10 +11,10 @@ use re_ui::{UICommand, UICommandSender};
 #[derive(strum_macros::IntoStaticStr)]
 pub enum SystemCommand {
     /// Make this the active application.
-    ActivateApp(re_types_core::components::ApplicationId),
+    ActivateApp(re_log_types::ApplicationId),
 
     /// Close this app and all its recordings.
-    CloseApp(re_types_core::components::ApplicationId),
+    CloseApp(re_log_types::ApplicationId),
 
     /// Load some data.
     LoadDataSource(DataSource),

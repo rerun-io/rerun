@@ -112,7 +112,7 @@ fn recording_list_ui(
 
     for entity_db in ctx.store_context.bundle.entity_dbs() {
         // We want to show all open applications, even if they have no recordings
-        let Some(app_id) = entity_db.app_id() else {
+        let Some(app_id) = entity_db.application_id() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
         let recordings = entity_dbs_map.entry(app_id).or_default();
@@ -162,7 +162,7 @@ fn app_and_its_recordings_ui(
     app_id: &ApplicationId,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+    entity_dbs.sort_by_key(|entity_db| entity_db.recording_started());
 
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);
