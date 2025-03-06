@@ -1,12 +1,10 @@
-use crate::{NonMinI64, TimeType};
-
-use super::TimeInt;
+use crate::{NonMinI64, TimeInt, TimeType};
 
 pub struct OutOfRange;
 
+/// An typed cell of an index, e.g. a point in time on some unknown timeline.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-/// An typed cell of an index, e.g. a point in time on some unknown timeline.
 pub struct IndexCell {
     pub typ: TimeType,
     pub value: NonMinI64,
@@ -49,14 +47,12 @@ impl IndexCell {
         self.typ
     }
 
+    /// Internal encoding.
+    ///
+    /// Its meaning depends on the [`Self::typ`].
     #[inline]
     pub fn as_i64(&self) -> i64 {
         self.value.into()
-    }
-
-    #[inline]
-    pub fn as_time_int(&self) -> TimeInt {
-        TimeInt::from(self.value)
     }
 }
 
@@ -72,7 +68,29 @@ impl re_byte_size::SizeBytes for IndexCell {
     }
 }
 
+impl From<IndexCell> for TimeInt {
+    #[inline]
+    fn from(cell: IndexCell) -> Self {
+        Self::from(cell.value)
+    }
+}
+
+impl From<IndexCell> for NonMinI64 {
+    #[inline]
+    fn from(cell: IndexCell) -> Self {
+        cell.value
+    }
+}
+
+impl From<IndexCell> for i64 {
+    #[inline]
+    fn from(cell: IndexCell) -> Self {
+        cell.value.get()
+    }
+}
+
 impl From<std::time::Duration> for IndexCell {
+    /// Saturating cast from [`std::time::Duration`].
     fn from(time: std::time::Duration) -> Self {
         Self::from_duration_nanos(NonMinI64::saturating_from_u128(time.as_nanos()))
     }
@@ -99,7 +117,7 @@ impl TryFrom<web_time::SystemTime> for IndexCell {
 
     fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
         let duration_since_epoch = time
-            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .duration_since(web_time::SystemTime::UNIX_EPOCH)
             .map_err(|_ignored| OutOfRange)?;
         let nanos_since_epoch = duration_since_epoch.as_nanos();
         let nanos_since_epoch = i64::try_from(nanos_since_epoch).map_err(|_ignored| OutOfRange)?;

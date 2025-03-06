@@ -914,11 +914,11 @@ impl PendingRow {
 
                     row_ids.push(*row_id);
 
-                    for (&timeline_name, cell) in row_timepoint {
+                    for (&timeline_name, &cell) in row_timepoint {
                         let time_column = timelines.entry(timeline_name).or_insert_with(|| {
                             PendingTimeColumn::new(Timeline::new(timeline_name, cell.typ()))
                         });
-                        time_column.push(cell.as_time_int());
+                        time_column.push(cell.into());
                     }
 
                     for (component_desc, arrays) in &mut components {

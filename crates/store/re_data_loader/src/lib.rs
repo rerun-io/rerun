@@ -145,6 +145,7 @@ impl DataLoaderSettings {
             }
 
             for (timeline, cell) in timepoint.iter() {
+                // TODO(#8635): update this
                 match cell.typ() {
                     re_log_types::TimeType::Time => {
                         args.extend([
