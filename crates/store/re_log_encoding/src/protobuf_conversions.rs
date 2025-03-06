@@ -32,6 +32,7 @@ pub fn log_msg_from_proto(
         Some(Msg::SetStoreInfo(set_store_info)) => Ok(re_log_types::LogMsg::SetStoreInfo(
             set_store_info.try_into()?,
         )),
+
         Some(Msg::ArrowMsg(arrow_msg)) => {
             if arrow_msg.encoding() != Encoding::ArrowIpc {
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
@@ -55,11 +56,13 @@ pub fn log_msg_from_proto(
                 chunk.to_arrow_msg()?,
             ))
         }
+
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(
                 blueprint_activation_command.try_into()?,
             ))
         }
+
         None => Err(missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg").into()),
     }
 }

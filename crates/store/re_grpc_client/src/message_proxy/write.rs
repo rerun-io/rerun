@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_client::MessageProxyClient;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_uri::ProxyEndpoint;
 use tokio::runtime;
 use tokio::sync::mpsc;
@@ -166,7 +167,7 @@ async fn message_proxy_client(
             }
         }
     };
-    let mut client = MessageProxyClient::new(channel);
+    let mut client = MessageProxyServiceClient::new(channel);
 
     let stream = async_stream::stream! {
         loop {
@@ -180,6 +181,10 @@ async fn message_proxy_client(
                                     re_log::error!("Failed to encode message: {err}");
                                     break;
                                 }
+                            };
+
+                            let msg = WriteMessagesRequest {
+                                log_msg: Some(msg),
                             };
 
                             yield msg;

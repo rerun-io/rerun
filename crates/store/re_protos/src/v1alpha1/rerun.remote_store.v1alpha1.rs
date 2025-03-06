@@ -152,6 +152,21 @@ impl ::prost::Name for GetChunksRangeRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetChunksRangeResponse {
+    #[prost(message, optional, tag = "1")]
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
+}
+impl ::prost::Name for GetChunksRangeResponse {
+    const NAME: &'static str = "GetChunksRangeResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.GetChunksRangeResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.GetChunksRangeResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksRequest {
     /// which catalog entry do we want to fetch the chunks from
     #[prost(message, optional, tag = "1")]
@@ -171,6 +186,21 @@ impl ::prost::Name for GetChunksRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v1alpha1.GetChunksRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetChunksResponse {
+    #[prost(message, optional, tag = "1")]
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
+}
+impl ::prost::Name for GetChunksResponse {
+    const NAME: &'static str = "GetChunksResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.GetChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.GetChunksResponse".into()
     }
 }
 /// used to define which column we want to index
@@ -383,6 +413,21 @@ impl ::prost::Name for SearchIndexRequest {
         "/rerun.remote_store.v1alpha1.SearchIndexRequest".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchIndexResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for SearchIndexResponse {
+    const NAME: &'static str = "SearchIndexResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.SearchIndexResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.SearchIndexResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct IndexQueryProperties {
     /// specific index query properties based on the index type
@@ -519,14 +564,8 @@ impl ::prost::Name for ListManifestsRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListManifestsResponse {
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::EncoderVersion",
-        tag = "1"
-    )]
-    pub encoder_version: i32,
-    /// The record batch of the response, encoded according to `encoder_version`.
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for ListManifestsResponse {
     const NAME: &'static str = "ListManifestsResponse";
@@ -597,6 +636,21 @@ impl ::prost::Name for QueryManifestRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v1alpha1.QueryManifestRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryManifestResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for QueryManifestResponse {
+    const NAME: &'static str = "QueryManifestResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.QueryManifestResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.QueryManifestResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -799,6 +853,21 @@ impl ::prost::Name for RegisterRecordingRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRecordingResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for RegisterRecordingResponse {
+    const NAME: &'static str = "RegisterRecordingResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.RegisterRecordingResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.RegisterRecordingResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UnregisterRecordingRequest {
     /// which catalog entry do we want to unregister the recording from
     #[prost(message, optional, tag = "1")]
@@ -911,6 +980,21 @@ impl ::prost::Name for QueryRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for QueryResponse {
+    const NAME: &'static str = "QueryResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.QueryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.QueryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogRequest {
     /// which catalog entry do we want to query
     #[prost(message, optional, tag = "1")]
@@ -931,6 +1015,21 @@ impl ::prost::Name for QueryCatalogRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v1alpha1.QueryCatalogRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryCatalogResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for QueryCatalogResponse {
+    const NAME: &'static str = "QueryCatalogResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -966,27 +1065,6 @@ impl ::prost::Name for CatalogFilter {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryCatalogResponse {
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::EncoderVersion",
-        tag = "1"
-    )]
-    pub encoder_version: i32,
-    /// raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
-}
-impl ::prost::Name for QueryCatalogResponse {
-    const NAME: &'static str = "QueryCatalogResponse";
-    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.QueryCatalogResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
     /// which catalog entry do we want to fetch the recording from
     #[prost(message, optional, tag = "1")]
@@ -1009,17 +1087,8 @@ impl ::prost::Name for FetchRecordingRequest {
 /// it's useful to be able to just get back the whole RRD somehow.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingResponse {
-    /// TODO(zehiko) we need to expand this to become something like 'encoder options'
-    /// as we will need to specify additional options like compression, including schema
-    /// in payload, etc.
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::EncoderVersion",
-        tag = "1"
-    )]
-    pub encoder_version: i32,
-    /// payload is raw bytes that the relevant codec can interpret
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "1")]
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
 }
 impl ::prost::Name for FetchRecordingResponse {
     const NAME: &'static str = "FetchRecordingResponse";
@@ -1153,7 +1222,7 @@ impl ErrorCode {
     }
 }
 /// Generated client implementations.
-pub mod storage_node_client {
+pub mod storage_node_service_client {
     #![allow(
         unused_variables,
         dead_code,
@@ -1164,10 +1233,10 @@ pub mod storage_node_client {
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     #[derive(Debug, Clone)]
-    pub struct StorageNodeClient<T> {
+    pub struct StorageNodeServiceClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl<T> StorageNodeClient<T>
+    impl<T> StorageNodeServiceClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::Error: Into<StdError>,
@@ -1185,7 +1254,7 @@ pub mod storage_node_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> StorageNodeClient<InterceptedService<T, F>>
+        ) -> StorageNodeServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
@@ -1198,7 +1267,7 @@ pub mod storage_node_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
-            StorageNodeClient::new(InterceptedService::new(inner, interceptor))
+            StorageNodeServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
         ///
@@ -1241,11 +1310,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/FindCollection",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FindCollection",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "FindCollection",
             ));
             self.inner.unary(req, path, codec).await
@@ -1260,11 +1329,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/FindCollections",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FindCollections",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "FindCollections",
             ));
             self.inner.unary(req, path, codec).await
@@ -1273,7 +1342,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::QueryRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Response<tonic::codec::Streaming<super::QueryResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1281,11 +1350,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/Query",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/Query",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "Query",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1294,9 +1363,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::FetchRecordingRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::FetchRecordingResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1304,11 +1371,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/FetchRecording",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FetchRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "FetchRecording",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1323,11 +1390,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/CreateIndex",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/CreateIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "CreateIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -1341,11 +1408,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/ReIndex",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/ReIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "ReIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -1354,9 +1421,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::GetChunksResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1364,11 +1429,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/GetChunks",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetChunks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "GetChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1377,9 +1442,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRangeRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<super::super::super::common::v1alpha1::RerunChunk>,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::GetChunksRangeResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1387,11 +1450,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/GetChunksRange",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetChunksRange",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "GetChunksRange",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1408,7 +1471,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SearchIndexRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Response<tonic::codec::Streaming<super::SearchIndexResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1416,11 +1479,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/SearchIndex",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/SearchIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "SearchIndex",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1435,11 +1498,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/CreateManifests",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/CreateManifests",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "CreateManifests",
             ));
             self.inner.unary(req, path, codec).await
@@ -1448,7 +1511,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ListManifestsRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Response<tonic::codec::Streaming<super::ListManifestsResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1456,11 +1519,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/ListManifests",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/ListManifests",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "ListManifests",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1469,7 +1532,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::QueryManifestRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Response<tonic::codec::Streaming<super::QueryManifestResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1477,11 +1540,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/QueryManifest",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/QueryManifest",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "QueryManifest",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1490,7 +1553,7 @@ pub mod storage_node_client {
             &mut self,
             request: impl tonic::IntoRequest<super::QueryCatalogRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Response<tonic::codec::Streaming<super::QueryCatalogResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1498,11 +1561,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/QueryCatalog",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/QueryCatalog",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "QueryCatalog",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1517,11 +1580,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/UpdateCatalog",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UpdateCatalog",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "UpdateCatalog",
             ));
             self.inner.unary(req, path, codec).await
@@ -1536,11 +1599,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/GetRecordingSchema",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetRecordingSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "GetRecordingSchema",
             ));
             self.inner.unary(req, path, codec).await
@@ -1549,17 +1612,18 @@ pub mod storage_node_client {
         pub async fn register_recording(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterRecordingRequest>,
-        ) -> std::result::Result<tonic::Response<super::DataframePart>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/RegisterRecording",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "RegisterRecording",
             ));
             self.inner.unary(req, path, codec).await
@@ -1574,11 +1638,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterRecording",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UnregisterRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "UnregisterRecording",
             ));
             self.inner.unary(req, path, codec).await
@@ -1595,11 +1659,11 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterAllRecordings",
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UnregisterAllRecordings",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v1alpha1.StorageNode",
+                "rerun.remote_store.v1alpha1.StorageNodeService",
                 "UnregisterAllRecordings",
             ));
             self.inner.unary(req, path, codec).await
@@ -1607,7 +1671,7 @@ pub mod storage_node_client {
     }
 }
 /// Generated server implementations.
-pub mod storage_node_server {
+pub mod storage_node_service_server {
     #![allow(
         unused_variables,
         dead_code,
@@ -1616,9 +1680,9 @@ pub mod storage_node_server {
         clippy::let_unit_value
     )]
     use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with StorageNodeServer.
+    /// Generated trait containing gRPC methods that should be implemented for use with StorageNodeServiceServer.
     #[async_trait]
-    pub trait StorageNode: std::marker::Send + std::marker::Sync + 'static {
+    pub trait StorageNodeService: std::marker::Send + std::marker::Sync + 'static {
         async fn find_collection(
             &self,
             request: tonic::Request<super::FindCollectionRequest>,
@@ -1629,7 +1693,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<super::FindCollectionsResponse>, tonic::Status>;
         /// Server streaming response type for the Query method.
         type QueryStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::DataframePart, tonic::Status>,
+                Item = std::result::Result<super::QueryResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn query(
@@ -1638,10 +1702,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<Self::QueryStream>, tonic::Status>;
         /// Server streaming response type for the FetchRecording method.
         type FetchRecordingStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::common::v1alpha1::RerunChunk,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::FetchRecordingResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn fetch_recording(
@@ -1658,10 +1719,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the GetChunks method.
         type GetChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::common::v1alpha1::RerunChunk,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::GetChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn get_chunks(
@@ -1670,10 +1728,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
         /// Server streaming response type for the GetChunksRange method.
         type GetChunksRangeStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::common::v1alpha1::RerunChunk,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::GetChunksRangeResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn get_chunks_range(
@@ -1682,7 +1737,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<Self::GetChunksRangeStream>, tonic::Status>;
         /// Server streaming response type for the SearchIndex method.
         type SearchIndexStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::DataframePart, tonic::Status>,
+                Item = std::result::Result<super::SearchIndexResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// The response to `SearchIndex` a RecordBatch with 3 columns:
@@ -1703,7 +1758,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<super::CreateManifestsResponse>, tonic::Status>;
         /// Server streaming response type for the ListManifests method.
         type ListManifestsStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::DataframePart, tonic::Status>,
+                Item = std::result::Result<super::ListManifestsResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn list_manifests(
@@ -1712,7 +1767,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<Self::ListManifestsStream>, tonic::Status>;
         /// Server streaming response type for the QueryManifest method.
         type QueryManifestStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::DataframePart, tonic::Status>,
+                Item = std::result::Result<super::QueryManifestResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn query_manifest(
@@ -1721,7 +1776,7 @@ pub mod storage_node_server {
         ) -> std::result::Result<tonic::Response<Self::QueryManifestStream>, tonic::Status>;
         /// Server streaming response type for the QueryCatalog method.
         type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::DataframePart, tonic::Status>,
+                Item = std::result::Result<super::QueryCatalogResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         async fn query_catalog(
@@ -1740,7 +1795,7 @@ pub mod storage_node_server {
         async fn register_recording(
             &self,
             request: tonic::Request<super::RegisterRecordingRequest>,
-        ) -> std::result::Result<tonic::Response<super::DataframePart>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>;
         async fn unregister_recording(
             &self,
             request: tonic::Request<super::UnregisterRecordingRequest>,
@@ -1754,14 +1809,14 @@ pub mod storage_node_server {
         >;
     }
     #[derive(Debug)]
-    pub struct StorageNodeServer<T> {
+    pub struct StorageNodeServiceServer<T> {
         inner: Arc<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
         max_decoding_message_size: Option<usize>,
         max_encoding_message_size: Option<usize>,
     }
-    impl<T> StorageNodeServer<T> {
+    impl<T> StorageNodeServiceServer<T> {
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
@@ -1809,9 +1864,9 @@ pub mod storage_node_server {
             self
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for StorageNodeServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for StorageNodeServiceServer<T>
     where
-        T: StorageNode,
+        T: StorageNodeService,
         B: Body + std::marker::Send + 'static,
         B::Error: Into<StdError> + std::marker::Send + 'static,
     {
@@ -1826,10 +1881,11 @@ pub mod storage_node_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/rerun.remote_store.v1alpha1.StorageNode/FindCollection" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FindCollection" => {
                     #[allow(non_camel_case_types)]
-                    struct FindCollectionSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::FindCollectionRequest>
+                    struct FindCollectionSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::UnaryService<super::FindCollectionRequest>
                         for FindCollectionSvc<T>
                     {
                         type Response = super::FindCollectionResponse;
@@ -1840,7 +1896,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::find_collection(&inner, request).await
+                                <T as StorageNodeService>::find_collection(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1867,10 +1923,11 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/FindCollections" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FindCollections" => {
                     #[allow(non_camel_case_types)]
-                    struct FindCollectionsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::FindCollectionsRequest>
+                    struct FindCollectionsSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::UnaryService<super::FindCollectionsRequest>
                         for FindCollectionsSvc<T>
                     {
                         type Response = super::FindCollectionsResponse;
@@ -1881,7 +1938,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::find_collections(&inner, request).await
+                                <T as StorageNodeService>::find_collections(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1908,11 +1965,13 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/Query" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/Query" => {
                     #[allow(non_camel_case_types)]
-                    struct QuerySvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::ServerStreamingService<super::QueryRequest> for QuerySvc<T> {
-                        type Response = super::DataframePart;
+                    struct QuerySvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::ServerStreamingService<super::QueryRequest> for QuerySvc<T>
+                    {
+                        type Response = super::QueryResponse;
                         type ResponseStream = T::QueryStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -1921,8 +1980,9 @@ pub mod storage_node_server {
                             request: tonic::Request<super::QueryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as StorageNode>::query(&inner, request).await };
+                            let fut = async move {
+                                <T as StorageNodeService>::query(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -1948,14 +2008,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/FetchRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/FetchRecording" => {
                     #[allow(non_camel_case_types)]
-                    struct FetchRecordingSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct FetchRecordingSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::FetchRecordingRequest>
                         for FetchRecordingSvc<T>
                     {
-                        type Response = super::super::super::common::v1alpha1::RerunChunk;
+                        type Response = super::FetchRecordingResponse;
                         type ResponseStream = T::FetchRecordingStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -1965,7 +2025,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::fetch_recording(&inner, request).await
+                                <T as StorageNodeService>::fetch_recording(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1992,10 +2052,13 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/CreateIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/CreateIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateIndexSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::CreateIndexRequest> for CreateIndexSvc<T> {
+                    struct CreateIndexSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::UnaryService<super::CreateIndexRequest>
+                        for CreateIndexSvc<T>
+                    {
                         type Response = super::CreateIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -2004,7 +2067,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::create_index(&inner, request).await
+                                <T as StorageNodeService>::create_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2031,10 +2094,10 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/ReIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/ReIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct ReIndexSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
+                    struct ReIndexSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
                         type Response = super::ReIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -2042,8 +2105,9 @@ pub mod storage_node_server {
                             request: tonic::Request<super::ReIndexRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as StorageNode>::re_index(&inner, request).await };
+                            let fut = async move {
+                                <T as StorageNodeService>::re_index(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -2069,14 +2133,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/GetChunks" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetChunks" => {
                     #[allow(non_camel_case_types)]
-                    struct GetChunksSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct GetChunksSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::GetChunksRequest>
                         for GetChunksSvc<T>
                     {
-                        type Response = super::super::super::common::v1alpha1::RerunChunk;
+                        type Response = super::GetChunksResponse;
                         type ResponseStream = T::GetChunksStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2086,7 +2150,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_chunks(&inner, request).await
+                                <T as StorageNodeService>::get_chunks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2113,14 +2177,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/GetChunksRange" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetChunksRange" => {
                     #[allow(non_camel_case_types)]
-                    struct GetChunksRangeSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct GetChunksRangeSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::GetChunksRangeRequest>
                         for GetChunksRangeSvc<T>
                     {
-                        type Response = super::super::super::common::v1alpha1::RerunChunk;
+                        type Response = super::GetChunksRangeResponse;
                         type ResponseStream = T::GetChunksRangeStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2130,7 +2194,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_chunks_range(&inner, request).await
+                                <T as StorageNodeService>::get_chunks_range(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2157,14 +2221,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/SearchIndex" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/SearchIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct SearchIndexSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct SearchIndexSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::SearchIndexRequest>
                         for SearchIndexSvc<T>
                     {
-                        type Response = super::DataframePart;
+                        type Response = super::SearchIndexResponse;
                         type ResponseStream = T::SearchIndexStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2174,7 +2238,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::search_index(&inner, request).await
+                                <T as StorageNodeService>::search_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2201,10 +2265,11 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/CreateManifests" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/CreateManifests" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateManifestsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::CreateManifestsRequest>
+                    struct CreateManifestsSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::UnaryService<super::CreateManifestsRequest>
                         for CreateManifestsSvc<T>
                     {
                         type Response = super::CreateManifestsResponse;
@@ -2215,7 +2280,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::create_manifests(&inner, request).await
+                                <T as StorageNodeService>::create_manifests(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2242,14 +2307,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/ListManifests" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/ListManifests" => {
                     #[allow(non_camel_case_types)]
-                    struct ListManifestsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct ListManifestsSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::ListManifestsRequest>
                         for ListManifestsSvc<T>
                     {
-                        type Response = super::DataframePart;
+                        type Response = super::ListManifestsResponse;
                         type ResponseStream = T::ListManifestsStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2259,7 +2324,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::list_manifests(&inner, request).await
+                                <T as StorageNodeService>::list_manifests(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2286,14 +2351,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/QueryManifest" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/QueryManifest" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryManifestSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct QueryManifestSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::QueryManifestRequest>
                         for QueryManifestSvc<T>
                     {
-                        type Response = super::DataframePart;
+                        type Response = super::QueryManifestResponse;
                         type ResponseStream = T::QueryManifestStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2303,7 +2368,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::query_manifest(&inner, request).await
+                                <T as StorageNodeService>::query_manifest(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2330,14 +2395,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/QueryCatalog" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/QueryCatalog" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryCatalogSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct QueryCatalogSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::ServerStreamingService<super::QueryCatalogRequest>
                         for QueryCatalogSvc<T>
                     {
-                        type Response = super::DataframePart;
+                        type Response = super::QueryCatalogResponse;
                         type ResponseStream = T::QueryCatalogStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2347,7 +2412,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::query_catalog(&inner, request).await
+                                <T as StorageNodeService>::query_catalog(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2374,10 +2439,11 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/UpdateCatalog" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UpdateCatalog" => {
                     #[allow(non_camel_case_types)]
-                    struct UpdateCatalogSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::UpdateCatalogRequest>
+                    struct UpdateCatalogSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
+                        tonic::server::UnaryService<super::UpdateCatalogRequest>
                         for UpdateCatalogSvc<T>
                     {
                         type Response = super::UpdateCatalogResponse;
@@ -2388,7 +2454,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::update_catalog(&inner, request).await
+                                <T as StorageNodeService>::update_catalog(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2415,10 +2481,10 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/GetRecordingSchema" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/GetRecordingSchema" => {
                     #[allow(non_camel_case_types)]
-                    struct GetRecordingSchemaSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct GetRecordingSchemaSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::UnaryService<super::GetRecordingSchemaRequest>
                         for GetRecordingSchemaSvc<T>
                     {
@@ -2430,7 +2496,8 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_recording_schema(&inner, request).await
+                                <T as StorageNodeService>::get_recording_schema(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -2457,14 +2524,14 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/RegisterRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/RegisterRecording" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterRecordingSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct RegisterRecordingSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::UnaryService<super::RegisterRecordingRequest>
                         for RegisterRecordingSvc<T>
                     {
-                        type Response = super::DataframePart;
+                        type Response = super::RegisterRecordingResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -2472,7 +2539,7 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::register_recording(&inner, request).await
+                                <T as StorageNodeService>::register_recording(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2499,10 +2566,10 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterRecording" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UnregisterRecording" => {
                     #[allow(non_camel_case_types)]
-                    struct UnregisterRecordingSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct UnregisterRecordingSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::UnaryService<super::UnregisterRecordingRequest>
                         for UnregisterRecordingSvc<T>
                     {
@@ -2514,7 +2581,8 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::unregister_recording(&inner, request).await
+                                <T as StorageNodeService>::unregister_recording(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -2541,10 +2609,10 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v1alpha1.StorageNode/UnregisterAllRecordings" => {
+                "/rerun.remote_store.v1alpha1.StorageNodeService/UnregisterAllRecordings" => {
                     #[allow(non_camel_case_types)]
-                    struct UnregisterAllRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
+                    struct UnregisterAllRecordingsSvc<T: StorageNodeService>(pub Arc<T>);
+                    impl<T: StorageNodeService>
                         tonic::server::UnaryService<super::UnregisterAllRecordingsRequest>
                         for UnregisterAllRecordingsSvc<T>
                     {
@@ -2556,7 +2624,10 @@ pub mod storage_node_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::unregister_all_recordings(&inner, request).await
+                                <T as StorageNodeService>::unregister_all_recordings(
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -2599,7 +2670,7 @@ pub mod storage_node_server {
             }
         }
     }
-    impl<T> Clone for StorageNodeServer<T> {
+    impl<T> Clone for StorageNodeServiceServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -2612,8 +2683,8 @@ pub mod storage_node_server {
         }
     }
     /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "rerun.remote_store.v1alpha1.StorageNode";
-    impl<T> tonic::server::NamedService for StorageNodeServer<T> {
+    pub const SERVICE_NAME: &str = "rerun.remote_store.v1alpha1.StorageNodeService";
+    impl<T> tonic::server::NamedService for StorageNodeServiceServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }
 }

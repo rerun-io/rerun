@@ -122,6 +122,10 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
             streaming_result
                 .and_then(|result| {
                     result
+                        .data
+                        .ok_or_else(|| {
+                            tonic::Status::internal("missing DataframePart in QueryCatalogResponse")
+                        })?
                         .decode()
                         .map_err(|err| tonic::Status::internal(err.to_string()))
                 })

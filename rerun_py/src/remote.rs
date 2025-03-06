@@ -30,10 +30,10 @@ use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
     common::v1alpha1::{EntityPath, IndexColumnSelector, RecordingId},
     remote_store::v1alpha1::{
-        index_properties::Props, storage_node_client::StorageNodeClient, CatalogEntry,
-        CatalogFilter, ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest,
-        IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
-        SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
+        index_properties::Props, storage_node_service_client::StorageNodeServiceClient,
+        CatalogEntry, CatalogFilter, ColumnProjection, FetchRecordingRequest,
+        GetRecordingSchemaRequest, IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType,
+        RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
@@ -53,7 +53,9 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transport::Channel>> {
+async fn connect_async(
+    addr: String,
+) -> PyResult<StorageNodeServiceClient<tonic::transport::Channel>> {
     #[cfg(not(target_arch = "wasm32"))]
     let tonic_client = tonic::transport::Endpoint::new(addr)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
@@ -61,7 +63,7 @@ async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transp
         .await
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-    Ok(StorageNodeClient::new(tonic_client))
+    Ok(StorageNodeServiceClient::new(tonic_client))
 }
 
 /// Load a rerun archive from an RRD file.
@@ -97,7 +99,7 @@ pub struct PyStorageNodeClient {
     runtime: tokio::runtime::Runtime,
 
     /// The actual tonic connection.
-    client: StorageNodeClient<tonic::transport::Channel>,
+    client: StorageNodeServiceClient<tonic::transport::Channel>,
 }
 
 impl PyStorageNodeClient {
@@ -122,7 +124,13 @@ impl PyStorageNodeClient {
                     .into_inner()
                     .map(|resp| {
                         resp.and_then(|r| {
-                            r.decode()
+                            r.data
+                                .ok_or_else(|| {
+                                    tonic::Status::internal(
+                                        "missing DataframePart in QueryCatalogResponse",
+                                    )
+                                })?
+                                .decode()
                                 .map_err(|err| tonic::Status::internal(err.to_string()))
                         })
                     })
@@ -173,7 +181,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in QueryResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -242,7 +254,13 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal(
+                                    "missing DataframePart in QueryCatalogResponse",
+                                )
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -373,6 +391,10 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
             let metadata = resp
+                .data
+                .ok_or_else(|| {
+                    PyRuntimeError::new_err("missing DataframePart in RegisterRecordingResponse")
+                })?
                 .decode()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -596,7 +618,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -698,7 +724,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -850,7 +880,12 @@ impl PyStorageNodeClient {
             store.set_info(store_info);
 
             while let Some(result) = resp.next().await {
-                let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                let response = result
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                    .chunk
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("missing DataframePart in FetchRecordingResponse")
+                    })?;
                 let batch = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {

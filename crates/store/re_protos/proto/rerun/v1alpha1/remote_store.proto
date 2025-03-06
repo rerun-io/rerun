@@ -5,7 +5,7 @@ package rerun.remote_store.v1alpha1;
 import "rerun/v1alpha1/collection_ops.proto";
 import "rerun/v1alpha1/common.proto";
 
-service StorageNode {
+service StorageNodeService {
   // Collection APIs
 
   rpc FindCollection(FindCollectionRequest) returns (FindCollectionResponse);
@@ -13,9 +13,9 @@ service StorageNode {
 
   // Data APIs
 
-  rpc Query(QueryRequest) returns (stream DataframePart) {}
+  rpc Query(QueryRequest) returns (stream QueryResponse) {}
 
-  rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
+  rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
 
   // Index APIs
 
@@ -23,9 +23,9 @@ service StorageNode {
 
   rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-  rpc GetChunks(GetChunksRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
+  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
-  rpc GetChunksRange(GetChunksRangeRequest) returns (stream rerun.common.v1alpha1.RerunChunk) {}
+  rpc GetChunksRange(GetChunksRangeRequest) returns (stream GetChunksRangeResponse) {}
 
   // The response to `SearchIndex` a RecordBatch with 3 columns:
   // - 'resource_id' column with the id of the resource
@@ -35,21 +35,21 @@ service StorageNode {
   // top-K matches are found within *each* resource in the indexed entry. For inverted index
   // it might be timepoints where the query string is found in the indexed column
   // - 'data' column with the data that is returned for the matched timepoints
-  rpc SearchIndex(SearchIndexRequest) returns (stream DataframePart) {}
+  rpc SearchIndex(SearchIndexRequest) returns (stream SearchIndexResponse) {}
 
   // Chunk manifest APIs
 
   rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
 
-  rpc ListManifests(ListManifestsRequest) returns (stream DataframePart) {}
+  rpc ListManifests(ListManifestsRequest) returns (stream ListManifestsResponse) {}
 
-  rpc QueryManifest(QueryManifestRequest) returns (stream DataframePart) {}
+  rpc QueryManifest(QueryManifestRequest) returns (stream QueryManifestResponse) {}
 
   // TODO(zehiko, cmc): DeleteManifest
 
   // Metadata APIs
 
-  rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
+  rpc QueryCatalog(QueryCatalogRequest) returns (stream QueryCatalogResponse) {}
 
   rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
 
@@ -58,7 +58,7 @@ service StorageNode {
   // Registration APIs
 
   // TODO(zehiko) support registering more than one recording at a time
-  rpc RegisterRecording(RegisterRecordingRequest) returns (DataframePart) {}
+  rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 
   rpc UnregisterRecording(UnregisterRecordingRequest) returns (UnregisterRecordingResponse) {}
 
@@ -90,6 +90,10 @@ message GetChunksRangeRequest {
   rerun.common.v1alpha1.TimeRange time_range = 4;
 }
 
+message GetChunksRangeResponse {
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
+}
+
 // ---------------- GetChunk ---------------------
 
 message GetChunksRequest {
@@ -99,6 +103,10 @@ message GetChunksRequest {
   rerun.common.v1alpha1.RecordingId recording_id = 2;
   // batch of chunk ids for which we want to stream back chunks
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+}
+
+message GetChunksResponse {
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 // ---------------- CreateIndex ------------------
@@ -194,6 +202,10 @@ message SearchIndexRequest {
   optional uint32 limit = 5;
 }
 
+message SearchIndexResponse {
+  DataframePart data = 1;
+}
+
 message IndexQueryProperties {
   // specific index query properties based on the index type
   oneof props {
@@ -246,10 +258,7 @@ message ListManifestsRequest {
 }
 
 message ListManifestsResponse {
-  rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
-
-  // The record batch of the response, encoded according to `encoder_version`.
-  bytes payload = 2;
+  DataframePart data = 1;
 }
 
 // ---------------- QueryManifest ------------------
@@ -305,6 +314,10 @@ message QueryManifestRequest {
 
   // Generic parameters that will influence the behavior of the Lance scanner.
   ScanParameters scan_parameters = 500;
+}
+
+message QueryManifestResponse {
+  DataframePart data = 1;
 }
 
 message QueryManifestLatestAtRelevantChunks {
@@ -426,6 +439,10 @@ message RegisterRecordingRequest {
   DataframePart metadata = 5;
 }
 
+message RegisterRecordingResponse {
+  DataframePart data = 1;
+}
+
 // ---------------- Unregister from catalog ------------------
 
 message UnregisterRecordingRequest {
@@ -464,6 +481,10 @@ message QueryRequest {
   rerun.common.v1alpha1.Query query = 3;
 }
 
+message QueryResponse {
+  DataframePart data = 1;
+}
+
 // ----------------- QueryCatalog -----------------
 
 message QueryCatalogRequest {
@@ -476,6 +497,10 @@ message QueryCatalogRequest {
   CatalogFilter filter = 3;
 }
 
+message QueryCatalogResponse {
+  DataframePart data = 1;
+}
+
 message ColumnProjection {
   repeated string columns = 1;
 }
@@ -484,12 +509,6 @@ message CatalogFilter {
   // Filtering is very simple right now, we can only select
   // recordings by their ids.
   repeated rerun.common.v1alpha1.RecordingId recording_ids = 1;
-}
-
-message QueryCatalogResponse {
-  rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
-  // raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
-  bytes payload = 2;
 }
 
 enum RecordingType {
@@ -509,12 +528,7 @@ message FetchRecordingRequest {
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
 // it's useful to be able to just get back the whole RRD somehow.
 message FetchRecordingResponse {
-  // TODO(zehiko) we need to expand this to become something like 'encoder options'
-  // as we will need to specify additional options like compression, including schema
-  // in payload, etc.
-  rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
-  // payload is raw bytes that the relevant codec can interpret
-  bytes payload = 2;
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 // ----------------- Error handling -----------------

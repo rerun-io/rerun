@@ -1,7 +1,8 @@
 use re_log_encoding::protobuf_conversions::log_msg_from_proto;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_client::MessageProxyClient;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
+use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
 use tokio_stream::StreamExt as _;
 
 use crate::StreamError;
@@ -49,7 +50,8 @@ async fn stream_async(
         let tonic_client = { tonic::transport::Endpoint::new(url)?.connect().await? };
 
         // TODO(#8411): figure out the right size for this
-        MessageProxyClient::new(tonic_client).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+        MessageProxyServiceClient::new(tonic_client)
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
     };
 
     re_log::debug!("Streaming messages from gRPC endpoint {endpoint}");
@@ -62,8 +64,10 @@ async fn stream_async(
 
     loop {
         match stream.try_next().await {
-            Ok(Some(msg)) => {
-                let msg = log_msg_from_proto(msg)?;
+            Ok(Some(ReadMessagesResponse {
+                log_msg: Some(log_msg),
+            })) => {
+                let msg = log_msg_from_proto(log_msg)?;
                 if tx.send(msg).is_err() {
                     re_log::debug!("gRPC stream smart channel closed");
                     break;
@@ -71,6 +75,10 @@ async fn stream_async(
                 if let Some(on_msg) = &on_msg {
                     on_msg();
                 }
+            }
+
+            Ok(Some(ReadMessagesResponse { log_msg: None })) => {
+                re_log::debug!("empty ReadMessagesResponse");
             }
 
             // Stream closed
