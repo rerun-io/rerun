@@ -10,7 +10,7 @@ use arrow::{
     buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::ArrowNativeType,
 };
-use itertools::{izip, Either, Itertools};
+use itertools::{izip, Either, Itertools as _};
 
 use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
@@ -247,7 +247,7 @@ impl Chunk {
         &'a self,
         component_name: ComponentName,
         field_name: &'a str,
-    ) -> impl Iterator<Item = S::Item<'a>> + '_ {
+    ) -> impl Iterator<Item = S::Item<'a>> + 'a {
         let Some(list_array) = self.get_first_component(&component_name) else {
             return Either::Left(std::iter::empty());
         };
@@ -894,7 +894,7 @@ impl Chunk {
 mod tests {
     use std::sync::Arc;
 
-    use itertools::{izip, Itertools};
+    use itertools::{izip, Itertools as _};
     use re_log_types::{example_components::MyPoint, EntityPath, TimeInt, TimePoint};
 
     use crate::{Chunk, RowId, Timeline};

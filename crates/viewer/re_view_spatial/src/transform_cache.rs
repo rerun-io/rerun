@@ -14,7 +14,7 @@ use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
     archetypes::{self},
     components::{self},
-    Archetype as _, Component, ComponentName,
+    Archetype as _, Component as _, ComponentName,
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
@@ -969,7 +969,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{archetypes, Loggable, SerializedComponentBatch};
+    use re_types::{archetypes, Loggable as _, SerializedComponentBatch};
 
     use super::*;
 

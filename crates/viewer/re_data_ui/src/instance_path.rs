@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Component, ComponentName,
+    Component as _, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{

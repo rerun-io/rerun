@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
     blueprint::components::VisibleTimeRange,
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    Archetype,
+    Archetype as _,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{QueryRange, TimeDragValue, ViewClass, ViewState, ViewerContext};

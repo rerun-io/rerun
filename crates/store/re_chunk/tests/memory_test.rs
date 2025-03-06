@@ -62,7 +62,7 @@ use arrow::{
     buffer::OffsetBuffer as ArrowOffsetBuffer,
     datatypes::Field as ArrowField,
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::arrow_helpers::as_array_ref;
 

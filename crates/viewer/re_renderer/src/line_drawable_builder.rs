@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 
 use crate::{
     allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},

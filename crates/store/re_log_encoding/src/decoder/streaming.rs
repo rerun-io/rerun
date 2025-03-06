@@ -1,10 +1,10 @@
 use std::pin::Pin;
 
-use bytes::{Buf, BytesMut};
+use bytes::{Buf as _, BytesMut};
 use re_build_info::CrateVersion;
 use re_log::external::log::warn;
 use re_log_types::LogMsg;
-use tokio::io::{AsyncBufRead, AsyncReadExt};
+use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
 use crate::{
@@ -250,7 +250,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
     use re_build_info::CrateVersion;
-    use tokio_stream::StreamExt;
+    use tokio_stream::StreamExt as _;
 
     use crate::{
         decoder::{

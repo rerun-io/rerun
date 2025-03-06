@@ -5,7 +5,7 @@ use crate::{
     SerializedComponentBatch, _Backtrace,
 };
 
-#[allow(unused_imports)] // used in docstrings
+#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Component, Loggable, LoggableBatch};
 
 // ---

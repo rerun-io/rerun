@@ -2,10 +2,10 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
-    test_context::{HarnessExt, TestContext},
-    RecommendedView, ViewClass, ViewId,
+    test_context::{HarnessExt as _, TestContext},
+    RecommendedView, ViewClass as _, ViewId,
 };
-use re_viewport_blueprint::{test_context_ext::TestContextExt, ViewBlueprint};
+use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
     re_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)

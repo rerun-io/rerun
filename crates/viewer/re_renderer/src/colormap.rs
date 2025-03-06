@@ -1,6 +1,6 @@
 #![allow(clippy::excessive_precision)]
 
-use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
+use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles as _};
 
 // ---
 
@@ -198,6 +198,7 @@ pub fn colormap_inferno_srgb(t: f32) -> [u8; 4] {
 //   https://creativecommons.org/share-your-work/public-domain/cc0/
 
 /// Returns a gamma-space sRGB in 0-255 range.
+///
 /// This is a perceptually uniform colormap which is robust to color blindness.
 /// It is especially suited for visualizing signed values.
 /// It interpolates from cyan to blue to dark gray to brass to yellow.

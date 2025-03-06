@@ -1,4 +1,4 @@
-use arrow::array::Array;
+use arrow::array::Array as _;
 
 use crate::Loggable as _;
 

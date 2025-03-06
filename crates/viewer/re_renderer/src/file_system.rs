@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt as _};
 use anyhow::{anyhow, ensure, Context as _};
 use clean_path::Clean as _;
 use parking_lot::RwLock;

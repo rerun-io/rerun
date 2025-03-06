@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{BufRead, BufReader, Seek, Write},
+    io::{BufRead as _, BufReader, Seek as _, Write as _},
     sync::Arc,
     time::Duration,
 };

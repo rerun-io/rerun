@@ -1,5 +1,5 @@
-use anyhow::Context;
-use itertools::Itertools;
+use anyhow::Context as _;
+use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes as _;
 use re_log_types::{LogMsg, SetStoreInfo};

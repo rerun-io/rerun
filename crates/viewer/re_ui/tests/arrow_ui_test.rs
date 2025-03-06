@@ -26,7 +26,7 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
     use re_types::{
         components::Blob,
         datatypes::{Utf8, Vec3D},
-        LoggableBatch,
+        LoggableBatch as _,
     };
 
     let tests = [

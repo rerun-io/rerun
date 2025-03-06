@@ -13,7 +13,7 @@ use arrow::{
 };
 use pyo3::{
     exceptions::PyRuntimeError,
-    types::{PyAnyMethods, PyDict, PyDictMethods, PyString},
+    types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
     Bound, PyAny, PyResult,
 };
 

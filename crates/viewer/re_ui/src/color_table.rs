@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use strum::{EnumCount, EnumIter, IntoEnumIterator};
+use strum::{EnumCount, EnumIter, IntoEnumIterator as _};
 
 /// A hue for a [`ColorToken`].
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, EnumIter, EnumCount)]

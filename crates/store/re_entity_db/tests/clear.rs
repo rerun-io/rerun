@@ -10,8 +10,8 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types::ComponentBatch;
-use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
+use re_types::ComponentBatch as _;
+use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents as _};
 
 // ---
 

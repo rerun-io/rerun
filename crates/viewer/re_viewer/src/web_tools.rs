@@ -1,11 +1,13 @@
 //! Web-specific tools used by various parts of the application.
 
-use re_log::ResultExt;
+use std::{ops::ControlFlow, sync::Arc};
+
+use re_log::ResultExt as _;
 use re_viewer_context::CommandSender;
 use re_viewer_context::SystemCommand;
-use re_viewer_context::SystemCommandSender;
+use re_viewer_context::SystemCommandSender as _;
+
 use serde::Deserialize;
-use std::{ops::ControlFlow, sync::Arc};
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;

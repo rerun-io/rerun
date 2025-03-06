@@ -8,7 +8,7 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools};
+use itertools::{izip, Either, Itertools as _};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -17,7 +17,7 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable, SerializationError,
+    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
 };
 
 use crate::{ChunkId, RowId};

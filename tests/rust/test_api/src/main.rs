@@ -14,7 +14,7 @@
 
 use std::{collections::HashSet, f32::consts::TAU};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rerun::{
     archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,

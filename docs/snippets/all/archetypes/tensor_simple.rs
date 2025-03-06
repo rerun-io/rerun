@@ -1,6 +1,6 @@
 //! Create and log a tensor.
 
-use ndarray::{Array, ShapeBuilder};
+use ndarray::{Array, ShapeBuilder as _};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_tensor").spawn()?;

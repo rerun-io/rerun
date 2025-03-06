@@ -2,8 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt;
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

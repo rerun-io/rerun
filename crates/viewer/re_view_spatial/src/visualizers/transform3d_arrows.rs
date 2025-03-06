@@ -4,12 +4,12 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, Component, ComponentName,
+    Archetype as _, Component as _, ComponentName,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
+use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt, ViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 

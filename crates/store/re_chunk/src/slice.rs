@@ -1,5 +1,5 @@
 use arrow::array::{
-    Array as ArrowArray, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    Array as _, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
     ListArray as ArrowListArray,
 };
 use itertools::Itertools as _;
@@ -862,7 +862,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
+    use itertools::Itertools as _;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,

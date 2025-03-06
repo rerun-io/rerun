@@ -11,7 +11,7 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{

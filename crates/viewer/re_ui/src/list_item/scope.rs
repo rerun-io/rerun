@@ -1,4 +1,4 @@
-use egui::NumExt;
+use egui::NumExt as _;
 
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///

@@ -2,7 +2,7 @@ use egui::WidgetText;
 
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_log_types::ComponentPath;
-use re_ui::{icons, list_item, Icon, SyntaxHighlighting, UiExt as _};
+use re_ui::{icons, list_item, Icon, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
