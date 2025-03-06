@@ -62,8 +62,8 @@ impl TimePoint {
     }
 
     #[inline]
-    pub fn remove(&mut self, timeline: &Timeline) -> Option<TimeInt> {
-        self.0.remove(timeline)
+    pub fn remove(&mut self, timeline: &TimelineName) {
+        self.0.retain(|k, _| k.name() != timeline);
     }
 
     #[inline]

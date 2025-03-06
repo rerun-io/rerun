@@ -1969,7 +1969,7 @@ impl ThreadInfo {
         Self::with(|ti| ti.set_time(rid, timeline, time_int));
     }
 
-    fn unset_thread_time(rid: &StoreId, timeline: Timeline) {
+    fn unset_thread_time(rid: &StoreId, timeline: &TimelineName) {
         Self::with(|ti| ti.unset_time(rid, timeline));
     }
 
@@ -2007,9 +2007,9 @@ impl ThreadInfo {
             .insert(timeline, time_int);
     }
 
-    fn unset_time(&mut self, rid: &StoreId, timeline: Timeline) {
+    fn unset_time(&mut self, rid: &StoreId, timeline: &TimelineName) {
         if let Some(timepoint) = self.timepoints.get_mut(rid) {
-            timepoint.remove(&timeline);
+            timepoint.remove(timeline);
         }
     }
 
@@ -2200,9 +2200,7 @@ impl RecordingStream {
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
-            // TODO(#9084): no need to clear two timelines
-            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_sequence(timeline));
-            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_temporal(timeline));
+            ThreadInfo::unset_thread_time(&inner.info.store_id, &timeline);
         };
 
         if self.with(f).is_none() {
