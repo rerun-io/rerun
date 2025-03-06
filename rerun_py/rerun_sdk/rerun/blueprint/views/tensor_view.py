@@ -82,10 +82,14 @@ class TensorView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
-            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
-        ] = None,
+            EntityPathLike,
+            AsComponents
+            | Iterable[DescribedComponentBatch]
+            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
         scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
         view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,

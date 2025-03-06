@@ -80,10 +80,14 @@ class DataframeView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
-            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
-        ] = None,
+            EntityPathLike,
+            AsComponents
+            | Iterable[DescribedComponentBatch]
+            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
         query: blueprint_archetypes.DataframeQuery | None = None,
     ) -> None:
         """

@@ -45,7 +45,12 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: dict[EntityPathLike, AsComponents | Iterable[DescribedComponentBatch] | Iterable[AsComponents | Iterable[DescribedComponentBatch]]]
+        overrides: dict[
+            EntityPathLike,
+            AsComponents
+            | Iterable[DescribedComponentBatch]
+            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+        ]
         | None = None,
     ) -> None:
         """

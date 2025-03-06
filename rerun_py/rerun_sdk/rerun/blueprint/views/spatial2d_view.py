@@ -78,10 +78,14 @@ class Spatial2DView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
-            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
-        ] = None,
+            EntityPathLike,
+            AsComponents
+            | Iterable[DescribedComponentBatch]
+            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike

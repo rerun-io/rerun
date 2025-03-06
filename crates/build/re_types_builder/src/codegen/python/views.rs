@@ -58,10 +58,10 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
-    defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
-    overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] = None,
+    defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+    overrides: dict[EntityPathLike, AsComponents | Iterable[DescribedComponentBatch] | Iterable[AsComponents | Iterable[DescribedComponentBatch]]] | None = None,
     "#
-    .to_owned();
+        .to_owned();
 
     for property in &obj.fields {
         let Some(property_type_fqname) = property.typ.fqname() else {

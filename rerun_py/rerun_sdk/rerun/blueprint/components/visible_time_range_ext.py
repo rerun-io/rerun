@@ -12,6 +12,11 @@ class VisibleTimeRangeExt:
 
         This way this component can be used directly for setting a single time range in overrides.
         """
-        from ...blueprint.archetypes import VisibleTimeRanges
+        from typing import cast
 
-        return VisibleTimeRanges([self]).as_component_batches()
+        from ...blueprint.archetypes import VisibleTimeRanges
+        from .. import VisibleTimeRange
+
+        time_range = cast(VisibleTimeRange, self)
+
+        return VisibleTimeRanges([time_range]).as_component_batches()

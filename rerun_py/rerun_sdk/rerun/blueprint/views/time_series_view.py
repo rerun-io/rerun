@@ -93,10 +93,14 @@ class TimeSeriesView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] = None,
+        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
-            EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]
-        ] = None,
+            EntityPathLike,
+            AsComponents
+            | Iterable[DescribedComponentBatch]
+            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
