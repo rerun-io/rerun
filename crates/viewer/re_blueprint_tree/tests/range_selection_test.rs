@@ -55,15 +55,13 @@ fn test_range_selection_in_blueprint_tree() {
                         );
 
                         // expand the view
-                        //TODO(ab): with Rust 1.83, use `break_value().expect()` instead.
-                        let ControlFlow::Break(view_id) =
-                            blueprint.visit_contents(&mut |contents, _| match contents {
+                        let view_id = blueprint
+                            .visit_contents(&mut |contents, _| match contents {
                                 Contents::View(id) => VisitorControlFlow::Break(*id),
                                 Contents::Container(_) => VisitorControlFlow::Continue,
                             })
-                        else {
-                            panic!("A view we know exists was not found");
-                        };
+                            .break_value()
+                            .expect("A view we know exists was not found");
 
                         re_context_menu::collapse_expand::collapse_expand_view(
                             viewer_ctx,
