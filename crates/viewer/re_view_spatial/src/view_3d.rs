@@ -304,8 +304,7 @@ impl ViewClass for SpatialView3D {
                             .child_spaces
                             .iter()
                             .filter(|child| {
-                                topo.subspace_for_subspace_origin(child.hash()).map_or(
-                                    false,
+                                topo.subspace_for_subspace_origin(child.hash()).is_some_and(
                                     |child_space| {
                                         child_space
                                             .connection_to_parent

@@ -424,7 +424,7 @@ fn collect_snippets_recursively<'o>(
                 .lines()
                 .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
                 .collect_vec();
-            if lines.first().map_or(false, |line| line.trim() == "\"\"\"") {
+            if lines.first().is_some_and(|line| line.trim() == "\"\"\"") {
                 // Multi-line Python docstrings.
                 lines.iter().skip(1).take(1).next()
             } else {
