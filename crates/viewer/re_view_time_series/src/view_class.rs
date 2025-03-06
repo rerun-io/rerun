@@ -13,7 +13,7 @@ use re_types::{
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
-    ComponentBatch, View, ViewClassIdentifier,
+    ComponentBatch as _, View as _, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
 use re_view::controls::{
@@ -23,11 +23,11 @@ use re_view::controls::{
 use re_view::{controls, view_property_ui};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange,
-    RecommendedView, SmallVisualizerSet, SystemExecutionOutput, TypedComponentFallbackProvider,
-    ViewClass, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
+    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;

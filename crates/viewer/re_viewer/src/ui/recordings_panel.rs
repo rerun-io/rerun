@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
+use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{icons, UiExt as _};
 use re_viewer_context::{
-    Item, StoreHub, SystemCommand, SystemCommandSender, UiLayout, ViewerContext,
+    Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -239,7 +239,7 @@ fn app_and_its_recordings_ui(
 }
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    use re_ui::UICommandSender;
+    use re_ui::UICommandSender as _;
 
     if ui
         .small_icon_button(&re_ui::icons::ADD)

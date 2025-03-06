@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use re_chunk_store::external::re_chunk::ComponentName;
 use re_chunk_store::ChunkStore;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline};
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_viewer_context::TimeDragValue;
 
 #[derive(Debug)]

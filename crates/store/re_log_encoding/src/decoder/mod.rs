@@ -6,7 +6,7 @@ pub mod stream;
 pub mod streaming;
 
 use std::io::BufRead as _;
-use std::io::Read;
+use std::io::Read as _;
 
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
@@ -129,7 +129,7 @@ pub async fn read_options_async(
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
 
-    use tokio::io::AsyncReadExt;
+    use tokio::io::AsyncReadExt as _;
     reader
         .read_exact(&mut data)
         .await

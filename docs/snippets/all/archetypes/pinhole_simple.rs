@@ -1,6 +1,6 @@
 //! Log a pinhole and a random image.
 
-use ndarray::{Array, ShapeBuilder};
+use ndarray::{Array, ShapeBuilder as _};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").spawn()?;

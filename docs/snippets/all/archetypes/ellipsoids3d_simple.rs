@@ -1,6 +1,6 @@
 //! Log random points and the corresponding covariance ellipsoid.
 
-use rand::distributions::Distribution;
+use rand::distributions::Distribution as _;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_simple").spawn()?;

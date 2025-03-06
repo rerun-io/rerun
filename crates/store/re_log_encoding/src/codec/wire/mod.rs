@@ -4,7 +4,7 @@ pub mod encoder;
 #[cfg(test)]
 mod tests {
     use crate::codec::{
-        wire::{decoder::Decode, encoder::Encode},
+        wire::{decoder::Decode as _, encoder::Encode as _},
         CodecError,
     };
     use re_chunk::{Chunk, RowId};

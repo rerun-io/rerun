@@ -1,4 +1,4 @@
-use std::{collections::HashSet, io::IsTerminal};
+use std::{collections::HashSet, io::IsTerminal as _};
 
 use anyhow::Context as _;
 use arrow::{

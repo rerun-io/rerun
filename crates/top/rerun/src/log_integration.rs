@@ -1,6 +1,6 @@
 //! Integrates the Rerun SDK with the [`log`] crate.
 
-use log::Log;
+use log::Log as _;
 use re_types::{archetypes::TextLog, components::TextLogLevel};
 
 use crate::RecordingStream;

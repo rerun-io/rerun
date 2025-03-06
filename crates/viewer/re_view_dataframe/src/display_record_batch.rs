@@ -3,8 +3,8 @@
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef,
-        Int32DictionaryArray as ArrowInt32DictionaryArray, ListArray as ArrowListArray,
+        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
+        ListArray as ArrowListArray,
     },
     buffer::NullBuffer as ArrowNullBuffer,
     buffer::ScalarBuffer as ArrowScalarBuffer,
@@ -18,8 +18,8 @@ use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types_core::{ComponentName, DeserializationError, Loggable};
-use re_ui::UiExt;
+use re_types_core::{ComponentName, DeserializationError, Loggable as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 #[derive(Error, Debug)]

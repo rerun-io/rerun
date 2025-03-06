@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use itertools::{izip, Itertools};
+use itertools::{izip, Itertools as _};
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};

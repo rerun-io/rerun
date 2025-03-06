@@ -1,4 +1,4 @@
-use arrow::array::{self, Array};
+use arrow::array::{self, Array as _};
 
 use crate::{
     archetypes,

@@ -1,17 +1,17 @@
 use std::sync::mpsc::Sender;
 use std::thread;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use arrow::array::{
     ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
+use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef as _};
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
 use re_log_types::{ApplicationId, StoreId};

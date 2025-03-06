@@ -16,7 +16,7 @@ use re_types::{
     components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
-use re_ui::{icon_text, icons, ContextExt, Help, ModifiersText, MouseButtonText};
+use re_ui::{icon_text, icons, ContextExt as _, Help, ModifiersText, MouseButtonText};
 use re_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,

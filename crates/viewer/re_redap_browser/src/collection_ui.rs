@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray};
+use arrow::array::{
+    Array as _, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray,
+};
 use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_arrow_util::ArrowArrayDowncastRef;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::remote_store::v0::CATALOG_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::match_same_arms)]
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,

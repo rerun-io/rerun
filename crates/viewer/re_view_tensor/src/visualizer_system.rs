@@ -4,7 +4,7 @@ use re_types::{
     components::{TensorData, ValueRange},
     Component as _,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
+use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, TensorStats, TensorStatsCache, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,

@@ -1,7 +1,7 @@
 use egui::Label;
 
 use egui::Sense;
-use re_types::View;
+use re_types::View as _;
 use re_types::ViewClassIdentifier;
 use re_ui::Help;
 use re_ui::UiExt as _;

@@ -1,7 +1,7 @@
 use egui::Rect;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_viewer_context::ViewState;
 
 use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutRequest};

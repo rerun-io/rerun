@@ -1,8 +1,8 @@
 use egui::os::OperatingSystem;
 use egui::{vec2, Modifiers};
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt};
+use re_ui::{icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt as _};
 
 #[test]
 fn test_help() {

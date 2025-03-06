@@ -204,7 +204,7 @@ mod tests {
     use arrow::array::{
         types::UInt32Type, Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray,
     };
-    use itertools::Itertools;
+    use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]

@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt as _};
 use smallvec::smallvec;
 
 use crate::{

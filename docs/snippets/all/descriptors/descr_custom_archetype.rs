@@ -1,4 +1,6 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch, ComponentDescriptor, VersionPolicy};
+use rerun::{
+    ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor, VersionPolicy,
+};
 
 struct CustomPoints3D {
     positions: Vec<rerun::components::Position3D>,

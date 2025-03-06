@@ -1,5 +1,5 @@
 use egui::{Response, Ui};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};

@@ -6,7 +6,7 @@ use re_log_types::{EntityPath, StoreId};
 use re_types::{
     components::{Blob, ImageFormat, MediaType},
     external::image,
-    Component, Loggable,
+    Component as _, Loggable as _,
 };
 
 #[derive(Debug, Clone, Default)]

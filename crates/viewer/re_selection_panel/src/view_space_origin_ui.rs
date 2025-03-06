@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use egui::{Key, NumExt as _, Ui};
 
 use re_log_types::EntityPath;
-use re_ui::{list_item, SyntaxHighlighting, UiExt as _};
+use re_ui::{list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::{default_created_views, ViewBlueprint};
 

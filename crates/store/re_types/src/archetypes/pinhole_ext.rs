@@ -1,4 +1,4 @@
-use re_types_core::{DeserializationResult, Loggable};
+use re_types_core::{DeserializationResult, Loggable as _};
 
 use crate::{
     components::{PinholeProjection, Resolution, ViewCoordinates},
