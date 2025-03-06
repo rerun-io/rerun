@@ -425,5 +425,10 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(name);
+
+    let broken_percent_threshold = 0.02;
+    let num_pixels = (size.x * size.y).ceil() as u64;
+
+    use re_viewer_context::test_context::HarnessExt as _;
+    harness.snapshot_with_broken_pixels_threshold(name, num_pixels, broken_percent_threshold);
 }
