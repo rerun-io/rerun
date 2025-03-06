@@ -11,12 +11,9 @@ lint:
   use:
     - STANDARD
   except:
-    # This is a source-code level issue, and a language-specific one at that.
-    # See <https://buf.build/docs/lint/rules/?h=#enum_value_prefix>.
-    - ENUM_VALUE_PREFIX
     - DIRECTORY_SAME_PACKAGE # We just don't really care right now.
     - PACKAGE_DIRECTORY_MATCH # We just don't really care right now.
-  enum_zero_value_suffix: UNSPECIFIED # see <https://buf.build/docs/lint/rules/?h=enum_zero_value#enum_zero_value_suffix>
+  enum_zero_value_suffix: _UNSPECIFIED # see <https://buf.build/docs/lint/rules/?h=enum_zero_value#enum_zero_value_suffix>
 breaking:
   use:
     - WIRE_JSON # We don't care about source-code breaks, we have a compiler for that.

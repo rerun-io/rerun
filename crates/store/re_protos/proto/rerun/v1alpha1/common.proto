@@ -5,7 +5,8 @@ package rerun.common.v1alpha1;
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage
 enum EncoderVersion {
-  V0 = 0;
+  ENCODER_VERSION_UNSPECIFIED = 0;
+  ENCODER_VERSION_V0 = 1;
 }
 
 // RerunChunk is arrow IPC encoded RecordBatch that has
@@ -175,8 +176,9 @@ message ComponentColumnSelector {
 
 // Specifies how null values should be filled in the returned dataframe.
 enum SparseFillStrategy {
-  NONE = 0;
-  LATEST_AT_GLOBAL = 1;
+  SPARSE_FILL_STRATEGY_UNSPECIFIED = 0;
+  SPARSE_FILL_STRATEGY_NONE = 1;
+  SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL = 2;
 }
 
 message ApplicationId {
@@ -184,8 +186,9 @@ message ApplicationId {
 }
 
 enum StoreKind {
-  RECORDING = 0;
-  BLUEPRINT = 1;
+  STORE_KIND_UNSPECIFIED = 0;
+  STORE_KIND_RECORDING = 1;
+  STORE_KIND_BLUEPRINT = 2;
 }
 
 message StoreId {

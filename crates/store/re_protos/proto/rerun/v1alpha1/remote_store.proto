@@ -158,10 +158,11 @@ message VectorIvfPqIndex {
 }
 
 enum VectorDistanceMetric {
-  L2 = 0;
-  COSINE = 1;
-  DOT = 2;
-  HAMMING = 3;
+  VECTOR_DISTANCE_METRIC_UNSPECIFIED = 0;
+  VECTOR_DISTANCE_METRIC_L2 = 1;
+  VECTOR_DISTANCE_METRIC_COSINE = 2;
+  VECTOR_DISTANCE_METRIC_DOT = 3;
+  VECTOR_DISTANCE_METRIC_HAMMING = 4;
 }
 
 message BTreeIndex {
@@ -492,7 +493,8 @@ message QueryCatalogResponse {
 }
 
 enum RecordingType {
-  RRD = 0;
+  RECORDING_TYPE_UNSPECIFIED = 0;
+  RECORDING_TYPE_RRD = 1;
 }
 
 // ----------------- FetchRecording -----------------
@@ -530,14 +532,14 @@ message RemoteStoreError {
 // Error codes for application level errors
 enum ErrorCode {
   // unused
-  _UNUSED = 0;
+  ERROR_CODE_UNSPECIFIED = 0;
 
   // object store access error
-  OBJECT_STORE_ERROR = 1;
+  ERROR_CODE_OBJECT_STORE_ERROR = 1;
 
   // metadata database access error
-  METADATA_DB_ERROR = 2;
+  ERROR_CODE_METADATA_DB_ERROR = 2;
 
   // Encoding / decoding error
-  CODEC_ERROR = 3;
+  ERROR_CODE_CODEC_ERROR = 3;
 }

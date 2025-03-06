@@ -12,6 +12,10 @@ fn decode(
     data: &[u8],
 ) -> Result<ArrowRecordBatch, CodecError> {
     match version {
+        re_protos::common::v1alpha1::EncoderVersion::Unspecified => {
+            Err(CodecError::UnsupportedEncoding)
+        }
+
         re_protos::common::v1alpha1::EncoderVersion::V0 => {
             let mut reader = std::io::Cursor::new(data);
             let batch = read_arrow_from_bytes(&mut reader)?;

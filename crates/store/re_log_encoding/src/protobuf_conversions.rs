@@ -1,7 +1,8 @@
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
-            re_protos::log_msg::v1alpha1::Compression::None => Self::Off,
+            re_protos::log_msg::v1alpha1::Compression::Unspecified
+            | re_protos::log_msg::v1alpha1::Compression::None => Self::Off,
             re_protos::log_msg::v1alpha1::Compression::Lz4 => Self::LZ4,
         }
     }

@@ -139,7 +139,8 @@ impl From<crate::common::v1alpha1::StoreKind> for re_log_types::StoreKind {
     #[inline]
     fn from(value: crate::common::v1alpha1::StoreKind) -> Self {
         match value {
-            crate::common::v1alpha1::StoreKind::Recording => Self::Recording,
+            crate::common::v1alpha1::StoreKind::Unspecified
+            | crate::common::v1alpha1::StoreKind::Recording => Self::Recording,
             crate::common::v1alpha1::StoreKind::Blueprint => Self::Blueprint,
         }
     }
@@ -202,7 +203,7 @@ impl From<re_log_types::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
 
         let (kind, payload) = match value {
             re_log_types::StoreSource::Unknown => (
-                crate::log_msg::v1alpha1::StoreSourceKind::UnknownKind as i32,
+                crate::log_msg::v1alpha1::StoreSourceKind::Unspecified as i32,
                 Vec::new(),
             ),
             re_log_types::StoreSource::CSdk => (
@@ -254,7 +255,7 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_types::StoreSourc
         use crate::log_msg::v1alpha1::StoreSourceKind;
 
         match value.kind() {
-            StoreSourceKind::UnknownKind => Ok(Self::Unknown),
+            StoreSourceKind::Unspecified => Ok(Self::Unknown),
             StoreSourceKind::CSdk => Ok(Self::CSdk),
             StoreSourceKind::PythonSdk => {
                 let extra = value.extra.ok_or(missing_field!(
@@ -371,7 +372,7 @@ impl TryFrom<crate::log_msg::v1alpha1::FileSource> for re_log_types::FileSource 
                 force_store_info: false,
             }),
             FileSourceKind::Sdk => Ok(Self::Sdk),
-            FileSourceKind::UnknownSource => Err(invalid_field!(
+            FileSourceKind::Unspecified => Err(invalid_field!(
                 crate::log_msg::v1alpha1::FileSource,
                 "kind",
                 "unknown kind",

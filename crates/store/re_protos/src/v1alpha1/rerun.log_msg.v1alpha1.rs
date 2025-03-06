@@ -255,10 +255,11 @@ impl ::prost::Name for StoreVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Compression {
+    Unspecified = 0,
     /// No compression.
-    None = 0,
+    None = 1,
     /// LZ4 block compression.
-    Lz4 = 1,
+    Lz4 = 2,
 }
 impl Compression {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -267,15 +268,17 @@ impl Compression {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::None => "NONE",
-            Self::Lz4 => "LZ4",
+            Self::Unspecified => "COMPRESSION_UNSPECIFIED",
+            Self::None => "COMPRESSION_NONE",
+            Self::Lz4 => "COMPRESSION_LZ4",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "NONE" => Some(Self::None),
-            "LZ4" => Some(Self::Lz4),
+            "COMPRESSION_UNSPECIFIED" => Some(Self::Unspecified),
+            "COMPRESSION_NONE" => Some(Self::None),
+            "COMPRESSION_LZ4" => Some(Self::Lz4),
             _ => None,
         }
     }
@@ -285,7 +288,7 @@ impl Compression {
 #[repr(i32)]
 pub enum Encoding {
     /// We don't know what encoding the payload is in.
-    Unknown = 0,
+    Unspecified = 0,
     /// The payload is encoded as Arrow-IPC.
     ArrowIpc = 1,
 }
@@ -296,15 +299,15 @@ impl Encoding {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unknown => "UNKNOWN",
-            Self::ArrowIpc => "ARROW_IPC",
+            Self::Unspecified => "ENCODING_UNSPECIFIED",
+            Self::ArrowIpc => "ENCODING_ARROW_IPC",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "UNKNOWN" => Some(Self::Unknown),
-            "ARROW_IPC" => Some(Self::ArrowIpc),
+            "ENCODING_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENCODING_ARROW_IPC" => Some(Self::ArrowIpc),
             _ => None,
         }
     }
@@ -316,7 +319,7 @@ pub enum StoreSourceKind {
     /// We don't know anything about the source of this recording.
     ///
     /// `extra` is unused.
-    UnknownKind = 0,
+    Unspecified = 0,
     /// The recording came from the C++ SDK.
     ///
     /// `extra` is unused.
@@ -349,25 +352,25 @@ impl StoreSourceKind {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::UnknownKind => "UNKNOWN_KIND",
-            Self::CSdk => "C_SDK",
-            Self::PythonSdk => "PYTHON_SDK",
-            Self::RustSdk => "RUST_SDK",
-            Self::File => "FILE",
-            Self::Viewer => "VIEWER",
-            Self::Other => "OTHER",
+            Self::Unspecified => "STORE_SOURCE_KIND_UNSPECIFIED",
+            Self::CSdk => "STORE_SOURCE_KIND_C_SDK",
+            Self::PythonSdk => "STORE_SOURCE_KIND_PYTHON_SDK",
+            Self::RustSdk => "STORE_SOURCE_KIND_RUST_SDK",
+            Self::File => "STORE_SOURCE_KIND_FILE",
+            Self::Viewer => "STORE_SOURCE_KIND_VIEWER",
+            Self::Other => "STORE_SOURCE_KIND_OTHER",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "UNKNOWN_KIND" => Some(Self::UnknownKind),
-            "C_SDK" => Some(Self::CSdk),
-            "PYTHON_SDK" => Some(Self::PythonSdk),
-            "RUST_SDK" => Some(Self::RustSdk),
-            "FILE" => Some(Self::File),
-            "VIEWER" => Some(Self::Viewer),
-            "OTHER" => Some(Self::Other),
+            "STORE_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "STORE_SOURCE_KIND_C_SDK" => Some(Self::CSdk),
+            "STORE_SOURCE_KIND_PYTHON_SDK" => Some(Self::PythonSdk),
+            "STORE_SOURCE_KIND_RUST_SDK" => Some(Self::RustSdk),
+            "STORE_SOURCE_KIND_FILE" => Some(Self::File),
+            "STORE_SOURCE_KIND_VIEWER" => Some(Self::Viewer),
+            "STORE_SOURCE_KIND_OTHER" => Some(Self::Other),
             _ => None,
         }
     }
@@ -377,7 +380,7 @@ impl StoreSourceKind {
 #[repr(i32)]
 pub enum FileSourceKind {
     /// We don't know where the file came from.
-    UnknownSource = 0,
+    Unspecified = 0,
     /// The file came from the command line.
     Cli = 1,
     /// The file was served over HTTP.
@@ -396,23 +399,23 @@ impl FileSourceKind {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::UnknownSource => "UNKNOWN_SOURCE",
-            Self::Cli => "CLI",
-            Self::Uri => "URI",
-            Self::DragAndDrop => "DRAG_AND_DROP",
-            Self::FileDialog => "FILE_DIALOG",
-            Self::Sdk => "SDK",
+            Self::Unspecified => "FILE_SOURCE_KIND_UNSPECIFIED",
+            Self::Cli => "FILE_SOURCE_KIND_CLI",
+            Self::Uri => "FILE_SOURCE_KIND_URI",
+            Self::DragAndDrop => "FILE_SOURCE_KIND_DRAG_AND_DROP",
+            Self::FileDialog => "FILE_SOURCE_KIND_FILE_DIALOG",
+            Self::Sdk => "FILE_SOURCE_KIND_SDK",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "UNKNOWN_SOURCE" => Some(Self::UnknownSource),
-            "CLI" => Some(Self::Cli),
-            "URI" => Some(Self::Uri),
-            "DRAG_AND_DROP" => Some(Self::DragAndDrop),
-            "FILE_DIALOG" => Some(Self::FileDialog),
-            "SDK" => Some(Self::Sdk),
+            "FILE_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "FILE_SOURCE_KIND_CLI" => Some(Self::Cli),
+            "FILE_SOURCE_KIND_URI" => Some(Self::Uri),
+            "FILE_SOURCE_KIND_DRAG_AND_DROP" => Some(Self::DragAndDrop),
+            "FILE_SOURCE_KIND_FILE_DIALOG" => Some(Self::FileDialog),
+            "FILE_SOURCE_KIND_SDK" => Some(Self::Sdk),
             _ => None,
         }
     }

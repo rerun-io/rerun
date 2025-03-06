@@ -1057,10 +1057,11 @@ impl ::prost::Name for RemoteStoreError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum VectorDistanceMetric {
-    L2 = 0,
-    Cosine = 1,
-    Dot = 2,
-    Hamming = 3,
+    Unspecified = 0,
+    L2 = 1,
+    Cosine = 2,
+    Dot = 3,
+    Hamming = 4,
 }
 impl VectorDistanceMetric {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1069,19 +1070,21 @@ impl VectorDistanceMetric {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::L2 => "L2",
-            Self::Cosine => "COSINE",
-            Self::Dot => "DOT",
-            Self::Hamming => "HAMMING",
+            Self::Unspecified => "VECTOR_DISTANCE_METRIC_UNSPECIFIED",
+            Self::L2 => "VECTOR_DISTANCE_METRIC_L2",
+            Self::Cosine => "VECTOR_DISTANCE_METRIC_COSINE",
+            Self::Dot => "VECTOR_DISTANCE_METRIC_DOT",
+            Self::Hamming => "VECTOR_DISTANCE_METRIC_HAMMING",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "L2" => Some(Self::L2),
-            "COSINE" => Some(Self::Cosine),
-            "DOT" => Some(Self::Dot),
-            "HAMMING" => Some(Self::Hamming),
+            "VECTOR_DISTANCE_METRIC_UNSPECIFIED" => Some(Self::Unspecified),
+            "VECTOR_DISTANCE_METRIC_L2" => Some(Self::L2),
+            "VECTOR_DISTANCE_METRIC_COSINE" => Some(Self::Cosine),
+            "VECTOR_DISTANCE_METRIC_DOT" => Some(Self::Dot),
+            "VECTOR_DISTANCE_METRIC_HAMMING" => Some(Self::Hamming),
             _ => None,
         }
     }
@@ -1089,7 +1092,8 @@ impl VectorDistanceMetric {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum RecordingType {
-    Rrd = 0,
+    Unspecified = 0,
+    Rrd = 1,
 }
 impl RecordingType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1098,13 +1102,15 @@ impl RecordingType {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Rrd => "RRD",
+            Self::Unspecified => "RECORDING_TYPE_UNSPECIFIED",
+            Self::Rrd => "RECORDING_TYPE_RRD",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "RRD" => Some(Self::Rrd),
+            "RECORDING_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "RECORDING_TYPE_RRD" => Some(Self::Rrd),
             _ => None,
         }
     }
@@ -1114,7 +1120,7 @@ impl RecordingType {
 #[repr(i32)]
 pub enum ErrorCode {
     /// unused
-    Unused = 0,
+    Unspecified = 0,
     /// object store access error
     ObjectStoreError = 1,
     /// metadata database access error
@@ -1129,19 +1135,19 @@ impl ErrorCode {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unused => "_UNUSED",
-            Self::ObjectStoreError => "OBJECT_STORE_ERROR",
-            Self::MetadataDbError => "METADATA_DB_ERROR",
-            Self::CodecError => "CODEC_ERROR",
+            Self::Unspecified => "ERROR_CODE_UNSPECIFIED",
+            Self::ObjectStoreError => "ERROR_CODE_OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "ERROR_CODE_METADATA_DB_ERROR",
+            Self::CodecError => "ERROR_CODE_CODEC_ERROR",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "_UNUSED" => Some(Self::Unused),
-            "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
-            "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
-            "CODEC_ERROR" => Some(Self::CodecError),
+            "ERROR_CODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ERROR_CODE_OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "ERROR_CODE_METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            "ERROR_CODE_CODEC_ERROR" => Some(Self::CodecError),
             _ => None,
         }
     }

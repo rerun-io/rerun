@@ -29,20 +29,22 @@ message SetStoreInfo {
 
 // The type of compression used on the payload.
 enum Compression {
+  COMPRESSION_UNSPECIFIED = 0;
+
   // No compression.
-  NONE = 0;
+  COMPRESSION_NONE = 1;
 
   // LZ4 block compression.
-  LZ4 = 1;
+  COMPRESSION_LZ4 = 2;
 }
 
 // The encoding of the message payload.
 enum Encoding {
   // We don't know what encoding the payload is in.
-  UNKNOWN = 0;
+  ENCODING_UNSPECIFIED = 0;
 
   // The payload is encoded as Arrow-IPC.
-  ARROW_IPC = 1;
+  ENCODING_ARROW_IPC = 1;
 }
 
 // Corresponds to `LogMsg::ArrowMsg`. Used to transmit actual data.
@@ -120,37 +122,37 @@ enum StoreSourceKind {
   // We don't know anything about the source of this recording.
   //
   // `extra` is unused.
-  UNKNOWN_KIND = 0;
+  STORE_SOURCE_KIND_UNSPECIFIED = 0;
 
   // The recording came from the C++ SDK.
   //
   // `extra` is unused.
-  C_SDK = 1;
+  STORE_SOURCE_KIND_C_SDK = 1;
 
   // The recording came from the Python SDK.
   //
   // `extra` is `PythonVersion`.
-  PYTHON_SDK = 2;
+  STORE_SOURCE_KIND_PYTHON_SDK = 2;
 
   // The recording came from the Rust SDK.
   //
   // `extra` is `CrateInfo`.
-  RUST_SDK = 3;
+  STORE_SOURCE_KIND_RUST_SDK = 3;
 
   // The recording came from a file.
   //
   // `extra` is `FileSource`.
-  FILE = 4;
+  STORE_SOURCE_KIND_FILE = 4;
 
   // The recording came from some action in the viewer.
   //
   // `extra` is unused.
-  VIEWER = 5;
+  STORE_SOURCE_KIND_VIEWER = 5;
 
   // The recording came from some other source.
   //
   // `extra` is a string.
-  OTHER = 6;
+  STORE_SOURCE_KIND_OTHER = 6;
 }
 
 // Version of the Python SDK that created the recording.
@@ -178,22 +180,22 @@ message FileSource {
 // Determines where the file came from.
 enum FileSourceKind {
   // We don't know where the file came from.
-  UNKNOWN_SOURCE = 0;
+  FILE_SOURCE_KIND_UNSPECIFIED = 0;
 
   // The file came from the command line.
-  CLI = 1;
+  FILE_SOURCE_KIND_CLI = 1;
 
   // The file was served over HTTP.
-  URI = 2;
+  FILE_SOURCE_KIND_URI = 2;
 
   // The file was dragged into the viewer.
-  DRAG_AND_DROP = 3;
+  FILE_SOURCE_KIND_DRAG_AND_DROP = 3;
 
   // The file was opened using a file dialog.
-  FILE_DIALOG = 4;
+  FILE_SOURCE_KIND_FILE_DIALOG = 4;
 
   // The recording was produced using a data loader, such as when logging a mesh file.
-  SDK = 5;
+  FILE_SOURCE_KIND_SDK = 5;
 }
 
 message StoreVersion {

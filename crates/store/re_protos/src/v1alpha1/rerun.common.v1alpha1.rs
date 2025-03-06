@@ -467,7 +467,8 @@ impl ::prost::Name for Tuid {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum EncoderVersion {
-    V0 = 0,
+    Unspecified = 0,
+    V0 = 1,
 }
 impl EncoderVersion {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -476,13 +477,15 @@ impl EncoderVersion {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::V0 => "V0",
+            Self::Unspecified => "ENCODER_VERSION_UNSPECIFIED",
+            Self::V0 => "ENCODER_VERSION_V0",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "V0" => Some(Self::V0),
+            "ENCODER_VERSION_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENCODER_VERSION_V0" => Some(Self::V0),
             _ => None,
         }
     }
@@ -491,8 +494,9 @@ impl EncoderVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum SparseFillStrategy {
-    None = 0,
-    LatestAtGlobal = 1,
+    Unspecified = 0,
+    None = 1,
+    LatestAtGlobal = 2,
 }
 impl SparseFillStrategy {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -501,15 +505,17 @@ impl SparseFillStrategy {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::None => "NONE",
-            Self::LatestAtGlobal => "LATEST_AT_GLOBAL",
+            Self::Unspecified => "SPARSE_FILL_STRATEGY_UNSPECIFIED",
+            Self::None => "SPARSE_FILL_STRATEGY_NONE",
+            Self::LatestAtGlobal => "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "NONE" => Some(Self::None),
-            "LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
+            "SPARSE_FILL_STRATEGY_UNSPECIFIED" => Some(Self::Unspecified),
+            "SPARSE_FILL_STRATEGY_NONE" => Some(Self::None),
+            "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
             _ => None,
         }
     }
@@ -517,8 +523,9 @@ impl SparseFillStrategy {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum StoreKind {
-    Recording = 0,
-    Blueprint = 1,
+    Unspecified = 0,
+    Recording = 1,
+    Blueprint = 2,
 }
 impl StoreKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -527,15 +534,17 @@ impl StoreKind {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Recording => "RECORDING",
-            Self::Blueprint => "BLUEPRINT",
+            Self::Unspecified => "STORE_KIND_UNSPECIFIED",
+            Self::Recording => "STORE_KIND_RECORDING",
+            Self::Blueprint => "STORE_KIND_BLUEPRINT",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "RECORDING" => Some(Self::Recording),
-            "BLUEPRINT" => Some(Self::Blueprint),
+            "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "STORE_KIND_RECORDING" => Some(Self::Recording),
+            "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
             _ => None,
         }
     }
