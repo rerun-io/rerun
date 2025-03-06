@@ -11,7 +11,7 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal, TimeType,
+    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
@@ -141,6 +141,12 @@ pub struct TimePanel {
     /// everytime the user clicks on an item _without_ holding shift.
     #[serde(skip)]
     range_selection_anchor_item: Option<Item>,
+
+    /// If the timestamp is being edited, the current value.
+    ///
+    /// It is applied only after removing focus.
+    #[serde(skip)]
+    pub time_edit_string: Option<String>,
 }
 
 impl Default for TimePanel {
@@ -157,6 +163,7 @@ impl Default for TimePanel {
             filter_state: Default::default(),
             filter_state_app_id: None,
             range_selection_anchor_item: None,
+            time_edit_string: None,
         }
     }
 }
@@ -355,13 +362,7 @@ impl TimePanel {
                         entity_db.times_per_timeline(),
                         ui,
                     );
-                    collapsed_time_marker_and_time(
-                        ui,
-                        ctx,
-                        &mut self.data_density_graph_painter,
-                        entity_db,
-                        time_ctrl,
-                    );
+                    self.collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
                 });
             });
         } else {
@@ -381,13 +382,7 @@ impl TimePanel {
                 self.time_control_ui.fps_ui(time_ctrl, ui);
             }
 
-            collapsed_time_marker_and_time(
-                ui,
-                ctx,
-                &mut self.data_density_graph_painter,
-                entity_db,
-                time_ctrl,
-            );
+            self.collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
         }
     }
 
@@ -1130,7 +1125,7 @@ impl TimePanel {
     }
 
     fn top_row_ui(
-        &self,
+        &mut self,
         ctx: &ViewerContext<'_>,
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,
@@ -1155,7 +1150,7 @@ impl TimePanel {
                         ui,
                     );
 
-                    current_time_ui(ctx, ui, time_ctrl);
+                    self.current_time_ui(ctx, ui, time_ctrl);
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         help_button(ui);
@@ -1172,7 +1167,7 @@ impl TimePanel {
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
-            current_time_ui(ctx, ui, time_ctrl);
+            self.current_time_ui(ctx, ui, time_ctrl);
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
@@ -1193,6 +1188,121 @@ impl TimePanel {
             (TimePanelSource::Blueprint, Some(session_id)) => {
                 CollapseScope::BlueprintStreamsTreeFiltered { session_id }
             }
+        }
+    }
+
+    fn collapsed_time_marker_and_time(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &ViewerContext<'_>,
+        entity_db: &re_entity_db::EntityDb,
+        time_ctrl: &mut TimeControl,
+    ) {
+        let timeline = time_ctrl.timeline();
+
+        let Some(time_range) = entity_db.time_range_for(timeline.name()) else {
+            // We have no data on this timeline
+            return;
+        };
+
+        if time_range.min() == time_range.max() {
+            // Only one time point - showing a slider that can't be moved is just annoying
+        } else {
+            let space_needed_for_current_time = match timeline.typ() {
+                re_chunk_store::TimeType::Time => 220.0,
+                re_chunk_store::TimeType::Sequence => 100.0,
+            };
+
+            let mut time_range_rect = ui.available_rect_before_wrap();
+            time_range_rect.max.x -= space_needed_for_current_time;
+
+            if time_range_rect.width() > 50.0 {
+                ui.allocate_rect(time_range_rect, egui::Sense::hover());
+
+                let time_ranges_ui = initialize_time_ranges_ui(
+                    entity_db,
+                    time_ctrl,
+                    time_range_rect.x_range(),
+                    None,
+                );
+                time_ranges_ui.snap_time_control(time_ctrl);
+
+                let painter = ui.painter_at(time_range_rect.expand(4.0));
+
+                if let Some(highlighted_range) = time_ctrl.highlighted_range {
+                    paint_range_highlight(
+                        highlighted_range,
+                        &time_ranges_ui,
+                        &painter,
+                        time_range_rect,
+                    );
+                }
+
+                painter.hline(
+                    time_range_rect.x_range(),
+                    time_range_rect.center().y,
+                    ui.visuals().widgets.noninteractive.fg_stroke,
+                );
+
+                data_density_graph::data_density_graph_ui(
+                    &mut self.data_density_graph_painter,
+                    ctx,
+                    time_ctrl,
+                    entity_db,
+                    ui.painter(),
+                    ui,
+                    &time_ranges_ui,
+                    time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
+                    &TimePanelItem::entity_path(EntityPath::root()),
+                    false,
+                );
+
+                time_marker_ui(
+                    &time_ranges_ui,
+                    time_ctrl,
+                    ui,
+                    None,
+                    &painter,
+                    &time_range_rect,
+                );
+            }
+        }
+
+        self.current_time_ui(ctx, ui, time_ctrl);
+    }
+
+    fn current_time_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        time_ctrl: &mut TimeControl,
+    ) {
+        if let Some(time_int) = time_ctrl.time_int() {
+            let time_type = time_ctrl.time_type();
+
+            let mut time_str = self
+                .time_edit_string
+                .clone()
+                .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
+
+            ui.style_mut().spacing.text_edit_width = 200.0;
+
+            let response = ui.text_edit_singleline(&mut time_str);
+            if response.changed() {
+                self.time_edit_string = Some(time_str.clone());
+            }
+            if response.lost_focus() {
+                if let Some(time_int) = time_type.parse_time(&time_str, ctx.app_options().time_zone)
+                {
+                    time_ctrl.set_time(time_int);
+                }
+                self.time_edit_string = None;
+            }
+            response
+                .on_hover_text(format!("Timestamp: {}", time_int.as_i64()))
+                .context_menu(|ui| {
+                    copy_time_properties_context_menu(ui, time_ctrl, None);
+                });
         }
     }
 }
@@ -1224,82 +1334,6 @@ fn highlight_timeline_row(
     if let Some(bg_color) = bg_color {
         painter.rect_filled(*row_rect, egui::CornerRadius::ZERO, bg_color);
     }
-}
-
-fn collapsed_time_marker_and_time(
-    ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    data_density_graph_painter: &mut data_density_graph::DataDensityGraphPainter,
-    entity_db: &re_entity_db::EntityDb,
-    time_ctrl: &mut TimeControl,
-) {
-    let timeline = time_ctrl.timeline();
-
-    let Some(time_range) = entity_db.time_range_for(timeline.name()) else {
-        // We have no data on this timeline
-        return;
-    };
-
-    if time_range.min() == time_range.max() {
-        // Only one time point - showing a slider that can't be moved is just annoying
-    } else {
-        let space_needed_for_current_time = match timeline.typ() {
-            re_chunk_store::TimeType::Time => 220.0,
-            re_chunk_store::TimeType::Sequence => 100.0,
-        };
-
-        let mut time_range_rect = ui.available_rect_before_wrap();
-        time_range_rect.max.x -= space_needed_for_current_time;
-
-        if time_range_rect.width() > 50.0 {
-            ui.allocate_rect(time_range_rect, egui::Sense::hover());
-
-            let time_ranges_ui =
-                initialize_time_ranges_ui(entity_db, time_ctrl, time_range_rect.x_range(), None);
-            time_ranges_ui.snap_time_control(time_ctrl);
-
-            let painter = ui.painter_at(time_range_rect.expand(4.0));
-
-            if let Some(highlighted_range) = time_ctrl.highlighted_range {
-                paint_range_highlight(
-                    highlighted_range,
-                    &time_ranges_ui,
-                    &painter,
-                    time_range_rect,
-                );
-            }
-
-            painter.hline(
-                time_range_rect.x_range(),
-                time_range_rect.center().y,
-                ui.visuals().widgets.noninteractive.fg_stroke,
-            );
-
-            data_density_graph::data_density_graph_ui(
-                data_density_graph_painter,
-                ctx,
-                time_ctrl,
-                entity_db,
-                ui.painter(),
-                ui,
-                &time_ranges_ui,
-                time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
-                &TimePanelItem::entity_path(EntityPath::root()),
-                false,
-            );
-
-            time_marker_ui(
-                &time_ranges_ui,
-                time_ctrl,
-                ui,
-                None,
-                &painter,
-                &time_range_rect,
-            );
-        }
-    }
-
-    current_time_ui(ctx, ui, time_ctrl);
 }
 
 fn paint_range_highlight(
@@ -1346,36 +1380,6 @@ fn help_button(ui: &mut egui::Ui) {
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
             .ui(ui);
     });
-}
-
-fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut TimeControl) {
-    if let Some(time_int) = time_ctrl.time_int() {
-        let time_type = time_ctrl.time_type();
-        match time_type {
-            re_log_types::TimeType::Time => {
-                // TODO(#7653): parse time stamps
-                ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
-            }
-            re_log_types::TimeType::Sequence => {
-                // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
-                if time_int.as_f64() as i64 == time_int.as_i64() {
-                    let mut int = time_int.as_i64();
-                    let drag_value = egui::DragValue::new(&mut int)
-                        .custom_formatter(|x, _range| {
-                            TimeType::format_sequence(TimeInt::new_temporal(x as i64))
-                        })
-                        .custom_parser(|s| TimeType::parse_sequence(s).map(TimeInt::as_f64));
-                    let response = ui.add(drag_value);
-                    if response.changed() {
-                        time_ctrl.set_time(TimeInt::new_temporal(int));
-                    }
-                } else {
-                    // Avoid the precision problems by just displaying the number without the ability to change it (here).
-                    ui.monospace(time_type.format(time_int, ctx.app_options().time_zone));
-                }
-            }
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1631,6 +1635,36 @@ fn interact_with_streams_rect(
     response
 }
 
+/// Context menu that shows up when interacting with the streams rect.
+fn copy_time_properties_context_menu(
+    ui: &mut egui::Ui,
+    time_ctrl: &TimeControl,
+    hovered_time: Option<TimeReal>,
+) {
+    if let Some(time) = hovered_time {
+        if ui.button("Copy hovered timestamp").clicked() {
+            let time = format!("{}", time.floor().as_i64());
+            re_log::info!("Copied hovered timestamp: {}", time);
+            ui.ctx().copy_text(time);
+            ui.close_menu();
+        };
+    } else if let Some(time) = time_ctrl.time_int() {
+        if ui.button("Copy current timestamp").clicked() {
+            let time = format!("{}", time.as_i64());
+            re_log::info!("Copied current timestamp: {}", time);
+            ui.ctx().copy_text(time);
+            ui.close_menu();
+        };
+    }
+
+    if ui.button("Copy current timeline name").clicked() {
+        let timeline = format!("{}", time_ctrl.timeline().name());
+        re_log::info!("Copied current timeline: {}", timeline);
+        ui.ctx().copy_text(timeline);
+        ui.close_menu();
+    }
+}
+
 /// A vertical line that shows the current time.
 fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
@@ -1723,9 +1757,11 @@ fn time_marker_ui(
             egui::Sense::click(),
         );
 
+        let hovered_time = time_ranges_ui.time_from_x_f32(pointer_pos.x);
+
         if !is_hovering_the_loop_selection {
             let mut set_time_to_pointer = || {
-                if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                if let Some(time) = hovered_time {
                     let time = time_ranges_ui.clamp_time(time);
                     time_ctrl.set_time(time);
                     time_ctrl.pause();
@@ -1749,5 +1785,8 @@ fn time_marker_ui(
                 }
             }
         }
+
+        time_area_response
+            .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
 }
