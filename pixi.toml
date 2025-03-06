@@ -266,7 +266,7 @@ pb-lint = "buf lint --error-format=json"
 
 pb-breaking = "buf breaking --error-format=json --against '.git#branch=origin/main'"
 
-pb-check = { depends-on = ["pb-lint", "pb-breaking"] }
+pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
 # ------------------------------------------------------------------------------------------
 
