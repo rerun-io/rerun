@@ -2549,7 +2549,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/22/d4/54f9d12668b58336bd30defe0307e6c61589a3e687b05c366f804b7faaf0/tornado-6.4.1-cp38-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/64/16/956b7b9d2ed3a437a1a06792b2ae2e3c49147296ba2f4d59fcee376ded8f/triton-2.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
@@ -2603,7 +2603,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -2941,7 +2940,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/d9/c33be3c1a7564f7d42d87a8d186371a75fd142097076767a5c27da941fef/tornado-6.4.1-cp38-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl
@@ -2994,7 +2993,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -3325,7 +3323,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d9/2f/3f2f05e84a7aff787a96d5fb06821323feb370fe0baed4db6ea7b1088f32/tornado-6.4.1-cp38-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl
@@ -3378,7 +3376,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       - pypi: rerun_notebook
@@ -3758,7 +3755,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/22/d4/54f9d12668b58336bd30defe0307e6c61589a3e687b05c366f804b7faaf0/tornado-6.4.1-cp38-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/64/16/956b7b9d2ed3a437a1a06792b2ae2e3c49147296ba2f4d59fcee376ded8f/triton-2.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
@@ -3812,7 +3809,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       osx-arm64:
@@ -4103,7 +4099,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/d9/c33be3c1a7564f7d42d87a8d186371a75fd142097076767a5c27da941fef/tornado-6.4.1-cp38-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl
@@ -4156,7 +4152,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       win-64:
@@ -4447,7 +4442,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d9/2f/3f2f05e84a7aff787a96d5fb06821323feb370fe0baed4db6ea7b1088f32/tornado-6.4.1-cp38-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/35/d6/ba5f61958f358028f2e2ba1b8e225b8e263053bd57d3a79e2d2db64c807b/types_python_dateutil-2.9.0.20241003-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d7/01/485b3026ff90e5190b5e24f1711522e06c79f4a56c8f4b95848ac072e20f/types_requests-2.32.0.20241016-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl
@@ -4500,7 +4495,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
   py:
@@ -7429,7 +7423,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/22/d4/54f9d12668b58336bd30defe0307e6c61589a3e687b05c366f804b7faaf0/tornado-6.4.1-cp38-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/64/16/956b7b9d2ed3a437a1a06792b2ae2e3c49147296ba2f4d59fcee376ded8f/triton-2.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/75/a0/dd773135ca0f7227e8257555fd2f7a0c88672bfd111a400361f10c09face/trove_classifiers-2024.10.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/f1/f9321ca2b4c3949b7c45611663bf35e394ac300a0bc5b2995b48e40ff28b/types_decorator-5.2.0.20250224-py3-none-any.whl
@@ -7490,7 +7484,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       osx-arm64:
@@ -7914,7 +7907,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/d9/c33be3c1a7564f7d42d87a8d186371a75fd142097076767a5c27da941fef/tornado-6.4.1-cp38-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/75/a0/dd773135ca0f7227e8257555fd2f7a0c88672bfd111a400361f10c09face/trove_classifiers-2024.10.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/f1/f9321ca2b4c3949b7c45611663bf35e394ac300a0bc5b2995b48e40ff28b/types_decorator-5.2.0.20250224-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/fc/3a/4950e3701e27f2157814f7ddb41553513ebd9f4864cca78f47e2a68c897c/types_Deprecated-1.2.9.2-py3-none-any.whl
@@ -7974,7 +7967,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
       win-64:
@@ -8379,7 +8371,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d9/2f/3f2f05e84a7aff787a96d5fb06821323feb370fe0baed4db6ea7b1088f32/tornado-6.4.1-cp38-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9d/030cc1b3e88172967e22ee1d012e0d5e0384eb70d2a098d1669d549aea29/transformers-4.45.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/75/a0/dd773135ca0f7227e8257555fd2f7a0c88672bfd111a400361f10c09face/trove_classifiers-2024.10.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/f1/f9321ca2b4c3949b7c45611663bf35e394ac300a0bc5b2995b48e40ff28b/types_decorator-5.2.0.20250224-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/fc/3a/4950e3701e27f2157814f7ddb41553513ebd9f4864cca78f47e2a68c897c/types_Deprecated-1.2.9.2-py3-none-any.whl
@@ -8439,7 +8431,6 @@ environments:
       - pypi: examples/python/rrt_star
       - pypi: examples/python/segment_anything_model
       - pypi: examples/python/shared_recording
-      - pypi: examples/python/signed_distance_fields
       - pypi: examples/python/stdio
       - pypi: examples/python/structure_from_motion
   wheel-test-min:
@@ -26028,12 +26019,12 @@ packages:
 - pypi: examples/python/raw_mesh
   name: raw-mesh
   version: 0.1.0
-  sha256: 9006b1b7ca8bd9c90ba0bf0d7a00641b7dd13a6de76a2828f79ec5b853a4ef98
+  sha256: 941add74b4fc4866e3e91bb4a5866d8556ab1ae39cc7819e5d1ab0463ad3fc33
   requires_dist:
   - numpy
   - requests>=2.31,<3
   - rerun-sdk
-  - trimesh==3.15.2
+  - trimesh
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/re2-2024.07.02-h77b4e00_1.conda
   sha256: c1721cb80f7201652fc9801f49c214c88aee835d957f2376e301bd40a8415742
@@ -27111,18 +27102,6 @@ packages:
   version: 1.5.4
   sha256: 7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686
   requires_python: '>=3.7'
-- pypi: examples/python/signed_distance_fields
-  name: signed-distance-fields
-  version: 0.1.0
-  sha256: 32880a8a3883c6aa03c709fe9138ba6b939633562ff98ca27fc22afc3d69f08a
-  requires_dist:
-  - mesh-to-sdf @ git+https://github.com/marian42/mesh_to_sdf.git
-  - numpy
-  - requests>=2.31,<3
-  - rerun-sdk
-  - scikit-learn>=1.1.3
-  - trimesh==3.15.2
-  editable: true
 - conda: https://conda.anaconda.org/conda-forge/osx-64/sigtool-0.1.3-h88f4db0_0.tar.bz2
   sha256: 46fdeadf8f8d725819c4306838cdfd1099cd8fe3e17bd78862a5dfdcd6de61cf
   md5: fbfb84b9de9a6939cb165c02c69b1865
@@ -28367,59 +28346,53 @@ packages:
   - decord==0.6.0 ; extra == 'video'
   - pillow>=10.0.1,<=15.0 ; extra == 'vision'
   requires_python: '>=3.8.0'
-- pypi: https://files.pythonhosted.org/packages/a8/40/c93b1215980d6d31119f742a5702a569b3abce363d68c731d69f312f292c/trimesh-3.15.2-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/a8/0a/e9fd055e56bea5b24862c1ca9cd570c96630e78739e04eb48db749bc8d1a/trimesh-4.6.4-py3-none-any.whl
   name: trimesh
-  version: 3.15.2
-  sha256: 27e03e05fde129638ed02ba9351b6f6f6d3dc02db0da0ed690ad0e753c2e1aa4
+  version: 4.6.4
+  sha256: 608eba071f13840a1c9de69f560d93b81cd216ce95da7bf748457aed989cf722
   requires_dist:
-  - numpy
-  - setuptools ; extra == 'all'
-  - lxml ; extra == 'all'
-  - scipy ; extra == 'all'
-  - svg-path ; extra == 'all'
-  - scikit-image ; extra == 'all'
-  - xxhash ; extra == 'all'
-  - jsonschema ; extra == 'all'
-  - sympy ; extra == 'all'
-  - networkx ; extra == 'all'
-  - requests ; extra == 'all'
-  - glooey ; extra == 'all'
-  - xatlas ; extra == 'all'
-  - pillow ; extra == 'all'
-  - mapbox-earcut ; extra == 'all'
-  - chardet ; extra == 'all'
-  - python-fcl ; extra == 'all'
-  - rtree ; extra == 'all'
-  - pyglet ; extra == 'all'
-  - colorlog ; extra == 'all'
-  - msgpack ; extra == 'all'
-  - meshio ; extra == 'all'
-  - psutil ; extra == 'all'
-  - pycollada ; extra == 'all'
-  - shapely ; extra == 'all'
-  - xxhash ; extra == 'easy'
-  - requests ; extra == 'easy'
-  - setuptools ; extra == 'easy'
-  - pillow ; extra == 'easy'
-  - lxml ; extra == 'easy'
-  - mapbox-earcut ; extra == 'easy'
-  - chardet ; extra == 'easy'
-  - scipy ; extra == 'easy'
-  - rtree ; extra == 'easy'
-  - pyglet ; extra == 'easy'
-  - svg-path ; extra == 'easy'
+  - numpy>=1.20
   - colorlog ; extra == 'easy'
-  - msgpack ; extra == 'easy'
+  - manifold3d>=2.3.0 ; extra == 'easy'
+  - charset-normalizer ; extra == 'easy'
+  - lxml ; extra == 'easy'
   - jsonschema ; extra == 'easy'
-  - sympy ; extra == 'easy'
   - networkx ; extra == 'easy'
+  - svg-path ; extra == 'easy'
   - pycollada ; extra == 'easy'
   - shapely ; extra == 'easy'
+  - xxhash ; extra == 'easy'
+  - rtree ; extra == 'easy'
+  - httpx ; extra == 'easy'
+  - scipy ; extra == 'easy'
+  - embreex ; platform_machine == 'x86_64' and extra == 'easy'
+  - pillow ; extra == 'easy'
+  - xatlas ; extra == 'easy'
+  - vhacdx ; python_full_version >= '3.9' and extra == 'easy'
+  - mapbox-earcut>=1.0.2 ; python_full_version >= '3.9' and extra == 'easy'
+  - sympy ; extra == 'recommend'
+  - meshio ; extra == 'recommend'
+  - pyglet<2 ; extra == 'recommend'
+  - psutil ; extra == 'recommend'
+  - scikit-image ; extra == 'recommend'
+  - fast-simplification ; extra == 'recommend'
+  - openctm ; platform_machine == 'x86_64' and extra == 'recommend'
+  - cascadio ; extra == 'recommend'
   - pytest-cov ; extra == 'test'
-  - pyinstrument ; extra == 'test'
   - pytest ; extra == 'test'
-  - coveralls ; extra == 'test'
-  - ezdxf ; extra == 'test'
+  - pyinstrument ; extra == 'test'
+  - ruff ; extra == 'test'
+  - coveralls ; extra == 'test-more'
+  - pyright ; extra == 'test-more'
+  - ezdxf ; extra == 'test-more'
+  - pytest-beartype ; python_full_version >= '3.10' and extra == 'test-more'
+  - matplotlib ; extra == 'test-more'
+  - pymeshlab ; extra == 'test-more'
+  - triangle ; extra == 'test-more'
+  - ipython ; extra == 'test-more'
+  - gmsh==4.12.2 ; extra == 'deprecated'
+  - trimesh[deprecated,easy,recommend,test,test-more] ; extra == 'all'
+  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/64/16/956b7b9d2ed3a437a1a06792b2ae2e3c49147296ba2f4d59fcee376ded8f/triton-2.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: triton
   version: 2.3.1

@@ -53,9 +53,7 @@ SKIP_LIST = [
     "examples/python/external_data_loader",
 ]
 
-MAC_SKIP_LIST = [
-    "examples/python/signed_distance_fields",
-]
+MAC_SKIP_LIST = []
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
@@ -116,7 +114,6 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/plots",
             "examples/python/raw_mesh",
             "examples/python/rgbd",
-            "examples/python/signed_distance_fields",
             "examples/python/structure_from_motion",
         ]
     else:
