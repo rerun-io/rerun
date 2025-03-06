@@ -14,7 +14,7 @@ We're planning on adding support for different types of indices in the future, s
 ## Differentiate between timestamps and durations
 We've added a explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
 
-Before Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
+Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
 Now you need to be explicit.
 
 ### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
