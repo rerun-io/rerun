@@ -6,7 +6,6 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/application_id.hpp"
 #include "../components/recording_name.hpp"
 #include "../components/recording_started_timestamp.hpp"
 #include "../indicator_component.hpp"
@@ -44,9 +43,6 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct RecordingProperties {
-        /// The user-chosen name of the application.
-        std::optional<ComponentBatch> application_id;
-
         /// When the recording started.
         ///
         /// Should be an absolute time, i.e. relative to Unix Epoch.
@@ -64,11 +60,6 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.RecordingProperties";
 
-        /// `ComponentDescriptor` for the `application_id` field.
-        static constexpr auto Descriptor_application_id = ComponentDescriptor(
-            ArchetypeName, "application_id",
-            Loggable<rerun::components::ApplicationId>::Descriptor.component_name
-        );
         /// `ComponentDescriptor` for the `started` field.
         static constexpr auto Descriptor_started = ComponentDescriptor(
             ArchetypeName, "started",
@@ -88,14 +79,9 @@ namespace rerun::archetypes {
         RecordingProperties& operator=(RecordingProperties&& other) = default;
 
         explicit RecordingProperties(
-            Collection<rerun::components::ApplicationId> _application_id,
             Collection<rerun::components::RecordingStartedTimestamp> _started
         )
-            : application_id(ComponentBatch::from_loggable(
-                                 std::move(_application_id), Descriptor_application_id
-              )
-                                 .value_or_throw()),
-              started(ComponentBatch::from_loggable(std::move(_started), Descriptor_started)
+            : started(ComponentBatch::from_loggable(std::move(_started), Descriptor_started)
                           .value_or_throw()) {}
 
         /// Update only some specific fields of a `RecordingProperties`.
@@ -105,16 +91,6 @@ namespace rerun::archetypes {
 
         /// Clear all the fields of a `RecordingProperties`.
         static RecordingProperties clear_fields();
-
-        /// The user-chosen name of the application.
-        RecordingProperties with_application_id(
-            const Collection<rerun::components::ApplicationId>& _application_id
-        ) && {
-            application_id =
-                ComponentBatch::from_loggable(_application_id, Descriptor_application_id)
-                    .value_or_throw();
-            return std::move(*this);
-        }
 
         /// When the recording started.
         ///

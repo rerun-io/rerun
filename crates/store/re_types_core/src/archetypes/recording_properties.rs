@@ -51,9 +51,6 @@ use crate::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct RecordingProperties {
-    /// The user-chosen name of the application.
-    pub application_id: Option<SerializedComponentBatch>,
-
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
@@ -64,16 +61,6 @@ pub struct RecordingProperties {
 }
 
 impl RecordingProperties {
-    /// Returns the [`ComponentDescriptor`] for [`Self::application_id`].
-    #[inline]
-    pub fn descriptor_application_id() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: "rerun.components.ApplicationId".into(),
-            archetype_field_name: Some("application_id".into()),
-        }
-    }
-
     /// Returns the [`ComponentDescriptor`] for [`Self::started`].
     #[inline]
     pub fn descriptor_started() -> ComponentDescriptor {
@@ -105,13 +92,8 @@ impl RecordingProperties {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            RecordingProperties::descriptor_application_id(),
-            RecordingProperties::descriptor_started(),
-        ]
-    });
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_started()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_indicator()]);
@@ -119,10 +101,9 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_name()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            RecordingProperties::descriptor_application_id(),
             RecordingProperties::descriptor_started(),
             RecordingProperties::descriptor_indicator(),
             RecordingProperties::descriptor_name(),
@@ -130,8 +111,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     });
 
 impl RecordingProperties {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`RecordingProperties`] [`crate::Archetype`]
@@ -183,22 +164,13 @@ impl crate::Archetype for RecordingProperties {
         re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let application_id = arrays_by_descr
-            .get(&Self::descriptor_application_id())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_application_id())
-            });
         let started = arrays_by_descr
             .get(&Self::descriptor_started())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_started()));
         let name = arrays_by_descr
             .get(&Self::descriptor_name())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_name()));
-        Ok(Self {
-            application_id,
-            started,
-            name,
-        })
+        Ok(Self { started, name })
     }
 }
 
@@ -208,7 +180,6 @@ impl crate::AsComponents for RecordingProperties {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            self.application_id.clone(),
             self.started.clone(),
             self.name.clone(),
         ]
@@ -224,11 +195,9 @@ impl RecordingProperties {
     /// Create a new `RecordingProperties`.
     #[inline]
     pub fn new(
-        application_id: impl IntoIterator<Item = impl Into<crate::components::ApplicationId>>,
         started: impl IntoIterator<Item = impl Into<crate::components::RecordingStartedTimestamp>>,
     ) -> Self {
         Self {
-            application_id: try_serialize_field(Self::descriptor_application_id(), application_id),
             started: try_serialize_field(Self::descriptor_started(), started),
             name: None,
         }
@@ -245,10 +214,6 @@ impl RecordingProperties {
     pub fn clear_fields() -> Self {
         use crate::Loggable as _;
         Self {
-            application_id: Some(SerializedComponentBatch::new(
-                crate::components::ApplicationId::arrow_empty(),
-                Self::descriptor_application_id(),
-            )),
             started: Some(SerializedComponentBatch::new(
                 crate::components::RecordingStartedTimestamp::arrow_empty(),
                 Self::descriptor_started(),
@@ -279,9 +244,6 @@ impl RecordingProperties {
         I: IntoIterator<Item = usize> + Clone,
     {
         let columns = [
-            self.application_id
-                .map(|application_id| application_id.partitioned(_lengths.clone()))
-                .transpose()?,
             self.started
                 .map(|started| started.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -305,26 +267,10 @@ impl RecordingProperties {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = crate::SerializedComponentColumn>> {
-        let len_application_id = self.application_id.as_ref().map(|b| b.array.len());
         let len_started = self.started.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_application_id)
-            .or(len_started)
-            .or(len_name)
-            .unwrap_or(0);
+        let len = None.or(len_started).or(len_name).unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
-    }
-
-    /// The user-chosen name of the application.
-    #[inline]
-    pub fn with_application_id(
-        mut self,
-        application_id: impl IntoIterator<Item = impl Into<crate::components::ApplicationId>>,
-    ) -> Self {
-        self.application_id =
-            try_serialize_field(Self::descriptor_application_id(), application_id);
-        self
     }
 
     /// When the recording started.
@@ -353,8 +299,6 @@ impl RecordingProperties {
 impl ::re_byte_size::SizeBytes for RecordingProperties {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.application_id.heap_size_bytes()
-            + self.started.heap_size_bytes()
-            + self.name.heap_size_bytes()
+        self.started.heap_size_bytes() + self.name.heap_size_bytes()
     }
 }

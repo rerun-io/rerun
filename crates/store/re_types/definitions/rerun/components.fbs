@@ -4,7 +4,6 @@ include "./components/SeriesVisible.fbs";
 include "./components/aggregation_policy.fbs";
 include "./components/albedo_factor.fbs";
 include "./components/annotation_context.fbs";
-include "./components/application_id.fbs";
 include "./components/axis_length.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";

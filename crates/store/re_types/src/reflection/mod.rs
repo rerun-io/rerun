@@ -409,15 +409,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ApplicationId as Component>::name(),
-            ComponentReflection {
-                docstring_md: "The name of the application that generated the recording.",
-                custom_placeholder: Some(ApplicationId::default().to_arrow()?),
-                datatype: ApplicationId::arrow_datatype(),
-                verify_arrow_array: ApplicationId::verify_arrow_array,
-            },
-        ),
-        (
             <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
@@ -1846,11 +1837,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "application_id", display_name :
-                    "Application id", component_name : "rerun.components.ApplicationId"
-                    .into(), docstring_md : "The user-chosen name of the application.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "started",
-                    display_name : "Started", component_name :
+                    ArchetypeFieldReflection { name : "started", display_name :
+                    "Started", component_name :
                     "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
                     is_required : true, }, ArchetypeFieldReflection { name : "name",

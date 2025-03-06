@@ -57,19 +57,13 @@ class RecordingProperties(Archetype):
     """
 
     def __init__(
-        self: Any,
-        application_id: datatypes.Utf8ArrayLike,
-        started: datatypes.TimeIntArrayLike,
-        *,
-        name: datatypes.Utf8ArrayLike | None = None,
+        self: Any, started: datatypes.TimeIntArrayLike, *, name: datatypes.Utf8ArrayLike | None = None
     ) -> None:
         """
         Create a new instance of the RecordingProperties archetype.
 
         Parameters
         ----------
-        application_id:
-            The user-chosen name of the application.
         started:
             When the recording started.
 
@@ -81,14 +75,13 @@ class RecordingProperties(Archetype):
 
         # You can define your own __init__ function as a member of RecordingPropertiesExt in recording_properties_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(application_id=application_id, started=started, name=name)
+            self.__attrs_init__(started=started, name=name)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            application_id=None,
             started=None,
             name=None,
         )
@@ -105,7 +98,6 @@ class RecordingProperties(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        application_id: datatypes.Utf8ArrayLike | None = None,
         started: datatypes.TimeIntArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
     ) -> RecordingProperties:
@@ -116,8 +108,6 @@ class RecordingProperties(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        application_id:
-            The user-chosen name of the application.
         started:
             When the recording started.
 
@@ -130,7 +120,6 @@ class RecordingProperties(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "application_id": application_id,
                 "started": started,
                 "name": name,
             }
@@ -153,7 +142,6 @@ class RecordingProperties(Archetype):
     def columns(
         cls,
         *,
-        application_id: datatypes.Utf8ArrayLike | None = None,
         started: datatypes.TimeIntArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -167,8 +155,6 @@ class RecordingProperties(Archetype):
 
         Parameters
         ----------
-        application_id:
-            The user-chosen name of the application.
         started:
             When the recording started.
 
@@ -181,7 +167,6 @@ class RecordingProperties(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                application_id=application_id,
                 started=started,
                 name=name,
             )
@@ -190,7 +175,7 @@ class RecordingProperties(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"application_id": application_id, "started": started, "name": name}
+        kwargs = {"started": started, "name": name}
         columns = []
 
         for batch in batches:
@@ -212,15 +197,6 @@ class RecordingProperties(Archetype):
 
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
-
-    application_id: components.ApplicationIdBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.ApplicationIdBatch._converter,  # type: ignore[misc]
-    )
-    # The user-chosen name of the application.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
 
     started: components.RecordingStartedTimestampBatch | None = field(
         metadata={"component": True},

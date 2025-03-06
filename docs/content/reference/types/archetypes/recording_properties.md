@@ -7,7 +7,7 @@ A list of properties associated with a recording.
 
 ## Components
 
-**Required**: [`ApplicationId`](../components/application_id.md), [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md)
+**Required**: [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md)
 
 **Optional**: [`RecordingName`](../components/recording_name.md)
 

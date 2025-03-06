@@ -8,9 +8,6 @@
 namespace rerun::archetypes {
     RecordingProperties RecordingProperties::clear_fields() {
         auto archetype = RecordingProperties();
-        archetype.application_id =
-            ComponentBatch::empty<rerun::components::ApplicationId>(Descriptor_application_id)
-                .value_or_throw();
         archetype.started =
             ComponentBatch::empty<rerun::components::RecordingStartedTimestamp>(Descriptor_started)
                 .value_or_throw();
@@ -21,10 +18,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> RecordingProperties::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
-        if (application_id.has_value()) {
-            columns.push_back(application_id.value().partitioned(lengths_).value_or_throw());
-        }
+        columns.reserve(3);
         if (started.has_value()) {
             columns.push_back(started.value().partitioned(lengths_).value_or_throw());
         }
@@ -39,9 +33,6 @@ namespace rerun::archetypes {
     }
 
     Collection<ComponentColumn> RecordingProperties::columns() {
-        if (application_id.has_value()) {
-            return columns(std::vector<uint32_t>(application_id.value().length(), 1));
-        }
         if (started.has_value()) {
             return columns(std::vector<uint32_t>(started.value().length(), 1));
         }
@@ -59,11 +50,8 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
-        if (archetype.application_id.has_value()) {
-            cells.push_back(archetype.application_id.value());
-        }
         if (archetype.started.has_value()) {
             cells.push_back(archetype.started.value());
         }

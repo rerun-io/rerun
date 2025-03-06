@@ -5,7 +5,6 @@
 #include "components/aggregation_policy.hpp"
 #include "components/albedo_factor.hpp"
 #include "components/annotation_context.hpp"
-#include "components/application_id.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"
 #include "components/class_id.hpp"
