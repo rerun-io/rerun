@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_types::archetypes::Points2D;
 use re_types::datatypes::VisibleTimeRange;
-use re_types::{components, Archetype};
+use re_types::Archetype;
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass, ViewId};
