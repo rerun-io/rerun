@@ -14,8 +14,6 @@ from rerun.blueprint.archetypes.force_collision_radius import ForceCollisionRadi
 from rerun.blueprint.archetypes.force_link import ForceLink
 from rerun.blueprint.archetypes.force_many_body import ForceManyBody
 from rerun.components.color import Color
-from rerun.components.radius import Radius
-from rerun.components.show_labels import ShowLabels
 
 color_scheme = [
     Color([228, 26, 28]),  # Red

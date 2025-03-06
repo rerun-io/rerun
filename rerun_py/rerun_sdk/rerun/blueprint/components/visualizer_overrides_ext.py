@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import cast
 
 from ..._baseclasses import DescribedComponentBatch
@@ -18,5 +19,6 @@ class VisualizerOverridesExt:
         TODO(#8129): In the future visualizer overrides should be handled with tagging overrides instead.
         """
         from ...blueprint.components.visualizer_overrides import VisualizerOverrides
+
         batch = cast(VisualizerOverrides, self)
         return [DescribedComponentBatch(batch, batch.component_descriptor())]

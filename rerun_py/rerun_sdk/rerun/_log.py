@@ -143,7 +143,7 @@ def log(
     # class. Consider using alternative idioms such as hasattr() calls for
     # structural checks in performance-sensitive code. hasattr is
     if hasattr(entity, "as_component_batches"):
-        components = list(entity.as_co#mponent_batches())
+        components = list(entity.as_component_batches())
     elif isinstance(entity, Iterable):
         components = list(entity)
     else:
