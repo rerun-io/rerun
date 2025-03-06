@@ -274,7 +274,7 @@ namespace rerun {
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_index_sequence, set_index_duration, set_index_duration_secs, set_index_duration_nanos, set_index_timestamp, set_index_timestamp_seconds_since_epoch, set_index_timestamp_nanos_since_epoch
         void set_index_duration_secs(std::string_view timeline_name, double secs) const {
-            set_index_duration_nanos(timeline_name, static_cast<int64_t>(1e9 * secs));
+            set_index_duration_nanos(timeline_name, static_cast<int64_t>(1e9 * secs + 0.5));
         }
 
         /// Set the index value of the given timeline as a duration in nanoseconds, for the current calling thread.
