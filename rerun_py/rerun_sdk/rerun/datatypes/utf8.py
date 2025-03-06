@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like"]
 class Utf8:
     """**Datatype**: A string of text, encoded as UTF-8."""
 
-    def __init__(self: Any, value: Utf8Like):
+    def __init__(self: Any, value: Utf8Like) -> None:
         """Create a new instance of the Utf8 datatype."""
 
         # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
@@ -52,7 +53,7 @@ class Utf8Batch(BaseBatch[Utf8ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array: Union[list[str], npt.ArrayLike] = [data]
+            array: list[str] | npt.ArrayLike = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
         elif isinstance(data, np.ndarray):

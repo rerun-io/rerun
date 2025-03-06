@@ -22,7 +22,6 @@ class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider,
     # You can define your own __init__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py
 
     # Note: there are no fields here because TensorDimensionIndexSlider delegates to datatypes.TensorDimensionIndexSlider
-    pass
 
 
 class TensorDimensionIndexSliderBatch(blueprint_datatypes.TensorDimensionIndexSliderBatch, ComponentBatchMixin):

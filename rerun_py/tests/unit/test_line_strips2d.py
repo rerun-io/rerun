@@ -31,8 +31,8 @@ strips_arrays: list[LineStrip2DArrayLike] = [
     [],
     np.array([]),
     [
-        [[0, 0], [2, 1], [4, -1], [6, 0]],  # type: ignore[list-item]
-        [[0, 3], [1, 4], [2, 2], [3, 4], [4, 2], [5, 4], [6, 3]],  # type: ignore[list-item]
+        [[0, 0], [2, 1], [4, -1], [6, 0]],
+        [[0, 3], [1, 4], [2, 2], [3, 4], [4, 2], [5, 4], [6, 3]],
     ],
     [
         [Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
@@ -95,7 +95,7 @@ def test_line_strips2d() -> None:
             f"    labels={labels!r}\n"
             f"    draw_order={draw_order!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.LineStrips2D(
             strips,
@@ -168,7 +168,7 @@ def test_line_strip2d_invalid_shapes() -> None:
             np.array([
                 [[0, 0], (2, 1), [4, -1], (6, 0)],
                 [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
-            ])
+            ]),
         )
     with pytest.raises(ValueError):
         rr.LineStrips2D(

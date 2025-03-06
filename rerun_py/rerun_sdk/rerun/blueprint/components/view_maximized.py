@@ -22,7 +22,6 @@ class ViewMaximized(datatypes.Uuid, ComponentMixin):
     # You can define your own __init__ function as a member of ViewMaximizedExt in view_maximized_ext.py
 
     # Note: there are no fields here because ViewMaximized delegates to datatypes.Uuid
-    pass
 
 
 class ViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):

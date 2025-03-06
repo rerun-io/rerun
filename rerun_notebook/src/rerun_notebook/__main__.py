@@ -5,7 +5,7 @@ import argparse
 from .asset_server import serve_assets
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(dest="command", help="Which command to run")

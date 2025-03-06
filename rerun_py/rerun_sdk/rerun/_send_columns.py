@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Iterable, Protocol, TypeVar, overload
+from typing import Protocol, TypeVar, overload
 
 import numpy as np
 import pyarrow as pa
@@ -87,7 +88,7 @@ class IndexColumn(TimeColumnLike):
         """
         if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
             raise ValueError(
-                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')"
+                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
@@ -112,7 +113,7 @@ class IndexColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
     """
@@ -121,7 +122,7 @@ class TimeSequenceColumn(TimeColumnLike):
     Columnar equivalent to [`rerun.set_time_sequence`][rerun.set_time_sequence].
     """
 
-    def __init__(self, timeline: str, times: Iterable[int]):
+    def __init__(self, timeline: str, times: Iterable[int]) -> None:
         """
         Create a column of integer sequence time values.
 
@@ -146,7 +147,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
     """
@@ -155,7 +156,7 @@ class TimeSecondsColumn(TimeColumnLike):
     Columnar equivalent to [`rerun.set_time_seconds`][rerun.set_time_seconds].
     """
 
-    def __init__(self, timeline: str, times: Iterable[float]):
+    def __init__(self, timeline: str, times: Iterable[float]) -> None:
         """
         Create a column of floating point seconds time values.
 
@@ -180,7 +181,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.IndexColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details."""
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
     """
@@ -189,7 +190,7 @@ class TimeNanosColumn(TimeColumnLike):
     Columnar equivalent to [`rerun.set_time_nanos`][rerun.set_time_nanos].
     """
 
-    def __init__(self, timeline: str, times: Iterable[int]):
+    def __init__(self, timeline: str, times: Iterable[int]) -> None:
         """
         Create a column of integer nanoseconds time values.
 
@@ -269,7 +270,7 @@ def send_columns(
             expected_length = len(time_column)
         elif len(time_column) != expected_length:
             raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}",
             )
 
         timelines_args[timeline_name] = time_column
@@ -282,7 +283,7 @@ def send_columns(
             expected_length = len(arrow_list_array)
         elif len(arrow_list_array) != expected_length:
             raise ValueError(
-                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}"
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}",
             )
 
         columns_args[component_descr] = arrow_list_array

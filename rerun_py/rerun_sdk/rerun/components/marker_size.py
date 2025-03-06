@@ -22,7 +22,6 @@ class MarkerSize(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of MarkerSizeExt in marker_size_ext.py
 
     # Note: there are no fields here because MarkerSize delegates to datatypes.Float32
-    pass
 
 
 class MarkerSizeBatch(datatypes.Float32Batch, ComponentBatchMixin):

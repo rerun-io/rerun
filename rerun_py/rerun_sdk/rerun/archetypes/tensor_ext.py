@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from rerun.datatypes.range1d import Range1DLike
 
@@ -20,7 +21,7 @@ class TensorExt:
         *,
         dim_names: Sequence[str] | None = None,
         value_range: Range1DLike | None = None,
-    ):
+    ) -> None:
         """
         Construct a `Tensor` archetype.
 

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike"]
 class Blob(BlobExt):
     """**Datatype**: A binary blob of data."""
 
-    def __init__(self: Any, data: BlobLike):
+    def __init__(self: Any, data: BlobLike) -> None:
         """Create a new instance of the Blob datatype."""
 
         # You can define your own __init__ function as a member of BlobExt in blob_ext.py

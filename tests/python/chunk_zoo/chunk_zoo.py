@@ -9,7 +9,7 @@ To add new specimens to the zoo, add a function whose name starts with "specimen
 from __future__ import annotations
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import rerun as rr
@@ -30,23 +30,25 @@ def set_frame_time(t: int) -> None:
     rr.set_index("frame", sequence=t)
 
 
-def specimen_two_rows_span_two_chunks():
+def specimen_two_rows_span_two_chunks() -> None:
     """Two rows spanning two chunks."""
 
     rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(positions=[(0, 1), (2, 3)]))
     rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(radii=[10, 11]))
 
 
-def specimen_two_rows_span_two_chunks_sparse():
+def specimen_two_rows_span_two_chunks_sparse() -> None:
     """Two rows spanning two chunks with partially matching timestamps (so sparse results)."""
 
     rr.send_columns(
-        "/rows_span_two_chunks_sparse", frame_times(0, 2, 3), rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)])
+        "/rows_span_two_chunks_sparse",
+        frame_times(0, 2, 3),
+        rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)]),
     )
     rr.send_columns("/rows_span_two_chunks_sparse", frame_times(0, 2, 4), rr.Points2D.columns(radii=[10, 11, 12]))
 
 
-def specimen_archetype_with_clamp_join_semantics():
+def specimen_archetype_with_clamp_join_semantics() -> None:
     """Single row of an archetype with clamp join semantics (Points2D)."""
     rr.send_columns(
         "/archetype_with_clamp_join_semantics",
@@ -58,7 +60,7 @@ def specimen_archetype_with_clamp_join_semantics():
     )
 
 
-def specimen_archetype_with_latest_at_semantics():
+def specimen_archetype_with_latest_at_semantics() -> None:
     """Archetype spread over a multi-row chunk and two single-row chunks, with latest-at semantics."""
     rr.send_columns(
         "/archetype_chunk_with_latest_at_semantics",
@@ -73,7 +75,7 @@ def specimen_archetype_with_latest_at_semantics():
     rr.log("/archetype_chunk_with_latest_at_semantics", [rrc.RadiusBatch(2)])
 
 
-def specimen_archetype_with_clamp_join_semantics_two_chunks():
+def specimen_archetype_with_clamp_join_semantics_two_chunks() -> None:
     """Single row of an archetype with clamp join semantics (Points2D), across two chunks."""
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
@@ -88,7 +90,7 @@ def specimen_archetype_with_clamp_join_semantics_two_chunks():
     )
 
 
-def specimen_archetype_without_clamp_join_semantics():
+def specimen_archetype_without_clamp_join_semantics() -> None:
     """Single row of an archetype without clamp join semantics (Mesh3D)."""
     rr.send_columns(
         "/archetype_without_clamp_join_semantics",
@@ -104,7 +106,7 @@ def specimen_archetype_without_clamp_join_semantics():
     )
 
 
-def specimen_many_rows_with_mismatched_instance_count():
+def specimen_many_rows_with_mismatched_instance_count() -> None:
     """Points2D across many timestamps with varying and mismatch instance counts."""
 
     # Useful for dataframe view row expansion testing.
@@ -136,7 +138,7 @@ def specimen_many_rows_with_mismatched_instance_count():
 
 
 # TODO(ab): add variants (unordered, overlapping timestamps, etc.)
-def specimen_scalars_interlaced_in_two_chunks():
+def specimen_scalars_interlaced_in_two_chunks() -> None:
     """Scalar column stored in two chunks, with interlaced timestamps."""
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
@@ -150,7 +152,7 @@ def specimen_scalars_interlaced_in_two_chunks():
     )
 
 
-def specimen_archetype_chunk_with_clear():
+def specimen_archetype_chunk_with_clear() -> None:
     """Archetype spread on multi-row and single-row chunks, with a `Clear` in the middle."""
     rr.send_columns(
         "/archetype_chunk_with_clear",
@@ -165,9 +167,9 @@ def specimen_archetype_chunk_with_clear():
     rr.log("/archetype_chunk_with_clear", rr.Clear(recursive=False))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Logs a bunch of chunks of various typologies. Use `RERUN_CHUNK_MAX_BYTES=0`!"
+        description="Logs a bunch of chunks of various typologies. Use `RERUN_CHUNK_MAX_BYTES=0`!",
     )
     parser.add_argument("--filter", type=str, help="Only run specimens whose name contains this substring")
     rr.script_add_args(parser)

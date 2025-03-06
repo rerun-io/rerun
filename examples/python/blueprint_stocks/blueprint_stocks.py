@@ -78,7 +78,7 @@ def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ContainerLike:
                 name=symbol,
             )
             for symbol in symbols
-        ]
+        ],
     )
 
 

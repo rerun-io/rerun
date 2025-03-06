@@ -73,7 +73,10 @@ def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray[np.float64
 
 
 def log_region_boundaries_for_country(
-    country_code: str, level: int, color: tuple[float, float, float], crs: CRS
+    country_code: str,
+    level: int,
+    color: tuple[float, float, float],
+    crs: CRS,
 ) -> None:
     """Log some boundaries for the given country and level."""
 
@@ -93,7 +96,7 @@ def log_region_boundaries_for_country(
     # cspell:disable-next-line
     map_data = gpd.read_file(MAP_DATA_DIR / f"NUTS_RG_01M_2021_4326_LEVL_{level}.json").set_crs("epsg:4326").to_crs(crs)
 
-    for i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
+    for _i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
         entity_path = f"region_boundaries/{country_code}/{level}/{row.NUTS_ID}"
         lines = shapely_geom_to_numpy(row.geometry)
         rr.log(entity_path + "/2D", rr.LineStrips2D(lines, colors=color), static=True)
@@ -218,7 +221,7 @@ class Logger(typing.Protocol):
 class MeasurementLogger:
     """Logger class that uses regular `rr.log` calls."""
 
-    def __init__(self, proj: pyproj.Transformer, raw: bool):
+    def __init__(self, proj: pyproj.Transformer, raw: bool) -> None:
         self._proj = proj
         self._raw = raw
 
@@ -282,7 +285,7 @@ class MeasurementLogger:
 class MeasurementBatchLogger:
     """Logger class that batches measurements and uses `rr.send_columns` calls."""
 
-    def __init__(self, proj: pyproj.Transformer, batch_size: int = 8192):
+    def __init__(self, proj: pyproj.Transformer, batch_size: int = 8192) -> None:
         self._proj = proj
         self._batch_size = batch_size
         self._measurements: list[Measurement] = []

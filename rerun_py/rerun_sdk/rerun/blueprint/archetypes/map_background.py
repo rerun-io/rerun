@@ -22,7 +22,7 @@ __all__ = ["MapBackground"]
 class MapBackground(Archetype):
     """**Archetype**: Configuration for the background map of the map view."""
 
-    def __init__(self: Any, provider: blueprint_components.MapProviderLike):
+    def __init__(self: Any, provider: blueprint_components.MapProviderLike) -> None:
         """
         Create a new instance of the MapBackground archetype.
 

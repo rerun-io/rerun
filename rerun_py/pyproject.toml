@@ -22,7 +22,7 @@ dependencies = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 
 [[project.authors]]
@@ -87,6 +87,19 @@ extend-exclude = [
 ]
 
 lint.ignore = [
+  # It's pretty hard to always avoid variable/argument shadowing of built-in
+  "A001",
+  "A002",
+
+  # Too many violations to fix
+  # TODO(ab): fix 'em nonetheless!
+  "ANN001",
+  "ANN202",
+  "ANN401",
+
+  # Conflicts with the formatter, as per ruff itself
+  "COM812",
+
   # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
   "D1",
 
@@ -109,20 +122,28 @@ lint.ignore = [
 
   # allow relative imports
   "TID252",
-
-  "UP007", # We need this, or `ruff format` will convert `Union[X, Y]` to `X | Y` which break on Python 3.8
 ]
 
 line-length = 120
 lint.select = [
-  "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
-  "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "A",   # Avoid shadowing built-ins
+  "ANN", # Ensure all code is properly annotated.
+  "B",   # flake8-bugbear lints
+  "COM", # Trailing-comma-related rules
+  "C4",  # Comprehension-related rules
+  "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "FA",      # Force from __future__ import annotations
   "I",       # Isort
+  "ISC",     # Ensure implicit string concat syntax
   "TID",     # flake8-tidy-imports
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "UP",      # pyupgrade (ensures idomatic code for supported python version)
+  "PIE",     # flake8-pic: various idomatic python lints
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
+  "YTT",     # Various checks on the use of `sys.version_info` and related.
 ]
 
 lint.unfixable = [

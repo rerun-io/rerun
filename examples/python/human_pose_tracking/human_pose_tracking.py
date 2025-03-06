@@ -6,10 +6,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp
@@ -54,7 +55,7 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
                 info=rr.AnnotationInfo(id=1, label="Person"),
                 keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
                 keypoint_connections=mp_pose.POSE_CONNECTIONS,
-            )
+            ),
         ),
         static=True,
     )
@@ -136,7 +137,7 @@ class VideoFrame:
 
 
 class VideoSource:
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.capture = cv2.VideoCapture(path)
 
         if not self.capture.isOpened():

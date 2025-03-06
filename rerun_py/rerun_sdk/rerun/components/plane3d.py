@@ -32,7 +32,6 @@ class Plane3D(datatypes.Plane3D, ComponentMixin):
     # You can define your own __init__ function as a member of Plane3DExt in plane3d_ext.py
 
     # Note: there are no fields here because Plane3D delegates to datatypes.Plane3D
-    pass
 
 
 class Plane3DBatch(datatypes.Plane3DBatch, ComponentBatchMixin):

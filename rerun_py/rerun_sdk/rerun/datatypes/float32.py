@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like"]
 class Float32:
     """**Datatype**: A single-precision 32-bit IEEE 754 floating point number."""
 
-    def __init__(self: Any, value: Float32Like):
+    def __init__(self: Any, value: Float32Like) -> None:
         """Create a new instance of the Float32 datatype."""
 
         # You can define your own __init__ function as a member of Float32Ext in float32_ext.py

@@ -47,7 +47,7 @@ class AffixFuzzer1(Archetype):
         fuzz1020: datatypes.AffixFuzzer20Like,
         fuzz1021: datatypes.AffixFuzzer21Like,
         fuzz1022: datatypes.AffixFuzzer22Like,
-    ):
+    ) -> None:
         """Create a new instance of the AffixFuzzer1 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py

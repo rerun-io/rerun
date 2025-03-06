@@ -22,7 +22,6 @@ class StrokeWidth(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of StrokeWidthExt in stroke_width_ext.py
 
     # Note: there are no fields here because StrokeWidth delegates to datatypes.Float32
-    pass
 
 
 class StrokeWidthBatch(datatypes.Float32Batch, ComponentBatchMixin):

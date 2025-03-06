@@ -15,7 +15,7 @@ import rerun as rr  # pip install rerun-sdk
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Demonstrates how to log any file from the SDK using the `DataLoader` machinery."
+        description="Demonstrates how to log any file from the SDK using the `DataLoader` machinery.",
     )
     rr.script_add_args(parser)
     parser.add_argument(

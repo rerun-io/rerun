@@ -62,7 +62,7 @@ class Capsules3D(Capsules3DExt, Archetype):
                     [1.0, 0.0, 0.0],
                     rr.Angle(deg=float(i) * -22.5),
                 )
-                for i in range(0, 5)
+                for i in range(5)
             ],
         ),
     )

@@ -20,7 +20,7 @@ from numpy.random import default_rng
 
 rng = default_rng(12345)
 
-for i in range(0, 20000000):
+for i in range(20000000):
     rr.init("rerun_example_recording_gc", recording_id=f"recording-gc-rec-{i}", spawn=True)
 
     positions = rng.uniform(-5, 5, size=[10000000, 3])

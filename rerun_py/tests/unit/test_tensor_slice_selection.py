@@ -61,7 +61,7 @@ def test_tensor_slice_selection() -> None:
             f"    height={height!r}\n"  #
             f"    indices={indices!r}\n"  #
             f"    slider={slider!r}\n"  #
-            f")"
+            f")",
         )
         arch = rrb.TensorSliceSelection(
             width=width,
@@ -72,14 +72,14 @@ def test_tensor_slice_selection() -> None:
         print(f"{arch}\n")
 
         assert arch.width == rr.components.TensorWidthDimensionBatch._converter(
-            none_empty_or_value(width, rr.components.TensorWidthDimension(dimension=2, invert=False))
+            none_empty_or_value(width, rr.components.TensorWidthDimension(dimension=2, invert=False)),
         )
         assert arch.height == rr.components.TensorHeightDimensionBatch._converter(
-            none_empty_or_value(height, rr.components.TensorHeightDimension(dimension=3, invert=False))
+            none_empty_or_value(height, rr.components.TensorHeightDimension(dimension=3, invert=False)),
         )
         assert arch.indices == rr.components.TensorDimensionIndexSelectionBatch._converter(
-            none_empty_or_value(indices, indices_arrays[0])
+            none_empty_or_value(indices, indices_arrays[0]),
         )
         assert arch.slider == rrb.components.TensorDimensionIndexSliderBatch._converter(
-            none_empty_or_value(slider, [1, 2, 3])
+            none_empty_or_value(slider, [1, 2, 3]),
         )

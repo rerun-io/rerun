@@ -42,7 +42,6 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
     # Note: there are no fields here because ViewCoordinates delegates to datatypes.ViewCoordinates
-    pass
 
 
 class ViewCoordinatesBatch(datatypes.ViewCoordinatesBatch, ComponentBatchMixin):

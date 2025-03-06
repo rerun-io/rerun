@@ -102,7 +102,10 @@ class AnyBatchValue(ComponentBatchLike):
 
     @classmethod
     def column(
-        cls, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+        cls,
+        descriptor: str | ComponentDescriptor,
+        value: Any,
+        drop_untyped_nones: bool = True,
     ) -> ComponentColumn:
         """
         Construct a new column-oriented AnyBatchValue.
@@ -216,7 +219,7 @@ class AnyValues(AsComponents):
         """
         global ANY_VALUE_TYPE_REGISTRY
 
-        self.component_batches = list()
+        self.component_batches = []
 
         with catch_and_log_exceptions(self.__class__.__name__):
             for name, value in kwargs.items():

@@ -54,7 +54,7 @@ class InstancePoses3D(Archetype):
     rr.log("world/box", rr.Boxes3D(half_sizes=[[1.0, 1.0, 1.0]]))
     rr.log("world/box/points", rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T))
 
-    for i in range(0, 180):
+    for i in range(180):
         rr.set_index("frame", sequence=i)
 
         # Log a regular transform which affects both the box and the points.
@@ -83,7 +83,7 @@ class InstancePoses3D(Archetype):
         quaternions: datatypes.QuaternionArrayLike | None = None,
         scales: datatypes.Vec3DArrayLike | None = None,
         mat3x3: datatypes.Mat3x3ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the InstancePoses3D archetype.
 

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +29,7 @@ class VideoTimestamp:
     Presentation timestamps are typically measured as time since video start.
     """
 
-    def __init__(self: Any, timestamp_ns: VideoTimestampLike):
+    def __init__(self: Any, timestamp_ns: VideoTimestampLike) -> None:
         """
         Create a new instance of the VideoTimestamp datatype.
 

@@ -22,7 +22,6 @@ class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
     # You can define your own __init__ function as a member of FilterByRangeExt in filter_by_range_ext.py
 
     # Note: there are no fields here because FilterByRange delegates to datatypes.FilterByRange
-    pass
 
 
 class FilterByRangeBatch(blueprint_datatypes.FilterByRangeBatch, ComponentBatchMixin):

@@ -74,7 +74,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
@@ -137,7 +137,7 @@ jobs:
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)

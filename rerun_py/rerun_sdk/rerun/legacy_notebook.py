@@ -96,31 +96,31 @@ def as_html(
     application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
-            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
+            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording.",
         )
 
     if app_url is None:
-        app_url = bindings.get_app_url()  # type: ignore[attr-defined]
+        app_url = bindings.get_app_url()
 
     output_stream = RecordingStream(
-        bindings.new_recording(  # type: ignore[attr-defined]
+        bindings.new_recording(
             application_id=application_id,
             make_default=False,
             make_thread_default=False,
             default_enabled=True,
-        )
+        ),
     )
     if blueprint is not None:
-        output_stream.send_blueprint(blueprint, make_active=True)  # type: ignore[attr-defined]
+        output_stream.send_blueprint(blueprint, make_active=True)
 
     data_memory = memory_recording(recording=recording)  # NOLINT
-    output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
+    output_memory = output_stream.memory_recording()
 
     base64_data = base64.b64encode(output_memory.storage.concat_as_bytes(data_memory.storage)).decode("utf-8")
 
     return render_html_template(
         base64_data=base64_data,
-        app_url=app_url,  # type: ignore[arg-type]
+        app_url=app_url,
         timeout_ms=timeout_ms,
         width=width,
         height=height,
@@ -175,7 +175,7 @@ def legacy_notebook_show(
     try:
         from IPython.core.display import HTML
 
-        return HTML(html)  # type: ignore[no-untyped-call]
+        return HTML(html)
     except ImportError:
         logging.warning("Could not import IPython.core.display. Returning raw HTML string instead.")
         return html

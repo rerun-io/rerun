@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -22,7 +23,7 @@ __all__ = ["Utf8List", "Utf8ListArrayLike", "Utf8ListBatch", "Utf8ListLike"]
 class Utf8List(Utf8ListExt):
     """**Datatype**: A list of strings of text, encoded as UTF-8."""
 
-    def __init__(self: Any, value: Utf8ListLike):
+    def __init__(self: Any, value: Utf8ListLike) -> None:
         """Create a new instance of the Utf8List datatype."""
 
         # You can define your own __init__ function as a member of Utf8ListExt in utf8list_ext.py

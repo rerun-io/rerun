@@ -15,7 +15,7 @@ class CustomPoints3D(rr.AsComponents):
                 "user.CustomPosition3D",
                 archetype_name="user.CustomPoints3D",
                 archetype_field_name="custom_positions",
-            )
+            ),
         )
         self.colors = rr.components.ColorBatch(colors).or_with_descriptor_overrides(
             archetype_name="user.CustomPoints3D",

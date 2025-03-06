@@ -133,13 +133,13 @@ class PinholeExt:
                         fl_x = focal_length[0]  # type: ignore[index]
                         fl_y = focal_length[1]  # type: ignore[index]
                     except Exception:
-                        raise ValueError("Expected focal_length to be one or two floats")
+                        raise ValueError("Expected focal_length to be one or two floats") from None
 
                 try:
                     u_cen = principal_point[0]  # type: ignore[index]
                     v_cen = principal_point[1]  # type: ignore[index]
                 except Exception:
-                    raise ValueError("Expected principal_point to be one or two floats")
+                    raise ValueError("Expected principal_point to be one or two floats") from None
 
                 image_from_camera = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
             else:

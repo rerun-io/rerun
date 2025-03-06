@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["EntityPath", "EntityPathArrayLike", "EntityPathBatch", "EntityPathLi
 class EntityPath:
     """**Datatype**: A path to an entity in the `ChunkStore`."""
 
-    def __init__(self: Any, path: EntityPathLike):
+    def __init__(self: Any, path: EntityPathLike) -> None:
         """Create a new instance of the EntityPath datatype."""
 
         # You can define your own __init__ function as a member of EntityPathExt in entity_path_ext.py
@@ -52,7 +53,7 @@ class EntityPathBatch(BaseBatch[EntityPathArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: EntityPathArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array: Union[list[str], npt.ArrayLike] = [data]
+            array: list[str] | npt.ArrayLike = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
         elif isinstance(data, np.ndarray):

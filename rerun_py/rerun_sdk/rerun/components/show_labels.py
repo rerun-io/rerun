@@ -28,7 +28,6 @@ class ShowLabels(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of ShowLabelsExt in show_labels_ext.py
 
     # Note: there are no fields here because ShowLabels delegates to datatypes.Bool
-    pass
 
 
 class ShowLabelsBatch(datatypes.BoolBatch, ComponentBatchMixin):

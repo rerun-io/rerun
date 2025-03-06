@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
@@ -39,7 +39,7 @@ anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
-Frontmatter = Dict[str, Any]
+Frontmatter = dict[str, Any]
 
 
 def is_valid_todo_part(part: str) -> bool:
@@ -440,17 +440,7 @@ re_docstring = re.compile(r"^\s*///")
 
 def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
     def is_empty(line: str) -> bool:
-        return (
-            line == ""
-            or line.startswith("#")
-            or line.startswith("//")
-            or line.endswith("{")
-            or line.endswith("(")
-            or line.endswith("\\")
-            or line.endswith('r"')
-            or line.endswith('r#"')
-            or line.endswith("]")
-        )
+        return line == "" or line.startswith(("#", "//")) or line.endswith(("{", "(", "\\", 'r"', 'r#"', "]"))
 
     """Only for Rust files."""
     if re_declaration.match(line) or re_attribute.match(line) or re_docstring.match(line):
@@ -578,8 +568,6 @@ def test_lint_vertical_spacing() -> None:
         errors, _ = lint_vertical_spacing(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
 
-    pass
-
 
 # -----------------------------------------------------------------------------
 
@@ -661,8 +649,6 @@ def test_lint_workspace_deps() -> None:
     for code in should_fail:
         errors, _ = lint_workspace_deps(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
-
-    pass
 
 
 # -----------------------------------------------------------------------------
@@ -772,14 +758,14 @@ def is_emoji(s: str) -> bool:
     )
 
 
-def test_is_emoji():
+def test_is_emoji() -> None:
     assert not is_emoji("A")
     assert not is_emoji("Ö")
     assert is_emoji("😀")
     assert is_emoji("⚠️")
 
 
-def test_split_words():
+def test_split_words() -> None:
     test_cases = [
         ("hello world", ["hello", " ", "world"]),
         ("hello foo@rerun.io", ["hello", " ", "foo@rerun.io"]),
@@ -806,7 +792,7 @@ def fix_header_casing(s: str) -> str:
 
     words = s.strip().split(" ")
 
-    for i, word in enumerate(words):
+    for word in words:
         if word == "":
             continue
 
@@ -830,7 +816,7 @@ def fix_header_casing(s: str) -> str:
             except ValueError:
                 idx = None
 
-            if word.endswith("?") or word.endswith("!") or word.endswith("."):
+            if word.endswith(("?", "!", ".")):
                 last_punctuation = word[-1]
                 word = word[:-1]
             elif idx is not None:
@@ -857,7 +843,7 @@ def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
 
-    for i, word in enumerate(split_words(s)):
+    for word in split_words(s):
         if word.startswith("`"):
             inline_code_block = True
         if word.endswith("`"):
@@ -914,7 +900,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                     new_header = fix_header_casing(m.group(2))
                     if new_header != m.group(2):
                         errors.append(
-                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'.",
                         )
                         line = m.group(1) + new_header + "\n"
 
@@ -923,7 +909,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_title = fix_header_casing(m.group(1))
                 if new_title != m.group(1):
                     errors.append(
-                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'."
+                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'.",
                     )
                     line = f'title = "{new_title}"\n'
 
@@ -938,7 +924,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 # Check that <h1> is not used in example READMEs
                 if line.startswith("#") and not line.startswith("##"):
                     errors.append(
-                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
+                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title.",
                     )
 
         lines_out.append(line)
@@ -987,7 +973,7 @@ def _index_to_line_nr(content: str, index: int) -> int:
 class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = os.path.realpath(path)
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:
@@ -1080,7 +1066,7 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Missing `#pragma once` in C++ header file"))
             num_errors += 1
 
-    if filepath.endswith(".rs") or filepath.endswith(".fbs"):
+    if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))

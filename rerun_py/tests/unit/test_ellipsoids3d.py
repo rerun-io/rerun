@@ -90,7 +90,7 @@ def test_ellipsoids() -> None:
             f"    labels={labels!r}\n"
             f"    fill_mode={fill_mode!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Ellipsoids3D(
             half_sizes=half_sizes,
@@ -108,7 +108,8 @@ def test_ellipsoids() -> None:
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
         assert arch.centers == centers_expected(centers, PoseTranslation3DBatch)
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
-            rotation_axis_angles, PoseRotationAxisAngleBatch
+            rotation_axis_angles,
+            PoseRotationAxisAngleBatch,
         )
         assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
         assert arch.colors == colors_expected(colors)

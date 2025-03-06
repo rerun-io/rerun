@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -46,7 +47,7 @@ class ViewCoordinates(ViewCoordinatesExt):
      * Back = 6
     """
 
-    def __init__(self: Any, coordinates: ViewCoordinatesLike):
+    def __init__(self: Any, coordinates: ViewCoordinatesLike) -> None:
         """
         Create a new instance of the ViewCoordinates datatype.
 
