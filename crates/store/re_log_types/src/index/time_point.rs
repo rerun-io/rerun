@@ -1,16 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
-mod non_min_i64;
-mod time_int;
-mod time_type;
-mod timeline;
-
-pub use self::{
-    non_min_i64::{NonMinI64, TryFromIntError},
-    time_int::TimeInt,
-    time_type::TimeType,
-    timeline::{Timeline, TimelineName},
-};
+use super::{TimeInt, Timeline, TimelineName};
 
 /// A point in time on any number of [`Timeline`]s.
 ///
@@ -126,8 +116,6 @@ impl re_byte_size::SizeBytes for TimePoint {
         self.0.heap_size_bytes()
     }
 }
-
-// ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
 

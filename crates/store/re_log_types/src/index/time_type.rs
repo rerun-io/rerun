@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{
-    time::{Time, TimeZone},
-    ResolvedTimeRange,
-};
+use crate::{ResolvedTimeRange, Time, TimeZone};
 
 use super::TimeInt;
 

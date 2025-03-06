@@ -1,4 +1,4 @@
-use crate::{time::Time, Duration, NonMinI64, TryFromIntError};
+use crate::{Duration, NonMinI64, Time, TryFromIntError};
 
 /// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 ///
