@@ -627,7 +627,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.3.1" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
