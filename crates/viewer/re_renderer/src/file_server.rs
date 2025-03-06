@@ -79,7 +79,7 @@ macro_rules! include_file {
                 // Therefore, the in-memory filesystem will actually be able to find this path,
                 // and canonicalize it.
                 use anyhow::Context as _;
-                use $crate::file_system::FileSystem;
+                use $crate::file_system::FileSystem as _;
                 $crate::get_filesystem().canonicalize(&path)
                     .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
                     .unwrap()

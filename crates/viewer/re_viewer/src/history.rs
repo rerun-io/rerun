@@ -52,7 +52,7 @@ impl HistoryEntry {
 // Serialization
 impl HistoryEntry {
     pub fn to_query_string(&self) -> Result<String, JsValue> {
-        use std::fmt::Write;
+        use std::fmt::Write as _;
 
         let params = UrlSearchParams::new()?;
         for url in &self.urls {

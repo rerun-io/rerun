@@ -1140,7 +1140,7 @@ impl App {
         &mut self,
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<()> {
-        use crate::web_tools::JsResultExt;
+        use crate::web_tools::JsResultExt as _;
         let href = self.get_viewer_url().ok_or_log_js_error()?;
 
         let direct_link = match store_context
@@ -1195,7 +1195,7 @@ impl App {
         // which can be passed to `rerun-cli`.
         #[cfg(target_arch = "wasm32")]
         let url = {
-            use crate::web_tools::JsResultExt;
+            use crate::web_tools::JsResultExt as _;
             let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
                 // error was logged already
                 return;
