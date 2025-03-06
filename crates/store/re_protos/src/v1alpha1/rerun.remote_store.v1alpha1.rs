@@ -112,7 +112,7 @@ pub struct DataframePart {
     )]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "1000")]
+    #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for DataframePart {
@@ -549,7 +549,7 @@ pub struct ListManifestsRequest {
     /// Generic parameters that will influence the behavior of the Lance scanner.
     ///
     /// TODO(zehiko, cmc): actually support those.
-    #[prost(message, optional, tag = "500")]
+    #[prost(message, optional, tag = "2")]
     pub scan_parameters: ::core::option::Option<ScanParameters>,
 }
 impl ::prost::Name for ListManifestsRequest {
@@ -588,44 +588,44 @@ pub struct QueryManifestRequest {
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<CatalogEntry>,
     /// What resource are we querying the manifest for?
-    #[prost(message, optional, tag = "100")]
+    #[prost(message, optional, tag = "2")]
     pub resource_id: ::core::option::Option<super::super::common::v1alpha1::RecordingId>,
     /// What columns of the manifest are we interested in?
-    #[prost(message, optional, tag = "200")]
+    #[prost(message, optional, tag = "3")]
     pub columns: ::core::option::Option<ColumnProjection>,
     /// If true, `columns` will contain the entire schema.
-    #[prost(bool, tag = "210")]
+    #[prost(bool, tag = "4")]
     pub columns_always_include_everything: bool,
     /// If true, `columns` always includes `chunk_id`,
-    #[prost(bool, tag = "220")]
+    #[prost(bool, tag = "5")]
     pub columns_always_include_chunk_ids: bool,
     /// If true, `columns` always includes `byte_offset` and `byte_size`.
-    #[prost(bool, tag = "230")]
+    #[prost(bool, tag = "6")]
     pub columns_always_include_byte_offsets: bool,
     /// If true, `columns` always includes `entity_path`.
-    #[prost(bool, tag = "240")]
+    #[prost(bool, tag = "7")]
     pub columns_always_include_entity_paths: bool,
     /// If true, `columns` always includes all static component-level indexes.
-    #[prost(bool, tag = "250")]
+    #[prost(bool, tag = "8")]
     pub columns_always_include_static_indexes: bool,
     /// If true, `columns` always includes all temporal chunk-level indexes.
-    #[prost(bool, tag = "260")]
+    #[prost(bool, tag = "9")]
     pub columns_always_include_global_indexes: bool,
     /// If true, `columns` always includes all component-level indexes.
-    #[prost(bool, tag = "270")]
+    #[prost(bool, tag = "10")]
     pub columns_always_include_component_indexes: bool,
     /// If specified, will perform a latest-at query with the given parameters.
     ///
     /// Incompatible with `range`.
-    #[prost(message, optional, tag = "300")]
+    #[prost(message, optional, tag = "11")]
     pub latest_at: ::core::option::Option<QueryManifestLatestAtRelevantChunks>,
     /// If specified, will perform a range query with the given parameters.
     ///
     /// Incompatible with `latest_at`.
-    #[prost(message, optional, tag = "400")]
+    #[prost(message, optional, tag = "12")]
     pub range: ::core::option::Option<QueryManifestRangeRelevantChunks>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
-    #[prost(message, optional, tag = "500")]
+    #[prost(message, optional, tag = "13")]
     pub scan_parameters: ::core::option::Option<ScanParameters>,
 }
 impl ::prost::Name for QueryManifestRequest {
@@ -656,13 +656,13 @@ impl ::prost::Name for QueryManifestResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestLatestAtRelevantChunks {
     /// Which entity paths are we interested in?
-    #[prost(message, repeated, tag = "10")]
+    #[prost(message, repeated, tag = "1")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "20")]
+    #[prost(message, optional, tag = "2")]
     pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index value are we looking for?
-    #[prost(int64, tag = "30")]
+    #[prost(int64, tag = "3")]
     pub at: i64,
     /// Which components are we interested in?
     ///
@@ -673,7 +673,7 @@ pub struct QueryManifestLatestAtRelevantChunks {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(string, repeated, tag = "40")]
+    #[prost(string, repeated, tag = "4")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
@@ -689,13 +689,13 @@ impl ::prost::Name for QueryManifestLatestAtRelevantChunks {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestRangeRelevantChunks {
     /// Which entity paths are we interested in?
-    #[prost(message, repeated, tag = "10")]
+    #[prost(message, repeated, tag = "1")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "20")]
+    #[prost(message, optional, tag = "2")]
     pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index range are we looking for?
-    #[prost(message, optional, tag = "30")]
+    #[prost(message, optional, tag = "3")]
     pub index_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
     /// Which components are we interested in?
     ///
@@ -706,7 +706,7 @@ pub struct QueryManifestRangeRelevantChunks {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(string, repeated, tag = "40")]
+    #[prost(string, repeated, tag = "4")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryManifestRangeRelevantChunks {
@@ -730,34 +730,34 @@ pub struct ScanParameters {
     /// ```text
     /// scanner.filter(filter)
     /// ```
-    #[prost(string, tag = "100")]
+    #[prost(string, tag = "1")]
     pub filter: ::prost::alloc::string::String,
     /// An arbitrary offset that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.limit(_, limit_offset)
     /// ```
-    #[prost(int64, tag = "200")]
+    #[prost(int64, tag = "2")]
     pub limit_offset: i64,
     /// An arbitrary limit that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.limit(limit_len, _)
     /// ```
-    #[prost(int64, tag = "201")]
+    #[prost(int64, tag = "3")]
     pub limit_len: i64,
     /// An arbitrary order clause that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.order_by(…)
     /// ```
-    #[prost(message, optional, tag = "300")]
+    #[prost(message, optional, tag = "4")]
     pub order_by: ::core::option::Option<ScanParametersOrderClause>,
     /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-    #[prost(bool, tag = "400")]
+    #[prost(bool, tag = "5")]
     pub explain_plan: bool,
     /// If set, the final `scanner.filter` will be dumped to the server's log.
-    #[prost(bool, tag = "401")]
+    #[prost(bool, tag = "6")]
     pub explain_filter: bool,
 }
 impl ::prost::Name for ScanParameters {
@@ -772,11 +772,11 @@ impl ::prost::Name for ScanParameters {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanParametersOrderClause {
-    #[prost(bool, tag = "10")]
+    #[prost(bool, tag = "1")]
     pub ascending: bool,
-    #[prost(bool, tag = "20")]
+    #[prost(bool, tag = "2")]
     pub nulls_first: bool,
-    #[prost(string, tag = "30")]
+    #[prost(string, tag = "3")]
     pub column_name: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ScanParametersOrderClause {

@@ -65,7 +65,7 @@ pub struct ArrowMsg {
     #[prost(enumeration = "Encoding", tag = "4")]
     pub encoding: i32,
     /// Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
-    #[prost(bytes = "vec", tag = "1000")]
+    #[prost(bytes = "vec", tag = "5")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for ArrowMsg {

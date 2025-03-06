@@ -73,7 +73,7 @@ message DataframePart {
   rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
-  bytes payload = 1000;
+  bytes payload = 2;
 }
 
 // ---------------- GetChunksRange ------------------
@@ -254,7 +254,7 @@ message ListManifestsRequest {
   // Generic parameters that will influence the behavior of the Lance scanner.
   //
   // TODO(zehiko, cmc): actually support those.
-  ScanParameters scan_parameters = 500;
+  ScanParameters scan_parameters = 2;
 }
 
 message ListManifestsResponse {
@@ -276,44 +276,44 @@ message QueryManifestRequest {
   CatalogEntry entry = 1;
 
   // What resource are we querying the manifest for?
-  rerun.common.v1alpha1.RecordingId resource_id = 100;
+  rerun.common.v1alpha1.RecordingId resource_id = 2;
 
   // What columns of the manifest are we interested in?
-  ColumnProjection columns = 200;
+  ColumnProjection columns = 3;
 
   // If true, `columns` will contain the entire schema.
-  bool columns_always_include_everything = 210;
+  bool columns_always_include_everything = 4;
 
   // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 220;
+  bool columns_always_include_chunk_ids = 5;
 
   // If true, `columns` always includes `byte_offset` and `byte_size`.
-  bool columns_always_include_byte_offsets = 230;
+  bool columns_always_include_byte_offsets = 6;
 
   // If true, `columns` always includes `entity_path`.
-  bool columns_always_include_entity_paths = 240;
+  bool columns_always_include_entity_paths = 7;
 
   // If true, `columns` always includes all static component-level indexes.
-  bool columns_always_include_static_indexes = 250;
+  bool columns_always_include_static_indexes = 8;
 
   // If true, `columns` always includes all temporal chunk-level indexes.
-  bool columns_always_include_global_indexes = 260;
+  bool columns_always_include_global_indexes = 9;
 
   // If true, `columns` always includes all component-level indexes.
-  bool columns_always_include_component_indexes = 270;
+  bool columns_always_include_component_indexes = 10;
 
   // If specified, will perform a latest-at query with the given parameters.
   //
   // Incompatible with `range`.
-  QueryManifestLatestAtRelevantChunks latest_at = 300;
+  QueryManifestLatestAtRelevantChunks latest_at = 11;
 
   // If specified, will perform a range query with the given parameters.
   //
   // Incompatible with `latest_at`.
-  QueryManifestRangeRelevantChunks range = 400;
+  QueryManifestRangeRelevantChunks range = 12;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
-  ScanParameters scan_parameters = 500;
+  ScanParameters scan_parameters = 13;
 }
 
 message QueryManifestResponse {
@@ -322,13 +322,13 @@ message QueryManifestResponse {
 
 message QueryManifestLatestAtRelevantChunks {
   // Which entity paths are we interested in?
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 10;
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 20;
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
 
   // What index value are we looking for?
-  int64 at = 30;
+  int64 at = 3;
 
   // Which components are we interested in?
   //
@@ -339,18 +339,18 @@ message QueryManifestLatestAtRelevantChunks {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated string fuzzy_descriptors = 40;
+  repeated string fuzzy_descriptors = 4;
 }
 
 message QueryManifestRangeRelevantChunks {
   // Which entity paths are we interested in?
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 10;
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 20;
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
 
   // What index range are we looking for?
-  rerun.common.v1alpha1.TimeRange index_range = 30;
+  rerun.common.v1alpha1.TimeRange index_range = 3;
 
   // Which components are we interested in?
   //
@@ -361,7 +361,7 @@ message QueryManifestRangeRelevantChunks {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated string fuzzy_descriptors = 40;
+  repeated string fuzzy_descriptors = 4;
 }
 
 // Generic parameters that will influence the behavior of the Lance scanner.
@@ -374,40 +374,40 @@ message ScanParameters {
   // ```text
   // scanner.filter(filter)
   // ```
-  string filter = 100;
+  string filter = 1;
 
   // An arbitrary offset that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.limit(_, limit_offset)
   // ```
-  int64 limit_offset = 200;
+  int64 limit_offset = 2;
 
   // An arbitrary limit that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.limit(limit_len, _)
   // ```
-  int64 limit_len = 201;
+  int64 limit_len = 3;
 
   // An arbitrary order clause that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.order_by(…)
   // ```
-  ScanParametersOrderClause order_by = 300;
+  ScanParametersOrderClause order_by = 4;
 
   // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-  bool explain_plan = 400;
+  bool explain_plan = 5;
 
   // If set, the final `scanner.filter` will be dumped to the server's log.
-  bool explain_filter = 401;
+  bool explain_filter = 6;
 }
 
 message ScanParametersOrderClause {
-  bool ascending = 10;
-  bool nulls_first = 20;
-  string column_name = 30;
+  bool ascending = 1;
+  bool nulls_first = 2;
+  string column_name = 3;
 }
 
 // ---------------- GetRecordingSchema ------------------

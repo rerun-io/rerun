@@ -61,7 +61,7 @@ message ArrowMsg {
   Encoding encoding = 4;
 
   // Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
-  bytes payload = 1000;
+  bytes payload = 5;
 }
 
 // Corresponds to `LogMsg::BlueprintActivationCommand`.
