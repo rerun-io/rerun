@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 import rerun_bindings as bindings
 
@@ -45,7 +45,7 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: dict[EntityPathLike, AsComponents | Iterable[AsComponents | Iterable[DescribedComponentBatch]]]
+        overrides: dict[EntityPathLike, AsComponents | Iterable[DescribedComponentBatch] | Iterable[AsComponents | Iterable[DescribedComponentBatch]]]
         | None = None,
     ) -> None:
         """
@@ -149,9 +149,20 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            stream.log(  # type: ignore[attr-defined]
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components, recording=stream
-            )
+            log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
+            if isinstance(components, Iterable):
+                components_list = list(components)
+                if len(components_list) > 0 and not isinstance(components_list[0], DescribedComponentBatch):
+                    # Handle "iterable of `AsComponent`" or "iterable of iterables of `DescribedComponentBatch`" with multiple log calls
+                    for element in components_list:
+                        element = cast(AsComponents | Iterable[DescribedComponentBatch], element)
+                        stream.log(log_path, element)
+                else:
+                    described_components = cast(list[DescribedComponentBatch], components_list)
+                    stream.log(log_path, described_components)
+            else:
+                components = cast(AsComponents | Iterable[DescribedComponentBatch], components)
+                stream.log(log_path, components)
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
