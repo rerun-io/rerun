@@ -1218,7 +1218,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
+                    now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                     now
                 })
@@ -1458,11 +1458,11 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert_cell(TimelineName::log_tick(), IndexCell::from_sequence(tick));
+                now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, cell) in now {
-                    row.timepoint.insert_cell(timeline, cell);
+                    row.timepoint.insert_index(timeline, cell);
                 }
             }
 
@@ -1993,10 +1993,7 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(
-            Timeline::log_time(),
-            Time::now().try_into().unwrap_or(TimeInt::MIN),
-        );
+        timepoint.insert_index(TimelineName::log_time(), IndexCell::timestamp_now());
         timepoint
     }
 
@@ -2004,7 +2001,7 @@ impl ThreadInfo {
         self.timepoints
             .entry(rid.clone())
             .or_default()
-            .insert_cell(timeline, cell);
+            .insert_index(timeline, cell);
     }
 
     fn unset_time(&mut self, rid: &StoreId, timeline: &TimelineName) {

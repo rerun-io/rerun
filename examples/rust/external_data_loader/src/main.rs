@@ -125,7 +125,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             let Some((seqline_name, seq)) = seq_str.split_once('=') else {
                 continue;
             };
-            timepoint.insert_cell(
+            timepoint.insert_index(
                 seqline_name,
                 rerun::IndexCell::from_sequence(seq.parse::<i64>()?),
             );

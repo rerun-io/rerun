@@ -73,6 +73,12 @@ impl NonMinI64 {
     }
 
     /// A saturating cast, so that overflowing values will be clamped to the min/max values.
+    pub fn saturating_from_i64(value: impl Into<i64>) -> Self {
+        let value = value.into();
+        unsafe { Self::new_unchecked(value.clamp(Self::MIN.get(), Self::MAX.get())) }
+    }
+
+    /// A saturating cast, so that overflowing values will be clamped to the min/max values.
     pub fn saturating_from_u128(value: u128) -> Self {
         unsafe { Self::new_unchecked(value.min(Self::MAX.get() as u128) as i64) }
     }

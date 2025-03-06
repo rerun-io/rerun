@@ -640,7 +640,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.try_into().unwrap_or(TimeInt::MIN),
+        TimeInt::saturated_nonstatic(frame_nr),
     )
 }
 

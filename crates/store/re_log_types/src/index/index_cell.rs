@@ -37,9 +37,21 @@ impl IndexCell {
         Self::new(TimeType::Time, nanos)
     }
 
+    /// Create a timestamp from number of nanoseconds since the unix epoch, 1970-01-01 00:00:00 UTC.
     #[inline]
     pub fn from_timestamp_nanos_since_epoch(nanos_since_epoch: impl TryInto<NonMinI64>) -> Self {
         Self::new(TimeType::Time, nanos_since_epoch)
+    }
+
+    /// Create a timestamp from number of seconds since the unix epoch, 1970-01-01 00:00:00 UTC.
+    #[inline]
+    pub fn from_timestamp_seconds_since_epoch(seconds_since_epoch: f64) -> Self {
+        Self::from_timestamp_nanos_since_epoch((1e9 * seconds_since_epoch).round() as i64)
+    }
+
+    /// A timestamp of the current clock time.
+    pub fn timestamp_now() -> Self {
+        Self::from_timestamp_nanos_since_epoch(crate::Time::now().nanos_since_epoch())
     }
 
     #[inline]

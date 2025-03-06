@@ -264,8 +264,7 @@ fn log_episode_task(
             continue;
         };
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         let text = TextDocument::new(task.task.clone());
         chunk = chunk.with_archetype(row_id, timepoint, &text);
 
@@ -295,8 +294,7 @@ fn load_episode_images(
     for idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(idx);
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
 
         row_id = row_id.next();
@@ -329,8 +327,7 @@ fn load_episode_depth_images(
         let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
             .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
