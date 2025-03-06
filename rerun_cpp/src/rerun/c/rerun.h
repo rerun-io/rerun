@@ -271,6 +271,8 @@ enum {
 typedef uint32_t rr_time_type;
 
 enum {
+    // 0 no longer in use
+
     /// Used e.g. for frames in a film.
     RR_TIME_TYPE_SEQUENCE = 1,
 
