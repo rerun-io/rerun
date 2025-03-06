@@ -11,11 +11,12 @@ from ..._baseclasses import (
     ComponentDescriptor,
     ComponentMixin,
 )
+from .visible_time_range_ext import VisibleTimeRangeExt
 
 __all__ = ["VisibleTimeRange", "VisibleTimeRangeBatch"]
 
 
-class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
+class VisibleTimeRange(VisibleTimeRangeExt, datatypes.VisibleTimeRange, ComponentMixin):
     """
     **Component**: The range of values on a given timeline that will be included in a view's query.
 
