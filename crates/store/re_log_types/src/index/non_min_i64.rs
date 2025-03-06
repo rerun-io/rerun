@@ -72,6 +72,11 @@ impl NonMinI64 {
         }
     }
 
+    /// A saturating cast, so that overflowing values will be clamped to the min/max values.
+    pub fn saturating_from_u128(value: u128) -> Self {
+        unsafe { Self::new_unchecked(value.min(Self::MAX.get() as u128) as i64) }
+    }
+
     /// Creates a new non-min without checking the value.
     ///
     /// # Safety

@@ -62,7 +62,19 @@ impl TimePoint {
         self.insert_cell(*timeline.name(), cell);
     }
 
+    #[must_use]
+    #[inline]
+    pub fn with_cell(
+        mut self,
+        timeline_name: impl Into<TimelineName>,
+        cell: impl Into<IndexCell>,
+    ) -> Self {
+        self.insert_cell(timeline_name, cell);
+        self
+    }
+
     // #[deprecated] // TODO
+    #[must_use]
     #[inline]
     pub fn with(mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Self {
         self.insert(timeline, time);

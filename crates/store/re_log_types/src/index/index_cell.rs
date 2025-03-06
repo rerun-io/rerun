@@ -2,6 +2,8 @@ use crate::{NonMinI64, TimeType};
 
 use super::TimeInt;
 
+pub struct OutOfRange;
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 /// An typed cell of an index, e.g. a point in time on some unknown timeline.
@@ -70,21 +72,21 @@ impl re_byte_size::SizeBytes for IndexCell {
     }
 }
 
-impl TryFrom<std::time::Duration> for IndexCell {
-    type Error = std::num::TryFromIntError;
-
-    fn try_from(time: std::time::Duration) -> Result<Self, Self::Error> {
-        i64::try_from(time.as_nanos()).map(Self::from_timestamp_nanos_since_epoch)
+impl From<std::time::Duration> for IndexCell {
+    fn from(time: std::time::Duration) -> Self {
+        Self::from_duration_nanos(NonMinI64::saturating_from_u128(time.as_nanos()))
     }
 }
 
 impl TryFrom<std::time::SystemTime> for IndexCell {
-    type Error = std::time::SystemTimeError;
+    type Error = OutOfRange;
 
     fn try_from(time: std::time::SystemTime) -> Result<Self, Self::Error> {
-        let duration_since_epoch = time.duration_since(std::time::SystemTime::UNIX_EPOCH)?;
+        let duration_since_epoch = time
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map_err(|_ignored| OutOfRange)?;
         let nanos_since_epoch = duration_since_epoch.as_nanos();
-        let nanos_since_epoch = nanos_since_epoch as i64; // TODO: saturating cast
+        let nanos_since_epoch = i64::try_from(nanos_since_epoch).map_err(|_ignored| OutOfRange)?;
         Ok(Self::from_timestamp_nanos_since_epoch(nanos_since_epoch))
     }
 }
@@ -93,10 +95,14 @@ impl TryFrom<std::time::SystemTime> for IndexCell {
 // so it's covered by the above `TryFrom`.
 #[cfg(target_arch = "wasm32")]
 impl TryFrom<web_time::SystemTime> for IndexCell {
-    type Error = web_time::SystemTimeError;
+    type Error = OutOfRange;
 
     fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
-        time.duration_since(web_time::SystemTime::UNIX_EPOCH)
-            .map(|duration_since_epoch| Self(duration_since_epoch.as_nanos() as _))
+        let duration_since_epoch = time
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map_err(|_ignored| OutOfRange)?;
+        let nanos_since_epoch = duration_since_epoch.as_nanos();
+        let nanos_since_epoch = i64::try_from(nanos_since_epoch).map_err(|_ignored| OutOfRange)?;
+        Ok(Self::from_timestamp_nanos_since_epoch(nanos_since_epoch))
     }
 }
