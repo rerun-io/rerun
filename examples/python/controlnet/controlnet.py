@@ -47,7 +47,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         print("This example requires a torch with CUDA, but no CUDA device found. Aborting.")
         return
 
-    if image_path.startswith("http://") or image_path.startswith("https://"):
+    if image_path.startswith(("http://", "https://")):
         pil_image = PIL.Image.open(requests.get(image_path, stream=True).raw)
     elif os.path.isfile(image_path):
         pil_image = PIL.Image.open(image_path)

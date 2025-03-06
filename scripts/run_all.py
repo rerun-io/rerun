@@ -160,7 +160,7 @@ class Viewer:
     ws_server_port: int  # the WebSocket port where we serve the log stream
     process: Any | None
 
-    def __init__(self, close: bool = False, web: bool = False):
+    def __init__(self, close: bool = False, web: bool = False) -> None:
         self.should_close = close
         self.web = web
         self.sdk_port = get_free_port()

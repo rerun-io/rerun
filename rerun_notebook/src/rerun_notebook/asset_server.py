@@ -9,10 +9,10 @@ resource_data: bytes | None = None
 
 
 class AssetHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         if self.path == "/widget.js":  # remap this path
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -24,7 +24,7 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
             # Serve other requests normally
             self.send_error(404, "File Not Found")
 
-    def log_message(self, format, *args):
+    def log_message(self, format, *args) -> None:
         # Disable logging
         return
 

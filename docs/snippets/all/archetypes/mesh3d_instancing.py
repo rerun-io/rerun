@@ -19,7 +19,7 @@ rr.log(
     rr.Boxes3D(half_sizes=[[5.0, 5.0, 5.0]]),
 )
 
-for i in range(0, 100):
+for i in range(100):
     rr.set_index("frame", seq=i)
     rr.log(
         "shape",

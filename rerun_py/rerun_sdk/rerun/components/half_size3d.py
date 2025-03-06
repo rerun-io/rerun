@@ -29,7 +29,6 @@ class HalfSize3D(datatypes.Vec3D, ComponentMixin):
     # You can define your own __init__ function as a member of HalfSize3DExt in half_size3d_ext.py
 
     # Note: there are no fields here because HalfSize3D delegates to datatypes.Vec3D
-    pass
 
 
 class HalfSize3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):

@@ -11,7 +11,7 @@ rr.init("rerun_example_timeseries", spawn=True)
 rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
 rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 rr.log("trig/cos", rr.SeriesLine(color=[0, 0, 255], name="cos(0.01t) scaled"), static=True)
-for t in range(0, int(math.pi * 4 * 100.0)):
+for t in range(int(math.pi * 4 * 100.0)):
     rr.set_index("timeline0", seq=t)
     rr.set_index("timeline1", timedelta=t)
     rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))

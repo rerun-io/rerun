@@ -63,7 +63,7 @@ class GraphNodes(Archetype):
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the GraphNodes archetype.
 

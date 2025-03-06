@@ -51,7 +51,7 @@ class AnnotationInfo(AnnotationInfoExt):
 
     def __init__(
         self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.Rgba32Like | None = None
-    ):
+    ) -> None:
         """
         Create a new instance of the AnnotationInfo datatype.
 

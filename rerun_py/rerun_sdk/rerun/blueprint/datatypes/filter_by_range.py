@@ -24,7 +24,7 @@ __all__ = ["FilterByRange", "FilterByRangeArrayLike", "FilterByRangeBatch", "Fil
 class FilterByRange(FilterByRangeExt):
     """**Datatype**: Configuration for the filter-by-range feature of the dataframe view."""
 
-    def __init__(self: Any, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike):
+    def __init__(self: Any, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike) -> None:
         """
         Create a new instance of the FilterByRange datatype.
 

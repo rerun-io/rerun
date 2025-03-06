@@ -54,7 +54,7 @@ class Mesh3DExt:
         albedo_texture: ImageLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Mesh3D archetype.
 

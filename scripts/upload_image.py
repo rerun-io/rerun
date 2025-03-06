@@ -118,7 +118,7 @@ def image_from_clipboard() -> Image:
 
 
 class Uploader:
-    def __init__(self):
+    def __init__(self) -> None:
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
 

@@ -16,7 +16,7 @@ class BackgroundExt:
         *,
         color: datatypes.Rgba32Like | None = None,
         kind: blueprint_components.BackgroundKindLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Background archetype.
 

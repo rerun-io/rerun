@@ -90,7 +90,7 @@ class Scalar(Archetype):
 
     """
 
-    def __init__(self: Any, scalar: datatypes.Float64Like):
+    def __init__(self: Any, scalar: datatypes.Float64Like) -> None:
         """
         Create a new instance of the Scalar archetype.
 

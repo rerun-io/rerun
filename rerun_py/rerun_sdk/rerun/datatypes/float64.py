@@ -24,7 +24,7 @@ __all__ = ["Float64", "Float64ArrayLike", "Float64Batch", "Float64Like"]
 class Float64:
     """**Datatype**: A double-precision 64-bit IEEE 754 floating point number."""
 
-    def __init__(self: Any, value: Float64Like):
+    def __init__(self: Any, value: Float64Like) -> None:
         """Create a new instance of the Float64 datatype."""
 
         # You can define your own __init__ function as a member of Float64Ext in float64_ext.py

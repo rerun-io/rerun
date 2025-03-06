@@ -95,8 +95,8 @@ args = parser.parse_args()
 def main() -> None:
     rr.script_setup(args, "rerun_example_plot_dashboard_stress")
 
-    plot_paths = [f"plot_{i}" for i in range(0, args.num_plots)]
-    series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
+    plot_paths = [f"plot_{i}" for i in range(args.num_plots)]
+    series_paths = [f"series_{i}" for i in range(args.num_series_per_plot)]
 
     if args.blueprint:
         print("logging blueprint!")

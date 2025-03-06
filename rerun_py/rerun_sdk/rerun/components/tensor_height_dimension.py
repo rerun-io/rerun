@@ -22,7 +22,6 @@ class TensorHeightDimension(datatypes.TensorDimensionSelection, ComponentMixin):
     # You can define your own __init__ function as a member of TensorHeightDimensionExt in tensor_height_dimension_ext.py
 
     # Note: there are no fields here because TensorHeightDimension delegates to datatypes.TensorDimensionSelection
-    pass
 
 
 class TensorHeightDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):

@@ -56,7 +56,7 @@ class GraphEdges(Archetype):
 
     """
 
-    def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):
+    def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None) -> None:
         """
         Create a new instance of the GraphEdges archetype.
 

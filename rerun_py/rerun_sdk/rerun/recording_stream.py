@@ -404,7 +404,7 @@ class RecordingStream:
         """
         bindings.flush(blocking, recording=self.to_native())
 
-    def __del__(self):  # type: ignore[no-untyped-def]
+    def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = RecordingStream.to_native(self)
         # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
         # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still

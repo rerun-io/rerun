@@ -30,7 +30,6 @@ class GammaCorrection(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of GammaCorrectionExt in gamma_correction_ext.py
 
     # Note: there are no fields here because GammaCorrection delegates to datatypes.Float32
-    pass
 
 
 class GammaCorrectionBatch(datatypes.Float32Batch, ComponentBatchMixin):

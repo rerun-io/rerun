@@ -24,7 +24,7 @@ __all__ = ["UInt64", "UInt64ArrayLike", "UInt64Batch", "UInt64Like"]
 class UInt64:
     """**Datatype**: A 64bit unsigned integer."""
 
-    def __init__(self: Any, value: UInt64Like):
+    def __init__(self: Any, value: UInt64Like) -> None:
         """Create a new instance of the UInt64 datatype."""
 
         # You can define your own __init__ function as a member of UInt64Ext in uint64_ext.py

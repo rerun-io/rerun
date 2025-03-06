@@ -441,15 +441,7 @@ re_docstring = re.compile(r"^\s*///")
 def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
     def is_empty(line: str) -> bool:
         return (
-            line == ""
-            or line.startswith("#")
-            or line.startswith("//")
-            or line.endswith("{")
-            or line.endswith("(")
-            or line.endswith("\\")
-            or line.endswith('r"')
-            or line.endswith('r#"')
-            or line.endswith("]")
+            line == "" or line.startswith(("#", "//")) or line.endswith(("{", "(", "\\", 'r"', 'r#"', "]"))
         )
 
     """Only for Rust files."""
@@ -578,7 +570,6 @@ def test_lint_vertical_spacing() -> None:
         errors, _ = lint_vertical_spacing(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
 
-    pass
 
 
 # -----------------------------------------------------------------------------
@@ -662,7 +653,6 @@ def test_lint_workspace_deps() -> None:
         errors, _ = lint_workspace_deps(code.split("\n"))
         assert len(errors) > 0, f"expected this to fail:\n{code}"
 
-    pass
 
 
 # -----------------------------------------------------------------------------
@@ -772,14 +762,14 @@ def is_emoji(s: str) -> bool:
     )
 
 
-def test_is_emoji():
+def test_is_emoji() -> None:
     assert not is_emoji("A")
     assert not is_emoji("Ö")
     assert is_emoji("😀")
     assert is_emoji("⚠️")
 
 
-def test_split_words():
+def test_split_words() -> None:
     test_cases = [
         ("hello world", ["hello", " ", "world"]),
         ("hello foo@rerun.io", ["hello", " ", "foo@rerun.io"]),
@@ -830,7 +820,7 @@ def fix_header_casing(s: str) -> str:
             except ValueError:
                 idx = None
 
-            if word.endswith("?") or word.endswith("!") or word.endswith("."):
+            if word.endswith(("?", "!", ".")):
                 last_punctuation = word[-1]
                 word = word[:-1]
             elif idx is not None:
@@ -987,7 +977,7 @@ def _index_to_line_nr(content: str, index: int) -> int:
 class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = os.path.realpath(path)
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:
@@ -1080,7 +1070,7 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Missing `#pragma once` in C++ header file"))
             num_errors += 1
 
-    if filepath.endswith(".rs") or filepath.endswith(".fbs"):
+    if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))

@@ -21,7 +21,7 @@ __all__ = ["StringComponent", "StringComponentArrayLike", "StringComponentBatch"
 
 @define(init=False)
 class StringComponent:
-    def __init__(self: Any, value: StringComponentLike):
+    def __init__(self: Any, value: StringComponentLike) -> None:
         """Create a new instance of the StringComponent datatype."""
 
         # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py

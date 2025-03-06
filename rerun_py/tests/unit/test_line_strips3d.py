@@ -169,7 +169,7 @@ def test_line_strip2d_invalid_shapes() -> None:
         rr.LineStrips3D(
             [
                 np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
-                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
+                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1 ], dtype=np.float32),
             ],
         )
     # fmt: on

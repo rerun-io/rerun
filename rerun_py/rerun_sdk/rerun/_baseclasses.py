@@ -122,7 +122,7 @@ class DescribedComponentBatch:
     and assign the right tags given the surrounding context.
     """
 
-    def __init__(self, batch: ComponentBatchLike, descriptor: ComponentDescriptor):
+    def __init__(self, batch: ComponentBatchLike, descriptor: ComponentDescriptor) -> None:
         self._batch = batch
         self._descriptor = descriptor
 
@@ -376,7 +376,7 @@ class ComponentColumn:
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
-    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None):
+    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None) -> None:
         """
         Construct a new component column.
 
@@ -463,7 +463,7 @@ class ComponentColumnList(Iterable[ComponentColumn]):
     Useful to partition and log multiple columns at once.
     """
 
-    def __init__(self, columns: Iterable[ComponentColumn]):
+    def __init__(self, columns: Iterable[ComponentColumn]) -> None:
         self._columns = list(columns)
 
     def __iter__(self) -> Iterator[ComponentColumn]:

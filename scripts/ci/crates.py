@@ -73,7 +73,7 @@ def cargo(
 
 
 class Crate:
-    def __init__(self, manifest: dict[str, Any], path: Path):
+    def __init__(self, manifest: dict[str, Any], path: Path) -> None:
         self.manifest = manifest
         self.path = path
 
@@ -114,7 +114,7 @@ class DependencyKind(Enum):
 
 
 class Dependency:
-    def __init__(self, name: str, manifest_key: list[str], kind: DependencyKind):
+    def __init__(self, name: str, manifest_key: list[str], kind: DependencyKind) -> None:
         self.name = name
         self.manifest_key = manifest_key
         self.kind = kind

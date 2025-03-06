@@ -73,7 +73,7 @@ class SeriesLine(Archetype):
         name: datatypes.Utf8Like | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesLine archetype.
 

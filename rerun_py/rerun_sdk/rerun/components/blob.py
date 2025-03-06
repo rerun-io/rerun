@@ -22,7 +22,6 @@ class Blob(datatypes.Blob, ComponentMixin):
     # You can define your own __init__ function as a member of BlobExt in blob_ext.py
 
     # Note: there are no fields here because Blob delegates to datatypes.Blob
-    pass
 
 
 class BlobBatch(datatypes.BlobBatch, ComponentBatchMixin):

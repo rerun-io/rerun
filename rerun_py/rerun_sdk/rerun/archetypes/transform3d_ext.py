@@ -32,7 +32,7 @@ class Transform3DExt:
         from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
         axis_length: Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Transform3D archetype.
 

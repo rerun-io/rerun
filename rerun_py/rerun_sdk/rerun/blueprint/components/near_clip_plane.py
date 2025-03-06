@@ -22,7 +22,6 @@ class NearClipPlane(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of NearClipPlaneExt in near_clip_plane_ext.py
 
     # Note: there are no fields here because NearClipPlane delegates to datatypes.Float32
-    pass
 
 
 class NearClipPlaneBatch(datatypes.Float32Batch, ComponentBatchMixin):

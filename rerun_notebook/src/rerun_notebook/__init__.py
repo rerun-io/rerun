@@ -47,7 +47,7 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
     ESM_MOD = ASSET_ENV
-    if not (ASSET_ENV.startswith("http://") or ASSET_ENV.startswith("https://")):
+    if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
@@ -85,7 +85,7 @@ class Viewer(anywidget.AnyWidget):
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
 
         self._width = width
@@ -135,7 +135,7 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                 time.sleep(0.1)
 
     def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
-        new_panel_states = {k: v for k, v in self._panel_states.items()} if self._panel_states else {}
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)

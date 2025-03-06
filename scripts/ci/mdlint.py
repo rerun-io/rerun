@@ -100,7 +100,7 @@ class Error:
 class NoClosingTagError(Error):
     CODE = "E001"
 
-    def __init__(self, tagname: str, span: Span):
+    def __init__(self, tagname: str, span: Span) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> has no closing tag", span)
 
     @staticmethod
@@ -130,7 +130,7 @@ class NoClosingTagError(Error):
 class NoPrecedingBlankLineError(Error):
     CODE = "E002"
 
-    def __init__(self, tagname: str, ws_start: int, line_end: int):
+    def __init__(self, tagname: str, ws_start: int, line_end: int) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> is not preceded by a blank line", Span(ws_start, line_end))
 
     @staticmethod
@@ -167,7 +167,7 @@ class NoPrecedingBlankLineError(Error):
 class BlankLinesError(Error):
     CODE = "E003"
 
-    def __init__(self, tagname: str, span: Span):
+    def __init__(self, tagname: str, span: Span) -> None:
         super().__init__(type(self).CODE, f"<{tagname}> element contains a blank line", span)
 
     @staticmethod
@@ -202,7 +202,7 @@ class BlankLinesError(Error):
 class BacktickLinkError(Error):
     CODE = "E004"
 
-    def __init__(self, span: Span):
+    def __init__(self, span: Span) -> None:
         super().__init__(type(self).CODE, "link contains backtick", span)
 
     @staticmethod
@@ -269,7 +269,7 @@ def get_non_void_element_spans(content: str, search_start: int, tagname: str) ->
     )
 
 
-def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, errors: list[Error]):
+def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, errors: list[Error]) -> None:
     before_open_tag = Span(spans.line.start, spans.element.start).slice(content)
     if len(before_open_tag) == 0:
         # `<picture>` is not indented
@@ -380,7 +380,7 @@ def check_file(path: str) -> str | None:
         return "\n".join([error.render(path, content) for error in errors])
 
 
-def lint(glob_pattern: str):
+def lint(glob_pattern: str) -> None:
     with ThreadPoolExecutor() as e:
         errors = [v for v in e.map(check_file, glob(glob_pattern, recursive=True)) if v is not None]
         if len(errors) > 0:
@@ -391,7 +391,7 @@ def lint(glob_pattern: str):
         print("No problems found")
 
 
-def explain(error_code: str):
+def explain(error_code: str) -> None:
     f = EXPLAIN[error_code]
     if not f:
         print(f'Unknown error code "{error_code}"')

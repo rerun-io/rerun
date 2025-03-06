@@ -23,7 +23,7 @@ from colorama import Fore, Style, init as colorama_init
 colorama_init()
 
 
-def print_colored_diff(runtime, stub):
+def print_colored_diff(runtime, stub) -> None:
     # Split the strings into lines
     runtime_lines = runtime.splitlines()
     stub_lines = stub.splitlines()
@@ -44,12 +44,12 @@ def print_colored_diff(runtime, stub):
 
 
 class APIDef:
-    def __init__(self, name: str, signature: Signature, doc: str | None):
+    def __init__(self, name: str, signature: Signature, doc: str | None) -> None:
         self.name = name
         self.signature = signature
         self.doc = inspect.cleandoc(doc) if doc else None
 
-    def __str__(self):
+    def __str__(self) -> str:
         doclines = (self.doc or "").split("\n")
         if len(doclines) == 1:
             docstring = f'"""{doclines[0]}"""'

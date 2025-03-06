@@ -56,7 +56,7 @@ async def fetch_total_number_of_issue_pages(session):
         return None
 
 
-async def fetch_issues():
+async def fetch_issues() -> None:
     async with aiohttp.ClientSession() as session:
         total_pages = await fetch_total_number_of_issue_pages(session)
         if total_pages is None:

@@ -25,7 +25,7 @@ If nothing weird happens, you can close this recording.
 
 def blueprint() -> rrb.BlueprintLike:
     return rrb.Grid(
-        rrb.Vertical(*[rrb.TimeSeriesView(name="plots", origin="/plots") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.TimeSeriesView(name="plots", origin="/plots") for _ in range(3)]),
         rrb.Vertical(*[
             rrb.TimeSeriesView(
                 name="plots",
@@ -36,10 +36,10 @@ def blueprint() -> rrb.BlueprintLike:
                     end=rrb.TimeRangeBoundary.cursor_relative(seq=50 - i * 10 + 10),
                 ),
             )
-            for i in range(0, 10)
+            for i in range(10)
         ]),
-        rrb.Vertical(*[rrb.TextLogView(name="logs", origin="/text") for _ in range(0, 3)]),
-        rrb.Vertical(*[rrb.Spatial2DView(name="2D", origin="/2D") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.TextLogView(name="logs", origin="/text") for _ in range(3)]),
+        rrb.Vertical(*[rrb.Spatial2DView(name="2D", origin="/2D") for _ in range(3)]),
         rrb.Vertical(*[
             rrb.Spatial2DView(
                 name="2D",
@@ -50,9 +50,9 @@ def blueprint() -> rrb.BlueprintLike:
                     end=rrb.TimeRangeBoundary.cursor_relative(),
                 ),
             )
-            for _ in range(0, 3)
+            for _ in range(3)
         ]),
-        rrb.Vertical(*[rrb.Spatial3DView(name="3D", origin="/3D") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.Spatial3DView(name="3D", origin="/3D") for _ in range(3)]),
         rrb.Vertical(*[
             rrb.Spatial3DView(
                 name="3D",
@@ -63,7 +63,7 @@ def blueprint() -> rrb.BlueprintLike:
                     end=rrb.TimeRangeBoundary.infinite(),
                 ),
             )
-            for _ in range(0, 3)
+            for _ in range(3)
         ]),
         rrb.TextDocumentView(origin="readme"),
         grid_columns=4,
@@ -75,7 +75,7 @@ def log_readme() -> None:
 
 
 def log_text_logs() -> None:
-    for t in range(0, 100):
+    for t in range(100):
         rr.set_index("frame_nr", seq=t)
         rr.log("text", rr.TextLog("Something good happened", level=rr.TextLogLevel.INFO))
         rr.log("text", rr.TextLog("Something bad happened", level=rr.TextLogLevel.ERROR))
@@ -87,7 +87,7 @@ def log_plots() -> None:
     rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
     rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
-    for t in range(0, int(tau * 2 * 10.0)):
+    for t in range(int(tau * 2 * 10.0)):
         rr.set_index("frame_nr", seq=t)
 
         sin_of_t = sin(float(t) / 10.0)
@@ -98,11 +98,11 @@ def log_plots() -> None:
 
 
 def log_spatial() -> None:
-    for t in range(0, 100):
+    for t in range(100):
         rr.set_index("frame_nr", seq=t)
 
         positions3d = [
-            [math.sin((i + t) * 0.2) * 5, math.cos((i + t) * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(0, 100)
+            [math.sin((i + t) * 0.2) * 5, math.cos((i + t) * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(100)
         ]
 
         rr.log(
@@ -139,7 +139,7 @@ def log_spatial() -> None:
             ),
         )
 
-        positions2d = [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(0, 100)]
+        positions2d = [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(100)]
 
         rr.log(
             "2D/points",

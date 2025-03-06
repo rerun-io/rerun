@@ -110,7 +110,7 @@ class FaceDetectorLogger:
         "blaze_face_short_range.tflite"
     )
 
-    def __init__(self, video_mode: bool = False):
+    def __init__(self, video_mode: bool = False) -> None:
         self._video_mode = video_mode
 
         # download model if necessary
@@ -186,7 +186,7 @@ class FaceLandmarkerLogger:
         "face_landmarker.task"
     )
 
-    def __init__(self, video_mode: bool = False, num_faces: int = 1):
+    def __init__(self, video_mode: bool = False, num_faces: int = 1) -> None:
         self._video_mode = video_mode
 
         # download model if necessary

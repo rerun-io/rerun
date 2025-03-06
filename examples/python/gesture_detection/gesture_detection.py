@@ -66,7 +66,7 @@ class GestureDetectorLogger:
     MODEL_PATH: Final = (MODEL_DIR / "gesture_recognizer.task").resolve()
     MODEL_URL: Final = "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_recognizer.task"
 
-    def __init__(self, video_mode: bool = False):
+    def __init__(self, video_mode: bool = False) -> None:
         self._video_mode = video_mode
 
         if not self.MODEL_PATH.exists():
@@ -131,7 +131,7 @@ class GestureDetectorLogger:
                         landmark_positions_3d,
                         radii=20,
                         class_ids=0,
-                        keypoint_ids=[i for i in range(len(landmark_positions_3d))],
+                        keypoint_ids=list(range(len(landmark_positions_3d))),
                     ),
                 )
 
