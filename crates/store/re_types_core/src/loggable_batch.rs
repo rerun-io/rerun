@@ -7,7 +7,7 @@ use crate::{
 
 use arrow::array::ListArray as ArrowListArray;
 
-#[expect(unused_imports)] // used in docstrings
+#[allow(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::Archetype;
 
 // ---
