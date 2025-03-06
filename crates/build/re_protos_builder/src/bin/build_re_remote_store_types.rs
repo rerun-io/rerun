@@ -8,8 +8,8 @@
 use camino::Utf8Path;
 
 const PROTOS_DIR: &str = "crates/store/re_protos/proto";
-const INPUT_V0_DIR: &str = "rerun/v0";
-const OUTPUT_V0_RUST_DIR: &str = "crates/store/re_protos/src/v0";
+const INPUT_V1ALPHA1_DIR: &str = "rerun/v1alpha1";
+const OUTPUT_V1ALPHA1_RUST_DIR: &str = "crates/store/re_protos/src/v1alpha1";
 
 fn main() {
     re_log::setup_logging();
@@ -27,8 +27,8 @@ fn main() {
     );
 
     let definitions_dir_path = workspace_dir.join(PROTOS_DIR);
-    let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V0_RUST_DIR);
-    let mut proto_paths = std::fs::read_dir(definitions_dir_path.join(INPUT_V0_DIR))
+    let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V1ALPHA1_RUST_DIR);
+    let mut proto_paths = std::fs::read_dir(definitions_dir_path.join(INPUT_V1ALPHA1_DIR))
         .unwrap()
         .map(|v| {
             v.unwrap()

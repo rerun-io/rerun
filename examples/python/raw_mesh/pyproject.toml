@@ -2,7 +2,7 @@
 name = "raw_mesh"
 version = "0.1.0"
 readme = "README.md"
-dependencies = ["numpy", "requests>=2.31,<3", "rerun-sdk", "trimesh==3.15.2"]
+dependencies = ["numpy", "requests>=2.31,<3", "rerun-sdk", "trimesh"]
 
 [project.scripts]
 raw_mesh = "raw_mesh.__main__:main"

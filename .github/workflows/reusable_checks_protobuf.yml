@@ -1,0 +1,60 @@
+name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-checks_protobuf
+  cancel-in-progress: true
+
+env:
+  # Make sure that git will not try and perform any kind of LFS filtering, otherwise
+  # this will completely break `buf` which invokes `git` under the hood.
+  GIT_LFS_SKIP_SMUDGE: 1
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  pb-check:
+    name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.41.4
+
+      - name: Fetch latest main (so we can grab the current schema snapshot)
+        run: time git fetch origin main # yes, we need full --depth for `buf` to work
+
+      # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
+      # than a pure git solution in the future. For now, convenience wins.
+      #
+      # - name: Schema snapshot out-of-sync
+      #   run: pixi run pb-snapshot-check
+      #   # continue-on-error: true
+      #
+      - name: Breaking changes
+        run: pixi run pb-breaking
+        if: success() || failure() # trigger this step even if the previous one failed
+
+      - name: Lints
+        run: pixi run pb-lint
+        if: success() || failure() # trigger this step even if the previous one failed
+
+      - name: Formatting
+        run: pixi run pb-fmt-check
+        if: success() || failure() # trigger this step even if the previous one failed
