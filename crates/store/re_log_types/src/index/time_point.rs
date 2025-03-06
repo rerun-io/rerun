@@ -77,8 +77,8 @@ impl TimePoint {
     }
 
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
+    pub fn timeline_names(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
+        self.0.keys().map(|k| k.name())
     }
 
     #[inline]

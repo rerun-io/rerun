@@ -801,7 +801,7 @@ impl PendingRow {
             // deterministic: `TimePoint` is backed by a `BTreeMap`.
             for row in rows {
                 let mut hasher = ahash::AHasher::default();
-                row.timepoint.timelines().for_each(|timeline| {
+                row.timepoint.timeline_names().for_each(|timeline| {
                     <TimelineName as std::hash::Hash>::hash(timeline, &mut hasher);
                 });
 
