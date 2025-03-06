@@ -104,29 +104,6 @@ namespace rerun {
         }
     }
 
-    RR_PUSH_WARNINGS
-
-    RR_DISABLE_DEPRECATION_WARNING
-    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
-        return RecordingStream::connect_tcp(tcp_addr, flush_timeout_sec);
-    }
-
-    RR_POP_WARNINGS
-
-    Error RecordingStream::connect_tcp(std::string_view tcp_addr, float flush_timeout_sec) const {
-        rr_error status = {};
-        RR_PUSH_WARNINGS
-        RR_DISABLE_DEPRECATION_WARNING
-        rr_recording_stream_connect(
-            _id,
-            detail::to_rr_string(tcp_addr),
-            flush_timeout_sec,
-            &status
-        );
-        RR_POP_WARNINGS
-        return status;
-    }
-
     Error RecordingStream::connect_grpc(std::string_view url, float flush_timeout_sec) const {
         rr_error status = {};
         rr_recording_stream_connect_grpc(
