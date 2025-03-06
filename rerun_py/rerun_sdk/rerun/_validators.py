@@ -82,8 +82,9 @@ def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> np
         valid = (array.shape[0] % dimension) == 0
     elif len(array.shape) >= 2:
         # Get the last dimension that is not 1. If all dimensions are 1, this returns 1.
-        last_non_singleton = next((d for d in reversed(array.shape) if d != 1), 1)
+        last_non_singleton = next((d for d in reversed(array.shape[1:]) if d != 1), 1)
         valid = last_non_singleton == dimension
+        print("shape:", array.shape, last_non_singleton, valid)
 
     if not valid:
         raise ValueError(
