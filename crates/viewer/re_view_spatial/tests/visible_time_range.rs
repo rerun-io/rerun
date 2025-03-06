@@ -37,7 +37,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
-            frame(42),
+            frame(43),
             &Points2D::update_fields().with_radii([0.1]),
         )
     });
