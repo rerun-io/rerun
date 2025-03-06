@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt as _};
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{DataLoader, DataLoaderError, LoadedData, RrdLoader};
+use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 
 // ---
 

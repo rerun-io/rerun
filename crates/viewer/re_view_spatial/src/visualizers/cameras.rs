@@ -4,7 +4,7 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
     components::{self},
-    Archetype,
+    Archetype as _,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{

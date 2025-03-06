@@ -1,6 +1,6 @@
 use crate::icon_text::{IconText, IconTextItem};
-use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt};
-use egui::{OpenUrl, RichText, Sense, TextBuffer, Ui, UiBuilder};
+use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt as _};
+use egui::{OpenUrl, RichText, Sense, TextBuffer as _, Ui, UiBuilder};
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]

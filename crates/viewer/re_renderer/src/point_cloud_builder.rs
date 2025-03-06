@@ -1,6 +1,6 @@
-use itertools::{izip, Itertools};
+use itertools::{izip, Itertools as _};
 
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 
 use crate::{
     allocator::DataTextureSource,

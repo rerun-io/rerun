@@ -1,4 +1,6 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch, ComponentDescriptor, VersionPolicy};
+use rerun::{
+    ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor, VersionPolicy,
+};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     let positions = rerun::components::Position3D::new(1.0, 2.0, 3.0)

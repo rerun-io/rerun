@@ -1,7 +1,7 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
-use re_data_ui::{sorted_component_list_for_ui, DataUi};
+use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::components::VisualizerOverrides;

@@ -104,7 +104,7 @@ impl Report {
 
     /// This outputs all errors and warnings to stderr and panics if there were any errors.
     pub fn finalize(&self) {
-        use colored::Colorize;
+        use colored::Colorize as _;
 
         let mut errored = false;
 

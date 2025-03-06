@@ -7,8 +7,8 @@ use std::process::Command;
 
 use camino::Utf8Path;
 use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
+use rayon::prelude::IntoParallelIterator as _;
+use rayon::prelude::ParallelIterator as _;
 
 use super::wait_for_output;
 
@@ -122,7 +122,7 @@ fn collect_snippets_recursively(
         // We only run python examples, because:
         // - Each snippet should already be available in each language
         // - Python is the easiest to run
-        if !path.extension().is_some_and(|p| p == "py") {
+        if path.extension().is_none_or(|p| p != "py") {
             println!("Skipping {}: not a python example", path.display());
             continue;
         }

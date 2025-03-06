@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::add_server_modal::AddServerModal;

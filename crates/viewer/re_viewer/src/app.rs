@@ -10,13 +10,13 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
+use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
-    ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -1140,7 +1140,7 @@ impl App {
         &mut self,
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<()> {
-        use crate::web_tools::JsResultExt;
+        use crate::web_tools::JsResultExt as _;
         let href = self.get_viewer_url().ok_or_log_js_error()?;
 
         let direct_link = match store_context
@@ -1195,7 +1195,7 @@ impl App {
         // which can be passed to `rerun-cli`.
         #[cfg(target_arch = "wasm32")]
         let url = {
-            use crate::web_tools::JsResultExt;
+            use crate::web_tools::JsResultExt as _;
             let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
                 // error was logged already
                 return;

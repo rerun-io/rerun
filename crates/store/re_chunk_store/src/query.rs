@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use itertools::{Either, Itertools};
+use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};

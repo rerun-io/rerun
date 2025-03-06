@@ -105,7 +105,7 @@ impl serde::Serialize for ArrowMsg {
         S: serde::Serializer,
     {
         re_tracing::profile_scope!("ArrowMsg::serialize");
-        use serde::ser::SerializeTuple;
+        use serde::ser::SerializeTuple as _;
 
         let mut ipc_bytes = Vec::<u8>::new();
 

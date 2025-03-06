@@ -1,4 +1,4 @@
-use ahash::{HashMap, HashMapExt, HashSet};
+use ahash::{HashMap, HashMapExt as _, HashSet};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;

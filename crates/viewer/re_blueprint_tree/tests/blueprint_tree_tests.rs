@@ -8,7 +8,7 @@ use re_chunk_store::RowId;
 use re_log_types::{build_frame_nr, Timeline};
 use re_types::archetypes::Points3D;
 use re_viewer_context::{
-    test_context::TestContext, CollapseScope, RecommendedView, ViewClass, ViewId,
+    test_context::TestContext, CollapseScope, RecommendedView, ViewClass as _, ViewId,
 };
 use re_viewport_blueprint::{
     test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,

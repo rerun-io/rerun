@@ -8,7 +8,7 @@ use re_types::{
     components::{self},
     ArrowString, Component as _,
 };
-use re_view::{DataResultQuery, RangeResultsExt};
+use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,

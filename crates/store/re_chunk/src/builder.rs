@@ -1,5 +1,5 @@
 use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeType, Timeline, TimelineName};

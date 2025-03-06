@@ -9,8 +9,14 @@ struct rr_timeline;
 namespace rerun {
     /// Describes the type of a timeline or time point.
     enum class TimeType {
-        Time = 0,
+        /// Used e.g. for frames in a film.
         Sequence = 1,
+
+        /// Nanoseconds.
+        Duration = 2,
+
+        /// Nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
+        Timestamp = 3,
     };
 
     /// Definition of a timeline.
@@ -21,10 +27,8 @@ namespace rerun {
         /// The type of the timeline.
         TimeType type;
 
-      public:
         /// Creates a new timeline.
-        Timeline(std::string _name, TimeType _type = TimeType::Time)
-            : name(std::move(_name)), type(_type) {}
+        Timeline(std::string name_, TimeType type_) : name(std::move(name_)), type(type_) {}
 
         Timeline() = delete;
 

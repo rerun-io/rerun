@@ -1,7 +1,7 @@
 use arrow::array::FixedSizeBinaryArray;
-use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
+use arrow::array::{Array as _, ListArray as ArrowListArray};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use itertools::{izip, Itertools};
+use itertools::{izip, Itertools as _};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -375,7 +375,7 @@ mod tests {
     use super::*;
 
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64};
-    use re_types_core::Component;
+    use re_types_core::Component as _;
 
     use crate::{Chunk, RowId, Timeline};
 

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, Color32, CursorIcon, Modifiers, NumExt, Painter, PointerButton, Rect, Response, Shape,
-    Ui, Vec2,
+    pos2, Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response,
+    Shape, Ui, Vec2,
 };
 
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};

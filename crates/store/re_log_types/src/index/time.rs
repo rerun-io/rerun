@@ -1,5 +1,5 @@
 use anyhow::Result;
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 

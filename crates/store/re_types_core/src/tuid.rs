@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayRef, AsArray, FixedSizeBinaryArray, FixedSizeBinaryBuilder},
+    array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder},
     datatypes::DataType,
 };
 

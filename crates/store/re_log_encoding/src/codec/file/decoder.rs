@@ -22,7 +22,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
 ///
 /// `Ok(None)` returned from this function marks the end of the file stream.
 pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogMsg>, DecodeError> {
-    use re_protos::external::prost::Message;
+    use re_protos::external::prost::Message as _;
     use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
 
     let msg = match message_kind {

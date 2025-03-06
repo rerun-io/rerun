@@ -1,5 +1,5 @@
 use egui::NumExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
