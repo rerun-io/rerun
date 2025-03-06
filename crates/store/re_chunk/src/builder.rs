@@ -2,7 +2,7 @@ use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName};
+use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};

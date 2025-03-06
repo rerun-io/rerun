@@ -19,12 +19,6 @@ impl From<BTreeMap<TimelineName, IndexCell>> for TimePoint {
     }
 }
 
-impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
-    fn from(map: BTreeMap<Timeline, TimeInt>) -> Self {
-        todo!()
-    }
-}
-
 impl TimePoint {
     #[inline]
     pub fn get(&self, timeline_name: &TimelineName) -> Option<NonMinI64> {
@@ -37,16 +31,35 @@ impl TimePoint {
         timeline_name: impl Into<TimelineName>,
         cell: impl Into<IndexCell>,
     ) {
+        let timeline_name = timeline_name.into();
         let cell = cell.into();
-        let timeline = Timeline::new(timeline_name, cell.typ);
-        let time_int = TimeInt::from(cell.value);
-        self.insert(timeline, time_int);
+
+        match self.0.entry(timeline_name) {
+            btree_map::Entry::Vacant(vacant_entry) => {
+                vacant_entry.insert(cell);
+            }
+            btree_map::Entry::Occupied(mut occupied_entry) => {
+                let existing_typ = occupied_entry.get().typ();
+                if existing_typ != cell.typ() {
+                    re_log::warn_once!(
+                        "Timeline {timeline_name:?} changed type from {existing_typ:?} to {:?}. \
+                         Rerun does not support using different types for the same timeline.",
+                        cell.typ()
+                    );
+                }
+                occupied_entry.insert(cell);
+            }
+        }
     }
 
     // #[deprecated] // TODO
     #[inline]
-    pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Option<TimeInt> {
-        todo!()
+    pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) {
+        let cell = IndexCell::new(
+            timeline.typ(),
+            time.try_into().unwrap_or(TimeInt::MIN).as_i64(),
+        );
+        self.insert_cell(*timeline.name(), cell);
     }
 
     // #[deprecated] // TODO
