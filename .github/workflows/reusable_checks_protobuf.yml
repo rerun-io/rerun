@@ -35,23 +35,21 @@ jobs:
       - name: Fetch latest main (so we can grab the current schema snapshot)
         run: time git fetch origin main # yes, we need full --depth for `buf` to work
 
-      # TODO(cmc): I would prefer some kind of continue-on-error behavior here, but every
-      # "native" solution I've tried sucked, and I really don't want to introduce yet another
-      # layer of scripting right now.
       # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
       # than a pure git solution in the future. For now, convenience wins.
       #
       # - name: Schema snapshot out-of-sync
       #   run: pixi run pb-snapshot-check
       #   # continue-on-error: true
+      #
       - name: Breaking changes
         run: pixi run pb-breaking
-        # continue-on-error: true
+        if: success() || failure()  # trigger this step even if the previous one failed
 
       - name: Lints
         run: pixi run pb-lint
-        # continue-on-error: true
+        if: success() || failure()  # trigger this step even if the previous one failed
 
       - name: Formatting
         run: pixi run pb-fmt-check
-        # continue-on-error: true
+        if: success() || failure()  # trigger this step even if the previous one failed
