@@ -41,4 +41,5 @@ egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
+smallvec.workspace = true
 static_assertions.workspace = true
