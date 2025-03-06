@@ -174,7 +174,7 @@ impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint
 
 #[cfg(test)]
 mod tests {
-    use super::{TimeInt, TimeType};
+    use crate::{TimeInt, TimeType};
 
     #[test]
     fn test_format_parse() {
