@@ -22,7 +22,7 @@ __all__ = ["PanelBlueprint"]
 class PanelBlueprint(Archetype):
     """**Archetype**: Shared state for the 3 collapsible panels."""
 
-    def __init__(self: Any, *, state: blueprint_components.PanelStateLike | None = None):
+    def __init__(self: Any, *, state: blueprint_components.PanelStateLike | None = None) -> None:
         """
         Create a new instance of the PanelBlueprint archetype.
 

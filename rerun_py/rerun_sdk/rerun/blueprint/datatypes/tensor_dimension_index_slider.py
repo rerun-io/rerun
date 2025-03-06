@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -29,7 +30,7 @@ __all__ = [
 class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
     """**Datatype**: Defines a slider for the index of some dimension."""
 
-    def __init__(self: Any, dimension: TensorDimensionIndexSliderLike):
+    def __init__(self: Any, dimension: TensorDimensionIndexSliderLike) -> None:
         """
         Create a new instance of the TensorDimensionIndexSlider datatype.
 
@@ -48,9 +49,9 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py
-        return np.asarray(self.dimension, dtype=dtype)
+        return np.asarray(self.dimension, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.dimension)

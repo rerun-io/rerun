@@ -30,14 +30,14 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     [],
     np.array([]),
     [
-        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)],  # type: ignore[list-item]
+        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)],
         [[0, 0, 0], [0, 0, 1], [1, 0, 0], (1, 0, 1),
-         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],  # type: ignore[list-item]
+         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
     ],
     [
         [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)],  # type: ignore[list-item]
-        [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
-         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],  # type: ignore[list-item]
+        [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),    # type: ignore[list-item]
+         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
     ],
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
@@ -97,7 +97,7 @@ def test_line_strips3d() -> None:
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.LineStrips3D(
             strips,
@@ -169,7 +169,7 @@ def test_line_strip2d_invalid_shapes() -> None:
         rr.LineStrips3D(
             [
                 np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
-                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
+                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1 ], dtype=np.float32),
             ],
         )
     # fmt: on
@@ -182,7 +182,7 @@ def test_line_strip2d_invalid_shapes() -> None:
                     [([0, 0, 2]), [1, 0, 2], [1, 1, 2], [0, 1, 2]],
                     [([0, 0, 0]), [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
                 ]),
-            )
+            ),
         )
     with pytest.raises(ValueError):
         rr.LineStrips3D(

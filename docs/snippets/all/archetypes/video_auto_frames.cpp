@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
         video_asset.read_frame_timestamps_ns().value_or_throw();
     // Note timeline values don't have to be the same as the video timestamps.
     auto time_column =
-        rerun::TimeColumn::from_times("video_time", rerun::borrow(frame_timestamps_ns));
+        rerun::TimeColumn::from_durations("video_time", rerun::borrow(frame_timestamps_ns));
 
     std::vector<rerun::components::VideoTimestamp> video_timestamps(frame_timestamps_ns.size());
     for (size_t i = 0; i < frame_timestamps_ns.size(); i++) {

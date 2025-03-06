@@ -22,7 +22,6 @@ class AxisLength(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of AxisLengthExt in axis_length_ext.py
 
     # Note: there are no fields here because AxisLength delegates to datatypes.Float32
-    pass
 
 
 class AxisLengthBatch(datatypes.Float32Batch, ComponentBatchMixin):

@@ -13,7 +13,7 @@ class VisualBounds2DExt:
         *,
         x_range: Range1DLike,
         y_range: Range1DLike,
-    ):
+    ) -> None:
         """
         Create a new instance of the VisualBounds2D component.
 

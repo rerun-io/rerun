@@ -24,7 +24,7 @@ The full source code for this example is available
 def log_data() -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
-    rr.set_time_seconds("stable_time", 0)
+    rr.set_index("stable_time", timedelta=0)
 
     NUM_POINTS = 100
 
@@ -43,13 +43,14 @@ def log_data() -> None:
     time_offsets = np.random.rand(NUM_POINTS)
     for i in range(400):
         time = i * 0.01
-        rr.set_time_seconds("stable_time", time)
+        rr.set_index("stable_time", timedelta=time)
 
         times = np.repeat(time, NUM_POINTS) + time_offsets
         beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]
         colors = [[int(bounce_lerp(80, 230, times[n] * 2))] for n in range(NUM_POINTS)]
         rr.log(
-            "helix/structure/scaffolding/beads", rr.Points3D(beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1))
+            "helix/structure/scaffolding/beads",
+            rr.Points3D(beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1)),
         )
 
         rr.log(
@@ -82,7 +83,7 @@ def main() -> None:
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
                             end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
                         ),
-                    ]
+                    ],
                 },
             ),
         )

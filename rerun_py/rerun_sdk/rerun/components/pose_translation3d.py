@@ -22,7 +22,6 @@ class PoseTranslation3D(datatypes.Vec3D, ComponentMixin):
     # You can define your own __init__ function as a member of PoseTranslation3DExt in pose_translation3d_ext.py
 
     # Note: there are no fields here because PoseTranslation3D delegates to datatypes.Vec3D
-    pass
 
 
 class PoseTranslation3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):

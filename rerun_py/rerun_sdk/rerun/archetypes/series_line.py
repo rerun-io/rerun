@@ -47,8 +47,8 @@ class SeriesLine(Archetype):
     rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
 
     # Log the data on a timeline called "step".
-    for t in range(0, int(tau * 2 * 100.0)):
-        rr.set_time_sequence("step", t)
+    for t in range(int(tau * 2 * 100.0)):
+        rr.set_index("step", sequence=t)
 
         rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
         rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
@@ -73,7 +73,7 @@ class SeriesLine(Archetype):
         name: datatypes.Utf8Like | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesLine archetype.
 
@@ -270,8 +270,8 @@ class SeriesLine(Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

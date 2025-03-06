@@ -20,7 +20,7 @@ class DataframeQueryExt:
         filter_is_not_null: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
         apply_latest_at: bool = False,
         select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the DataframeQuery archetype.
 

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -20,7 +21,7 @@ __all__ = ["PrimitiveComponent", "PrimitiveComponentArrayLike", "PrimitiveCompon
 
 @define(init=False)
 class PrimitiveComponent:
-    def __init__(self: Any, value: PrimitiveComponentLike):
+    def __init__(self: Any, value: PrimitiveComponentLike) -> None:
         """Create a new instance of the PrimitiveComponent datatype."""
 
         # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
@@ -28,9 +29,9 @@ class PrimitiveComponent:
 
     value: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
-        return np.asarray(self.value, dtype=dtype)
+        return np.asarray(self.value, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.value)

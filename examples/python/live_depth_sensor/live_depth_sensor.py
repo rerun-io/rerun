@@ -69,11 +69,11 @@ def run_realsense(num_frames: int | None) -> None:
             if num_frames and frame_nr >= num_frames:
                 break
 
-            rr.set_time_sequence("frame_nr", frame_nr)
+            rr.set_index("frame_nr", sequence=frame_nr)
             frame_nr += 1
 
             frames = pipe.wait_for_frames()
-            for f in frames:
+            for _f in frames:
                 # Log the depth frame
                 depth_frame = frames.get_depth_frame()
                 depth_units = depth_frame.get_units()

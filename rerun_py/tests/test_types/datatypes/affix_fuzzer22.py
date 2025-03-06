@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["AffixFuzzer22", "AffixFuzzer22ArrayLike", "AffixFuzzer22Batch", "Aff
 
 @define(init=False)
 class AffixFuzzer22:
-    def __init__(self: Any, fixed_sized_native: AffixFuzzer22Like):
+    def __init__(self: Any, fixed_sized_native: AffixFuzzer22Like) -> None:
         """Create a new instance of the AffixFuzzer22 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
@@ -31,9 +32,9 @@ class AffixFuzzer22:
 
     fixed_sized_native: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
-        return np.asarray(self.fixed_sized_native, dtype=dtype)
+        return np.asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
 
 
 AffixFuzzer22Like = AffixFuzzer22

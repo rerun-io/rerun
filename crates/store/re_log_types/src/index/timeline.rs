@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
+use crate::{ResolvedTimeRange, TimeType, TimeZone};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.

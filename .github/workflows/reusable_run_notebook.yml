@@ -26,7 +26,7 @@ permissions:
 jobs:
   run-notebook:
     name: Run notebook
-    runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubunut-latest runner is not enough).
+    runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubuntu-latest runner is not enough).
     container:
       image: rerunio/ci_docker:0.15.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
     steps:
@@ -36,7 +36,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
           environments: wheel-test
 
       - name: Download Wheel

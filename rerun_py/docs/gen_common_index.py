@@ -84,12 +84,10 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization functions",
         func_list=[
             "init",
-            "connect",
             "connect_grpc",
             "disconnect",
             "save",
             "send_blueprint",
-            "serve",
             "serve_web",
             "spawn",
             "memory_recording",
@@ -108,6 +106,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Timeline functions",
         func_list=[
+            "set_index",
             "set_time_sequence",
             "set_time_seconds",
             "set_time_nanos",
@@ -121,6 +120,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "send_columns",
         ],
         class_list=[
+            "IndexColumn",
             "TimeNanosColumn",
             "TimeSecondsColumn",
             "TimeSequenceColumn",
@@ -454,7 +454,7 @@ Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating
 overview of what's possible and how.
 
 ## APIs
-"""
+""",
     )
 
     for section in SECTION_TABLE:
@@ -534,7 +534,7 @@ and/or `rerun` process to get some verbose logging output.
 
 If you run into any issues don't hesitate to [open a ticket](https://github.com/rerun-io/rerun/issues/new/choose)
 or [join our Discord](https://discord.gg/Gcm8BbTaAj).
-"""
+""",
     )
 
 # Generate the SUMMARY.txt file

@@ -59,7 +59,7 @@ class Viewer:
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool = True,
-    ):
+    ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
 
@@ -103,6 +103,7 @@ class Viewer:
                     warnings.warn(
                         f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
                         category=ImportWarning,
+                        stacklevel=2,
                     )
                 _version_mismatch_checked = True
 
@@ -128,7 +129,7 @@ class Viewer:
             )
 
             if blueprint is not None:
-                recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+                recording.send_blueprint(blueprint)
 
     def add_recording(
         self,
@@ -167,7 +168,7 @@ class Viewer:
         )
 
         if blueprint is not None:
-            recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+            recording.send_blueprint(blueprint)
 
     def display(self, block_until_ready: bool = True) -> None:
         """

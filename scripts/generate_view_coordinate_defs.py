@@ -11,8 +11,8 @@ from __future__ import annotations
 import argparse
 import itertools
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 BEGIN_MARKER = "<BEGIN_GENERATED:{}>"
 END_MARKER = "<END_GENERATED:{}>"
@@ -69,7 +69,7 @@ def doclines(coords: ViewCoordinates) -> list[str]:
     if is_left_handed(coords):
         docs.append("")
         docs.append(
-            "⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."
+            "⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032).",
         )
     return docs
 
@@ -249,8 +249,8 @@ def gen_cpp_arch_decl() -> list[str]:
 def cpp_arch_def(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        + f"rerun::components::ViewCoordinates::{coords.name}\n"
-        + ");\n"
+        f"rerun::components::ViewCoordinates::{coords.name}\n"
+        ");\n"
     )
 
 
@@ -291,8 +291,8 @@ def gen_cpp_cmp_decl() -> list[str]:
 def cpp_cmp_def(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        + f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
-        + ");\n"
+        f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
+        ");\n"
     )
 
 
@@ -364,7 +364,10 @@ def main() -> None:
         help="Generate the cpp code for the view coordinates.",
     )
     parser.add_argument(
-        "--preview", action="store_true", default=False, help="Just print the preview of the generated sections"
+        "--preview",
+        action="store_true",
+        default=False,
+        help="Just print the preview of the generated sections",
     )
     args = parser.parse_args()
 

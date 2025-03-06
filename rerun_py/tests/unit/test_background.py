@@ -10,7 +10,8 @@ def test_background_construction() -> None:
 
     assert rrb.Background((1.0, 0.0, 0.0)) == rrb.Background(color=(1.0, 0.0, 0.0), kind=rrb.BackgroundKind.SolidColor)
     assert rrb.Background(rrb.BackgroundKind.GradientBright) == rrb.Background(
-        color=None, kind=rrb.BackgroundKind.GradientBright
+        color=None,
+        kind=rrb.BackgroundKind.GradientBright,
     )
 
     with pytest.raises(ValueError):

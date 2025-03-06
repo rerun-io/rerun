@@ -17,7 +17,7 @@ class Asset3DExt:
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Asset3D archetype.
 

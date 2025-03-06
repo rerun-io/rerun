@@ -29,7 +29,7 @@ special exit code to indicate that it doesn't support anything else.
 
 To try it out, copy it in your $PATH as `rerun-loader-python-file`, then open a Python source
 file with Rerun (`rerun file.py`).
-"""
+""",
 )
 parser.add_argument("filepath", type=str)
 parser.add_argument("--application-id", type=str, help="optional recommended ID for the application")
@@ -86,14 +86,15 @@ def set_time_from_args() -> None:
             if len(parts) != 2:
                 continue
             timeline_name, time = parts
-            rr.set_time_nanos(timeline_name, int(time))
+            # TODO(#8635): update this
+            rr.set_index(timeline_name, timedelta=1e-9 * int(time))
 
         for time_str in args.sequence:
             parts = time_str.split("=")
             if len(parts) != 2:
                 continue
             timeline_name, time = parts
-            rr.set_time_sequence(timeline_name, int(time))
+            rr.set_index(timeline_name, sequence=int(time))
 
 
 if __name__ == "__main__":

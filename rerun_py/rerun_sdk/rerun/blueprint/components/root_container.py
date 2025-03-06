@@ -22,7 +22,6 @@ class RootContainer(datatypes.Uuid, ComponentMixin):
     # You can define your own __init__ function as a member of RootContainerExt in root_container_ext.py
 
     # Note: there are no fields here because RootContainer delegates to datatypes.Uuid
-    pass
 
 
 class RootContainerBatch(datatypes.UuidBatch, ComponentBatchMixin):

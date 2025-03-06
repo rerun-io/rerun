@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -25,7 +26,7 @@ __all__ = ["AffixFuzzer16", "AffixFuzzer16ArrayLike", "AffixFuzzer16Batch", "Aff
 class AffixFuzzer16(ComponentMixin):
     _BATCH_TYPE = None
 
-    def __init__(self: Any, many_required_unions: AffixFuzzer16Like):
+    def __init__(self: Any, many_required_unions: AffixFuzzer16Like) -> None:
         """Create a new instance of the AffixFuzzer16 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer16Ext in affix_fuzzer16_ext.py

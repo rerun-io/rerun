@@ -36,9 +36,9 @@ def run_canny(num_frames: int | None) -> None:
         # Get the current frame time. On some platforms it always returns zero.
         frame_time_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
         if frame_time_ms != 0:
-            rr.set_time_nanos("frame_time", int(frame_time_ms * 1_000_000))
+            rr.set_index("frame_time", timedelta=1e-3 * frame_time_ms)
 
-        rr.set_time_sequence("frame_nr", frame_nr)
+        rr.set_index("frame_nr", sequence=frame_nr)
         frame_nr += 1
 
         # Log the original image
@@ -56,7 +56,10 @@ def run_canny(num_frames: int | None) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Streams a local system camera and runs the canny edge detector.")
     parser.add_argument(
-        "--device", type=int, default=0, help="Which camera device to use. (Passed to `cv2.VideoCapture()`)"
+        "--device",
+        type=int,
+        default=0,
+        help="Which camera device to use. (Passed to `cv2.VideoCapture()`)",
     )
     parser.add_argument("--num-frames", type=int, default=None, help="The number of frames to log")
 

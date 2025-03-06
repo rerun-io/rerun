@@ -101,7 +101,7 @@ def main() -> None:
             pool.imap(fetch_issue, all_issues),
             total=len(all_issues),
             desc="Fetching issue details",
-        )
+        ),
     )
 
     issues_list.sort(key=lambda issue: issue["number"])

@@ -5,7 +5,7 @@ use std::io::Read;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::decoder::read_options;
+use crate::decoder::options_from_bytes;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
@@ -88,7 +88,7 @@ impl StreamDecoder {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     // header contains version and compression options
-                    let (version, options) = read_options(self.version_policy, header)?;
+                    let (version, options) = options_from_bytes(self.version_policy, header)?;
                     self.version = Some(version);
                     self.options = options;
 

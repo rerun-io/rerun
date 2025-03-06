@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +29,7 @@ __all__ = ["AffixFuzzer8", "AffixFuzzer8ArrayLike", "AffixFuzzer8Batch", "AffixF
 class AffixFuzzer8(ComponentMixin):
     _BATCH_TYPE = None
 
-    def __init__(self: Any, single_float_optional: float | None = None):
+    def __init__(self: Any, single_float_optional: float | None = None) -> None:
         """Create a new instance of the AffixFuzzer8 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
@@ -36,9 +37,9 @@ class AffixFuzzer8(ComponentMixin):
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
-        return np.asarray(self.single_float_optional, dtype=dtype)
+        return np.asarray(self.single_float_optional, dtype=dtype, copy=copy)
 
 
 AffixFuzzer8Like = AffixFuzzer8

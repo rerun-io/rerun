@@ -64,7 +64,7 @@ def test_boxes2d() -> None:
             f"    labels={labels!r}\n"
             f"    draw_order={draw_order!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Boxes2D(
             half_sizes=half_sizes,

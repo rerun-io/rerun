@@ -9,7 +9,7 @@ from .. import components as blueprint_components
 class TensorViewFitExt:
     """Extension for [TensorViewFit][rerun.blueprint.archetypes.TensorViewFit]."""
 
-    def __init__(self: Any, scaling: blueprint_components.ViewFitLike | None = None):
+    def __init__(self: Any, scaling: blueprint_components.ViewFitLike | None = None) -> None:
         """
         Create a new instance of the TensorViewFit archetype.
 

@@ -29,7 +29,7 @@ int main() {
 
     // Log at seconds 10-14
     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
-    auto time_column = rerun::TimeColumn::from_times("time", std::move(times));
+    auto time_column = rerun::TimeColumn::from_durations("time", std::move(times));
 
     // Partition our data as expected across the 5 timesteps.
     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});

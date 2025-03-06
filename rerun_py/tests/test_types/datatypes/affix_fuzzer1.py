@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -48,7 +49,7 @@ class AffixFuzzer1:
         many_floats_optional: npt.ArrayLike | None = None,
         many_strings_optional: list[str] | None = None,
         from_parent: bool | None = None,
-    ):
+    ) -> None:
         """Create a new instance of the AffixFuzzer1 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
