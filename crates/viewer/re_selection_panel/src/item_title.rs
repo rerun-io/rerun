@@ -76,13 +76,14 @@ impl ItemTitle {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
         let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-            if let Some(info) = entity_db.store_info() {
-                let time = info
-                    .started
+            if let (Some(application_id), Some(started)) =
+                (entity_db.app_id(), entity_db.recording_started())
+            {
+                let time = started
                     .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
                     .unwrap_or("<unknown time>".to_owned());
 
-                format!("{} - {}", info.application_id, time)
+                format!("{application_id} - {time}")
             } else {
                 id_str.clone()
             }

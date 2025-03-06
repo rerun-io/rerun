@@ -47,8 +47,9 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        recordings.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
-        blueprints.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+        recordings.sort_by_key(|entity_db| entity_db.recording_started());
+        // TODO: Blueprint don't have a time yet.
+        blueprints.sort_by_key(|entity_db| entity_db.recording_started());
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;

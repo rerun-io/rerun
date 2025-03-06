@@ -361,7 +361,7 @@ impl StoreHub {
         for rec in self
             .store_bundle
             .recordings()
-            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
+            .sorted_by_key(|entity_db| entity_db.recording_started())
         {
             if rec.app_id() == Some(&app_id) {
                 self.active_rec_id = Some(rec.store_id().clone());

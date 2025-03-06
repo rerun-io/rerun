@@ -14,7 +14,7 @@ impl crate::DataUi for EntityDb {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
+        db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
@@ -41,8 +41,6 @@ impl crate::DataUi for EntityDb {
                     application_id,
                     store_id,
                     cloned_from,
-                    is_official_example: _,
-                    started,
                     store_source,
                     store_version,
                 } = store_info;
@@ -76,7 +74,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
 
                 ui.grid_left_hand_label("Created");
-                ui.label(started.format(ctx.app_options().time_zone));
+                ui.label(db.recording_started().map_or("<unknown>".to_owned(), |started| started.format(ctx.app_options().time_zone)));
                 ui.end_row();
             }
 

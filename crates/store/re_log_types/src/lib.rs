@@ -27,6 +27,7 @@ pub mod path;
 // mod data_row;
 // mod data_table;
 mod instance;
+mod recording_properties;
 mod vec_deque_ext;
 
 use std::sync::Arc;
@@ -42,6 +43,7 @@ pub use self::{
     },
     instance::Instance,
     path::*,
+    recording_properties::RecordingProperties,
     vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
 };
 
@@ -355,14 +357,6 @@ pub struct StoreInfo {
     /// we clone it and make the clone the _active_ blueprint.
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
-
-    /// True if the recording is one of the official Rerun examples.
-    pub is_official_example: bool,
-
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    pub started: Time,
 
     pub store_source: StoreSource,
 
@@ -718,8 +712,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            is_official_example: _,
-            started: _,
             store_source,
             store_version,
         } = self;

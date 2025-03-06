@@ -162,7 +162,7 @@ fn app_and_its_recordings_ui(
     app_id: &ApplicationId,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+    entity_dbs.sort_by_key(|entity_db| entity_db.recording_started());
 
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);

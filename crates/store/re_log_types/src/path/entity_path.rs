@@ -113,6 +113,13 @@ impl EntityPath {
     }
 
     #[inline]
+    pub fn recording_properties() -> Self {
+        // TODO(#9193): We probably want to come up with a namespace for
+        // reserved paths.
+        Self::from(vec![EntityPathPart::new("_recording_properties")])
+    }
+
+    #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
     }
@@ -547,6 +554,11 @@ impl std::fmt::Display for EntityPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_root() {
+        assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
 
     #[test]
     fn test_incremental_walk() {

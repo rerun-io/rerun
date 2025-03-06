@@ -375,8 +375,6 @@ impl From<re_log_types::StoreInfo> for crate::log_msg::v0::StoreInfo {
         Self {
             application_id: Some(value.application_id.into()),
             store_id: Some(value.store_id.into()),
-            is_official_example: value.is_official_example,
-            started: Some(value.started.into()),
             store_source: Some(value.store_source.into()),
             store_version: value
                 .store_version
@@ -403,11 +401,6 @@ impl TryFrom<crate::log_msg::v0::StoreInfo> for re_log_types::StoreInfo {
             .store_id
             .ok_or(missing_field!(crate::log_msg::v0::StoreInfo, "store_id",))?
             .into();
-        let is_official_example = value.is_official_example;
-        let started: re_log_types::Time = value
-            .started
-            .ok_or(missing_field!(crate::log_msg::v0::StoreInfo, "started"))?
-            .into();
         let store_source: re_log_types::StoreSource = value
             .store_source
             .ok_or(missing_field!(
@@ -423,8 +416,6 @@ impl TryFrom<crate::log_msg::v0::StoreInfo> for re_log_types::StoreInfo {
             application_id,
             store_id,
             cloned_from: None,
-            is_official_example,
-            started,
             store_source,
             store_version,
         })
