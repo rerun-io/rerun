@@ -18,7 +18,8 @@ pub(crate) fn generate_blueprint_validation(
 ) {
     let blueprint_scope = Some("blueprint".to_owned());
     let mut code = String::new();
-    code.push_str(&format!("// {}\n", autogen_warning!()));
+    code.push_str(&format!("// {}\n\n", autogen_warning!()));
+    code.push_str("#![expect(clippy::empty_line_after_doc_comments)]\n\n");
 
     code.push_str("use re_entity_db::EntityDb;\n");
     code.push_str("use super::validation::validate_component;\n");

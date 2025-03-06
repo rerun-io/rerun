@@ -247,7 +247,7 @@ impl Chunk {
         &'a self,
         component_name: ComponentName,
         field_name: &'a str,
-    ) -> impl Iterator<Item = S::Item<'a>> + '_ {
+    ) -> impl Iterator<Item = S::Item<'a>> + 'a {
         let Some(list_array) = self.get_first_component(&component_name) else {
             return Either::Left(std::iter::empty());
         };
