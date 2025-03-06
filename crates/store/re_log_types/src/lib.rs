@@ -37,8 +37,8 @@ use re_byte_size::SizeBytes;
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
-        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt, TimePoint,
-        TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
+        Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
+        TimePoint, TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
     },
     instance::Instance,
     path::*,
