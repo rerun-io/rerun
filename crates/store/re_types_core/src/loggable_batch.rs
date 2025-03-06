@@ -7,8 +7,8 @@ use crate::{
 
 use arrow::array::ListArray as ArrowListArray;
 
-#[allow(unused_imports)] // used in docstrings
-use crate::Archetype as _;
+#[expect(unused_imports)] // used in docstrings
+use crate::Archetype;
 
 // ---
 

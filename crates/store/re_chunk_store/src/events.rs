@@ -5,9 +5,8 @@ use re_log_types::StoreId;
 
 use crate::ChunkStoreGeneration;
 
-// Used all over in docstrings.
-#[allow(unused_imports)]
-use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber as _, RowId};
+#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
+use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
 // ---
 

@@ -6,8 +6,8 @@ use re_byte_size::SizeBytes;
 
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
-#[allow(unused_imports)] // used in docstrings
-use crate::{Archetype as _, ComponentBatch as _, LoggableBatch as _};
+#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
+use crate::{Archetype, ComponentBatch, LoggableBatch};
 
 // ---
 
