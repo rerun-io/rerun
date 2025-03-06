@@ -171,6 +171,11 @@ fn decode_and_stream<R: std::io::Read>(
         };
 
         let msg = if forced_application_id.is_some() || forced_store_id.is_some() {
+            re_log::debug!(
+                forced_application_id = ?forced_application_id,
+                forced_store_id = ?forced_store_id,
+                "Patching store info in message…",
+            );
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
                     re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {

@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
     ));
 
     rec.log_static(
-        EntityPath::root(),
+        EntityPath::recording_properties(),
         &re_types_core::archetypes::RecordingProperties::new(
             std::iter::once(app_id),
             std::iter::once(started),
