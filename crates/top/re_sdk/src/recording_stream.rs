@@ -16,8 +16,8 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
-    TimeType, Timeline, TimelineName,
+    IndexCell, LogMsg, NonMinI64, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -1461,8 +1461,8 @@ impl RecordingStream {
                 now.insert_cell(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
-                for (timeline, time) in now {
-                    row.timepoint.insert(timeline, time);
+                for (timeline, cell) in now {
+                    row.timepoint.insert_cell(timeline, cell);
                 }
             }
 
@@ -1965,8 +1965,8 @@ impl ThreadInfo {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
-        Self::with(|ti| ti.set_time(rid, timeline, time_int));
+    fn set_thread_time(rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
+        Self::with(|ti| ti.set_time(rid, timeline, cell));
     }
 
     fn unset_thread_time(rid: &StoreId, timeline: &TimelineName) {
@@ -2000,11 +2000,11 @@ impl ThreadInfo {
         timepoint
     }
 
-    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
+    fn set_time(&mut self, rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
         self.timepoints
             .entry(rid.clone())
             .or_default()
-            .insert(timeline, time_int);
+            .insert_cell(timeline, cell);
     }
 
     fn unset_time(&mut self, rid: &StoreId, timeline: &TimelineName) {
@@ -2074,24 +2074,24 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, seq: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
-            let sequence = sequence.into();
-            let sequence = if let Ok(seq) = TimeInt::try_from(sequence) {
+            let seq = seq.into();
+            let seq = if let Ok(seq) = NonMinI64::try_from(seq) {
                 seq
             } else {
                 re_log::error!(
-                    illegal_value = sequence,
-                    new_value = TimeInt::MIN.as_i64(),
+                    illegal_value = seq,
+                    new_value = NonMinI64::MIN.get(),
                     "set_time_sequence() called with illegal value - clamped to minimum legal value"
                 );
-                TimeInt::MIN
+                NonMinI64::MIN
             };
 
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Sequence),
-                sequence,
+                timeline.into(),
+                IndexCell::from_sequence(seq),
             );
         };
 
@@ -2117,30 +2117,9 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let seconds = seconds.into();
-            let time = Time::from_seconds_since_epoch(seconds);
-            let time = if let Ok(time) = TimeInt::try_from(time) {
-                time
-            } else {
-                re_log::error!(
-                    illegal_value = seconds,
-                    new_value = TimeInt::MIN.as_i64(),
-                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
-                );
-                TimeInt::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Time),
-                time,
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
-        }
+        let seconds = seconds.into();
+        // TODO: clamp with warning
+        self.set_time_nanos(timeline, (1e9 * seconds).round() as i64);
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -2162,22 +2141,21 @@ impl RecordingStream {
     pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
             let ns = ns.into();
-            let time = Time::from_ns_since_epoch(ns);
-            let time = if let Ok(time) = TimeInt::try_from(time) {
-                time
+            let ns = if let Ok(ns) = NonMinI64::try_from(ns) {
+                ns
             } else {
                 re_log::error!(
                     illegal_value = ns,
-                    new_value = TimeInt::MIN.as_i64(),
+                    new_value = NonMinI64::MIN.get(),
                     "set_time_nanos() called with illegal value - clamped to minimum legal value"
                 );
-                TimeInt::MIN
+                NonMinI64::MIN
             };
 
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Time),
-                time,
+                timeline.into(),
+                IndexCell::from_duration_nanos(ns), // TODO(#8635): update
             );
         };
 

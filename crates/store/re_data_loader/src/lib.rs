@@ -144,18 +144,18 @@ impl DataLoaderSettings {
                 args.push("--static".to_owned());
             }
 
-            for (timeline, time) in timepoint.iter() {
-                match timeline.typ() {
+            for (timeline, cell) in timepoint.iter() {
+                match cell.typ() {
                     re_log_types::TimeType::Time => {
                         args.extend([
                             "--time".to_owned(),
-                            format!("{}={}", timeline.name(), time.as_i64()),
+                            format!("{}={}", timeline, cell.as_i64()),
                         ]);
                     }
                     re_log_types::TimeType::Sequence => {
                         args.extend([
                             "--sequence".to_owned(),
-                            format!("{}={}", timeline.name(), time.as_i64()),
+                            format!("{}={}", timeline, cell.as_i64()),
                         ]);
                     }
                 }

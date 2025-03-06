@@ -1,5 +1,7 @@
 use crate::{NonMinI64, TimeType};
 
+use super::TimeInt;
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 /// An typed cell of an index, e.g. a point in time on some unknown timeline.
@@ -13,26 +15,58 @@ impl IndexCell {
         typ: TimeType::Time,
         value: NonMinI64::ZERO,
     };
+
     pub const ZERO_SEQUENCE: Self = Self {
         typ: TimeType::Sequence,
         value: NonMinI64::ZERO,
     };
 
+    #[inline]
     pub fn new(typ: TimeType, value: impl TryInto<NonMinI64>) -> Self {
         let value = value.try_into().unwrap_or(NonMinI64::MIN); // clamp to valid range
         Self { typ, value }
     }
 
+    #[inline]
     pub fn from_sequence(sequence: impl TryInto<NonMinI64>) -> Self {
         Self::new(TimeType::Sequence, sequence)
     }
 
+    #[inline]
     pub fn from_duration_nanos(nanos: impl TryInto<NonMinI64>) -> Self {
         Self::new(TimeType::Time, nanos)
     }
 
+    #[inline]
     pub fn from_timestamp_nanos_since_epoch(nanos_since_epoch: impl TryInto<NonMinI64>) -> Self {
         Self::new(TimeType::Time, nanos_since_epoch)
+    }
+
+    #[inline]
+    pub fn typ(&self) -> TimeType {
+        self.typ
+    }
+
+    #[inline]
+    pub fn as_i64(&self) -> i64 {
+        self.value.into()
+    }
+
+    #[inline]
+    pub fn as_time_int(&self) -> TimeInt {
+        TimeInt::from(self.value)
+    }
+}
+
+impl re_byte_size::SizeBytes for IndexCell {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
