@@ -23,7 +23,7 @@ impl crate::DataUi for EntityDb {
                 string += &format!(", {data_source}");
             }
             if let Some(application_id) = self.application_id() {
-                string += &format!(", {}", application_id);
+                string += &format!(", {application_id}");
             }
             ui.label(string);
             return;

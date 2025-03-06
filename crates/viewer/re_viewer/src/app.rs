@@ -1445,6 +1445,17 @@ impl App {
                         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
                             egui::UserAttentionType::Informational,
                         ));
+
+                        // TODO(grtlr): Note that this is not entirely correct, because the event will also
+                        // be triggered if a an entire `RecordingProperties` archetype is logged a second time,
+                        // but that case is probably rare.
+
+                        // Do analytics after ingesting the `RecordingProperties` record batch, because that's
+                        // when the `entity_db.application_id` is set, which we use in the analytics call.
+                        let entity_db = store_hub.entity_db_mut(store_id);
+                        if entity_db.store_kind() == StoreKind::Recording {
+                            self.analytics.on_open_recording(entity_db);
+                        }
                     }
                 }
 
@@ -1517,15 +1528,6 @@ impl App {
                         }
                     }
                 },
-            }
-
-            // Do analytics after ingesting the new message,
-            // because that's when the `entity_db.store_info` is set,
-            // which we use in the analytics call.
-            let entity_db = store_hub.entity_db_mut(store_id);
-            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
-            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
-                self.analytics.on_open_recording(entity_db);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
