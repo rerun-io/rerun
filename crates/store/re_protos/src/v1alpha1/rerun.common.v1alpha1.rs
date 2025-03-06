@@ -8,17 +8,17 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "1000")]
+    #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for RerunChunk {
     const NAME: &'static str = "RerunChunk";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.RerunChunk".into()
+        "rerun.common.v1alpha1.RerunChunk".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.RerunChunk".into()
+        "/rerun.common.v1alpha1.RerunChunk".into()
     }
 }
 /// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
@@ -29,12 +29,12 @@ pub struct RecordingId {
 }
 impl ::prost::Name for RecordingId {
     const NAME: &'static str = "RecordingId";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.RecordingId".into()
+        "rerun.common.v1alpha1.RecordingId".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.RecordingId".into()
+        "/rerun.common.v1alpha1.RecordingId".into()
     }
 }
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
@@ -45,12 +45,12 @@ pub struct Timeline {
 }
 impl ::prost::Name for Timeline {
     const NAME: &'static str = "Timeline";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Timeline".into()
+        "rerun.common.v1alpha1.Timeline".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Timeline".into()
+        "/rerun.common.v1alpha1.Timeline".into()
     }
 }
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
@@ -64,12 +64,12 @@ pub struct TimeRange {
 }
 impl ::prost::Name for TimeRange {
     const NAME: &'static str = "TimeRange";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.TimeRange".into()
+        "rerun.common.v1alpha1.TimeRange".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.TimeRange".into()
+        "/rerun.common.v1alpha1.TimeRange".into()
     }
 }
 /// arrow IPC serialized schema
@@ -80,12 +80,12 @@ pub struct Schema {
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Schema".into()
+        "rerun.common.v1alpha1.Schema".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Schema".into()
+        "/rerun.common.v1alpha1.Schema".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -152,12 +152,12 @@ pub struct Query {
 }
 impl ::prost::Name for Query {
     const NAME: &'static str = "Query";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Query".into()
+        "rerun.common.v1alpha1.Query".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Query".into()
+        "/rerun.common.v1alpha1.Query".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -167,12 +167,12 @@ pub struct ColumnSelection {
 }
 impl ::prost::Name for ColumnSelection {
     const NAME: &'static str = "ColumnSelection";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ColumnSelection".into()
+        "rerun.common.v1alpha1.ColumnSelection".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ColumnSelection".into()
+        "/rerun.common.v1alpha1.ColumnSelection".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -192,12 +192,12 @@ pub mod column_selector {
 }
 impl ::prost::Name for ColumnSelector {
     const NAME: &'static str = "ColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ColumnSelector".into()
+        "rerun.common.v1alpha1.ColumnSelector".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ColumnSelector".into()
+        "/rerun.common.v1alpha1.ColumnSelector".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -208,12 +208,12 @@ pub struct IndexColumnSelector {
 }
 impl ::prost::Name for IndexColumnSelector {
     const NAME: &'static str = "IndexColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.IndexColumnSelector".into()
+        "rerun.common.v1alpha1.IndexColumnSelector".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.IndexColumnSelector".into()
+        "/rerun.common.v1alpha1.IndexColumnSelector".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -224,12 +224,12 @@ pub struct IndexRange {
 }
 impl ::prost::Name for IndexRange {
     const NAME: &'static str = "IndexRange";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.IndexRange".into()
+        "rerun.common.v1alpha1.IndexRange".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.IndexRange".into()
+        "/rerun.common.v1alpha1.IndexRange".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -240,12 +240,12 @@ pub struct IndexValues {
 }
 impl ::prost::Name for IndexValues {
     const NAME: &'static str = "IndexValues";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.IndexValues".into()
+        "rerun.common.v1alpha1.IndexValues".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.IndexValues".into()
+        "/rerun.common.v1alpha1.IndexValues".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -255,12 +255,12 @@ pub struct SampledIndexValues {
 }
 impl ::prost::Name for SampledIndexValues {
     const NAME: &'static str = "SampledIndexValues";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.SampledIndexValues".into()
+        "rerun.common.v1alpha1.SampledIndexValues".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.SampledIndexValues".into()
+        "/rerun.common.v1alpha1.SampledIndexValues".into()
     }
 }
 /// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
@@ -271,12 +271,12 @@ pub struct TimeInt {
 }
 impl ::prost::Name for TimeInt {
     const NAME: &'static str = "TimeInt";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.TimeInt".into()
+        "rerun.common.v1alpha1.TimeInt".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.TimeInt".into()
+        "/rerun.common.v1alpha1.TimeInt".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -286,12 +286,12 @@ pub struct ViewContents {
 }
 impl ::prost::Name for ViewContents {
     const NAME: &'static str = "ViewContents";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ViewContents".into()
+        "rerun.common.v1alpha1.ViewContents".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ViewContents".into()
+        "/rerun.common.v1alpha1.ViewContents".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -303,12 +303,12 @@ pub struct ViewContentsPart {
 }
 impl ::prost::Name for ViewContentsPart {
     const NAME: &'static str = "ViewContentsPart";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ViewContentsPart".into()
+        "rerun.common.v1alpha1.ViewContentsPart".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ViewContentsPart".into()
+        "/rerun.common.v1alpha1.ViewContentsPart".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -318,12 +318,12 @@ pub struct ComponentsSet {
 }
 impl ::prost::Name for ComponentsSet {
     const NAME: &'static str = "ComponentsSet";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ComponentsSet".into()
+        "rerun.common.v1alpha1.ComponentsSet".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ComponentsSet".into()
+        "/rerun.common.v1alpha1.ComponentsSet".into()
     }
 }
 /// The unique identifier of an entity, e.g. `camera/3/points`
@@ -335,12 +335,12 @@ pub struct EntityPath {
 }
 impl ::prost::Name for EntityPath {
     const NAME: &'static str = "EntityPath";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.EntityPath".into()
+        "rerun.common.v1alpha1.EntityPath".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.EntityPath".into()
+        "/rerun.common.v1alpha1.EntityPath".into()
     }
 }
 /// Component describes semantic data that can be used by any number of  rerun's archetypes.
@@ -352,12 +352,12 @@ pub struct Component {
 }
 impl ::prost::Name for Component {
     const NAME: &'static str = "Component";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Component".into()
+        "rerun.common.v1alpha1.Component".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Component".into()
+        "/rerun.common.v1alpha1.Component".into()
     }
 }
 /// Used to telect a time column.
@@ -368,12 +368,12 @@ pub struct TimeColumnSelector {
 }
 impl ::prost::Name for TimeColumnSelector {
     const NAME: &'static str = "TimeColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.TimeColumnSelector".into()
+        "rerun.common.v1alpha1.TimeColumnSelector".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.TimeColumnSelector".into()
+        "/rerun.common.v1alpha1.TimeColumnSelector".into()
     }
 }
 /// Used to select a component based on its EntityPath and Component name.
@@ -386,12 +386,12 @@ pub struct ComponentColumnSelector {
 }
 impl ::prost::Name for ComponentColumnSelector {
     const NAME: &'static str = "ComponentColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ComponentColumnSelector".into()
+        "rerun.common.v1alpha1.ComponentColumnSelector".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ComponentColumnSelector".into()
+        "/rerun.common.v1alpha1.ComponentColumnSelector".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -401,12 +401,12 @@ pub struct ApplicationId {
 }
 impl ::prost::Name for ApplicationId {
     const NAME: &'static str = "ApplicationId";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.ApplicationId".into()
+        "rerun.common.v1alpha1.ApplicationId".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.ApplicationId".into()
+        "/rerun.common.v1alpha1.ApplicationId".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -418,12 +418,12 @@ pub struct StoreId {
 }
 impl ::prost::Name for StoreId {
     const NAME: &'static str = "StoreId";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.StoreId".into()
+        "rerun.common.v1alpha1.StoreId".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.StoreId".into()
+        "/rerun.common.v1alpha1.StoreId".into()
     }
 }
 /// A date-time represented as nanoseconds since unix epoch
@@ -434,12 +434,12 @@ pub struct Time {
 }
 impl ::prost::Name for Time {
     const NAME: &'static str = "Time";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Time".into()
+        "rerun.common.v1alpha1.Time".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Time".into()
+        "/rerun.common.v1alpha1.Time".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -454,12 +454,12 @@ pub struct Tuid {
 }
 impl ::prost::Name for Tuid {
     const NAME: &'static str = "Tuid";
-    const PACKAGE: &'static str = "rerun.common.v0";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v0.Tuid".into()
+        "rerun.common.v1alpha1.Tuid".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v0.Tuid".into()
+        "/rerun.common.v1alpha1.Tuid".into()
     }
 }
 /// supported encoder versions for encoding data
@@ -467,7 +467,8 @@ impl ::prost::Name for Tuid {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum EncoderVersion {
-    V0 = 0,
+    Unspecified = 0,
+    V0 = 1,
 }
 impl EncoderVersion {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -476,13 +477,15 @@ impl EncoderVersion {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::V0 => "V0",
+            Self::Unspecified => "ENCODER_VERSION_UNSPECIFIED",
+            Self::V0 => "ENCODER_VERSION_V0",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "V0" => Some(Self::V0),
+            "ENCODER_VERSION_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENCODER_VERSION_V0" => Some(Self::V0),
             _ => None,
         }
     }
@@ -491,8 +494,9 @@ impl EncoderVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum SparseFillStrategy {
-    None = 0,
-    LatestAtGlobal = 1,
+    Unspecified = 0,
+    None = 1,
+    LatestAtGlobal = 2,
 }
 impl SparseFillStrategy {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -501,15 +505,17 @@ impl SparseFillStrategy {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::None => "NONE",
-            Self::LatestAtGlobal => "LATEST_AT_GLOBAL",
+            Self::Unspecified => "SPARSE_FILL_STRATEGY_UNSPECIFIED",
+            Self::None => "SPARSE_FILL_STRATEGY_NONE",
+            Self::LatestAtGlobal => "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "NONE" => Some(Self::None),
-            "LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
+            "SPARSE_FILL_STRATEGY_UNSPECIFIED" => Some(Self::Unspecified),
+            "SPARSE_FILL_STRATEGY_NONE" => Some(Self::None),
+            "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
             _ => None,
         }
     }
@@ -517,8 +523,9 @@ impl SparseFillStrategy {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum StoreKind {
-    Recording = 0,
-    Blueprint = 1,
+    Unspecified = 0,
+    Recording = 1,
+    Blueprint = 2,
 }
 impl StoreKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -527,15 +534,17 @@ impl StoreKind {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Recording => "RECORDING",
-            Self::Blueprint => "BLUEPRINT",
+            Self::Unspecified => "STORE_KIND_UNSPECIFIED",
+            Self::Recording => "STORE_KIND_RECORDING",
+            Self::Blueprint => "STORE_KIND_BLUEPRINT",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "RECORDING" => Some(Self::Recording),
-            "BLUEPRINT" => Some(Self::Blueprint),
+            "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "STORE_KIND_RECORDING" => Some(Self::Recording),
+            "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
             _ => None,
         }
     }
