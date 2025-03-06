@@ -489,7 +489,7 @@ message QueryResponse {
 
 message QueryCatalogRequest {
   // which catalog entry do we want to query
-  CatalogEntry entry = 1;
+  string entry = 1;
   // Column projection - define which columns should be returned.
   // Providing it is optional, if not provided, all columns should be returned
   ColumnProjection column_projection = 2;
