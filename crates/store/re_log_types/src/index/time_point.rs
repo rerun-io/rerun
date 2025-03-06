@@ -4,7 +4,7 @@ use super::{TimeInt, Timeline, TimelineName};
 
 /// A point in time on any number of [`Timeline`]s.
 ///
-/// It can be represented by [`Time`], a sequence index, or a mix of several things.
+/// It can be represented by [`crate::Time`], a sequence index, or a mix of several things.
 ///
 /// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
 /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows

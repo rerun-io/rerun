@@ -6,7 +6,7 @@ use crate::{ResolvedTimeRange, Time, TimeZone};
 
 use super::TimeInt;
 
-/// The type of a [`TimeInt`] or [`Timeline`].
+/// The type of a [`TimeInt`] or [`crate::Timeline`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
