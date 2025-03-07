@@ -77,13 +77,13 @@ def main() -> None:
             rrb.Spatial3DView(
                 origin="/",
                 overrides={
-                    "helix/structure/scaffolding/beads": [
+                    "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
                         rrb.VisibleTimeRange(
-                            "stable_time",
+                            timeline="stable_time",
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
                             end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
                         ),
-                    ],
+                    ),
                 },
             ),
         )

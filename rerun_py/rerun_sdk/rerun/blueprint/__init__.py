@@ -34,7 +34,7 @@ from .archetypes import (
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,
     TensorSliceSelection as TensorSliceSelection,
-    # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
+    VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
     VisualizerOverrides as VisualizerOverrides,
 )
