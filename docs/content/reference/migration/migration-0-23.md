@@ -123,4 +123,4 @@ Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If 
 
 The following schemes are supported: `rerun+http://`, `rerun+https://` and `rerun://`, which is an alias for `rerun+https://`.
 These schemes are then converted on the fly to either `http://` or `https://`.
-Rerun uses gRPC-based protocols under the hood, which means that the paths (`/catalog`, `/recording/12345`, ...) are mapped to gRPC services and methods on the fly.
+Rerun uses gRPC-based protocols under the hood, which means that the paths (`/catalog`, `/recording/12345`, …) are mapped to gRPC services and methods on the fly.
