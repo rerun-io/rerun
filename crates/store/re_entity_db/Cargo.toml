@@ -56,9 +56,6 @@ re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 re_types.workspace = true
 
 anyhow.workspace = true
-criterion.workspace = true
-mimalloc.workspace = true
-rand.workspace = true
 similar-asserts.workspace = true
 
 [lib]

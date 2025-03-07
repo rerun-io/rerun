@@ -53,4 +53,3 @@ insta.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
-unindent.workspace = true

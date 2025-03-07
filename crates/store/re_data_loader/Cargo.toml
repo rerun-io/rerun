@@ -56,7 +56,3 @@ re_crash_handler.workspace = true
 
 [dev-dependencies]
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
-tempfile.workspace = true
-
-[build-dependencies]
-re_build_tools.workspace = true
