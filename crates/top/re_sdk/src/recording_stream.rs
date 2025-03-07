@@ -16,8 +16,8 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, NonMinI64, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, Timeline, TimelineName,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -2172,30 +2172,18 @@ impl RecordingStream {
     /// - [`Self::set_time_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let ns = ns.into();
-            let ns = if let Ok(ns) = NonMinI64::try_from(ns) {
-                ns
-            } else {
-                re_log::error!(
-                    illegal_value = ns,
-                    new_value = NonMinI64::MIN.get(),
-                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
-                );
-                NonMinI64::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(ns), // TODO(#8635): update
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
-        }
+    #[deprecated(
+        note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
+    )]
+    pub fn set_time_nanos(
+        &self,
+        timeline: impl Into<TimelineName>,
+        nanos_since_epoch: impl Into<i64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
+        );
     }
 
     /// Clears out the current time of the recording for the specified timeline, for the
