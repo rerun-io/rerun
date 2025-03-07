@@ -46,9 +46,11 @@ impl ArFrame {
 }
 
 fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
-    rerun::TimePoint::default()
-        .with_index("time", IndexCell::from_timestamp_seconds_since_epoch(time))
-        .with_index("frame", IndexCell::from_sequence(index as i64))
+    [
+        ("time", IndexCell::from_timestamp_seconds_since_epoch(time)),
+        ("frame", IndexCell::from_sequence(index as i64)),
+    ]
+    .into()
 }
 
 struct AnnotationsPerFrame<'a>(HashMap<usize, &'a objectron::FrameAnnotation>);

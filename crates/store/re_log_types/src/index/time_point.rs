@@ -148,6 +148,22 @@ where
     }
 }
 
+impl<Name, Cell, const N: usize> From<[(Name, Cell); N]> for TimePoint
+where
+    Name: Into<TimelineName>,
+    Cell: Into<IndexCell>,
+{
+    #[inline]
+    fn from(timelines: [(Name, Cell); N]) -> Self {
+        Self(
+            timelines
+                .into_iter()
+                .map(|(name, cell)| (name.into(), cell.into()))
+                .collect(),
+        )
+    }
+}
+
 impl<T: TryInto<TimeInt>> FromIterator<(Timeline, T)> for TimePoint {
     #[inline]
     fn from_iter<I: IntoIterator<Item = (Timeline, T)>>(iter: I) -> Self {
