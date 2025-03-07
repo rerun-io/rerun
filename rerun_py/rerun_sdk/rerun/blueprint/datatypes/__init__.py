@@ -17,7 +17,6 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderLike,
 )
-from .utf8list import Utf8List, Utf8ListArrayLike, Utf8ListBatch, Utf8ListLike
 
 __all__ = [
     "ComponentColumnSelector",
@@ -40,8 +39,4 @@ __all__ = [
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderLike",
-    "Utf8List",
-    "Utf8ListArrayLike",
-    "Utf8ListBatch",
-    "Utf8ListLike",
 ]

@@ -120,3 +120,7 @@ See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun
 Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
 
 Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+## 🐍 Python: Blueprint overrides & defaults are now archetype based
+
+TODO:

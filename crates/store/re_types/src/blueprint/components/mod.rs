@@ -52,7 +52,7 @@ mod viewer_recommendation_hash_ext;
 mod visible_time_range;
 mod visual_bounds2d;
 mod visual_bounds2d_ext;
-mod visualizer_overrides;
+mod visualizer_override;
 mod zoom_level;
 
 pub use self::active_tab::ActiveTab;
@@ -91,5 +91,5 @@ pub use self::view_origin::ViewOrigin;
 pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
 pub use self::visible_time_range::VisibleTimeRange;
 pub use self::visual_bounds2d::VisualBounds2D;
-pub use self::visualizer_overrides::VisualizerOverrides;
+pub use self::visualizer_override::VisualizerOverride;
 pub use self::zoom_level::ZoomLevel;

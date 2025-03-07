@@ -25,6 +25,7 @@ from .view_contents import ViewContents
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
+from .visualizer_overrides import VisualizerOverrides
 
 __all__ = [
     "Background",
@@ -50,4 +51,5 @@ __all__ = [
     "ViewportBlueprint",
     "VisibleTimeRanges",
     "VisualBounds2D",
+    "VisualizerOverrides",
 ]

@@ -35,6 +35,7 @@ from .archetypes import (
     TensorSliceSelection as TensorSliceSelection,
     # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds2D as VisualBounds2D,
+    VisualizerOverrides as VisualizerOverrides,
 )
 from .components import (
     BackgroundKind as BackgroundKind,
@@ -42,7 +43,6 @@ from .components import (
     LockRangeDuringZoom as LockRangeDuringZoom,
     MapProvider as MapProvider,
     VisibleTimeRange as VisibleTimeRange,
-    VisualizerOverrides as VisualizerOverrides,
 )
 from .containers import (
     Grid as Grid,

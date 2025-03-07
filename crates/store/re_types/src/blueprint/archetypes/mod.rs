@@ -23,6 +23,7 @@ mod view_contents;
 mod viewport_blueprint;
 mod visible_time_ranges;
 mod visual_bounds2d;
+mod visualizer_overrides;
 
 pub use self::background::Background;
 pub use self::container_blueprint::ContainerBlueprint;
@@ -47,3 +48,4 @@ pub use self::view_contents::ViewContents;
 pub use self::viewport_blueprint::ViewportBlueprint;
 pub use self::visible_time_ranges::VisibleTimeRanges;
 pub use self::visual_bounds2d::VisualBounds2D;
+pub use self::visualizer_overrides::VisualizerOverrides;

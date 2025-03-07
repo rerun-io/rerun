@@ -38,5 +38,5 @@
 #include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible_time_range.hpp"
 #include "blueprint/components/visual_bounds2d.hpp"
-#include "blueprint/components/visualizer_overrides.hpp"
+#include "blueprint/components/visualizer_override.hpp"
 #include "blueprint/components/zoom_level.hpp"
