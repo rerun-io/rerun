@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Single visualizer overide the visualizers for an entity.
+/// **Component**: Single visualizer override the visualizers for an entity.
 ///
 /// For details see [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]

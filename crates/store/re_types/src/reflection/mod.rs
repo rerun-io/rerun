@@ -366,7 +366,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualizerOverride as Component>::name(),
             ComponentReflection {
-                docstring_md: "Single visualizer overide the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.",
+                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.",
                 custom_placeholder: Some(VisualizerOverride::default().to_arrow()?),
                 datatype: VisualizerOverride::arrow_datatype(),
                 verify_arrow_array: VisualizerOverride::verify_arrow_array,

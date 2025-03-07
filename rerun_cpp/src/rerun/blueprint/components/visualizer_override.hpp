@@ -13,7 +13,7 @@
 #include <utility>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Single visualizer overide the visualizers for an entity.
+    /// **Component**: Single visualizer override the visualizers for an entity.
     ///
     /// For details see `archetypes::VisualizerOverrides`.
     struct VisualizerOverride {

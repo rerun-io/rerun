@@ -1,6 +1,6 @@
 namespace rerun.blueprint.components;
 
-/// Single visualizer overide the visualizers for an entity.
+/// Single visualizer override the visualizers for an entity.
 ///
 /// For details see [archetypes.VisualizerOverrides].
 table VisualizerOverride (

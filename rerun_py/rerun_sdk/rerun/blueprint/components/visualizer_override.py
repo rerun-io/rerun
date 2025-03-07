@@ -17,7 +17,7 @@ __all__ = ["VisualizerOverride", "VisualizerOverrideBatch"]
 
 class VisualizerOverride(datatypes.Utf8, ComponentMixin):
     """
-    **Component**: Single visualizer overide the visualizers for an entity.
+    **Component**: Single visualizer override the visualizers for an entity.
 
     For details see [`archetypes.VisualizerOverrides`][rerun.blueprint.archetypes.VisualizerOverrides].
     """
