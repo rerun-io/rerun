@@ -71,6 +71,9 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
+const RESERVED_ROOT_NAMESPACE: &str = "@";
+const RECORDING_PROPERTIES_PATH: &str = "recording_properties";
+
 /// The unique identifier of an entity, e.g. `camera/3/points`
 ///
 /// The entity path is a list of [parts][EntityPathPart] separated by slashes.
@@ -114,13 +117,20 @@ impl EntityPath {
 
     #[inline]
     pub fn recording_properties() -> Self {
-        // TODO(#9193): We probably want to come up with a namespace for
-        // reserved paths.
-        Self::from(vec![EntityPathPart::new("_recording_properties")])
+        Self::from(vec![
+            EntityPathPart::new(RESERVED_ROOT_NAMESPACE),
+            EntityPathPart::new(RECORDING_PROPERTIES_PATH),
+        ])
     }
 
     #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
+        parts.first().inspect(|&root| {
+            // TODO(grtlr): Is there a more efficient way to do this check?
+            if root == &EntityPathPart::new(RESERVED_ROOT_NAMESPACE) {
+                re_log::warn!("`{}` is a reserved namespace", RESERVED_ROOT_NAMESPACE);
+            }
+        });
         Self::from(parts)
     }
 
@@ -558,6 +568,16 @@ mod tests {
     #[test]
     fn test_root() {
         assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
+
+    #[test]
+    fn test_recording_properties() {
+        assert_eq!(
+            EntityPath::recording_properties(),
+            EntityPath::from(format!(
+                "{RESERVED_ROOT_NAMESPACE}/{RECORDING_PROPERTIES_PATH}"
+            ))
+        );
     }
 
     #[test]
