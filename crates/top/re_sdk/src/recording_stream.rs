@@ -2064,7 +2064,7 @@ impl RecordingStream {
     /// Example:
     /// ```no_run
     /// # mod rerun { pub use re_sdk::*; }
-    /// # let rec: rerun::RecordingStream = todo!();
+    /// # let rec: rerun::RecordingStream = unimplemented!();
     /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
     /// rec.set_index("duration", std::time::Duration::from_millis(123));
     /// rec.set_index("capture_time", std::time::SystemTime::now());
