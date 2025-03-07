@@ -20,8 +20,13 @@ use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-/// Check whether the provided path contains a Le Robot dataset.
+/// Check whether the provided path contains a `LeRobot` dataset.
 pub fn is_lerobot_dataset(path: impl AsRef<Path>) -> bool {
+    is_v1_lerobot_dataset(path.as_ref()) || is_v2_lerobot_dataset(path.as_ref())
+}
+
+/// Check whether the provided path contains a v2 `LeRobot` dataset.
+pub fn is_v2_lerobot_dataset(path: impl AsRef<Path>) -> bool {
     let path = path.as_ref();
 
     if !path.is_dir() {
@@ -29,6 +34,21 @@ pub fn is_lerobot_dataset(path: impl AsRef<Path>) -> bool {
     }
 
     ["meta", "data"].iter().all(|subdir| {
+        let subpath = path.join(subdir);
+
+        subpath.is_dir()
+    })
+}
+
+/// Check whether the provided path contains a v1 `LeRobot` dataset.
+pub fn is_v1_lerobot_dataset(path: impl AsRef<Path>) -> bool {
+    let path = path.as_ref();
+
+    if !path.is_dir() {
+        return false;
+    }
+
+    ["meta_data", "data"].iter().all(|subdir| {
         let subpath = path.join(subdir);
 
         subpath.is_dir()
