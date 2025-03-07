@@ -816,7 +816,7 @@ fn run_impl(
         }
 
         #[cfg(not(feature = "web_viewer"))]
-        if args.web_viewer {
+        {
             anyhow::bail!(
                 "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
             );
