@@ -78,9 +78,9 @@ async fn connect_async(
 ///     Rerun uses it's own custom URI scheme. The following are valid
 ///     addresses:
 ///
-///     * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
-///     * `rerun+http://localhost:51234` Falls back to using HTTP only.
-///     * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
+///         * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
+///         * `rerun+http://localhost:51234` Falls back to using HTTP only.
+///         * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
 ///
 /// Returns
 /// -------
