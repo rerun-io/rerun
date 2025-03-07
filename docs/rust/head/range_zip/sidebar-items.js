@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["backticked","generate_helper_func","generate_impl","generate_struct","main"],"struct":["Params"]};

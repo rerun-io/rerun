@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["build_info"],"mod":["build_info","crate_version"],"struct":["BuildInfo","CrateVersion"]};

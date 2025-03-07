@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["RecordBatch","RecordBatchIterator","RecordBatchOptions"],"trait":["RecordBatchReader","RecordBatchWriter"]};

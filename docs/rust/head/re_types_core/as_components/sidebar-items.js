@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["assert_object_safe","many_ascomponents","many_ascomponents_wrapped","many_ascomponents_wrapped_many","many_componentbatch_wrapped","many_componentbatch_wrapped_many","single_ascomponents","single_ascomponents_wrapped","single_ascomponents_wrapped_many"],"trait":["AsComponents"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["grpc"],"struct":["BufferedSink","CallbackSink","MemorySink","MemorySinkStorage","MemorySinkStorageInner","TcpSink"],"trait":["LogSink"],"type":["LogMsgCallback"]};

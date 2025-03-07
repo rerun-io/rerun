@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["arrow_ui","create_component_ui_registry","fallback_component_ui","text_ui"]};

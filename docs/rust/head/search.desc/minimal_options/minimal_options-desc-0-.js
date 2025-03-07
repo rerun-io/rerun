@@ -1,0 +1,1 @@
+searchState.loadedDescShard("minimal_options", 0, "Demonstrates how to accept arguments and connect to …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

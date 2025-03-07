@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["duration","index_cell","non_min_i64","resolved_time_range","time","time_int","time_point","time_real","time_type","timeline"]};

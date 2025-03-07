@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["FooterOffset"],"fn":["finish_footer_buffer","finish_size_prefixed_footer_buffer","root_as_footer","root_as_footer_unchecked","root_as_footer_with_opts","size_prefixed_root_as_footer","size_prefixed_root_as_footer_unchecked","size_prefixed_root_as_footer_with_opts"],"struct":["Block","Footer","FooterArgs","FooterBuilder"]};
