@@ -1,10 +1,13 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
+use re_types::archetypes::Points2D;
 use re_types::datatypes::VisibleTimeRange;
-use re_types::{archetypes::Points2D, Archetype as _};
+use re_types::Archetype as _;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
+use re_viewer_context::test_context::TestContext;
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::ViewBlueprint;
 
 /// # Range: partial primary and secondary updates
 ///

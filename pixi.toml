@@ -126,7 +126,10 @@ check-env = "python scripts/check_env.py"
 codegen = "cargo --quiet run --package re_types_builder -- "
 
 # Run the codegen for protobuf types.
-codegen-protos = "cargo --quiet run --package re_protos_builder && cargo fmt --all"
+codegen-protos = { cmd = "cargo --quiet run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
+  # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
+] }
+codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
 
 # Generate the Rerun CLI manual.
 
@@ -209,11 +212,12 @@ rs-fmt = "cargo fmt --all"
 
 # Code formatting for all languages.
 format = { depends-on = [
-  "py-fmt",
   "cpp-fmt",
+  "misc-fmt",
+  "pb-fmt",
+  "py-fmt",
   "rs-fmt",
   "toml-fmt",
-  "misc-fmt",
 ] }
 fmt = { depends-on = ["format"] }
 
@@ -230,6 +234,41 @@ lint-typos = "typos"
 # Toml tasks
 toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
+
+# ------------------------------------------------------------------------------------------
+# Protobuf stuff:
+#
+# NOTE: `--error-format=json` because it's the only output format that contains the actual error code (so
+# you can decide whether to ignore that specific code or not).
+# See:
+# * <https://buf.build/docs/breaking/rules/>
+# * <https://buf.build/docs/lint/rules/>
+
+pb-fmt-check = "buf format --exit-code --diff"
+pb-fmt = "buf format --exit-code --write"
+
+pb-lint = "buf lint --error-format=json"
+
+# NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
+# than a pure git solution in the future. For now, convenience wins.
+#
+# pb-snapshot-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos/proto/schema_snapshot.yaml) ; pixi run pb-snapshot && ./scripts/ci/compare_path_digest.py crates/store/re_protos/proto/schema_snapshot.yaml $before"
+# # TODO(cmc): I'd like to avoid the extra noise from source info and imports, but they are required for
+# # `buf breaking` to not crash.
+# # pb-snapshot = "buf build --output crates/store/re_protos/proto/schema_snapshot.yaml --exclude-source-info --exclude-imports"
+# pb-snapshot = "buf build --error-format=json --output crates/store/re_protos/proto/schema_snapshot.yaml"
+# pb-snapshot-main = "git show origin/main:crates/store/re_protos/proto/schema_snapshot.yaml > crates/store/re_protos/proto/schema_snapshot.main.yaml"
+#
+# pb-breaking = { cmd = "buf breaking --error-format=json --against crates/store/re_protos/proto/schema_snapshot.main.yaml", depends-on = [
+#   "pb-snapshot",
+#   "pb-snapshot-main",
+# ]}
+
+pb-breaking = "buf breaking --error-format=json --against '.git#branch=origin/main'"
+
+pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
+
+# ------------------------------------------------------------------------------------------
 
 # Misc formatting tasks.
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
@@ -508,9 +547,14 @@ wheel = ">=0.38,<0.39"
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
+buf = "1.*"             # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
-meilisearch = "1.5.1.*"
+meilisearch = "1.5.1.*" # not available for linux-aarch64
+buf = "1.*"             # not available for linux-aarch64
+
+[target.win-64.dependencies]
+buf = "1.*" # not available for linux-aarch64
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
@@ -665,7 +709,6 @@ rgbd = { path = "examples/python/rgbd", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
-signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 
