@@ -358,7 +358,7 @@
     <span class="attr">#[allow(clippy::unchecked_duration_subtraction)]
     </span><span class="kw">for </span>offset <span class="kw">in </span>offsets {
         <span class="kw">if </span>args.temporal_batch_size.is_none() {
-            rec.set_time_seconds(<span class="string">"sim_time"</span>, sim_times[offset]);
+            rec.set_duration_seconds(<span class="string">"sim_time"</span>, sim_times[offset]);
         }
 
         <span class="comment">// Log

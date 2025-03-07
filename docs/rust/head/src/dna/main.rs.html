@@ -109,7 +109,7 @@
     <span class="kw">let </span>(points1, colors1) = color_spiral(NUM_POINTS, <span class="number">2.0</span>, <span class="number">0.02</span>, <span class="number">0.0</span>, <span class="number">0.1</span>);
     <span class="kw">let </span>(points2, colors2) = color_spiral(NUM_POINTS, <span class="number">2.0</span>, <span class="number">0.02</span>, TAU * <span class="number">0.5</span>, <span class="number">0.1</span>);
 
-    rec.set_time_seconds(<span class="string">"stable_time"</span>, <span class="number">0f64</span>);
+    rec.set_duration_seconds(<span class="string">"stable_time"</span>, <span class="number">0f64</span>);
 
     rec.log_static(
         <span class="string">"dna/structure/left"</span>,
@@ -145,7 +145,7 @@
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">400 </span>{
         <span class="kw">let </span>time = i <span class="kw">as </span>f32 * <span class="number">0.01</span>;
 
-        rec.set_time_seconds(<span class="string">"stable_time"</span>, time <span class="kw">as </span>f64);
+        rec.set_duration_seconds(<span class="string">"stable_time"</span>, time <span class="kw">as </span>f64);
 
         <span class="kw">let </span>times = offsets.iter().map(|offset| time + offset).collect_vec();
         <span class="kw">let </span>(beads, colors): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = points_interleaved

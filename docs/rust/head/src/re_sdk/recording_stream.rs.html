@@ -2582,7 +2582,9 @@
 <a href="#2581" id="2581">2581</a>
 <a href="#2582" id="2582">2582</a>
 <a href="#2583" id="2583">2583</a>
-<a href="#2584" id="2584">2584</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt;
+<a href="#2584" id="2584">2584</a>
+<a href="#2585" id="2585">2585</a>
+<a href="#2586" id="2586">2586</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::io::IsTerminal <span class="kw">as _</span>;
 <span class="kw">use </span>std::sync::Weak;
 <span class="kw">use </span>std::sync::{atomic::AtomicI64, Arc};
@@ -2600,8 +2602,8 @@
 };
 <span class="kw">use </span>re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, NonMinI64, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, Timeline, TimelineName,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
 <span class="kw">use </span>re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -4621,9 +4623,8 @@
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     </span><span class="kw">pub fn </span>set_timepoint(<span class="kw-2">&amp;</span><span class="self">self</span>, timepoint: <span class="kw">impl </span>Into&lt;TimePoint&gt;) {
@@ -4639,7 +4640,47 @@
         }
     }
 
+    <span class="doccomment">/// Set the current value of one of the timelines.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// Example:
+    /// ```no_run
+    /// # mod rerun { pub use re_sdk::*; }
+    /// # let rec: rerun::RecordingStream = unimplemented!();
+    /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
+    /// rec.set_index("duration", std::time::Duration::from_millis(123));
+    /// rec.set_index("capture_time", std::time::SystemTime::now());
+    /// ```
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    </span><span class="kw">pub fn </span>set_index(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, value: <span class="kw">impl </span>TryInto&lt;IndexCell&gt;) {
+        <span class="kw">let </span>f = <span class="kw">move </span>|inner: <span class="kw-2">&amp;</span>RecordingStreamInner| {
+            <span class="kw">let </span>timeline = timeline.into();
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(value) = value.try_into() {
+                ThreadInfo::set_thread_time(<span class="kw-2">&amp;</span>inner.info.store_id, timeline, value);
+            } <span class="kw">else </span>{
+                <span class="macro">re_log::warn_once!</span>(
+                    <span class="string">"set_index({timeline}): Failed to convert the given value to an IndexCell"
+                </span>);
+            }
+        };
+
+        <span class="kw">if </span><span class="self">self</span>.with(f).is_none() {
+            <span class="macro">re_log::warn_once!</span>(<span class="string">"Recording disabled - call to set_index() ignored"</span>);
+        }
+    }
+
     <span class="doccomment">/// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
@@ -4655,30 +4696,27 @@
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    </span><span class="kw">pub fn </span>set_time_sequence(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, seq: <span class="kw">impl </span>Into&lt;i64&gt;) {
-        <span class="kw">let </span>f = <span class="kw">move </span>|inner: <span class="kw-2">&amp;</span>RecordingStreamInner| {
-            <span class="kw">let </span>seq = seq.into();
-            <span class="kw">let </span>seq = <span class="kw">if let </span><span class="prelude-val">Ok</span>(seq) = NonMinI64::try_from(seq) {
-                seq
-            } <span class="kw">else </span>{
-                <span class="macro">re_log::error!</span>(
-                    illegal_value = seq,
-                    new_value = NonMinI64::MIN.get(),
-                    <span class="string">"set_time_sequence() called with illegal value - clamped to minimum legal value"
-                </span>);
-                NonMinI64::MIN
-            };
+    </span><span class="kw">pub fn </span>set_time_sequence(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, sequence: <span class="kw">impl </span>Into&lt;i64&gt;) {
+        <span class="self">self</span>.set_index(timeline, IndexCell::from_sequence(sequence.into()));
+    }
 
-            ThreadInfo::set_thread_time(
-                <span class="kw-2">&amp;</span>inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_sequence(seq),
-            );
-        };
+    <span class="doccomment">/// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`.
+    </span><span class="kw">pub fn </span>set_duration_seconds(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, secs: <span class="kw">impl </span>Into&lt;f64&gt;) {
+        <span class="self">self</span>.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
+    }
 
-        <span class="kw">if </span><span class="self">self</span>.with(f).is_none() {
-            <span class="macro">re_log::warn_once!</span>(<span class="string">"Recording disabled - call to set_time_sequence() ignored"</span>);
-        }
+    <span class="doccomment">/// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    ///
+    /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    </span><span class="kw">pub fn </span>set_timestamp_seconds_since_epoch(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;,
+        secs: <span class="kw">impl </span>Into&lt;f64&gt;,
+    ) {
+        <span class="self">self</span>.set_index(
+            timeline,
+            IndexCell::from_timestamp_seconds_since_epoch(secs.into()),
+        );
     }
 
     <span class="doccomment">/// Set the current time of the recording, for the current calling thread.
@@ -4697,33 +4735,11 @@
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    </span><span class="attr">#[deprecated(
+        note = <span class="string">"Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
+    </span>)]
     </span><span class="kw">pub fn </span>set_time_seconds(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, seconds: <span class="kw">impl </span>Into&lt;f64&gt;) {
-        <span class="kw">let </span>f = <span class="kw">move </span>|inner: <span class="kw-2">&amp;</span>RecordingStreamInner| {
-            <span class="kw">let </span><span class="kw-2">mut </span>seconds = seconds.into();
-            <span class="kw">if </span>seconds.is_nan() {
-                <span class="macro">re_log::error!</span>(<span class="string">"set_time_seconds() called with NaN"</span>);
-                seconds = <span class="number">0.0</span>;
-            }
-
-            <span class="kw">let </span>nanos = <span class="number">1e9 </span>* seconds;
-            <span class="kw">let </span>nanos_clamped = nanos.clamp(NonMinI64::MIN.get() <span class="kw">as _</span>, NonMinI64::MAX.get() <span class="kw">as _</span>);
-
-            <span class="kw">if </span>nanos != nanos_clamped {
-                <span class="macro">re_log::warn_once!</span>(
-                    <span class="string">"set_time_seconds() called with out-of-range value {seconds:?}. Clamping to valid range."
-                </span>);
-            }
-
-            ThreadInfo::set_thread_time(
-                <span class="kw-2">&amp;</span>inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(nanos_clamped.round() <span class="kw">as </span>i64),
-            );
-        };
-
-        <span class="kw">if </span><span class="self">self</span>.with(f).is_none() {
-            <span class="macro">re_log::warn_once!</span>(<span class="string">"Recording disabled - call to set_time_seconds() ignored"</span>);
-        }
+        <span class="self">self</span>.set_duration_seconds(timeline, seconds);
     }
 
     <span class="doccomment">/// Set the current time of the recording, for the current calling thread.
@@ -4742,30 +4758,18 @@
     /// - [`Self::set_time_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    </span><span class="kw">pub fn </span>set_time_nanos(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;, ns: <span class="kw">impl </span>Into&lt;i64&gt;) {
-        <span class="kw">let </span>f = <span class="kw">move </span>|inner: <span class="kw-2">&amp;</span>RecordingStreamInner| {
-            <span class="kw">let </span>ns = ns.into();
-            <span class="kw">let </span>ns = <span class="kw">if let </span><span class="prelude-val">Ok</span>(ns) = NonMinI64::try_from(ns) {
-                ns
-            } <span class="kw">else </span>{
-                <span class="macro">re_log::error!</span>(
-                    illegal_value = ns,
-                    new_value = NonMinI64::MIN.get(),
-                    <span class="string">"set_time_nanos() called with illegal value - clamped to minimum legal value"
-                </span>);
-                NonMinI64::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                <span class="kw-2">&amp;</span>inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(ns), <span class="comment">// TODO(#8635): update
-            </span>);
-        };
-
-        <span class="kw">if </span><span class="self">self</span>.with(f).is_none() {
-            <span class="macro">re_log::warn_once!</span>(<span class="string">"Recording disabled - call to set_time_nanos() ignored"</span>);
-        }
+    </span><span class="attr">#[deprecated(
+        note = <span class="string">"Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
+    </span>)]
+    </span><span class="kw">pub fn </span>set_time_nanos(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        timeline: <span class="kw">impl </span>Into&lt;TimelineName&gt;,
+        nanos_since_epoch: <span class="kw">impl </span>Into&lt;i64&gt;,
+    ) {
+        <span class="self">self</span>.set_index(
+            timeline,
+            IndexCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
+        );
     }
 
     <span class="doccomment">/// Clears out the current time of the recording for the specified timeline, for the

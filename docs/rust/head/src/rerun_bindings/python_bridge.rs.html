@@ -1437,7 +1437,9 @@
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::needless_pass_by_value)] </span><span class="comment">// A lot of arguments to #[pyfunction] need to be by value
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::needless_pass_by_value)] </span><span class="comment">// A lot of arguments to #[pyfunction] need to be by value
 </span><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
 </span><span class="attr">#![allow(unsafe_op_in_unsafe_fn)] </span><span class="comment">// False positive due to #[pyfunction] macro
 
@@ -1456,8 +1458,8 @@
 <span class="kw">use </span>re_log::ResultExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_log_types::LogMsg;
 <span class="kw">use </span>re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-<span class="kw">use </span>re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
 <span class="kw">use </span>re_sdk::sink::CallbackSink;
+<span class="kw">use </span>re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, IndexCell};
 <span class="kw">use </span>re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
@@ -1597,8 +1599,8 @@
 
     <span class="comment">// time
     </span>m.add_function(<span class="macro">wrap_pyfunction!</span>(set_time_sequence, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-    m.add_function(<span class="macro">wrap_pyfunction!</span>(set_time_seconds, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-    m.add_function(<span class="macro">wrap_pyfunction!</span>(set_time_nanos, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    m.add_function(<span class="macro">wrap_pyfunction!</span>(set_time_duration_nanos, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    m.add_function(<span class="macro">wrap_pyfunction!</span>(set_time_timestamp_nanos_since_epoch, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     m.add_function(<span class="macro">wrap_pyfunction!</span>(disable_timeline, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     m.add_function(<span class="macro">wrap_pyfunction!</span>(reset_time, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
@@ -2498,27 +2500,29 @@
     <span class="kw">let </span><span class="prelude-val">Some</span>(recording) = get_data_recording(recording) <span class="kw">else </span>{
         <span class="kw">return</span>;
     };
-    recording.set_time_sequence(timeline, sequence);
+    recording.set_index(timeline, IndexCell::from_sequence(sequence));
 }
 
-<span class="comment">// TODO(#8635): distinguish between absolute and relative time
-</span><span class="attr">#[pyfunction]
-#[pyo3(signature = (timeline, seconds, recording=<span class="prelude-val">None</span>))]
-</span><span class="kw">fn </span>set_time_seconds(timeline: <span class="kw-2">&amp;</span>str, seconds: f64, recording: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PyRecordingStream&gt;) {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(recording) = get_data_recording(recording) <span class="kw">else </span>{
-        <span class="kw">return</span>;
-    };
-    recording.set_time_seconds(timeline, seconds);
-}
-
-<span class="comment">// TODO(#8635): distinguish between absolute and relative time
-</span><span class="attr">#[pyfunction]
+<span class="attr">#[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=<span class="prelude-val">None</span>))]
-</span><span class="kw">fn </span>set_time_nanos(timeline: <span class="kw-2">&amp;</span>str, nanos: i64, recording: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PyRecordingStream&gt;) {
+</span><span class="kw">fn </span>set_time_duration_nanos(timeline: <span class="kw-2">&amp;</span>str, nanos: i64, recording: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PyRecordingStream&gt;) {
     <span class="kw">let </span><span class="prelude-val">Some</span>(recording) = get_data_recording(recording) <span class="kw">else </span>{
         <span class="kw">return</span>;
     };
-    recording.set_time_nanos(timeline, nanos);
+    recording.set_index(timeline, IndexCell::from_duration_nanos(nanos));
+}
+
+<span class="attr">#[pyfunction]
+#[pyo3(signature = (timeline, nanos, recording=<span class="prelude-val">None</span>))]
+</span><span class="kw">fn </span>set_time_timestamp_nanos_since_epoch(
+    timeline: <span class="kw-2">&amp;</span>str,
+    nanos: i64,
+    recording: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PyRecordingStream&gt;,
+) {
+    <span class="kw">let </span><span class="prelude-val">Some</span>(recording) = get_data_recording(recording) <span class="kw">else </span>{
+        <span class="kw">return</span>;
+    };
+    recording.set_index(timeline, IndexCell::from_timestamp_nanos_since_epoch(nanos));
 }
 
 <span class="attr">#[pyfunction]

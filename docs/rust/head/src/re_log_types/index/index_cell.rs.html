@@ -136,7 +136,11 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{NonMinI64, TimeInt, TimeType};
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{NonMinI64, TimeInt, TimeType};
 
 <span class="kw">pub struct </span>OutOfRange;
 
@@ -239,14 +243,18 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;std::time::Duration&gt; <span class="kw">for </span>IndexCell {
+<span class="comment">// ------------------------------------------------------------------
+
+</span><span class="kw">impl </span>From&lt;std::time::Duration&gt; <span class="kw">for </span>IndexCell {
     <span class="doccomment">/// Saturating cast from [`std::time::Duration`].
     </span><span class="kw">fn </span>from(time: std::time::Duration) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::from_duration_nanos(NonMinI64::saturating_from_u128(time.as_nanos()))
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;std::time::SystemTime&gt; <span class="kw">for </span>IndexCell {
+<span class="comment">// ------------------------------------------------------------------
+
+</span><span class="kw">impl </span>TryFrom&lt;std::time::SystemTime&gt; <span class="kw">for </span>IndexCell {
     <span class="kw">type </span>Error = OutOfRange;
 
     <span class="kw">fn </span>try_from(time: std::time::SystemTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {

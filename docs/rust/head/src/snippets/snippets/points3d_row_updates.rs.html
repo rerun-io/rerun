@@ -55,7 +55,7 @@
     <span class="kw">let </span>radii = [<span class="number">0.05</span>, <span class="number">0.01</span>, <span class="number">0.2</span>, <span class="number">0.1</span>, <span class="number">0.3</span>];
 
     <span class="kw">for </span>(time, positions, color, radius) <span class="kw">in </span><span class="macro">itertools::izip!</span>(<span class="number">10</span>..<span class="number">15</span>, positions, colors, radii) {
-        rec.set_time_seconds(<span class="string">"time"</span>, time);
+        rec.set_duration_seconds(<span class="string">"time"</span>, time);
 
         <span class="kw">let </span>point_cloud = rerun::Points3D::new(positions)
             .with_colors([color])

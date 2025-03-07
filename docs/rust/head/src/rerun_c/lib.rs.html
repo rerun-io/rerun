@@ -1045,7 +1045,8 @@
 <a href="#1044" id="1044">1044</a>
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a></pre></div><pre class="rust"><code><span class="doccomment">//! The Rerun C SDK.
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a></pre></div><pre class="rust"><code><span class="doccomment">//! The Rerun C SDK.
 //!
 //! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
@@ -1070,8 +1071,8 @@
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
-    Timeline,
+    ComponentDescriptor, EntityPath, IndexCell, RecordingStream, RecordingStreamBuilder, StoreKind,
+    TimePoint, Timeline,
 };
 
 <span class="kw">use </span>component_type_registry::COMPONENT_TYPES;
@@ -1737,11 +1738,12 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CError&gt; {
     <span class="kw">let </span>timeline = timeline_name.as_str(<span class="string">"timeline_name"</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>stream = recording_stream(stream)<span class="question-mark">?</span>;
-    <span class="kw">match </span>time_type {
-        CTimeType::Sequence =&gt; stream.set_time_sequence(timeline, value),
+    <span class="kw">let </span>time_type = <span class="kw">match </span>time_type {
+        CTimeType::Sequence =&gt; TimeType::Sequence,
         <span class="comment">// TODO(#8635): do different things for Duration and Timestamp
-        </span>CTimeType::Duration | CTimeType::Timestamp =&gt; stream.set_time_nanos(timeline, value),
-    }
+        </span>CTimeType::Duration | CTimeType::Timestamp =&gt; TimeType::Time,
+    };
+    stream.set_index(timeline, IndexCell::new(time_type, value));
     <span class="prelude-val">Ok</span>(())
 }
 

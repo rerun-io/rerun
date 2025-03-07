@@ -540,7 +540,7 @@
 </span><span class="kw">fn </span>test_bbox(rec: <span class="kw-2">&amp;</span>RecordingStream) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">use </span>rerun::{archetypes::Boxes3D, components::Color};
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
     rec.log(
         <span class="string">"bbox_test/bbox"</span>,
         <span class="kw-2">&amp;</span>Boxes3D::from_half_sizes([(<span class="number">1.0</span>, <span class="number">0.5</span>, <span class="number">0.25</span>)])
@@ -554,7 +554,7 @@
             .with_radii([<span class="number">0.005</span>])
             .with_labels([<span class="string">"box/t0"</span>]),
     )<span class="question-mark">?</span>;
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
 
     rec.log(
         <span class="string">"bbox_test/bbox"</span>,
@@ -576,7 +576,7 @@
 <span class="kw">fn </span>test_log_cleared(rec: <span class="kw-2">&amp;</span>RecordingStream) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">use </span>rerun::archetypes::Boxes2D;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
     rec.log(
         <span class="string">"null_test/rect/0"</span>,
         <span class="kw-2">&amp;</span>Boxes2D::from_mins_and_sizes([(<span class="number">5.0</span>, <span class="number">5.0</span>)], [(<span class="number">4.0</span>, <span class="number">4.0</span>)])
@@ -590,19 +590,19 @@
             .with_labels([<span class="string">"Rect2"</span>]),
     )<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
     rec.log(<span class="string">"null_test/rect/0"</span>, <span class="kw-2">&amp;</span>Clear::flat())<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
     rec.log(<span class="string">"null_test/rect"</span>, <span class="kw-2">&amp;</span>Clear::recursive())<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">4f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">4f64</span>);
     rec.log(
         <span class="string">"null_test/rect/0"</span>,
         <span class="kw-2">&amp;</span>Boxes2D::from_mins_and_sizes([(<span class="number">5.0</span>, <span class="number">5.0</span>)], [(<span class="number">4.0</span>, <span class="number">4.0</span>)]),
     )<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">5f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">5f64</span>);
     rec.log(
         <span class="string">"null_test/rect/1"</span>,
         <span class="kw-2">&amp;</span>Boxes2D::from_mins_and_sizes([(<span class="number">10.0</span>, <span class="number">5.0</span>)], [(<span class="number">4.0</span>, <span class="number">4.0</span>)]),
@@ -617,7 +617,7 @@
         components::{Color, Position3D, Radius, Text},
     };
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
 
     rec.log(
         <span class="string">"3d_points/single_point_unlabeled"</span>,
@@ -677,7 +677,7 @@
     };
 
     <span class="comment">// Add an image
-    </span>rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
+    </span>rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
     <span class="kw">let </span>img = Array::&lt;u8, <span class="kw">_</span>&gt;::from_elem((<span class="number">1024</span>, <span class="number">1024</span>, <span class="number">3</span>, <span class="number">1</span>).f(), <span class="number">128</span>);
     rec.log(
         <span class="string">"rects_test/img"</span>,
@@ -692,7 +692,7 @@
         .map(|c| Color::from_rgb(c[<span class="number">0</span>], c[<span class="number">1</span>], c[<span class="number">2</span>]))
         .collect_vec();
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
     rec.log(
         <span class="string">"rects_test/rects"</span>,
         <span class="kw-2">&amp;</span>Boxes2D::from_mins_and_sizes(
@@ -703,7 +703,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Clear the rectangles by logging an empty set
-    </span>rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
+    </span>rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
     rec.log(<span class="string">"rects_test/rects"</span>, <span class="kw-2">&amp;</span>Boxes2D::clear_fields())<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
@@ -735,7 +735,7 @@
     segmentation_img.slice_mut(<span class="macro">s!</span>[<span class="number">80</span>..<span class="number">100</span>, <span class="number">60</span>..<span class="number">80</span>]).fill(<span class="number">42</span>);
     segmentation_img.slice_mut(<span class="macro">s!</span>[<span class="number">20</span>..<span class="number">50</span>, <span class="number">90</span>..<span class="number">110</span>]).fill(<span class="number">99</span>);
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">1f64</span>);
 
     rec.log(
         <span class="string">"seg_test/img"</span>,
@@ -773,7 +773,7 @@
         <span class="string">"no rects, default colored points, a single point has a label"</span>,
     )<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">2f64</span>);
 
     rec.log(
         <span class="string">"seg_test"</span>,
@@ -785,7 +785,7 @@
             bottom right clusters have labels"</span>,
     )<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">3f64</span>);
 
     <span class="comment">// Log an updated segmentation map with specific colors
     </span>rec.log(
@@ -798,7 +798,7 @@
     )<span class="question-mark">?</span>;
     log_info(rec, <span class="string">"points/rects with user specified colors"</span>)<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">4f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">4f64</span>);
 
     <span class="comment">// Log with a mixture of set and unset colors / labels
     </span>rec.log(
@@ -825,7 +825,7 @@
     <span class="comment">// TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
-    </span>rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
+    </span>rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
 
     rec.log(
         <span class="string">"logs"</span>,
@@ -865,7 +865,7 @@
     log_coordinate_space(rec, <span class="string">"transforms3d/sun/planet"</span>)<span class="question-mark">?</span>;
     log_coordinate_space(rec, <span class="string">"transforms3d/sun/planet/moon"</span>)<span class="question-mark">?</span>;
 
-    rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
+    rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">0f64</span>);
 
     <span class="comment">// All are in the center of their own space:
     </span><span class="kw">fn </span>log_point(
@@ -928,7 +928,7 @@
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>* <span class="number">120 </span>{
         <span class="kw">let </span>time = i <span class="kw">as </span>f32 / <span class="number">120.0</span>;
 
-        rec.set_time_seconds(<span class="string">"sim_time"</span>, time <span class="kw">as </span>f64);
+        rec.set_duration_seconds(<span class="string">"sim_time"</span>, time <span class="kw">as </span>f64);
 
         rec.log(
             <span class="string">"transforms3d/sun/planet"</span>,

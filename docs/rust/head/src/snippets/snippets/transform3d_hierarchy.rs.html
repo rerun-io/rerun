@@ -89,7 +89,7 @@
 
     <span class="comment">// TODO(#5521): log two views as in the python example
 
-    </span>rec.set_time_seconds(<span class="string">"sim_time"</span>, <span class="number">0.0</span>);
+    </span>rec.set_duration_seconds(<span class="string">"sim_time"</span>, <span class="number">0.0</span>);
 
     <span class="comment">// Planetary motion is typically in the XY plane.
     </span>rec.log_static(<span class="string">"/"</span>, <span class="kw-2">&amp;</span>rerun::ViewCoordinates::RIGHT_HAND_Z_UP())<span class="question-mark">?</span>;
@@ -137,7 +137,7 @@
     <span class="comment">// Movement via transforms.
     </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(<span class="number">6 </span>* <span class="number">120</span>) {
         <span class="kw">let </span>time = i <span class="kw">as </span>f32 / <span class="number">120.0</span>;
-        rec.set_time_seconds(<span class="string">"sim_time"</span>, time);
+        rec.set_duration_seconds(<span class="string">"sim_time"</span>, time);
         <span class="kw">let </span>r_moon = time * <span class="number">5.0</span>;
         <span class="kw">let </span>r_planet = time * <span class="number">2.0</span>;
 

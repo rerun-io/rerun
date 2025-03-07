@@ -37,12 +37,12 @@
         rerun::RecordingStreamBuilder::new(<span class="string">"rerun_example_different_data_per_timeline"</span>).spawn()<span class="question-mark">?</span>;
 
     rec.set_time_sequence(<span class="string">"blue timeline"</span>, <span class="number">0</span>);
-    rec.set_time_seconds(<span class="string">"red timeline"</span>, <span class="number">0.0</span>);
+    rec.set_duration_seconds(<span class="string">"red timeline"</span>, <span class="number">0.0</span>);
     rec.log(<span class="string">"points"</span>, <span class="kw-2">&amp;</span>rerun::Points2D::new([(<span class="number">0.0</span>, <span class="number">0.0</span>), (<span class="number">1.0</span>, <span class="number">1.0</span>)]))<span class="question-mark">?</span>;
 
     <span class="comment">// Log a red color on one timeline.
     </span>rec.reset_time(); <span class="comment">// Clears all set timeline info.
-    </span>rec.set_time_seconds(<span class="string">"red timeline"</span>, <span class="number">1.0</span>);
+    </span>rec.set_duration_seconds(<span class="string">"red timeline"</span>, <span class="number">1.0</span>);
     rec.log(
         <span class="string">"points"</span>,
         <span class="kw-2">&amp;</span>rerun::Points2D::update_fields().with_colors([<span class="number">0xFF0000FF</span>]),

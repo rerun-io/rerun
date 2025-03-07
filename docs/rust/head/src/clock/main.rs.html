@@ -162,7 +162,7 @@
         <span class="kw">let </span>pos = tip(angle * TAU, length);
         <span class="kw">let </span>color = color(angle, blue);
 
-        rec.set_time_seconds(<span class="string">"sim_time"</span>, step <span class="kw">as </span>f64);
+        rec.set_duration_seconds(<span class="string">"sim_time"</span>, step <span class="kw">as </span>f64);
 
         rec.log(
             <span class="macro">format!</span>(<span class="string">"world/{name}_pt"</span>),
