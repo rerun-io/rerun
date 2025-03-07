@@ -101,12 +101,16 @@ impl From<IndexCell> for i64 {
     }
 }
 
+// ------------------------------------------------------------------
+
 impl From<std::time::Duration> for IndexCell {
     /// Saturating cast from [`std::time::Duration`].
     fn from(time: std::time::Duration) -> Self {
         Self::from_duration_nanos(NonMinI64::saturating_from_u128(time.as_nanos()))
     }
 }
+
+// ------------------------------------------------------------------
 
 impl TryFrom<std::time::SystemTime> for IndexCell {
     type Error = OutOfRange;

@@ -2037,9 +2037,8 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
@@ -2055,7 +2054,47 @@ impl RecordingStream {
         }
     }
 
+    /// Set the current value of one of the timelines.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// Example:
+    /// ```no_run
+    /// # mod rerun { pub use re_sdk::*; }
+    /// # let rec: rerun::RecordingStream = todo!();
+    /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
+    /// rec.set_index("duration", std::time::Duration::from_millis(123));
+    /// rec.set_index("capture_time", std::time::SystemTime::now());
+    /// ```
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    pub fn set_index(&self, timeline: impl Into<TimelineName>, value: impl TryInto<IndexCell>) {
+        let f = move |inner: &RecordingStreamInner| {
+            let timeline = timeline.into();
+            if let Ok(value) = value.try_into() {
+                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, value);
+            } else {
+                re_log::warn_once!(
+                    "set_index({timeline}): Failed to convert the given value to an IndexCell"
+                );
+            }
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_index() ignored");
+        }
+    }
+
     /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
@@ -2071,30 +2110,8 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, seq: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let seq = seq.into();
-            let seq = if let Ok(seq) = NonMinI64::try_from(seq) {
-                seq
-            } else {
-                re_log::error!(
-                    illegal_value = seq,
-                    new_value = NonMinI64::MIN.get(),
-                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
-                );
-                NonMinI64::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_sequence(seq),
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
-        }
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
+        self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
     }
 
     /// Set the current time of the recording, for the current calling thread.
