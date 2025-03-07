@@ -80,9 +80,9 @@ def log_failed_snapshot_tests(original_path: Path, new_path: Path, diff_path: Pa
         if args.stdout:
             rr.stdout(default_blueprint=default_blueprint)
         elif args.serve:
-            rr.serve(default_blueprint=default_blueprint)
+            rr.serve_web(default_blueprint=default_blueprint)
         elif args.connect:
-            rr.connect(args.addr, default_blueprint=default_blueprint)
+            rr.connect_grpc(args.addr, default_blueprint=default_blueprint)
         elif args.save is not None:
             rr.save(args.save, default_blueprint=default_blueprint)
         elif not args.headless:

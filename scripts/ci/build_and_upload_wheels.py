@@ -62,7 +62,9 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
+def build_and_upload(
+    bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str | None
+) -> None:
     # pypi / extra builds require a web build
     if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")

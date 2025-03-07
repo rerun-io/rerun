@@ -118,7 +118,7 @@ for event in ["crash-panic", "crash-signal"]:
 
 ## Deduplicate results and massage output
 
-backtraces = defaultdict(list)
+backtraces: dict[str, list[Any]] = defaultdict(list)
 
 for res in results:
     res["properties"]["timestamp"] = res["timestamp"]
@@ -128,16 +128,16 @@ for res in results:
     backtraces[backtrace].append(res.pop("properties"))
 
 
-def count_uniques(backtrace: dict[str, Any]) -> int:
-    return len({prop["user_id"] for prop in backtrace[1]})
+def count_uniques(backtrace_item: tuple[str, list[Any]]) -> int:
+    return len({prop["user_id"] for prop in backtrace_item[1]})
 
 
-backtraces = list(backtraces.items())
-backtraces.sort(key=count_uniques, reverse=True)
+backtrace_list = list(backtraces.items())
+backtrace_list.sort(key=count_uniques, reverse=True)
 
 ## Generate reports
 
-for backtrace, props in backtraces:
+for backtrace, props in backtrace_list:
     n = count_uniques((backtrace, props))
     event = "panic" if props[0]["event"] == "crash-panic" else "signal"
     file_line = props[0].get("file_line")

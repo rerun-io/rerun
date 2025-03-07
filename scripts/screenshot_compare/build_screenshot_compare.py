@@ -85,7 +85,7 @@ def copy_static_assets(examples: list[Example]) -> None:
 
     # copy examples
     for example in examples:
-        dst = os.path.join(BASE_PATH, f"examples/{example.name}")
+        dst = BASE_PATH / "examples" / example.name
         shutil.copytree(
             STATIC_ASSETS,
             dst,
@@ -234,7 +234,7 @@ def serve_files() -> None:
             server_address=("127.0.0.1", 8080),
             RequestHandlerClass=partial(
                 CORSRequestHandler,
-                directory=BASE_PATH,
+                directory=str(BASE_PATH),
             ),
         )
         server.serve_forever()
@@ -245,7 +245,7 @@ def serve_files() -> None:
         os.environ["RUST_LOG"] = "rerun=warn"
 
         rr.init("rerun_example_screenshot_compare")
-        rr.serve(open_browser=False)
+        rr.serve_web(open_browser=False)
 
     threading.Thread(target=serve, daemon=True).start()
 

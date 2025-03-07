@@ -14,9 +14,11 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import semver
 import tomlkit
+import tomlkit.container
 
 
 def run(
@@ -30,13 +32,12 @@ def run(
 
 
 def set_rerun_notebook_version(pyproject_path: Path, version: str) -> None:
-    pyproject = tomlkit.parse(pyproject_path.read_text())
-    pyproject["project"]["version"] = version
+    pyproject: dict[str, Any] = tomlkit.parse(pyproject_path.read_text())
     pyproject_path.write_text(tomlkit.dumps(pyproject))
 
 
 def set_dependency_version(pyproject_path: Path, version: str) -> None:
-    pyproject = tomlkit.parse(pyproject_path.read_text())
+    pyproject: dict[str, Any] = tomlkit.parse(pyproject_path.read_text())
 
     notebook_deps = pyproject["project"]["optional-dependencies"]["notebook"]
     new_deps = [dep for dep in notebook_deps if not dep.startswith("rerun-notebook")]
