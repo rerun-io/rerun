@@ -740,10 +740,11 @@ impl PendingRow {
 
         let timelines = timepoint
             .into_iter()
-            .map(|(timeline, time)| {
-                let times = ArrowScalarBuffer::from(vec![time.as_i64()]);
-                let time_column = TimeColumn::new(Some(true), timeline, times);
-                (*timeline.name(), time_column)
+            .map(|(timeline_name, cell)| {
+                let times = ArrowScalarBuffer::from(vec![cell.as_i64()]);
+                let time_column =
+                    TimeColumn::new(Some(true), Timeline::new(timeline_name, cell.typ()), times);
+                (timeline_name, time_column)
             })
             .collect();
 
@@ -801,9 +802,9 @@ impl PendingRow {
             // deterministic: `TimePoint` is backed by a `BTreeMap`.
             for row in rows {
                 let mut hasher = ahash::AHasher::default();
-                row.timepoint
-                    .timelines()
-                    .for_each(|timeline| timeline.hash(&mut hasher));
+                row.timepoint.timeline_names().for_each(|timeline| {
+                    <TimelineName as std::hash::Hash>::hash(timeline, &mut hasher);
+                });
 
                 per_timeline_set
                     .entry(hasher.finish())
@@ -876,10 +877,10 @@ impl PendingRow {
                     // Look for unsorted timelines -- if we find any, and the chunk is larger than
                     // the pre-configured `chunk_max_rows_if_unsorted` threshold, then split _even_
                     // further!
-                    for (&timeline, _) in row_timepoint {
-                        let time_column = timelines
-                            .entry(*timeline.name())
-                            .or_insert_with(|| PendingTimeColumn::new(timeline));
+                    for (&timeline_name, cell) in row_timepoint {
+                        let time_column = timelines.entry(timeline_name).or_insert_with(|| {
+                            PendingTimeColumn::new(Timeline::new(timeline_name, cell.typ()))
+                        });
 
                         if !row_ids.is_empty() // just being extra cautious
                             && row_ids.len() as u64 >= chunk_max_rows_if_unsorted
@@ -913,11 +914,11 @@ impl PendingRow {
 
                     row_ids.push(*row_id);
 
-                    for (&timeline, &time) in row_timepoint {
-                        let time_column = timelines
-                            .entry(*timeline.name())
-                            .or_insert_with(|| PendingTimeColumn::new(timeline));
-                        time_column.push(time);
+                    for (&timeline_name, &cell) in row_timepoint {
+                        let time_column = timelines.entry(timeline_name).or_insert_with(|| {
+                            PendingTimeColumn::new(Timeline::new(timeline_name, cell.typ()))
+                        });
+                        time_column.push(cell.into());
                     }
 
                     for (component_desc, arrays) in &mut components {
