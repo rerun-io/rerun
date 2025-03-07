@@ -1,7 +1,7 @@
 use re_byte_size::SizeBytes as _;
-use re_chunk_store::ChunkStoreConfig;
+use re_chunk_store::{ChunkStoreConfig, LatestAtQuery};
 use re_entity_db::EntityDb;
-use re_log_types::StoreKind;
+use re_log_types::{EntityPath, StoreKind};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -165,6 +165,13 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
+                EntityPath::recording_properties().data_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    &LatestAtQuery::latest("log_time".into()),
+                    db,
+                );
                 if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
                     ui.label("This is the active recording");

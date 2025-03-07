@@ -145,7 +145,7 @@ impl EntityDb {
         self.latest_at_component::<C>(
             &EntityPath::recording_properties(),
             // TODO(grtlr): Does `log_time` make sense here?
-            &LatestAtQuery::latest("log_time".into()),
+            &LatestAtQuery::latest(Timeline::log_tick().name().clone()),
         )
         .map(|(_, value)| value)
     }
