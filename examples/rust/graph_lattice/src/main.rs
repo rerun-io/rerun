@@ -6,10 +6,7 @@
 //! ```
 
 use itertools::Itertools as _;
-use rerun::{
-    components::RecordingName, external::re_log, AsComponents, Color, EntityPath, GraphEdges,
-    GraphNodes, LoggableBatch,
-};
+use rerun::{external::re_log, Color, GraphEdges, GraphNodes};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -27,10 +24,6 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_graph_lattice")?;
-
-    // Logging here means nothing will recorded at all (not even the graph)
-    // let name = RecordingName::from("lattice");
-    // rec.log_static(EntityPath::recording_properties(), &[name.clone()])?;
 
     let coordinates = (0..NUM_NODES).cartesian_product(0..NUM_NODES);
 
@@ -66,10 +59,6 @@ fn main() -> anyhow::Result<()> {
     }
 
     rec.log_static("/lattice", &GraphEdges::new(edges).with_directed_edges())?;
-
-    // Note this does not show up either.
-    let name = RecordingName::from("lattice");
-    rec.log_static(EntityPath::recording_properties(), &[name.clone()])?;
 
     Ok(())
 }
