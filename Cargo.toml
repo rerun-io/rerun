@@ -194,6 +194,7 @@ ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
 flatbuffers = "24.12.23"
+futures = "0.3"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"

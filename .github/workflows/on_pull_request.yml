@@ -33,6 +33,7 @@ jobs:
       docs_changes: ${{ steps.filter.outputs.docs_changes }}
       python_changes: ${{ steps.filter.outputs.python_changes }}
       rust_changes: ${{ steps.filter.outputs.rust_changes }}
+      protobuf_changes: ${{ steps.filter.outputs.protobuf_changes }}
       web_changes: ${{ steps.filter.outputs.web_changes }}
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +45,8 @@ jobs:
           filters: |
             cpp_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
-              - pixi.lock # maybe out build commands have changed
-              - pixi.toml # maybe out build commands have changed
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - '**/*.hpp'
               - '**/*.cpp'
@@ -55,8 +56,8 @@ jobs:
             docs_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - .github/actions/vercel/**/*
-              - pixi.lock # maybe out build commands have changed
-              - pixi.toml # maybe out build commands have changed
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - 'docs/content/**/*.md'
               - 'examples/**/*.md'
@@ -64,8 +65,8 @@ jobs:
 
             python_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
-              - pixi.lock # maybe out build commands have changed
-              - pixi.toml # maybe out build commands have changed
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - '**/*.py'
               - '**/requirements.txt'
@@ -74,17 +75,25 @@ jobs:
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
-              - pixi.lock # maybe out build commands have changed
-              - pixi.toml # maybe out build commands have changed
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - "**/*.rs"
+              - "**/*.toml"
+
+            protobuf_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - "**/**.proto"
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
+              - scripts/ci/*
               - "**/*.toml"
 
             web_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
-              - pixi.lock # maybe out build commands have changed
-              - pixi.toml # maybe out build commands have changed
+              - pixi.lock # maybe our build commands have changed
+              - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - "**/*.html"
               - "**/*.js"
@@ -94,6 +103,15 @@ jobs:
               - "**/*.toml"
               - "**/yarn.lock"
               - "crates/viewer/re_ui/data/**"
+
+  protobuf-checks:
+    name: "Protobuf Checks"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.protobuf_changes == 'true'
+    uses: ./.github/workflows/reusable_checks_protobuf.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
 
   rust-checks:
     name: "Rust Checks"
