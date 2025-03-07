@@ -18,7 +18,7 @@ Before, Rerun would try to guess what you meant (small values were assumed to be
 Now you need to be explicit.
 
 
-### 🦀 Rust: Deprecated: `RecordingStream::set_time_seconds` and `set_time_nanos`
+### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
 Use one of these instead:
 * `set_duration_seconds`
 * `set_timestamp_seconds_since_epoch`
