@@ -137,24 +137,25 @@ def main() -> None:
                         name="Trig",
                         origin="/trig",
                         overrides={
-                            "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
-                            "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+                            "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
+                            "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
                         },
                     ),
                     rrb.TimeSeriesView(
                         name="Classification",
                         origin="/classification",
                         overrides={
-                            "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+                            "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
                             # This ensures that the `SeriesPoint` visualizers is used for this entity.
-                            "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
+                            "classification/samples": rrb.VisualizerOverrides("SeriesPoint"),
                         },
                     ),
                 ),
                 rrb.TimeSeriesView(
                     name="Spiral",
                     origin="/spiral",
-                    overrides={"spiral": [rr.components.NameBatch(["0.01t cos(0.01t)", "0.01t sin(0.01t)"])]},
+                    # TODO(#9022): Pluralize series line type.
+                    overrides={"spiral": rr.SeriesLine.from_fields(name=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
                 ),
                 row_shares=[2, 1],
             ),

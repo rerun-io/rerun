@@ -14,8 +14,6 @@ from rerun.blueprint.archetypes.force_collision_radius import ForceCollisionRadi
 from rerun.blueprint.archetypes.force_link import ForceLink
 from rerun.blueprint.archetypes.force_many_body import ForceManyBody
 from rerun.components.color import Color
-from rerun.components.radius import Radius
-from rerun.components.show_labels import ShowLabels
 
 color_scheme = [
     Color([228, 26, 28]),  # Red
@@ -165,14 +163,14 @@ def log_blueprint() -> None:
                     force_link=ForceLink(enabled=False),
                     force_many_body=ForceManyBody(enabled=False),
                     force_collision_radius=ForceCollisionRadius(enabled=True),
-                    defaults=[ShowLabels(False)],
+                    defaults=[rr.GraphNodes.from_fields(show_labels=False)],
                 ),
                 rrb.GraphView(
                     origin="lattice",
                     name="Lattice",
                     force_link=ForceLink(distance=60),
                     force_many_body=ForceManyBody(strength=-60),
-                    defaults=[ShowLabels(False), Radius(10)],
+                    defaults=[rr.GraphNodes.from_fields(show_labels=False, radii=10)],
                 ),
                 rrb.Horizontal(
                     rrb.GraphView(

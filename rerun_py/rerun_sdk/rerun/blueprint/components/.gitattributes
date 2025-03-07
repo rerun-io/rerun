@@ -38,5 +38,5 @@ view_origin.py linguist-generated=true
 viewer_recommendation_hash.py linguist-generated=true
 visible_time_range.py linguist-generated=true
 visual_bounds2d.py linguist-generated=true
-visualizer_overrides.py linguist-generated=true
+visualizer_override.py linguist-generated=true
 zoom_level.py linguist-generated=true

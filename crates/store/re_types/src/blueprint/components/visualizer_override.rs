@@ -18,36 +18,29 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Override the visualizers for an entity.
+/// **Component**: Single visualizer override the visualizers for an entity.
 ///
-/// This component is a stop-gap mechanism based on the current implementation details
-/// of the visualizer system. It is not intended to be a long-term solution, but provides
-/// enough utility to be useful in the short term.
-///
-/// The long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>
-///
-/// This can only be used as part of blueprints. It will have no effect if used
-/// in a regular entity.
+/// For details see [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
-pub struct VisualizerOverrides(
-    /// Names of the visualizers that should be active.
-    pub crate::blueprint::datatypes::Utf8List,
+pub struct VisualizerOverride(
+    /// Names of a visualizer that should be active.
+    pub crate::datatypes::Utf8,
 );
 
-impl ::re_types_core::Component for VisualizerOverrides {
+impl ::re_types_core::Component for VisualizerOverride {
     #[inline]
     fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.VisualizerOverrides")
+        ComponentDescriptor::new("rerun.blueprint.components.VisualizerOverride")
     }
 }
 
-::re_types_core::macros::impl_into_cow!(VisualizerOverrides);
+::re_types_core::macros::impl_into_cow!(VisualizerOverride);
 
-impl ::re_types_core::Loggable for VisualizerOverrides {
+impl ::re_types_core::Loggable for VisualizerOverride {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::blueprint::datatypes::Utf8List::arrow_datatype()
+        crate::datatypes::Utf8::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -56,7 +49,7 @@ impl ::re_types_core::Loggable for VisualizerOverrides {
     where
         Self: Clone + 'a,
     {
-        crate::blueprint::datatypes::Utf8List::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::Utf8::to_arrow_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -70,41 +63,41 @@ impl ::re_types_core::Loggable for VisualizerOverrides {
     where
         Self: Sized,
     {
-        crate::blueprint::datatypes::Utf8List::from_arrow_opt(arrow_data)
+        crate::datatypes::Utf8::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }
 
-impl<T: Into<crate::blueprint::datatypes::Utf8List>> From<T> for VisualizerOverrides {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for VisualizerOverride {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::Utf8List> for VisualizerOverrides {
+impl std::borrow::Borrow<crate::datatypes::Utf8> for VisualizerOverride {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::Utf8List {
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
         &self.0
     }
 }
 
-impl std::ops::Deref for VisualizerOverrides {
-    type Target = crate::blueprint::datatypes::Utf8List;
+impl std::ops::Deref for VisualizerOverride {
+    type Target = crate::datatypes::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::Utf8List {
+    fn deref(&self) -> &crate::datatypes::Utf8 {
         &self.0
     }
 }
 
-impl std::ops::DerefMut for VisualizerOverrides {
+impl std::ops::DerefMut for VisualizerOverride {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::Utf8List {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
         &mut self.0
     }
 }
 
-impl ::re_byte_size::SizeBytes for VisualizerOverrides {
+impl ::re_byte_size::SizeBytes for VisualizerOverride {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()
@@ -112,6 +105,6 @@ impl ::re_byte_size::SizeBytes for VisualizerOverrides {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::datatypes::Utf8List>::is_pod()
+        <crate::datatypes::Utf8>::is_pod()
     }
 }

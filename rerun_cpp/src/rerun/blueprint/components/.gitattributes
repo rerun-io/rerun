@@ -43,5 +43,5 @@ view_origin.hpp linguist-generated=true
 viewer_recommendation_hash.hpp linguist-generated=true
 visible_time_range.hpp linguist-generated=true
 visual_bounds2d.hpp linguist-generated=true
-visualizer_overrides.hpp linguist-generated=true
+visualizer_override.hpp linguist-generated=true
 zoom_level.hpp linguist-generated=true

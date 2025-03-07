@@ -50,9 +50,7 @@ def run(args: Namespace) -> None:
                 overrides={
                     "plots/cos": [
                         rrb.VisualizerOverrides("SeriesPoint"),
-                        rr.components.Color([0, 255, 0]),
-                        # TODDO(#6670): This should just be `rr.components.MarkerShape.Cross`
-                        rr.components.MarkerShapeBatch("cross"),
+                        rr.SeriesPoint.from_fields(color=[0, 255, 0], marker="cross"),
                     ],
                 },
             ),

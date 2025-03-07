@@ -11,5 +11,3 @@ selected_columns.cpp linguist-generated=true
 selected_columns.hpp linguist-generated=true
 tensor_dimension_index_slider.cpp linguist-generated=true
 tensor_dimension_index_slider.hpp linguist-generated=true
-utf8list.cpp linguist-generated=true
-utf8list.hpp linguist-generated=true

@@ -11,9 +11,9 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: Like `Visible`, but for time series.
+    /// **Component**: Like `components::Visible`, but for time series.
     ///
-    /// TODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.
+    /// TODO(#6889): This is a temporary workaround. Right now we can't use `components::Visible` since it would conflict with the entity-wide visibility state.
     struct SeriesVisible {
         rerun::datatypes::Bool visible;
 

@@ -25,3 +25,4 @@ view_contents.rs linguist-generated=true
 viewport_blueprint.rs linguist-generated=true
 visible_time_ranges.rs linguist-generated=true
 visual_bounds2d.rs linguist-generated=true
+visualizer_overrides.rs linguist-generated=true

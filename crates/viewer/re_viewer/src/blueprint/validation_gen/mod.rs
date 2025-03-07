@@ -40,7 +40,7 @@ pub use re_types::blueprint::components::ViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::VisibleTimeRange;
 pub use re_types::blueprint::components::VisualBounds2D;
-pub use re_types::blueprint::components::VisualizerOverrides;
+pub use re_types::blueprint::components::VisualizerOverride;
 pub use re_types::blueprint::components::ZoomLevel;
 
 /// Because blueprints are both read and written the schema must match what
@@ -83,6 +83,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<VisibleTimeRange>(blueprint)
         && validate_component::<VisualBounds2D>(blueprint)
-        && validate_component::<VisualizerOverrides>(blueprint)
+        && validate_component::<VisualizerOverride>(blueprint)
         && validate_component::<ZoomLevel>(blueprint)
 }

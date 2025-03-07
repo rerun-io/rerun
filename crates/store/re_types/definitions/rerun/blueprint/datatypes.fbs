@@ -5,4 +5,3 @@ include "./datatypes/filter_by_range.fbs";
 include "./datatypes/filter_is_not_null.fbs";
 include "./datatypes/selected_columns.fbs";
 include "./datatypes/tensor_dimension_index_slider.fbs";
-include "./datatypes/utf8_list.fbs";

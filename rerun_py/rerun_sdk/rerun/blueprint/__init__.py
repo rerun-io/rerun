@@ -7,6 +7,7 @@ from __future__ import annotations
 from ..datatypes import (  # Re-export time range types for better discoverability.
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
+    VisibleTimeRange as VisibleTimeRange,
 )
 from . import (
     archetypes as archetypes,
@@ -33,16 +34,15 @@ from .archetypes import (
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,
     TensorSliceSelection as TensorSliceSelection,
-    # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
+    VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
+    VisualizerOverrides as VisualizerOverrides,
 )
 from .components import (
     BackgroundKind as BackgroundKind,
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
     MapProvider as MapProvider,
-    VisibleTimeRange as VisibleTimeRange,
-    VisualizerOverrides as VisualizerOverrides,
 )
 from .containers import (
     Grid as Grid,
