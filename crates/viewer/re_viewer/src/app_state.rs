@@ -324,9 +324,9 @@ impl AppState {
                             &view.space_origin,
                         );
 
-                    let resolver = view.contents.build_resolver(
-                        view_class_registry,
+                    let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                         view,
+                        view_class_registry,
                         &maybe_visualizable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,

@@ -18,7 +18,7 @@ pub use container::ContainerBlueprint;
 pub use entity_add_info::{create_entity_add_info, CanAddToView, EntityAddInfo};
 use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
-pub use view_contents::ViewContents;
+pub use view_contents::{DataQueryPropertyResolver, ViewContents};
 pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPropertyQueryError};
 pub use viewport_blueprint::{tree_simplification_options, ViewportBlueprint};
 pub use viewport_command::ViewportCommand;
