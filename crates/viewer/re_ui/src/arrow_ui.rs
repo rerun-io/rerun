@@ -1,5 +1,5 @@
 use arrow::{
-    array::Array,
+    array::{Array, AsArray, LargeListArray, ListArray},
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
@@ -13,8 +13,6 @@ use crate::UiLayout;
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
 
-    use arrow::array::{LargeListArray, LargeStringArray, ListArray, StringArray};
-
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
@@ -26,18 +24,22 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // Special-treat text.
         // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(entries) = array.downcast_array_ref::<StringArray>() {
+        if let Some(entries) = array.as_string_opt::<i32>() {
             if entries.len() == 1 {
                 let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
+                if url::Url::parse(string).is_ok() {
+                    ui_layout.data_label(ui, string);
+                    return;
+                }
             }
         }
-        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>() {
+        if let Some(entries) = array.as_string_opt::<i64>() {
             if entries.len() == 1 {
                 let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
+                if url::Url::parse(string).is_ok() {
+                    ui_layout.data_label(ui, string);
+                    return;
+                }
             }
         }
 
@@ -89,14 +91,19 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 }
 
 fn make_formatter(array: &dyn Array) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
-    // It would be nice to add quotes around strings,
-    // but we already special-case single strings so that we can show them as links,
-    // so we if we change things here we need to change that too. Maybe we should.
-    let options = FormatOptions::default()
-        .with_null("null")
-        .with_display_error(true);
-    let formatter = ArrayFormatter::try_new(array, &options)?;
-    Ok(Box::new(move |index| formatter.value(index).to_string()))
+    if let Some(string_array) = array.as_string_opt::<i32>() {
+        // Add quotes around strings to show the user that they are, indeed, strings.
+        // This is similar to how strings in (almost) all programming languages are displayed.
+        Ok(Box::new(move |index| {
+            format!("{:?}", string_array.value(index).to_owned())
+        }))
+    } else {
+        let options = FormatOptions::default()
+            .with_null("null")
+            .with_display_error(true);
+        let formatter = ArrayFormatter::try_new(array, &options)?;
+        Ok(Box::new(move |index| formatter.value(index).to_string()))
+    }
 }
 
 // TODO(emilk): there is some overlap here with `re_format_arrow`.
