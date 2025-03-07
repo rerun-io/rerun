@@ -95,7 +95,7 @@ pub fn default_log_filter() -> String {
         if cfg!(debug_assertions) {
             "debug".to_owned()
         } else {
-            // Important to keep the default at (at leas) "info",
+            // Important to keep the default at (at least) "info",
             // as we print crucial information at INFO,
             // e.g. the ip:port when hosting a server with `rerun-cli`.
             // TODO(#7815): change to "warn" inside notebooks.
