@@ -256,8 +256,8 @@ class AffixFuzzer2(Archetype):
         for batch in batches:
             arrow_array = batch.as_arrow_array()
 
-            # For primitive arrays, we infer partition size from the input shape.
-            if pa.types.is_primitive(arrow_array.type):
+            # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
