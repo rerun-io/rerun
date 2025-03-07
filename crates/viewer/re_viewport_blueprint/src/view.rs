@@ -457,8 +457,8 @@ mod tests {
     };
     use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
-        test_context::TestContext, DataResult, IndicatedEntities, MaybeVisualizableEntities,
-        OverridePath, PerVisualizer, StoreContext, VisualizableEntities,
+        test_context::TestContext, IndicatedEntities, MaybeVisualizableEntities, OverridePath,
+        PerVisualizer, StoreContext, VisualizableEntities,
     };
 
     use crate::view_contents::DataQueryPropertyResolver;
@@ -515,20 +515,16 @@ mod tests {
 
         // Basic blueprint - a single view that queries everything.
         let view = ViewBlueprint::new("3D".into(), RecommendedView::root());
-        let individual_override_root = view
-            .contents
-            .blueprint_entity_path
-            .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
-        let recursive_override_root = view
-            .contents
-            .blueprint_entity_path
-            .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
+        let individual_override_root =
+            ViewContents::override_path_for_entity(view.id, &EntityPath::root());
+        let recursive_override_root =
+            ViewContents::recursive_override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
-        let resolver = view.contents.build_resolver(
-            &test_ctx.view_class_registry,
+        let resolver = DataQueryPropertyResolver::new(
             &view,
+            &test_ctx.view_class_registry,
             &maybe_visualizable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,

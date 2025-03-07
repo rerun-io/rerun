@@ -86,9 +86,6 @@ pub struct DataResult {
 }
 
 impl DataResult {
-    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
-    pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
-
     #[inline]
     pub fn recursive_override_path(&self) -> &EntityPath {
         &self.property_overrides.recursive_override_path

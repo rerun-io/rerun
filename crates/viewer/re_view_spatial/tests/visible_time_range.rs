@@ -1,15 +1,11 @@
+//! Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
+
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
-use re_types::archetypes::Points2D;
-use re_types::datatypes::VisibleTimeRange;
-use re_types::Archetype as _;
+use re_types::{archetypes::Points2D, datatypes::VisibleTimeRange, Archetype as _};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
-use re_viewport_blueprint::ViewBlueprint;
-
-///! Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
+use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
     let timeline = Timeline::new_sequence("frame");
@@ -362,12 +358,13 @@ fn setup_blueprint(
         if let Some(green_time_range) = green_time_range {
             let visible_time_range_list =
                 re_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
-            let property_path = view_id
-                .as_entity_path()
-                // TODO: don't hardcode this path.
-                .join(&EntityPath::from("ViewContents/individual_overrides/green"));
-
-            ctx.save_blueprint_archetype(&property_path, &visible_time_range_list);
+            ctx.save_blueprint_archetype(
+                &re_viewport_blueprint::ViewContents::override_path_for_entity(
+                    view_id,
+                    &"green".into(),
+                ),
+                &visible_time_range_list,
+            );
         }
 
         view_id
