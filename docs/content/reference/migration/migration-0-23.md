@@ -123,4 +123,77 @@ Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If 
 
 ## 🐍 Python: blueprint overrides & defaults are now archetype based
 
-TODO:
+Just like with `send_columns` in the previous release, blueprint overrides and defaults are now archetype based.
+
+**Examples:**
+
+Setting default & override for radius
+
+Before:
+```py
+rrb.Spatial2DView(
+    name="Rect 1",
+    origin="/",
+    contents=["/**"],
+    defaults=[rr.components.Radius(2)],
+    overrides={"rect/0": [rr.components.Radius(1)]},
+)
+```
+After:
+```py
+rrb.Spatial2DView(
+    name="Rect 1",
+    origin="/",
+    contents=["/**"],
+    defaults=[rr.Boxes2D.from_fields(radii=1)],
+    overrides={"rect/0": rr.Boxes2D.from_fields(radii=2)},
+)
+```
+
+Setting up styles for a plot.
+
+Before:
+```py
+rrb.TimeSeriesView(
+    name="Trig",
+    origin="/trig",
+    overrides={
+        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+    },
+),
+rrb.TimeSeriesView(
+    name="Classification",
+    origin="/classification",
+    overrides={
+        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
+    },
+),
+```
+After:
+```py
+rrb.TimeSeriesView(
+    name="Trig",
+    origin="/trig",
+    overrides={
+        "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
+        "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+    },
+),
+rrb.TimeSeriesView(
+    name="Classification",
+    origin="/classification",
+    overrides={
+        "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
+        "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
+    },
+),
+```
+
+
+⚠️ Warning: Just like regular log/send calls, overlapping component types still overwrite each other.
+E.g. overriding a box radius will also override point radius on the same entity.
+In a future release, components tagged with a different archetype or field name can live side by side,
+but for the moment the Viewer is not able to make this distinction.
+For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
