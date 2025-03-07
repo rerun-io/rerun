@@ -264,8 +264,7 @@ fn log_episode_task(
             continue;
         };
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         let text = TextDocument::new(task.task.clone());
         chunk = chunk.with_archetype(row_id, timepoint, &text);
 
@@ -290,17 +289,14 @@ fn load_episode_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {
@@ -322,19 +318,16 @@ fn load_episode_depth_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
             .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {
