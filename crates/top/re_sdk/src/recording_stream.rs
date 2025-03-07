@@ -2051,7 +2051,7 @@ impl RecordingStream {
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
+            re_log::warn_once!("Recording disabled - call to set_timepoint() ignored");
         }
     }
 
