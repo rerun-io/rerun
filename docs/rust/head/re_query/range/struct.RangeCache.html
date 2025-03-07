@@ -14,7 +14,7 @@ time effectively behaves as a natural micro-batching mechanism.</p>
 <p>This is extremely slow (<code>O(n)</code>), don’t use this for anything but debugging.</p>
 </div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-RangeCache-1" class="impl"><a class="src rightside" href="../../src/re_query/range.rs.html#258-328">Source</a><a href="#impl-RangeCache-1" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.RangeCache.html" title="struct re_query::range::RangeCache">RangeCache</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.range" class="method"><a class="src rightside" href="../../src/re_query/range.rs.html#260-314">Source</a><h4 class="code-header">pub fn <a href="#method.range" class="fn">range</a>(
     &amp;mut self,
-    store: &amp;<a class="struct" href="../../re_chunk_store/store/struct.ChunkStore.html" title="struct re_chunk_store::store::ChunkStore">ChunkStore</a>,
+    store: &amp;ChunkStore,
     query: &amp;<a class="struct" href="../../re_chunk/range/struct.RangeQuery.html" title="struct re_chunk::range::RangeQuery">RangeQuery</a>,
     entity_path: &amp;<a class="struct" href="../../re_log_types/path/entity_path/struct.EntityPath.html" title="struct re_log_types::path::entity_path::EntityPath">EntityPath</a>,
     component_name: ComponentName,
