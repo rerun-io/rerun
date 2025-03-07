@@ -72,7 +72,7 @@ use re_chunk::{
     external::crossbeam::channel::TryRecvError, ChunkBatcher, ChunkBatcherConfig, PendingRow,
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
-use re_log_types::{TimePoint, TimeType, Timeline};
+use re_log_types::{TimePoint, Timeline};
 use re_types::{components::Scalar, Component as _, Loggable as _};
 
 /// The memory overhead of storing many scalars in the store.
