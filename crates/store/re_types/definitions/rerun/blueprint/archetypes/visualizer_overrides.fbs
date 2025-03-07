@@ -14,6 +14,6 @@ table VisualizerOverrides (
     "attr.rerun.scope": "blueprint",
     "attr.python.aliases": "str, Sequence[str]"
 ) {
-  /// Names of the visualizers that should be active.
+   /// Names of the visualizers that should be active.
    ranges: [rerun.blueprint.components.VisualizerOverride] ("attr.rerun.component_required", order: 1000);
 }

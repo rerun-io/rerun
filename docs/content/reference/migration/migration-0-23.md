@@ -154,6 +154,7 @@ Setting up styles for a plot.
 
 Before:
 ```py
+# ...
 rrb.TimeSeriesView(
     name="Trig",
     origin="/trig",
@@ -170,9 +171,11 @@ rrb.TimeSeriesView(
         "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
     },
 ),
+# ...
 ```
 After:
 ```py
+# ...
 rrb.TimeSeriesView(
     name="Trig",
     origin="/trig",
@@ -189,11 +192,47 @@ rrb.TimeSeriesView(
         "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
     },
 ),
+# ...
 ```
-
 
 ⚠️ Warning: Just like regular log/send calls, overlapping component types still overwrite each other.
 E.g. overriding a box radius will also override point radius on the same entity.
 In a future release, components tagged with a different archetype or field name can live side by side,
 but for the moment the Viewer is not able to make this distinction.
 For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
+
+
+### Visible time range overrides have to specify the underlying archetype
+
+(Note that this functionallity broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))
+
+Before:
+```py
+# ...
+overrides={
+    "helix/structure/scaffolding/beads": [
+        rrb.VisibleTimeRange(
+            "stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+        ),
+    ],
+},
+# ...
+```
+
+After:
+```py
+# ...
+overrides={
+    "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
+        rrb.VisibleTimeRange(
+            timelines="stable_time",
+            starts=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            ends=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+        ),
+    ),
+}
+# ...
+```
+

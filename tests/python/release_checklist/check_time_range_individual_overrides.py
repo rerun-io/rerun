@@ -32,13 +32,13 @@ def blueprint() -> rrb.BlueprintLike:
                 rrb.Spatial3DView(
                     origin="/",
                     overrides={
-                        "helix/structure/scaffolding/beads": [
+                        "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
                             rrb.VisibleTimeRange(
-                                "stable_time",
-                                start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
-                                end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+                                timelines="stable_time",
+                                starts=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+                                ends=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
                             ),
-                        ],
+                        ),
                     },
                 ),
                 rrb.Vertical(

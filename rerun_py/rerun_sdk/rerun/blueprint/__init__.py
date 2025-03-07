@@ -7,6 +7,7 @@ from __future__ import annotations
 from ..datatypes import (  # Re-export time range types for better discoverability.
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
+    VisibleTimeRange as VisibleTimeRange,
 )
 from . import (
     archetypes as archetypes,
@@ -42,7 +43,6 @@ from .components import (
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
     MapProvider as MapProvider,
-    VisibleTimeRange as VisibleTimeRange,
 )
 from .containers import (
     Grid as Grid,
