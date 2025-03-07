@@ -2114,6 +2114,25 @@ impl RecordingStream {
         self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
     }
 
+    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`.
+    pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
+        self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
+    }
+
+    /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    ///
+    /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    pub fn set_timestamp_seconds_since_epoch(
+        &self,
+        timeline: impl Into<TimelineName>,
+        secs: impl Into<f64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_seconds_since_epoch(secs.into()),
+        );
+    }
+
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
@@ -2130,33 +2149,11 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    #[deprecated(
+        note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
+    )]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let mut seconds = seconds.into();
-            if seconds.is_nan() {
-                re_log::error!("set_time_seconds() called with NaN");
-                seconds = 0.0;
-            }
-
-            let nanos = 1e9 * seconds;
-            let nanos_clamped = nanos.clamp(NonMinI64::MIN.get() as _, NonMinI64::MAX.get() as _);
-
-            if nanos != nanos_clamped {
-                re_log::warn_once!(
-                    "set_time_seconds() called with out-of-range value {seconds:?}. Clamping to valid range."
-                );
-            }
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(nanos_clamped.round() as i64),
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
-        }
+        self.set_duration_seconds(timeline, seconds);
     }
 
     /// Set the current time of the recording, for the current calling thread.

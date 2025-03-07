@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
-    rec.set_time_seconds("stable_time", 0f64);
+    rec.set_duration_seconds("stable_time", 0f64);
 
     rec.log_static(
         "dna/structure/left",
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..400 {
         let time = i as f32 * 0.01;
 
-        rec.set_time_seconds("stable_time", time as f64);
+        rec.set_duration_seconds("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
         let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
