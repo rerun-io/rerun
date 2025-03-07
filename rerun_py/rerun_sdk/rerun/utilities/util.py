@@ -9,7 +9,9 @@ import numpy.typing as npt
 
 
 def bounce_lerp(
-    a: float, b: float, t: float | np.ndarray[Any, np.dtype[Any]]
+    a: float,
+    b: float,
+    t: float | np.ndarray[Any, np.dtype[Any]],
 ) -> float | np.ndarray[Any, np.dtype[Any]]:
     """
     A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.

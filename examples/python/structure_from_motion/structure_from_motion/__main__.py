@@ -103,7 +103,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
     rr.log("plot/avg_reproj_err", rr.SeriesLine(color=[240, 45, 58]), static=True)
 
     # Iterate through images (video frames) logging data related to each frame.
-    for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
+    for image in sorted(images.values(), key=lambda im: im.name):
         image_file = dataset_path / "images" / image.name
 
         if not os.path.exists(image_file):
@@ -132,7 +132,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         if resize:
             visible_xys *= scale_factor
 
-        rr.set_time_sequence("frame", frame_idx)
+        rr.set_index("frame", sequence=frame_idx)
 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]
@@ -144,7 +144,8 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
 
         # COLMAP's camera transform is "camera from world"
         rr.log(
-            "camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True)
+            "camera",
+            rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True),
         )
         rr.log("camera", rr.ViewCoordinates.RDF, static=True)  # X=Right, Y=Down, Z=Forward
 

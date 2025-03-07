@@ -25,8 +25,8 @@ def log_readme() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
-    for t in range(0, int(tau * 2 * 10.0)):
-        rr.set_time_sequence("frame_nr", t)
+    for t in range(int(tau * 2 * 10.0)):
+        rr.set_index("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)
         rr.log("plots/sin", rr.Scalar(sin_of_t))
@@ -56,7 +56,7 @@ def run(args: Namespace) -> None:
                     ],
                 },
             ),
-        )
+        ),
     )
     rr.send_blueprint(blueprint, make_active=True, make_default=True)
 

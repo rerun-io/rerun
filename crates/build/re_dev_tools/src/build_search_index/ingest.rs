@@ -23,7 +23,7 @@ use indicatif::ProgressBar;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::cell::RefCell;
-use std::io::IsTerminal;
+use std::io::IsTerminal as _;
 use std::time::Duration;
 
 pub fn run(

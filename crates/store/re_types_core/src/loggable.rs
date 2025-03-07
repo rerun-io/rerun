@@ -6,7 +6,7 @@ use re_byte_size::SizeBytes;
 
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
-#[allow(unused_imports)] // used in docstrings
+#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
 
 // ---
@@ -74,6 +74,13 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         data: &dyn arrow::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>> {
         Self::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
+    }
+
+    /// Verifies that the given Arrow array can be deserialized into a collection of [`Self`]s.
+    ///
+    /// Calls [`Self::from_arrow`] and returns an error if it fails.
+    fn verify_arrow_array(data: &dyn arrow::array::Array) -> crate::DeserializationResult<()> {
+        Self::from_arrow(data).map(|_| ())
     }
 }
 

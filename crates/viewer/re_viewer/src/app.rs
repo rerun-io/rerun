@@ -10,13 +10,13 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
+use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand, SystemCommandSender,
-    ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -640,6 +640,8 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
+                self.state.display_mode = DisplayMode::RedapBrowser;
+                self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -669,7 +671,8 @@ impl App {
                 match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                        self.state.redap_servers.add_server(endpoint.origin);
+                        self.command_sender
+                            .send_system(SystemCommand::AddRedapServer { endpoint });
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -970,6 +973,11 @@ impl App {
             UICommand::ToggleBlueprintPanel => {
                 app_blueprint.toggle_blueprint_panel(&self.command_sender);
             }
+            UICommand::ExpandBlueprintPanel => {
+                if !app_blueprint.blueprint_panel_state().is_expanded() {
+                    app_blueprint.toggle_blueprint_panel(&self.command_sender);
+                }
+            }
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
@@ -1177,7 +1185,7 @@ impl App {
         &mut self,
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<()> {
-        use crate::web_tools::JsResultExt;
+        use crate::web_tools::JsResultExt as _;
         let href = self.get_viewer_url().ok_or_log_js_error()?;
 
         let direct_link = match store_context
@@ -1232,7 +1240,7 @@ impl App {
         // which can be passed to `rerun-cli`.
         #[cfg(target_arch = "wasm32")]
         let url = {
-            use crate::web_tools::JsResultExt;
+            use crate::web_tools::JsResultExt as _;
             let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
                 // error was logged already
                 return;
@@ -1368,8 +1376,6 @@ impl App {
                     .get_mut::<re_renderer::RenderContext>()
                 {
                     if let Some(store_context) = store_context {
-                        let entity_db = store_context.recording;
-
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
@@ -1384,7 +1390,6 @@ impl App {
                             app_blueprint,
                             ui,
                             render_ctx,
-                            entity_db,
                             store_context,
                             &self.reflection,
                             &self.component_ui_registry,
@@ -1913,7 +1918,8 @@ impl App {
     }
 
     pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
-        self.state.redap_servers.add_server(endpoint.origin);
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer { endpoint });
     }
 }
 

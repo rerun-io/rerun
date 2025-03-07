@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -31,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Simple segmentation image
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder};
+/// use ndarray::{s, Array, ShapeBuilder as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image").spawn()?;

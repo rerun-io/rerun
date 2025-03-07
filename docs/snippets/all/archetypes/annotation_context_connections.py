@@ -17,7 +17,7 @@ rr.log(
                 (3, "three", (255, 255, 0)),
             ],
             keypoint_connections=[(0, 2), (1, 2), (2, 3)],
-        )
+        ),
     ]),
     static=True,
 )

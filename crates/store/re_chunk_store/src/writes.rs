@@ -461,9 +461,10 @@ impl ChunkStore {
                 *candidates_below_threshold
                     .entry(candidate_chunk_id)
                     .or_insert_with(|| {
-                        store.chunks_per_chunk_id.get(&candidate_chunk_id).map_or(
-                            false,
-                            |candidate| {
+                        store
+                            .chunks_per_chunk_id
+                            .get(&candidate_chunk_id)
+                            .is_some_and(|candidate| {
                                 if !chunk.concatenable(candidate) {
                                     return false;
                                 }
@@ -480,8 +481,7 @@ impl ChunkStore {
                                 };
 
                                 is_below_bytes_threshold && is_below_rows_threshold
-                            },
-                        )
+                            })
                     })
             };
 

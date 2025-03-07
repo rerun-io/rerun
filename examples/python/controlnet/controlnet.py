@@ -28,14 +28,17 @@ RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controln
 
 
 def controlnet_callback(
-    pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict[str, Any]
+    pipe: StableDiffusionXLControlNetPipeline,
+    step_index: int,
+    timestep: float,
+    callback_kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    rr.set_time_sequence("iteration", step_index)
-    rr.set_time_seconds("timestep", timestep)
+    rr.set_index("iteration", sequence=step_index)
+    rr.set_index("timestep", timedelta=timestep)
     latents = callback_kwargs["latents"]
 
-    image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]  # type: ignore[attr-defined]
-    image = pipe.image_processor.postprocess(image, output_type="np").squeeze()  # type: ignore[attr-defined]
+    image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]
+    image = pipe.image_processor.postprocess(image, output_type="np").squeeze()
     rr.log("output", rr.Image(image))
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 
@@ -47,7 +50,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         print("This example requires a torch with CUDA, but no CUDA device found. Aborting.")
         return
 
-    if image_path.startswith("http://") or image_path.startswith("https://"):
+    if image_path.startswith(("http://", "https://")):
         pil_image = PIL.Image.open(requests.get(image_path, stream=True).raw)
     elif os.path.isfile(image_path):
         pil_image = PIL.Image.open(image_path)
@@ -79,7 +82,9 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         use_safetensors=True,
     )
     vae = AutoencoderKL.from_pretrained(
-        "madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16, use_safetensors=True
+        "madebyollin/sdxl-vae-fp16-fix",
+        torch_dtype=torch.float16,
+        use_safetensors=True,
     )
     pipeline = StableDiffusionXLControlNetPipeline.from_pretrained(
         "stabilityai/stable-diffusion-xl-base-1.0",

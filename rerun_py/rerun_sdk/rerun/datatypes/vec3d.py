@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike"]
 class Vec3D(Vec3DExt):
     """**Datatype**: A vector in 3D space."""
 
-    def __init__(self: Any, xyz: Vec3DLike):
+    def __init__(self: Any, xyz: Vec3DLike) -> None:
         """Create a new instance of the Vec3D datatype."""
 
         # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
@@ -35,9 +36,9 @@ class Vec3D(Vec3DExt):
 
     xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec3DExt in vec3d_ext.py
-        return np.asarray(self.xyz, dtype=dtype)
+        return np.asarray(self.xyz, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

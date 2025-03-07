@@ -4,17 +4,17 @@
 
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
-use std::{borrow::Borrow, collections::HashMap};
+use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyDict},
 };
 
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
@@ -1062,6 +1062,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     recording.set_time_sequence(timeline, sequence);
 }
 
+// TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, seconds, recording=None))]
 fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
@@ -1071,6 +1072,7 @@ fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecording
     recording.set_time_seconds(timeline, seconds);
 }
 
+// TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
 fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {

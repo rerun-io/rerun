@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
-use itertools::{Either, Itertools};
+use itertools::{Either, Itertools as _};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{ResolvedTimeRange, StoreKind, TimeType, TimeZone, Timeline, TimelineName};

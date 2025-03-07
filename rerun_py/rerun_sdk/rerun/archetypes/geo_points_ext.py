@@ -23,7 +23,7 @@ class GeoPointsExt:
         lat_lon: datatypes.DVec2DArrayLike,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the GeoPoints archetype.
 

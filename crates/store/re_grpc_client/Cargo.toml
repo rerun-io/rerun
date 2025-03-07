@@ -32,6 +32,7 @@ re_uri.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true
+futures.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
 url.workspace = true

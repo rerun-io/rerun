@@ -1,6 +1,6 @@
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt as _};
 use gltf::texture::WrappingMode;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use crate::{

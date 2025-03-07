@@ -37,7 +37,7 @@ def test_depth_image() -> None:
             f"    {img}\n"
             f"    meter={meter!r}\n"
             f"    depth_range={depth_range!r}\n"
-            f")"
+            f")",
         )
         arch = rr.DepthImage(img, meter=meter, depth_range=depth_range)
 
@@ -47,7 +47,7 @@ def test_depth_image() -> None:
                 width=img.shape[1],
                 height=img.shape[0],
                 channel_datatype=ChannelDatatype.from_np_dtype(img.dtype),
-            )
+            ),
         )
         assert arch.meter == rr.components.DepthMeterBatch._converter(meter)
         assert arch.depth_range == rr.components.ValueRangeBatch._converter(depth_range)

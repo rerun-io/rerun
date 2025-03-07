@@ -34,7 +34,7 @@ class ContainerBlueprint(Archetype):
         active_tab: datatypes.EntityPathLike | None = None,
         visible: datatypes.BoolLike | None = None,
         grid_columns: datatypes.UInt32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ContainerBlueprint archetype.
 

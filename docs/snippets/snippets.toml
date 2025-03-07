@@ -208,10 +208,31 @@ features = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-concepts = [ # Only python
-  "cpp",
+"concepts/explicit_recording" = ["cpp", "rust"] # Only python
+"concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
+"concepts/different_data_per_timeline" = [
+  # TODO(#5521): log VisualBounds2D in all languages
   "py",
-  "rust",
+]
+"concepts/viscomp-base" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-default" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override-multiple" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",

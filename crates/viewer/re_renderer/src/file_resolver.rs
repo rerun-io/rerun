@@ -182,7 +182,7 @@ use std::{
     rc::Rc,
 };
 
-use ahash::{HashMap, HashSet, HashSetExt};
+use ahash::{HashMap, HashSet, HashSetExt as _};
 use anyhow::{anyhow, bail, ensure, Context as _};
 use clean_path::Clean as _;
 

@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Simple tensor
 /// ```ignore
-/// use ndarray::{Array, ShapeBuilder};
+/// use ndarray::{Array, ShapeBuilder as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_tensor").spawn()?;

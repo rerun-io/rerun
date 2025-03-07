@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -36,7 +37,7 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, class_map: AnnotationContextLike):
+    def __init__(self: Any, class_map: AnnotationContextLike) -> None:
         """
         Create a new instance of the AnnotationContext component.
 

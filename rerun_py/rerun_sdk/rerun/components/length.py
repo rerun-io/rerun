@@ -27,7 +27,6 @@ class Length(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of LengthExt in length_ext.py
 
     # Note: there are no fields here because Length delegates to datatypes.Float32
-    pass
 
 
 class LengthBatch(datatypes.Float32Batch, ComponentBatchMixin):

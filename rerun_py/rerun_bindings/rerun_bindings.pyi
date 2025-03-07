@@ -1,6 +1,7 @@
 import os
+from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Iterator, Optional, Sequence, Union
+from typing import Optional
 
 import pyarrow as pa
 
@@ -33,12 +34,10 @@ class IndexColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
     @property
     def is_static(self) -> bool:
         """Part of generic ColumnDescriptor interface: always False for Index."""
-        ...
 
 class IndexColumnSelector:
     """
@@ -48,7 +47,7 @@ class IndexColumnSelector:
     generally correspond to Rerun timelines.
     """
 
-    def __init__(self, index: str):
+    def __init__(self, index: str) -> None:
         """
         Create a new `IndexColumnSelector`.
 
@@ -59,14 +58,12 @@ class IndexColumnSelector:
 
         """
 
-        ...
     def name(self) -> str:
         """
         The name of the index.
 
         This property is read-only.
         """
-        ...
 
 class ComponentColumnDescriptor:
     """
@@ -86,7 +83,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
     @property
     def component_name(self) -> str:
@@ -95,7 +91,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
     @property
     def is_static(self) -> bool:
@@ -104,7 +99,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
 class ComponentColumnSelector:
     """
@@ -113,7 +107,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike):
+    def __init__(self, entity_path: str, component: ComponentLike) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -125,7 +119,6 @@ class ComponentColumnSelector:
             The component to select
 
         """
-        ...
     @property
     def entity_path(self) -> str:
         """
@@ -133,7 +126,6 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-        ...
 
     @property
     def component_name(self) -> str:
@@ -142,7 +134,6 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-        ...
 
 class VectorDistanceMetric(Enum):
     """Which distance metric for use for vector index."""
@@ -151,7 +142,6 @@ class VectorDistanceMetric(Enum):
     COSINE: VectorDistanceMetric
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
-    ...
 
 class Schema:
     """
@@ -161,17 +151,14 @@ class Schema:
     [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
     """
 
-    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]:
+    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
         """Iterate over all the column descriptors in the schema."""
-        ...
 
     def index_columns(self) -> list[IndexColumnDescriptor]:
         """Return a list of all the index columns in the schema."""
-        ...
 
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
-        ...
 
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
         """
@@ -190,7 +177,6 @@ class Schema:
             The column descriptor, if it exists.
 
         """
-        ...
 
 class RecordingView:
     """
@@ -218,7 +204,6 @@ class RecordingView:
         This schema will only contain the columns that are included in the view via
         the view contents.
         """
-        ...
 
     def filter_range_sequence(self, start: int, end: int) -> RecordingView:
         """
@@ -243,7 +228,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_range_seconds(self, start: float, end: float) -> RecordingView:
         """
@@ -268,7 +252,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_range_nanos(self, start: int, end: int) -> RecordingView:
         """
@@ -293,7 +276,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
@@ -319,7 +301,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_is_not_null(self, column: AnyComponentColumn) -> RecordingView:
         """
@@ -341,7 +322,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
@@ -368,7 +348,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def fill_latest_at(self) -> RecordingView:
         """
@@ -382,7 +361,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
@@ -416,7 +394,6 @@ class RecordingView:
 
         """
 
-        ...
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
@@ -444,7 +421,6 @@ class RecordingView:
             A reader that can be used to read out the selected data.
 
         """
-        ...
 
 class Recording:
     """
@@ -462,7 +438,6 @@ class Recording:
 
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
-        ...
 
     def view(
         self,
@@ -529,15 +504,12 @@ class Recording:
         ```
 
         """
-        ...
 
     def recording_id(self) -> str:
         """The recording ID of the recording."""
-        ...
 
     def application_id(self) -> str:
         """The application ID of the recording."""
-        ...
 
 class RRDArchive:
     """
@@ -548,10 +520,8 @@ class RRDArchive:
 
     def num_recordings(self) -> int:
         """The number of recordings in the archive."""
-        ...
     def all_recordings(self) -> list[Recording]:
         """All the recordings in the archive."""
-        ...
 
 def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
     """
@@ -570,7 +540,6 @@ def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
         The loaded recording.
 
     """
-    ...
 
 def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
     """
@@ -587,7 +556,6 @@ def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
         The loaded archive.
 
     """
-    ...
 
 class StorageNodeClient:
     """
@@ -597,7 +565,9 @@ class StorageNodeClient:
     """
 
     def query_catalog(
-        self, columns: Optional[list[str]] = None, recording_ids: Optional[list[str]] = None
+        self,
+        columns: Optional[list[str]] = None,
+        recording_ids: Optional[list[str]] = None,
     ) -> pa.RecordBatchReader:
         """
         Get the metadata for recordings in the storage node.
@@ -610,7 +580,6 @@ class StorageNodeClient:
             Fetch metadata of only specific recordings. If `None`, fetch for all.
 
         """
-        ...
 
     def get_recording_schema(self, id: str) -> Schema:
         """
@@ -627,7 +596,6 @@ class StorageNodeClient:
             The schema of the recording.
 
         """
-        ...
 
     def register(self, entry: str, storage_url: str, metadata: Optional[TableLike] = None) -> str:
         """
@@ -644,7 +612,6 @@ class StorageNodeClient:
             This Table must contain only a single row.
 
         """
-        ...
 
     def update_catalog(self, metadata: TableLike) -> None:
         """
@@ -659,7 +626,6 @@ class StorageNodeClient:
             A pyarrow Table or RecordBatch containing the metadata to update.
 
         """
-        ...
 
     def open_recording(self, id: str) -> Recording:
         """
@@ -679,7 +645,6 @@ class StorageNodeClient:
             The opened recording.
 
         """
-        ...
 
     def download_recording(self, id: str) -> Recording:
         """
@@ -698,7 +663,6 @@ class StorageNodeClient:
             The opened recording.
 
         """
-        ...
 
     def create_vector_index(
         self,
@@ -728,7 +692,6 @@ class StorageNodeClient:
             The distance metric to use for the index.
 
         """
-        ...
 
     def create_fts_index(
         self,
@@ -755,7 +718,6 @@ class StorageNodeClient:
             The base tokenizer to use.
 
         """
-        ...
 
     def search_vector_index(
         self,
@@ -784,7 +746,6 @@ class StorageNodeClient:
             The results of the query.
 
         """
-        ...
 
     def search_fts_index(
         self,
@@ -813,7 +774,6 @@ class StorageNodeClient:
             The results of the query.
 
         """
-        ...
 
 def connect(addr: str) -> StorageNodeClient:
     """
@@ -832,4 +792,3 @@ def connect(addr: str) -> StorageNodeClient:
         The connected client.
 
     """
-    ...

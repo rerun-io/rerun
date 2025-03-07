@@ -9,7 +9,7 @@ use arrow::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};

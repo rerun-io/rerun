@@ -25,12 +25,13 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import git
 import requests
@@ -54,10 +55,13 @@ def cargo(
     *,
     cargo_version: str | None = None,
     cwd: str | Path | None = None,
-    env: dict[str, Any] = {},
+    env: dict[str, Any] | None = None,
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
+    if env is None:
+        env = {}
+
     if cargo_version is None:
         cmd = [CARGO_PATH] + args.split()
     else:
@@ -69,7 +73,7 @@ def cargo(
 
 
 class Crate:
-    def __init__(self, manifest: dict[str, Any], path: Path):
+    def __init__(self, manifest: dict[str, Any], path: Path) -> None:
         self.manifest = manifest
         self.path = path
 
@@ -110,7 +114,7 @@ class DependencyKind(Enum):
 
 
 class Dependency:
-    def __init__(self, name: str, manifest_key: list[str], kind: DependencyKind):
+    def __init__(self, name: str, manifest_key: list[str], kind: DependencyKind) -> None:
         self.name = name
         self.manifest_key = manifest_key
         self.kind = kind
@@ -367,7 +371,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
     if not dry_run:
         with Path("Cargo.toml").open("w", encoding="utf-8") as f:
             tomlkit.dump(root, f)
-        for name, crate in crates.items():
+        for crate in crates.values():
             with Path(f"{crate.path}/Cargo.toml").open("w", encoding="utf-8") as f:
                 tomlkit.dump(crate.manifest, f)
     cargo("update --workspace", dry_run=dry_run)
@@ -544,12 +548,7 @@ class Target(Enum):
 
 
 def get_release_version_from_git_branch() -> str:
-    # TODO(ab): change this to s.removeprefix("release-") when we move to Python 3.9
-    s = git.Repo().active_branch.name
-    if s.startswith("release-"):
-        s = s[len("release-") :]
-
-    return s
+    return git.Repo().active_branch.name.removeprefix("release-")
 
 
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
@@ -624,13 +623,19 @@ def main() -> None:
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
     target_version_update_group = version_parser.add_mutually_exclusive_group()
     target_version_update_group.add_argument(
-        "--bump", type=Bump, choices=list(Bump), help="Bump version according to semver"
+        "--bump",
+        type=Bump,
+        choices=list(Bump),
+        help="Bump version according to semver",
     )
     target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
     dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
     dev_parser.add_argument(
-        "--no-dev", dest="dev", action="store_false", help="Remove `+dev` from build metadata (if present)"
+        "--no-dev",
+        dest="dev",
+        action="store_false",
+        help="Remove `+dev` from build metadata (if present)",
     )
     version_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     version_parser.add_argument(
@@ -650,14 +655,22 @@ def main() -> None:
 
     get_version_parser = cmds_parser.add_parser("get-version", help="Get the current crate version")
     get_version_parser.add_argument(
-        "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
+        "--finalize",
+        action="store_true",
+        help="Return version finalized if it is a pre-release",
     )
     get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
     get_version_parser.add_argument(
-        "--from", type=Target, choices=list(Target), help="Get version from git or crates.io", dest="target"
+        "--from",
+        type=Target,
+        choices=list(Target),
+        help="Get version from git or crates.io",
+        dest="target",
     )
     get_version_parser.add_argument(
-        "--skip-prerelease", action="store_true", help="If target is cratesio, return the first non-prerelease version"
+        "--skip-prerelease",
+        action="store_true",
+        help="If target is cratesio, return the first non-prerelease version",
     )
 
     args = parser.parse_args()

@@ -67,7 +67,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     """
 
-    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike):
+    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike) -> None:
         """
         Create a new instance of the ViewCoordinates archetype.
 
@@ -178,8 +178,8 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

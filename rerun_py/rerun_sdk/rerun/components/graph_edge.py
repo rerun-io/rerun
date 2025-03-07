@@ -22,7 +22,6 @@ class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
     # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
 
     # Note: there are no fields here because GraphEdge delegates to datatypes.Utf8Pair
-    pass
 
 
 class GraphEdgeBatch(datatypes.Utf8PairBatch, ComponentBatchMixin):

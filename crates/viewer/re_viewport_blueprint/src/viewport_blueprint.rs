@@ -500,11 +500,7 @@ impl ViewportBlueprint {
             }
         });
 
-        //TODO(ab): starting with rust 1.83, we can use `break_value()` instead of this match statement
-        match result {
-            ControlFlow::Break(contents) => Some(contents),
-            ControlFlow::Continue(_) => None,
-        }
+        result.break_value()
     }
 
     /// Checks if some content is (directly or indirectly) contained in the given container.

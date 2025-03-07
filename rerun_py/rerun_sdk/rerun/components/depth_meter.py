@@ -31,7 +31,6 @@ class DepthMeter(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of DepthMeterExt in depth_meter_ext.py
 
     # Note: there are no fields here because DepthMeter delegates to datatypes.Float32
-    pass
 
 
 class DepthMeterBatch(datatypes.Float32Batch, ComponentBatchMixin):

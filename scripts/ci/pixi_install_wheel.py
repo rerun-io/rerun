@@ -14,6 +14,7 @@ python3 scripts/ci/pixi_install_wheel.py --feature python-pypi --dir wheel --pac
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import subprocess
@@ -42,7 +43,12 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
     else:
         arch = platform.machine().lower()
 
-    print(f"Platform: {plat}, Architecture: {arch}")
+    cmd = ["pixi", "info", "--json"]
+    out = subprocess.check_output(cmd).decode("utf-8")
+    info = json.loads(out)
+    pixi_plat = info["platform"]
+
+    print(f"Platform: {plat}, Architecture: {arch}, Pixi Platform: {pixi_plat}")
 
     # Find the wheels
     wheels = [whl.name for whl in Path(dir).glob("*.whl")]
@@ -69,7 +75,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
     if len(wheels) > 1:
         if platform_independent:
             print(
-                f"Multiple wheels found for package {pkg} (the package was expected to be platform independent): {wheels}"
+                f"Multiple wheels found for package {pkg} (the package was expected to be platform independent): {wheels}",
             )
         else:
             print(f"Multiple wheels found for package {pkg} on platform {plat} and architecture {arch}: {wheels}")
@@ -78,7 +84,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
     wheel = Path(dir) / wheels[0]
 
     # Install the wheel
-    cmd = ["pixi", "add", "--feature", feature, "--pypi", f"{pkg} @ {path_to_file_url(wheel)}"]
+    cmd = ["pixi", "add", "--platform", pixi_plat, "--feature", feature, "--pypi", f"{pkg} @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
@@ -88,7 +94,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Find and install a wheel from a folder in the specified pixi environment"
+        description="Find and install a wheel from a folder in the specified pixi environment",
     )
     parser.add_argument("--feature", required=True, help="The pixi feature to update")
     parser.add_argument("--dir", required=True, help="Directory to search")

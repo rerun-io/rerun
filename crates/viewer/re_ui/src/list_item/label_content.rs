@@ -1,4 +1,4 @@
-use egui::{text::TextWrapping, Align, Align2, NumExt, Ui};
+use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
 
 use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{DesignTokens, Icon, LabelStyle};

@@ -17,9 +17,9 @@ def test_load_recording() -> None:
         rrd = tmpdir + "/tmp.rrd"
 
         with rr.new_recording("rerun_example_test_recording") as rec:
-            rr.save(rrd, recording=rec)
-            rr.set_time_sequence("my_index", 1, recording=rec)
-            rr.log("log", rr.TextLog("Hello"), recording=rec)
+            rec.save(rrd)
+            rec.set_index("my_index", sequence=1)
+            rec.log("log", rr.TextLog("Hello"))
 
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
@@ -50,12 +50,12 @@ class TestDataframe:
             rrd = tmpdir + "/tmp.rrd"
 
             with rr.new_recording(APP_ID, recording_id=RECORDING_ID) as rec:
-                rr.save(rrd, recording=rec)
-                rr.set_time_sequence("my_index", 1, recording=rec)
-                rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]), recording=rec)
-                rr.set_time_sequence("my_index", 7, recording=rec)
-                rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]), recording=rec)
-                rr.log("static_text", rr.TextLog("Hello"), static=True, recording=rec)
+                rec.save(rrd)
+                rec.set_index("my_index", sequence=1)
+                rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
+                rec.set_index("my_index", sequence=7)
+                rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+                rec.log("static_text", rr.TextLog("Hello"), static=True)
 
             self.recording = rr.dataframe.load_recording(rrd)
 
@@ -314,7 +314,7 @@ class TestDataframe:
             pa.array(
                 [0, 5, 9],
                 type=pa.int64(),
-            )
+            ),
         ])
 
         assert table.column("my_index").equals(expected_index)
@@ -389,7 +389,7 @@ class TestDataframe:
             rrd = tmpdir + "/tmp.rrd"
 
             with rr.new_recording("rerun_example_test_recording") as rec:
-                rr.save(rrd, recording=rec)
+                rec.save(rrd)
                 rr.dataframe.send_dataframe(df, rec=rec)
 
             round_trip_recording = rr.dataframe.load_recording(rrd)

@@ -1,5 +1,5 @@
 use re_types::ViewClassIdentifier;
-use re_ui::{Help, UiExt};
+use re_ui::{Help, UiExt as _};
 
 use crate::{
     SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics,

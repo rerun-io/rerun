@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender};
+use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
@@ -178,13 +178,12 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(
+        if let Some(rx) = url_to_receiver(
             app.egui_ctx.clone(),
             follow_if_http,
             url.to_owned(),
             app.command_sender.clone(),
-        );
-        if let Some(rx) = rx.ok_or_log_error() {
+        ) {
             app.add_receiver(rx);
         }
     }
@@ -720,9 +719,7 @@ fn create_app(
                 follow_if_http,
                 url,
                 app.command_sender.clone(),
-            )
-            .ok_or_log_error()
-            {
+            ) {
                 app.command_sender
                     .send_system(SystemCommand::AddReceiver(receiver));
             }

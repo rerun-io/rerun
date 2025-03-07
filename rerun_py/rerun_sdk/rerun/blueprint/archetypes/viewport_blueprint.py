@@ -31,7 +31,7 @@ class ViewportBlueprint(Archetype):
         auto_layout: datatypes.BoolLike | None = None,
         auto_views: datatypes.BoolLike | None = None,
         past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ViewportBlueprint archetype.
 

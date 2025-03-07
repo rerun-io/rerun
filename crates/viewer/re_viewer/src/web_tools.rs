@@ -1,11 +1,13 @@
 //! Web-specific tools used by various parts of the application.
 
-use re_log::ResultExt;
+use std::{ops::ControlFlow, sync::Arc};
+
+use re_log::ResultExt as _;
 use re_viewer_context::CommandSender;
 use re_viewer_context::SystemCommand;
-use re_viewer_context::SystemCommandSender;
+use re_viewer_context::SystemCommandSender as _;
+
 use serde::Deserialize;
-use std::{ops::ControlFlow, sync::Arc};
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
@@ -116,14 +118,14 @@ pub fn url_to_receiver(
     follow_if_http: bool,
     url: String,
     command_sender: CommandSender,
-) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
+) -> Option<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
         // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
     match EndpointCategory::categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => Ok(
+        EndpointCategory::HttpRrd(url) => Some(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
                 follow_if_http,
@@ -143,19 +145,19 @@ pub fn url_to_receiver(
                     time_range,
                 }),
             });
-            Ok(re_grpc_client::redap::stream_from_redap(
+            Some(re_grpc_client::redap::stream_from_redap(
                 endpoint,
                 on_cmd,
                 Some(ui_waker),
             ))
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(_endpoint)) => {
-            // TODO(grtlr): Implement catalog support
-            anyhow::bail!("Catalogs are not supported yet")
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+            None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
             re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
         ),
 
@@ -190,7 +192,7 @@ pub fn url_to_receiver(
                     }
                 }
             }));
-            Ok(rx)
+            Some(rx)
         }
     }
 }

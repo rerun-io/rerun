@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use arrow::array::UInt32Array as ArrowUInt32Array;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId, TimelineName};

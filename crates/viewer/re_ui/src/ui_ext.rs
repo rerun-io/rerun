@@ -1,8 +1,9 @@
 use std::hash::Hash;
 
 use egui::{
-    emath::{GuiRounding, Rot2},
-    pos2, Align2, Button, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
+    emath::{GuiRounding as _, Rot2},
+    pos2, Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2,
+    Widget as _,
 };
 
 use crate::{design_tokens, icons, list_item, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};

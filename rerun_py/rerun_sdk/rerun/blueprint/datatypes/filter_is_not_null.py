@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -31,7 +32,9 @@ def _filter_is_not_null__active__special_field_converter_override(x: datatypes.B
 class FilterIsNotNull(FilterIsNotNullExt):
     """**Datatype**: Configuration for the filter is not null feature of the dataframe view."""
 
-    def __init__(self: Any, active: datatypes.BoolLike, column: blueprint_datatypes.ComponentColumnSelectorLike):
+    def __init__(
+        self: Any, active: datatypes.BoolLike, column: blueprint_datatypes.ComponentColumnSelectorLike
+    ) -> None:
         """
         Create a new instance of the FilterIsNotNull datatype.
 

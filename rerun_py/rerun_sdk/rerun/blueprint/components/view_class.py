@@ -22,7 +22,6 @@ class ViewClass(datatypes.Utf8, ComponentMixin):
     # You can define your own __init__ function as a member of ViewClassExt in view_class_ext.py
 
     # Note: there are no fields here because ViewClass delegates to datatypes.Utf8
-    pass
 
 
 class ViewClassBatch(datatypes.Utf8Batch, ComponentBatchMixin):

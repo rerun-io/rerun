@@ -22,7 +22,6 @@ class GridSpacing(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of GridSpacingExt in grid_spacing_ext.py
 
     # Note: there are no fields here because GridSpacing delegates to datatypes.Float32
-    pass
 
 
 class GridSpacingBatch(datatypes.Float32Batch, ComponentBatchMixin):

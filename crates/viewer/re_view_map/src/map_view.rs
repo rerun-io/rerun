@@ -2,7 +2,7 @@ use egui::{Context, Modifiers, NumExt as _, Rect, Response};
 use re_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
@@ -12,7 +12,7 @@ use re_types::{
         components::MapProvider,
         components::ZoomLevel,
     },
-    View, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, Help, ModifiersText};
 use re_viewer_context::{

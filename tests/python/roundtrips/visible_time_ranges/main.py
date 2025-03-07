@@ -26,10 +26,14 @@ def main() -> None:
                 end=rr.TimeRangeBoundary.cursor_relative(-10),
             ),
             rrb.VisibleTimeRange(
-                "timeline1", start=rrb.TimeRangeBoundary.cursor_relative(20), end=rrb.TimeRangeBoundary.infinite()
+                "timeline1",
+                start=rrb.TimeRangeBoundary.cursor_relative(20),
+                end=rrb.TimeRangeBoundary.infinite(),
             ),
             rrb.VisibleTimeRange(
-                "timeline2", start=rrb.TimeRangeBoundary.absolute(20), end=rrb.TimeRangeBoundary.absolute(40)
+                "timeline2",
+                start=rrb.TimeRangeBoundary.absolute(20),
+                end=rrb.TimeRangeBoundary.absolute(40),
             ),
         ]),
     )

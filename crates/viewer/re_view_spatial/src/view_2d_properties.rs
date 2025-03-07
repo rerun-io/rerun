@@ -4,9 +4,9 @@ use re_types::{
         components::{BackgroundKind, VisualBounds2D},
     },
     components::Color,
-    Archetype,
+    Archetype as _,
 };
-use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt};
+use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
 use crate::{ui::SpatialViewState, SpatialView2D};
 

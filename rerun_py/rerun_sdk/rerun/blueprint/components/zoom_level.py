@@ -22,7 +22,6 @@ class ZoomLevel(datatypes.Float64, ComponentMixin):
     # You can define your own __init__ function as a member of ZoomLevelExt in zoom_level_ext.py
 
     # Note: there are no fields here because ZoomLevel delegates to datatypes.Float64
-    pass
 
 
 class ZoomLevelBatch(datatypes.Float64Batch, ComponentBatchMixin):

@@ -18,7 +18,7 @@ def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
     # [1, 1, 1, 640, 480, 3, 1, 1, 1]
     #           ^---------^   goal range
 
-    non_unit_indices = list(d[0] for d in filter(lambda d: d[1] != 1, enumerate(shape)))
+    non_unit_indices = [d[0] for d in filter(lambda d: d[1] != 1, enumerate(shape))]
 
     # 0 is always a valid index.
     min = next(iter(non_unit_indices), 0)
@@ -88,7 +88,7 @@ def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> np
 
     if not valid:
         raise ValueError(
-            f"Expected either a flat array with a length multiple of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}."
+            f"Expected either a flat array with a length multiple of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}.",
         )
 
     return array.reshape((-1,))

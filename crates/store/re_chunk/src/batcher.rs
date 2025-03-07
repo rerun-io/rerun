@@ -1,5 +1,5 @@
 use std::{
-    hash::{Hash as _, Hasher},
+    hash::{Hash as _, Hasher as _},
     sync::Arc,
     time::{Duration, Instant},
 };

@@ -15,7 +15,7 @@ use pyo3::{
     types::PyDict,
     Bound, PyResult,
 };
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, TimelineName};
@@ -25,15 +25,15 @@ use re_dataframe::{
     TimeColumnSelector, ViewContentsSelector,
 };
 use re_grpc_client::TonicStatusError;
-use re_log_encoding::codec::wire::{decoder::Decode, encoder::Encode};
+use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
-    common::v0::{EntityPath, IndexColumnSelector, RecordingId},
-    remote_store::v0::{
-        index_properties::Props, storage_node_client::StorageNodeClient, CatalogEntry,
-        CatalogFilter, ColumnProjection, FetchRecordingRequest, GetRecordingSchemaRequest,
-        IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
-        SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
+    common::v1alpha1::{EntityPath, IndexColumnSelector, RecordingId},
+    remote_store::v1alpha1::{
+        index_properties::Props, storage_node_service_client::StorageNodeServiceClient,
+        CatalogEntry, CatalogFilter, ColumnProjection, FetchRecordingRequest,
+        GetRecordingSchemaRequest, IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType,
+        RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
@@ -53,7 +53,9 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transport::Channel>> {
+async fn connect_async(
+    addr: String,
+) -> PyResult<StorageNodeServiceClient<tonic::transport::Channel>> {
     #[cfg(not(target_arch = "wasm32"))]
     let tonic_client = tonic::transport::Endpoint::new(addr)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
@@ -61,7 +63,7 @@ async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transp
         .await
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-    Ok(StorageNodeClient::new(tonic_client))
+    Ok(StorageNodeServiceClient::new(tonic_client))
 }
 
 /// Load a rerun archive from an RRD file.
@@ -97,7 +99,7 @@ pub struct PyStorageNodeClient {
     runtime: tokio::runtime::Runtime,
 
     /// The actual tonic connection.
-    client: StorageNodeClient<tonic::transport::Channel>,
+    client: StorageNodeServiceClient<tonic::transport::Channel>,
 }
 
 impl PyStorageNodeClient {
@@ -109,6 +111,9 @@ impl PyStorageNodeClient {
                 let resp = self
                     .client
                     .query_catalog(QueryCatalogRequest {
+                        entry: Some(CatalogEntry {
+                            name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                        }),
                         column_projection: None, // fetch all columns
                         filter: Some(CatalogFilter {
                             recording_ids: vec![RecordingId { id: id.to_owned() }],
@@ -119,7 +124,13 @@ impl PyStorageNodeClient {
                     .into_inner()
                     .map(|resp| {
                         resp.and_then(|r| {
-                            r.decode()
+                            r.data
+                                .ok_or_else(|| {
+                                    tonic::Status::internal(
+                                        "missing DataframePart in QueryCatalogResponse",
+                                    )
+                                })?
+                                .decode()
                                 .map_err(|err| tonic::Status::internal(err.to_string()))
                         })
                     })
@@ -151,7 +162,7 @@ impl PyStorageNodeClient {
         id: StoreId,
         query: QueryExpression,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let query: re_protos::common::v0::Query = query.into();
+        let query: re_protos::common::v1alpha1::Query = query.into();
 
         let batches = self.runtime.block_on(async {
             // TODO(#8536): Avoid the need to collect here.
@@ -159,6 +170,9 @@ impl PyStorageNodeClient {
             let batches = self
                 .client
                 .query(QueryRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                    }),
                     recording_id: Some(id.into()),
                     query: Some(query.clone()),
                 })
@@ -167,7 +181,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in QueryResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -221,6 +239,9 @@ impl PyStorageNodeClient {
                     .collect(),
             });
             let request = QueryCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 column_projection,
                 filter,
             };
@@ -233,7 +254,13 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal(
+                                    "missing DataframePart in QueryCatalogResponse",
+                                )
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -274,6 +301,9 @@ impl PyStorageNodeClient {
     fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
         self.runtime.block_on(async {
             let request = GetRecordingSchemaRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 recording_id: Some(RecordingId { id }),
             };
 
@@ -361,6 +391,10 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
             let metadata = resp
+                .data
+                .ok_or_else(|| {
+                    PyRuntimeError::new_err("missing DataframePart in RegisterRecordingResponse")
+                })?
                 .decode()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -412,7 +446,7 @@ impl PyStorageNodeClient {
         self.runtime.block_on(async {
             let time_selector: TimeColumnSelector = time_index.into();
             let column_selector: ComponentColumnSelector = column.into();
-            let distance_metric: re_protos::remote_store::v0::VectorDistanceMetric =
+            let distance_metric: re_protos::remote_store::v1alpha1::VectorDistanceMetric =
                 distance_metric.try_into()?;
 
             let index_column = IndexColumn {
@@ -425,15 +459,15 @@ impl PyStorageNodeClient {
             };
 
             let time_index = IndexColumnSelector {
-                timeline: Some(re_protos::common::v0::Timeline {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
                     name: time_selector.timeline.to_string(),
                 }),
             };
 
             self.client
-                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
                     entry: Some(CatalogEntry { name: entry }),
-                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
                         props: Some(Props::Vector(VectorIvfPqIndex {
                             num_partitions,
                             num_sub_vectors,
@@ -493,17 +527,17 @@ impl PyStorageNodeClient {
             };
 
             let time_index = IndexColumnSelector {
-                timeline: Some(re_protos::common::v0::Timeline {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
                     name: time_selector.timeline.to_string(),
                 }),
             };
 
             self.client
-                .create_index(re_protos::remote_store::v0::CreateIndexRequest {
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
                     entry: Some(CatalogEntry { name: entry }),
-                    properties: Some(re_protos::remote_store::v0::IndexProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
                         props: Some(Props::Inverted(
-                            re_protos::remote_store::v0::InvertedIndex {
+                            re_protos::remote_store::v1alpha1::InvertedIndex {
                                 store_position,
                                 base_tokenizer: base_tokenizer.to_owned(),
                             },
@@ -565,10 +599,10 @@ impl PyStorageNodeClient {
                         archetype_field_name: None,
                         component_name: column_selector.component_name,
                     }),
-                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
                         props: Some(
-                            re_protos::remote_store::v0::index_query_properties::Props::Vector(
-                                re_protos::remote_store::v0::VectorIndexQuery { top_k },
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Vector(
+                                re_protos::remote_store::v1alpha1::VectorIndexQuery { top_k },
                             ),
                         ),
                     }),
@@ -584,7 +618,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -667,10 +705,10 @@ impl PyStorageNodeClient {
                         archetype_field_name: None,
                         component_name: column_selector.component_name,
                     }),
-                    properties: Some(re_protos::remote_store::v0::IndexQueryProperties {
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
                         props: Some(
-                            re_protos::remote_store::v0::index_query_properties::Props::Inverted(
-                                re_protos::remote_store::v0::InvertedIndexQuery {},
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Inverted(
+                                re_protos::remote_store::v1alpha1::InvertedIndexQuery {},
                             ),
                         ),
                     }),
@@ -686,7 +724,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -741,6 +783,9 @@ impl PyStorageNodeClient {
             }
 
             let request = UpdateCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 metadata: Some(
                     metadata
                         .encode()
@@ -835,7 +880,12 @@ impl PyStorageNodeClient {
             store.set_info(store_info);
 
             while let Some(result) = resp.next().await {
-                let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                let response = result
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                    .chunk
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("missing DataframePart in FetchRecordingResponse")
+                    })?;
                 let batch = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {
@@ -874,7 +924,7 @@ enum PyVectorDistanceMetric {
     Hamming,
 }
 
-impl From<PyVectorDistanceMetric> for re_protos::remote_store::v0::VectorDistanceMetric {
+impl From<PyVectorDistanceMetric> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
     fn from(metric: PyVectorDistanceMetric) -> Self {
         match metric {
             PyVectorDistanceMetric::L2 => Self::L2,
@@ -895,7 +945,7 @@ enum VectorDistanceMetricLike {
     CatchAll(String),
 }
 
-impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDistanceMetric {
+impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
     type Error = PyErr;
 
     fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
@@ -916,7 +966,7 @@ impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v0::VectorDi
 
 impl From<PyVectorDistanceMetric> for i32 {
     fn from(metric: PyVectorDistanceMetric) -> Self {
-        let proto_typed = re_protos::remote_store::v0::VectorDistanceMetric::from(metric);
+        let proto_typed = re_protos::remote_store::v1alpha1::VectorDistanceMetric::from(metric);
 
         proto_typed as Self
     }

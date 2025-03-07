@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pyarrow as pa
@@ -13,7 +14,7 @@ class TensorDimensionSelectionExt:
     """Extension for [TensorDimensionSelection][rerun.datatypes.TensorDimensionSelection]."""
 
     # TODO(#2641): this is needed until we support default values.
-    def __init__(self: Any, dimension: int, *, invert: bool = False):
+    def __init__(self: Any, dimension: int, *, invert: bool = False) -> None:
         """
         Create a new instance of the TensorDimensionSelection datatype.
 

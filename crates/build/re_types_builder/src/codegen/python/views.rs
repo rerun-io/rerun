@@ -58,8 +58,8 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
-    defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-    overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+    defaults: list[Union[AsComponents, ComponentBatchLike]] | None = None,
+    overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
     "#
     .to_owned();
 

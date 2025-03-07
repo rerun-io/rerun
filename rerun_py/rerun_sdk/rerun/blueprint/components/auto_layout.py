@@ -22,7 +22,6 @@ class AutoLayout(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of AutoLayoutExt in auto_layout_ext.py
 
     # Note: there are no fields here because AutoLayout delegates to datatypes.Bool
-    pass
 
 
 class AutoLayoutBatch(datatypes.BoolBatch, ComponentBatchMixin):

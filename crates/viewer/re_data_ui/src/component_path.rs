@@ -1,5 +1,5 @@
 use re_log_types::ComponentPath;
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;

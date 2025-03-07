@@ -29,7 +29,6 @@ class HalfSize2D(datatypes.Vec2D, ComponentMixin):
     # You can define your own __init__ function as a member of HalfSize2DExt in half_size2d_ext.py
 
     # Note: there are no fields here because HalfSize2D delegates to datatypes.Vec2D
-    pass
 
 
 class HalfSize2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):

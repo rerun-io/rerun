@@ -29,7 +29,6 @@ class PoseScale3D(PoseScale3DExt, datatypes.Vec3D, ComponentMixin):
     # __init__ can be found in pose_scale3d_ext.py
 
     # Note: there are no fields here because PoseScale3D delegates to datatypes.Vec3D
-    pass
 
 
 class PoseScale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):

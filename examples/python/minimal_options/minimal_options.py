@@ -11,7 +11,7 @@ import rerun as rr  # pip install rerun-sdk
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Demonstrates the most barebone usage of the Rerun SDK, with standard options."
+        description="Demonstrates the most barebone usage of the Rerun SDK, with standard options.",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()

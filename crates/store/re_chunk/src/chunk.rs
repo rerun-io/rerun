@@ -8,7 +8,7 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools};
+use itertools::{izip, Either, Itertools as _};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -17,7 +17,7 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable, SerializationError,
+    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -269,7 +269,7 @@ impl Chunk {
 
     /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
     ///
-    /// In particular, this ignores chunks and row IDs, as well as temporal timestamps.
+    /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
     ///
     /// Useful for tests.
     pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
@@ -289,17 +289,13 @@ impl Chunk {
                 let timelines: IntMap<_, _> = timelines
                     .iter()
                     .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(_timeline, time_column)| {
-                        time_column.timeline.typ() == re_log_types::TimeType::Sequence
-                    })
+                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
                     .collect();
                 let rhs_timelines: IntMap<_, _> = rhs
                     .timelines
                     .iter()
                     .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(_timeline, time_column)| {
-                        time_column.timeline.typ() == re_log_types::TimeType::Sequence
-                    })
+                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
                     .collect();
                 timelines == rhs_timelines
             }

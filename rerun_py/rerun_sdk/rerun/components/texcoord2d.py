@@ -39,7 +39,6 @@ class Texcoord2D(datatypes.Vec2D, ComponentMixin):
     # You can define your own __init__ function as a member of Texcoord2DExt in texcoord2d_ext.py
 
     # Note: there are no fields here because Texcoord2D delegates to datatypes.Vec2D
-    pass
 
 
 class Texcoord2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):

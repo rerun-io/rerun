@@ -12,7 +12,7 @@ use re_ui::{
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
     DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender, ViewId, ViewerContext, VisitorControlFlow,
+    SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 

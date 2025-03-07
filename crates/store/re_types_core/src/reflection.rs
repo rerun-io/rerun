@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef};
+use arrow::array::{Array as _, ArrayRef};
 
 use crate::{ArchetypeName, ComponentName};
 
@@ -240,6 +240,9 @@ pub struct ComponentReflection {
 
     /// Datatype of the component.
     pub datatype: arrow::datatypes::DataType,
+
+    /// Checks that the given Arrow array can be deserialized into a collection of [`Self`]s.
+    pub verify_arrow_array: fn(&dyn arrow::array::Array) -> crate::DeserializationResult<()>,
 }
 
 /// Runtime reflection about archetypes.
@@ -270,6 +273,10 @@ impl ArchetypeReflection {
     #[inline]
     pub fn required_fields(&self) -> impl Iterator<Item = &ArchetypeFieldReflection> {
         self.fields.iter().filter(|field| field.is_required)
+    }
+
+    pub fn get_field(&self, field_name: &str) -> Option<&ArchetypeFieldReflection> {
+        self.fields.iter().find(|field| field.name == field_name)
     }
 }
 

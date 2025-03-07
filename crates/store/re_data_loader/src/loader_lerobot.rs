@@ -1,17 +1,17 @@
 use std::sync::mpsc::Sender;
 use std::thread;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use arrow::array::{
     ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
+use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef as _};
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
 use re_log_types::{ApplicationId, StoreId};
@@ -160,7 +160,12 @@ fn prepare_episode_chunks(
     store_ids
 }
 
-fn load_episode(
+/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
+///
+/// This function processes an episode from the dataset by extracting the relevant data columns and
+/// converting them into appropriate Rerun data structures. It handles different types of data
+/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
+pub fn load_episode(
     dataset: &LeRobotDataset,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {

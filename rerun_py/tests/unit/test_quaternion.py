@@ -36,6 +36,10 @@ QUATERNION_INVALID_ARRAYS_INPUT = [
 
 @pytest.mark.parametrize("data", QUATERNION_INVALID_ARRAYS_INPUT)
 def test_quaternion_array_invalid(data: QuaternionArrayLike) -> None:
+    import rerun as rr
+
+    rr.set_strict_mode(True)
+
     with pytest.raises(ValueError):
         QuaternionBatch(data)
     with pytest.raises(ValueError):

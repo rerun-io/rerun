@@ -39,7 +39,9 @@ class GraphEdges(Archetype):
     rr.log(
         "simple",
         rr.GraphNodes(
-            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+            node_ids=["a", "b", "c"],
+            positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
+            labels=["A", "B", "C"],
         ),
         rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
     )
@@ -56,7 +58,9 @@ class GraphEdges(Archetype):
 
     """
 
-    def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):
+    def __init__(
+        self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
+    ) -> None:
         """
         Create a new instance of the GraphEdges archetype.
 
@@ -184,8 +188,8 @@ class GraphEdges(Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

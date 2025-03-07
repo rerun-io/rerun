@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -25,7 +26,7 @@ __all__ = ["AffixFuzzer9", "AffixFuzzer9ArrayLike", "AffixFuzzer9Batch", "AffixF
 class AffixFuzzer9(ComponentMixin):
     _BATCH_TYPE = None
 
-    def __init__(self: Any, single_string_required: AffixFuzzer9Like):
+    def __init__(self: Any, single_string_required: AffixFuzzer9Like) -> None:
         """Create a new instance of the AffixFuzzer9 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer9Ext in affix_fuzzer9_ext.py
@@ -54,7 +55,7 @@ class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array: Union[list[str], npt.ArrayLike] = [data]
+            array: list[str] | npt.ArrayLike = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
         elif isinstance(data, np.ndarray):

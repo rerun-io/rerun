@@ -73,7 +73,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
           environments: py-docs
 
       - name: Set up git author
@@ -145,7 +145,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       - name: Delete existing /target/doc
         run: rm -rf ./target/doc
@@ -199,7 +199,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       - name: Doxygen C++ docs
         run: pixi run -e cpp cpp-docs

@@ -1,5 +1,7 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v0::{storage_node_client::StorageNodeClient, CatalogEntry};
+use re_protos::remote_store::v1alpha1::{
+    storage_node_service_client::StorageNodeServiceClient, CatalogEntry, GetChunksRangeRequest,
+};
 use re_uri::{Origin, RecordingEndpoint};
 use tokio_stream::StreamExt as _;
 
@@ -10,10 +12,10 @@ use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
-    common::v0::{IndexColumnSelector, RecordingId},
-    remote_store::v0::{
-        CatalogFilter, FetchRecordingRequest, GetChunkIdsRequest, GetChunksRequest,
-        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_START_TIME_FIELD_NAME,
+    common::v1alpha1::{IndexColumnSelector, RecordingId},
+    remote_store::v1alpha1::{
+        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
+        CATALOG_START_TIME_FIELD_NAME,
     },
 };
 
@@ -129,17 +131,17 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 #[cfg(target_arch = "wasm32")]
 pub async fn client(
     origin: Origin,
-) -> Result<StorageNodeClient<tonic_web_wasm_client::Client>, ConnectionError> {
+) -> Result<StorageNodeServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(StorageNodeClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(StorageNodeServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn client(
     origin: Origin,
-) -> Result<StorageNodeClient<tonic::transport::Channel>, ConnectionError> {
+) -> Result<StorageNodeServiceClient<tonic::transport::Channel>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(StorageNodeClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(StorageNodeServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -147,14 +149,16 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     origin: Origin,
     interceptor: I,
 ) -> Result<
-    StorageNodeClient<
+    StorageNodeServiceClient<
         tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
     >,
     ConnectionError,
 > {
     let channel = channel(origin).await?;
-    Ok(StorageNodeClient::with_interceptor(channel, interceptor)
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(
+        StorageNodeServiceClient::with_interceptor(channel, interceptor)
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE),
+    )
 }
 
 pub async fn stream_recording_async(
@@ -170,6 +174,9 @@ pub async fn stream_recording_async(
 
     let catalog_chunk_stream = client
         .query_catalog(QueryCatalogRequest {
+            entry: Some(CatalogEntry {
+                name: "default".to_owned(), /* TODO(zehiko) 9116 */
+            }),
             column_projection: None, // fetch all columns
             filter: Some(CatalogFilter {
                 recording_ids: vec![RecordingId {
@@ -183,7 +190,11 @@ pub async fn stream_recording_async(
     let catalog_chunks = catalog_chunk_stream
         .map(|resp| {
             resp.and_then(|r| {
-                r.decode()
+                r.data
+                    .ok_or_else(|| {
+                        tonic::Status::internal("missing DataframePart in QueryCatalogResponse")
+                    })?
+                    .decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         })
@@ -207,8 +218,8 @@ pub async fn stream_recording_async(
     re_log::debug!("Fetching {}…", endpoint.recording_id);
 
     let mut chunk_stream = if let Some(time_range) = &endpoint.time_range {
-        let chunk_id_stream = client
-            .get_chunk_ids(GetChunkIdsRequest {
+        let stream = client
+            .get_chunks_range(GetChunksRangeRequest {
                 entry: Some(CatalogEntry {
                     name: "default".to_owned(), /* TODO(zehiko) 9116 */
                 }),
@@ -228,28 +239,11 @@ pub async fn stream_recording_async(
                 ),
             })
             .await?
-            .into_inner();
-        let chunk_ids = chunk_id_stream
-            .collect::<Result<Vec<_>, tonic::Status>>()
-            .await?
-            .into_iter()
-            .flat_map(|r| r.chunk_ids)
-            .collect::<Vec<_>>();
-
-        client
-            .get_chunks(GetChunksRequest {
-                entry: Some(CatalogEntry {
-                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
-                }),
-                recording_id: Some(RecordingId {
-                    id: endpoint.recording_id.clone(),
-                }),
-                chunk_ids,
-            })
-            .await?
             .into_inner()
+            .map(|res| res.map(|v| v.chunk));
+        futures::future::Either::Left(stream)
     } else {
-        client
+        let stream = client
             .fetch_recording(FetchRecordingRequest {
                 entry: Some(CatalogEntry {
                     name: "default".to_owned(), /* TODO(zehiko) 9116 */
@@ -260,10 +254,13 @@ pub async fn stream_recording_async(
             })
             .await?
             .into_inner()
+            .map(|res| res.map(|v| v.chunk));
+        futures::future::Either::Right(stream)
     }
     .map(|resp| {
         resp.and_then(|r| {
-            r.decode()
+            r.ok_or_else(|| tonic::Status::internal("missing Chunk in Response"))?
+                .decode()
                 .map_err(|err| tonic::Status::internal(err.to_string()))
         })
     });
