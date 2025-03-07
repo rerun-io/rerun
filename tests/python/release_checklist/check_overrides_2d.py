@@ -82,7 +82,7 @@ def run(args: Namespace) -> None:
                 rrb.visualizers.Points2D,
             ]),
             rr.Arrows2D.from_fields(
-                positions=[[-2.0, 1.5], [0.0, -0.5], [2.0, 0.75]],
+                origins=[[-2.0, 1.5], [0.0, -0.5], [2.0, 0.75]],
                 vectors=[[-2.0, 1.0], [0.0, 2.0], [2.0, 1.0]],
                 labels=["BigRed", "MidGreen", "SmolBlue"],
                 radii=[0.5, 0.25, 0.125],
