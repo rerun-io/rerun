@@ -793,7 +793,6 @@ def connect(addr: str) -> StorageNodeClient:
             * `rerun+http://localhost:51234` Falls back to using HTTP only.
             * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
 
-
     Returns
     -------
     StorageNodeClient
