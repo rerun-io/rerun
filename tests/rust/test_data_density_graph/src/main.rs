@@ -4,7 +4,7 @@
 //! cargo run -p test_data_density_graph
 //! ```
 
-use rerun::external::re_log_types::NonMinI64;
+use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
 use rerun::{
     external::{re_chunk_store, re_log},
     RecordingStream,
@@ -83,12 +83,13 @@ fn log(
         rerun::log::Chunk::builder(entity_path.clone())
             .with_archetype(
                 rerun::log::RowId::new(),
-                rerun::TimePoint::default()
-                    .with(
+                [
+                    (
                         rerun::Timeline::log_time(),
                         rerun::time::TimeInt::from_milliseconds(NonMinI64::ZERO),
-                    )
-                    .with(rerun::Timeline::log_tick(), 0),
+                    ),
+                    (rerun::Timeline::log_tick(), TimeInt::ZERO),
+                ],
                 &rerun::Points3D::new(rerun::demo_util::grid(
                     (-10.0, -10.0, -10.0).into(),
                     (10.0, 10.0, 10.0).into(),
@@ -125,10 +126,10 @@ fn log(
         for (time, component) in log_times.iter().zip(components) {
             chunk = chunk.with_archetype(
                 rerun::log::RowId::new(),
-                rerun::TimePoint::default().with(
+                [(
                     rerun::Timeline::log_time(),
                     rerun::time::TimeInt::from_milliseconds((*time).try_into().unwrap_or_default()),
-                ),
+                )],
                 &component,
             );
         }

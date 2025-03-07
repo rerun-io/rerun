@@ -37,8 +37,8 @@ use re_byte_size::SizeBytes;
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
-        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt, TimePoint,
-        TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
+        Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
+        TimePoint, TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -640,7 +640,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.try_into().unwrap_or(TimeInt::MIN),
+        TimeInt::saturated_nonstatic(frame_nr),
     )
 }
 
