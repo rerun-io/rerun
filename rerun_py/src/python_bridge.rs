@@ -17,8 +17,8 @@ use pyo3::{
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
 use re_sdk::sink::CallbackSink;
+use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, IndexCell};
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
@@ -158,8 +158,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // time
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
-    m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
-    m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(set_time_duration_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(set_time_timestamp_nanos_since_epoch, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
@@ -1059,27 +1059,29 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_time_sequence(timeline, sequence);
+    recording.set_index(timeline, IndexCell::from_sequence(sequence));
 }
 
-// TODO(#8635): distinguish between absolute and relative time
-#[pyfunction]
-#[pyo3(signature = (timeline, seconds, recording=None))]
-fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
-    recording.set_time_seconds(timeline, seconds);
-}
-
-// TODO(#8635): distinguish between absolute and relative time
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
-fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_time_nanos(timeline, nanos);
+    recording.set_index(timeline, IndexCell::from_duration_nanos(nanos));
+}
+
+#[pyfunction]
+#[pyo3(signature = (timeline, nanos, recording=None))]
+fn set_time_timestamp_nanos_since_epoch(
+    timeline: &str,
+    nanos: i64,
+    recording: Option<&PyRecordingStream>,
+) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_index(timeline, IndexCell::from_timestamp_nanos_since_epoch(nanos));
 }
 
 #[pyfunction]

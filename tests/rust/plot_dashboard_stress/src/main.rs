@@ -136,7 +136,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     #[allow(clippy::unchecked_duration_subtraction)]
     for offset in offsets {
         if args.temporal_batch_size.is_none() {
-            rec.set_time_seconds("sim_time", sim_times[offset]);
+            rec.set_duration_seconds("sim_time", sim_times[offset]);
         }
 
         // Log
