@@ -423,7 +423,10 @@ fn resolved_visible_history_boundary_ui(
             }
         }
         TimeRangeBoundary::Absolute(time) => {
-            label += &format!(" {}", time_type.format(*time, ctx.app_options().timestamp_format));
+            label += &format!(
+                " {}",
+                time_type.format(*time, ctx.app_options().timestamp_format)
+            );
         }
         TimeRangeBoundary::Infinite => {}
     }

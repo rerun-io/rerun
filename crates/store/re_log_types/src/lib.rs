@@ -38,7 +38,7 @@ pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
         Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
-        TimePoint, TimeReal, TimeType, TimestampFormat, Timeline, TimelineName, Timestamp,
+        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
         TryFromIntError,
     },
     instance::Instance,

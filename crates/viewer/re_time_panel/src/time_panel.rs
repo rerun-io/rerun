@@ -1292,7 +1292,8 @@ impl TimePanel {
                 self.time_edit_string = Some(time_str.clone());
             }
             if response.lost_focus() {
-                if let Some(time_int) = time_type.parse_time(&time_str, ctx.app_options().timestamp_format)
+                if let Some(time_int) =
+                    time_type.parse_time(&time_str, ctx.app_options().timestamp_format)
                 {
                     time_ctrl.set_time(time_int);
                 }
