@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -37,7 +38,8 @@ class RotationAxisAngle(RotationAxisAngleExt):
     #
     # This is not required to be normalized.
     # However, if normalization of the rotation axis fails (typically due to a zero vector)
-    # the rotation is treated as an invalid transform.
+    # the rotation is treated as an invalid transform, unless the angle is zero in which case
+    # it is treated as an identity.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -1,19 +1,17 @@
 //! Handles different ways of loading Rerun data, e.g.:
 //!
 //! - Over HTTPS
-//! - Over WebSockets
+//! - Over gRPC
 //! - From disk
 //!
 //! Also handles different file types: rrd, images, text files, 3D models, point clouds…
 
 mod data_source;
-mod web_sockets;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod load_stdin;
 
-pub use self::data_source::DataSource;
-pub use self::web_sockets::connect_to_ws_url;
+pub use self::data_source::{DataSource, DataSourceCommand, StreamSource};
 
 // ----------------------------------------------------------------------------
 

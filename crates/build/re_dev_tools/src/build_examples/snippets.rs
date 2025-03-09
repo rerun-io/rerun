@@ -7,8 +7,8 @@ use std::process::Command;
 
 use camino::Utf8Path;
 use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
+use rayon::prelude::IntoParallelIterator as _;
+use rayon::prelude::ParallelIterator as _;
 
 use super::wait_for_output;
 
@@ -36,9 +36,7 @@ impl Snippets {
         let snippet_root = snippets_dir.join("all");
         let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
-        println!("Download test assets…");
         let progress = MultiProgress::new();
-        download_test_assets(&progress)?;
 
         println!("Running {} snippets…", snippets.len());
         let results: Vec<anyhow::Result<PathBuf>> = snippets
@@ -124,7 +122,7 @@ fn collect_snippets_recursively(
         // We only run python examples, because:
         // - Each snippet should already be available in each language
         // - Python is the easiest to run
-        if !path.extension().is_some_and(|p| p == "py") {
+        if path.extension().is_none_or(|p| p != "py") {
             println!("Skipping {}: not a python example", path.display());
             continue;
         }
@@ -192,13 +190,4 @@ struct Config {
 struct OptOut {
     /// example name -> languages
     run: HashMap<String, Vec<String>>,
-}
-
-fn download_test_assets(progress: &MultiProgress) -> anyhow::Result<()> {
-    let download_script = re_build_tools::cargo_metadata()?
-        .workspace_root
-        .join("tests/assets/download_test_assets.py");
-    let mut cmd = Command::new("python3");
-    cmd.arg(download_script.as_str());
-    wait_for_output(cmd, "download test assets", progress)
 }

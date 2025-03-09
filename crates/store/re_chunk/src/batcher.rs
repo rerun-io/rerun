@@ -1,5 +1,5 @@
 use std::{
-    hash::{Hash as _, Hasher},
+    hash::{Hash as _, Hasher as _},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -9,9 +9,9 @@ use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::arrow_util;
+use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
@@ -740,16 +740,17 @@ impl PendingRow {
 
         let timelines = timepoint
             .into_iter()
-            .map(|(timeline, time)| {
-                let times = ArrowScalarBuffer::from(vec![time.as_i64()]);
-                let time_column = TimeColumn::new(Some(true), timeline, times);
-                (timeline, time_column)
+            .map(|(timeline_name, cell)| {
+                let times = ArrowScalarBuffer::from(vec![cell.as_i64()]);
+                let time_column =
+                    TimeColumn::new(Some(true), Timeline::new(timeline_name, cell.typ()), times);
+                (timeline_name, time_column)
             })
             .collect();
 
         let mut per_name = ChunkComponents::default();
         for (component_desc, array) in components {
-            let list_array = arrow_util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
                 per_name.insert_descriptor(component_desc, list_array);
             }
@@ -801,9 +802,9 @@ impl PendingRow {
             // deterministic: `TimePoint` is backed by a `BTreeMap`.
             for row in rows {
                 let mut hasher = ahash::AHasher::default();
-                row.timepoint
-                    .timelines()
-                    .for_each(|timeline| timeline.hash(&mut hasher));
+                row.timepoint.timeline_names().for_each(|timeline| {
+                    <TimelineName as std::hash::Hash>::hash(timeline, &mut hasher);
+                });
 
                 per_timeline_set
                     .entry(hasher.finish())
@@ -851,7 +852,7 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: IntMap<Timeline, PendingTimeColumn> = IntMap::default();
+                let mut timelines: IntMap<TimelineName, PendingTimeColumn> = IntMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
@@ -876,10 +877,10 @@ impl PendingRow {
                     // Look for unsorted timelines -- if we find any, and the chunk is larger than
                     // the pre-configured `chunk_max_rows_if_unsorted` threshold, then split _even_
                     // further!
-                    for (&timeline, _) in row_timepoint {
-                        let time_column = timelines
-                            .entry(timeline)
-                            .or_insert_with(|| PendingTimeColumn::new(timeline));
+                    for (&timeline_name, cell) in row_timepoint {
+                        let time_column = timelines.entry(timeline_name).or_insert_with(|| {
+                            PendingTimeColumn::new(Timeline::new(timeline_name, cell.typ()))
+                        });
 
                         if !row_ids.is_empty() // just being extra cautious
                             && row_ids.len() as u64 >= chunk_max_rows_if_unsorted
@@ -892,14 +893,13 @@ impl PendingRow {
                                 &std::mem::take(&mut row_ids),
                                 std::mem::take(&mut timelines)
                                     .into_iter()
-                                    .map(|(timeline, time_column)| (timeline, time_column.finish()))
+                                    .map(|(name, time_column)| (name, time_column.finish()))
                                     .collect(),
                                 {
                                     let mut per_name = ChunkComponents::default();
                                     for (component_desc, arrays) in std::mem::take(&mut components)
                                     {
-                                        let list_array =
-                                            arrow_util::arrays_to_list_array_opt(&arrays);
+                                        let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
                                             per_name.insert_descriptor(component_desc, list_array);
                                         }
@@ -914,11 +914,11 @@ impl PendingRow {
 
                     row_ids.push(*row_id);
 
-                    for (&timeline, &time) in row_timepoint {
-                        let time_column = timelines
-                            .entry(timeline)
-                            .or_insert_with(|| PendingTimeColumn::new(timeline));
-                        time_column.push(time);
+                    for (&timeline_name, &cell) in row_timepoint {
+                        let time_column = timelines.entry(timeline_name).or_insert_with(|| {
+                            PendingTimeColumn::new(Timeline::new(timeline_name, cell.typ()))
+                        });
+                        time_column.push(cell.into());
                     }
 
                     for (component_desc, arrays) in &mut components {
@@ -944,7 +944,7 @@ impl PendingRow {
                     {
                         let mut per_name = ChunkComponents::default();
                         for (component_desc, arrays) in components {
-                            let list_array = arrow_util::arrays_to_list_array_opt(&arrays);
+                            let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
                                 per_name.insert_descriptor(component_desc, list_array);
                             }
@@ -1100,30 +1100,22 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 43, 44].into()),
             )];
             let expected_components = [
                 (
                     MyPoint::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*points1, &*points2, &*points3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
                 ), //
                 (
                     MyLabel::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*labels1, &*labels2, &*labels3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*labels1, &*labels2, &*labels3].map(Some)).unwrap(),
                 ), //
                 (
                     MyIndex::descriptor(),
-                    arrow_util::arrays_to_list_array_opt(
-                        &[&*indices1, &*indices2, &*indices3].map(Some),
-                    )
-                    .unwrap(),
+                    arrays_to_list_array_opt(&[&*indices1, &*indices2, &*indices3].map(Some))
+                        .unwrap(),
                 ), //
             ];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1307,8 +1299,7 @@ mod tests {
             let expected_timelines = [];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
-                    .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1382,12 +1373,12 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1406,12 +1397,12 @@ mod tests {
         {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1489,12 +1480,12 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1514,17 +1505,17 @@ mod tests {
             let expected_row_ids = vec![row2.row_id, row3.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(true), timeline1, vec![43, 44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(true), timeline2, vec![1000, 1001].into()),
                 ),
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1598,12 +1589,12 @@ mod tests {
         {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1622,12 +1613,12 @@ mod tests {
         {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
-                timeline1,
+                *timeline1.name(),
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1720,20 +1711,18 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id, row4.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(false), timeline1, vec![45, 42, 43, 44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001, 1002].into()),
                 ),
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(
-                    &[&*points1, &*points2, &*points3, &*points4].map(Some),
-                )
-                .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3, &*points4].map(Some))
+                    .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1826,18 +1815,17 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(false), timeline1, vec![45, 42, 43].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001].into()),
                 ),
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
-                    .unwrap(),
+                arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1857,17 +1845,17 @@ mod tests {
             let expected_row_ids = vec![row4.row_id];
             let expected_timelines = [
                 (
-                    timeline1,
+                    *timeline1.name(),
                     TimeColumn::new(Some(true), timeline1, vec![44].into()),
                 ),
                 (
-                    timeline2,
+                    *timeline2.name(),
                     TimeColumn::new(Some(true), timeline2, vec![1002].into()),
                 ),
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
+                arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,

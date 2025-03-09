@@ -4,11 +4,11 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
+use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
-use super::DataUi;
+use super::DataUi as _;
 
 // TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::ViewClass`] from the `ViewId`.
 // Simply pass in optional icons?
@@ -176,7 +176,7 @@ pub fn instance_path_button(
 /// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
 /// _on the current timeline_.
 pub fn instance_path_icon(
-    timeline: &re_chunk_store::Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
@@ -207,7 +207,7 @@ pub fn guess_query_and_db_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
 ) -> (re_chunk_store::LatestAtQuery, &'a re_entity_db::EntityDb) {
-    if ctx.app_options.inspect_blueprint_timeline
+    if ctx.app_options().inspect_blueprint_timeline
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
         (
@@ -335,7 +335,7 @@ pub fn instance_path_parts_buttons(
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
     db: &re_entity_db::EntityDb,
     tree: &EntityTree,
     include_subtree: bool,
@@ -379,7 +379,6 @@ fn entity_tree_stats_ui(
         ui.label(format!(
             "{} rows on timeline '{timeline}'{subtree_caveat}",
             format_uint(total_stats.num_rows),
-            timeline = timeline.name()
         ));
     } else {
         ui.label(format!(
@@ -387,7 +386,6 @@ fn entity_tree_stats_ui(
             format_uint(total_stats.num_rows),
             format_uint(static_stats.num_rows),
             format_uint(timeline_stats.num_rows),
-            timeline = timeline.name()
         ));
     }
 
@@ -417,19 +415,17 @@ fn entity_tree_stats_ui(
                 // Fencepost adjustment:
                 bytes_per_time *= (num_temporal_rows - 1) as f64 / num_temporal_rows as f64;
 
-                data_rate = Some(match timeline.typ() {
+                let typ = db.timeline_type(timeline);
+
+                data_rate = Some(match typ {
                     re_log_types::TimeType::Time => {
                         let bytes_per_second = 1e9 * bytes_per_time;
 
-                        format!(
-                            "{}/s in '{}'",
-                            format_bytes(bytes_per_second),
-                            timeline.name()
-                        )
+                        format!("{}/s in '{}'", format_bytes(bytes_per_second), timeline)
                     }
 
                     re_log_types::TimeType::Sequence => {
-                        format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
                     }
                 });
             }
@@ -536,24 +532,24 @@ pub fn data_blueprint_button_to(
 pub fn time_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
     value: TimeInt,
 ) -> egui::Response {
     let is_selected = ctx
         .rec_cfg
         .time_ctrl
         .read()
-        .is_time_selected(timeline, value);
+        .is_time_selected(timeline_name, value);
 
-    let response = ui.selectable_label(
-        is_selected,
-        timeline.typ().format(value, ctx.app_options.time_zone),
-    );
+    let typ = ctx.recording().timeline_type(timeline_name);
+
+    let response = ui.selectable_label(is_selected, typ.format(value, ctx.app_options().time_zone));
     if response.clicked() {
+        let timeline = Timeline::new(*timeline_name, typ);
         ctx.rec_cfg
             .time_ctrl
             .write()
-            .set_timeline_and_time(*timeline, value);
+            .set_timeline_and_time(timeline, value);
         ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
@@ -562,25 +558,26 @@ pub fn time_button(
 pub fn timeline_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    timeline: &Timeline,
+    timeline: &TimelineName,
 ) -> egui::Response {
-    timeline_button_to(ctx, ui, timeline.name().to_string(), timeline)
+    timeline_button_to(ctx, ui, timeline.to_string(), timeline)
 }
 
 pub fn timeline_button_to(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
-    timeline: &Timeline,
+    timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline() == timeline;
+    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline().name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
         let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-        time_ctrl.set_timeline(*timeline);
+        let timeline = Timeline::new(*timeline_name, ctx.recording().timeline_type(timeline_name));
+        time_ctrl.set_timeline(timeline);
         time_ctrl.pause();
     }
     response
@@ -639,7 +636,9 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
+            let typ = db.timeline_type(&query.timeline());
+            let timeline = Timeline::new(query.timeline(), typ);
+            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
@@ -711,11 +710,12 @@ pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     store_id: &re_log_types::StoreId,
+    ui_layout: UiLayout,
 ) {
     if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-        entity_db_button_ui(ctx, ui, entity_db, true);
+        entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
-        ui.label(store_id.to_string());
+        ui_layout.label(ui, store_id.to_string());
     }
 }
 
@@ -729,6 +729,7 @@ pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
+    ui_layout: UiLayout,
     include_app_id: bool,
 ) {
     use re_byte_size::SizeBytes as _;
@@ -746,7 +747,7 @@ pub fn entity_db_button_ui(
         .store_info()
         .and_then(|info| {
             info.started
-                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
         })
         .unwrap_or("<unknown time>".to_owned());
 
@@ -761,17 +762,18 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let item_content = list_item::LabelContent::new(title)
-        .with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active recording or not:
-            let color = if ctx.store_context.is_active(&store_id) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icon.as_image().tint(color).paint_at(ui, rect);
-        })
-        .with_buttons(|ui| {
+    let mut item_content = list_item::LabelContent::new(title).with_icon_fn(|ui, rect, visuals| {
+        // Color icon based on whether this is the active recording or not:
+        let color = if ctx.store_context.is_active(&store_id) {
+            visuals.fg_stroke.color
+        } else {
+            ui.visuals().widgets.noninteractive.fg_stroke.color
+        };
+        icon.as_image().tint(color).paint_at(ui, rect);
+    });
+
+    if ui_layout.is_selection_panel() {
+        item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::REMOVE)
@@ -784,11 +786,12 @@ pub fn entity_db_button_ui(
                     }
                 });
             if resp.clicked() {
-                ctx.command_sender
+                ctx.command_sender()
                     .send_system(SystemCommand::CloseStore(store_id.clone()));
             }
             resp
         });
+    }
 
     let mut list_item = ui
         .list_item()
@@ -825,11 +828,11 @@ pub fn entity_db_button_ui(
         // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
-            ctx.command_sender
+            ctx.command_sender()
                 .send_system(SystemCommand::ActivateRecording(store_id.clone()));
         }
 
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
     }
 }

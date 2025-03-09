@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.server
 import socketserver
+from typing import Any
 
 from . import WIDGET_PATH
 
@@ -9,10 +10,10 @@ resource_data: bytes | None = None
 
 
 class AssetHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         if self.path == "/widget.js":  # remap this path
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -24,7 +25,7 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
             # Serve other requests normally
             self.send_error(404, "File Not Found")
 
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: Any) -> None:
         # Disable logging
         return
 

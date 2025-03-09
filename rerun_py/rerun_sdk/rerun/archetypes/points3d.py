@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -26,78 +27,69 @@ class Points3D(Points3DExt, Archetype):
 
     Examples
     --------
-    ### Randomly distributed 3D points with varying color and radius:
-    ```python
-    import rerun as rr
-    from numpy.random import default_rng
-
-    rr.init("rerun_example_points3d_random", spawn=True)
-    rng = default_rng(12345)
-
-    positions = rng.uniform(-5, 5, size=[10, 3])
-    colors = rng.uniform(0, 255, size=[10, 3])
-    radii = rng.uniform(0, 1, size=[10])
-
-    rr.log("random", rr.Points3D(positions, colors=colors, radii=radii))
-    ```
-    <center>
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png">
-      <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png" width="640">
-    </picture>
-    </center>
-
-    ### Log points with radii given in UI points:
+    ### Simple 3D points:
     ```python
     import rerun as rr
 
-    rr.init("rerun_example_points3d_ui_radius", spawn=True)
+    rr.init("rerun_example_points3d", spawn=True)
 
-    # Two blue points with scene unit radii of 0.1 and 0.3.
-    rr.log(
-        "scene_units",
-        rr.Points3D(
-            [[0, 1, 0], [1, 1, 1]],
-            # By default, radii are interpreted as world-space units.
-            radii=[0.1, 0.3],
-            colors=[0, 0, 255],
-        ),
-    )
-
-    # Two red points with ui point radii of 40 and 60.
-    # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
-    # For 100% ui scaling, UI points are equal to pixels.
-    rr.log(
-        "ui_points",
-        rr.Points3D(
-            [[0, 0, 0], [1, 0, 1]],
-            # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
-            radii=rr.Radius.ui_points([40.0, 60.0]),
-            colors=[255, 0, 0],
-        ),
-    )
+    rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png">
-      <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+      <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" width="640">
     </picture>
     </center>
 
-    ### Send several point clouds with varying point count over time in a single call:
+    ### Update a point cloud over time:
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_points3d_row_updates", spawn=True)
+
+    # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+    times = np.arange(10, 15, 1.0)
+    # fmt: off
+    positions = [
+        [[1.0, 0.0, 1.0], [0.5, 0.5, 2.0]],
+        [[1.5, -0.5, 1.5], [1.0, 1.0, 2.5], [-0.5, 1.5, 1.0], [-1.5, 0.0, 2.0]],
+        [[2.0, 0.0, 2.0], [1.5, -1.5, 3.0], [0.0, -2.0, 2.5], [1.0, -1.0, 3.5]],
+        [[-2.0, 0.0, 2.0], [-1.5, 1.5, 3.0], [-1.0, 1.0, 3.5]],
+        [[1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0]],
+    ]
+    # fmt: on
+
+    # At each timestep, all points in the cloud share the same but changing color and radius.
+    colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
+    radii = [0.05, 0.01, 0.2, 0.1, 0.3]
+
+    for i in range(5):
+        rr.set_index("time", timedelta=10 + i)
+        rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+      <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update a point cloud over time, in a single operation:
     ```python
     from __future__ import annotations
 
     import numpy as np
     import rerun as rr
 
-    rr.init("rerun_example_points3d_send_columns", spawn=True)
+    rr.init("rerun_example_points3d_column_updates", spawn=True)
 
     # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
     times = np.arange(10, 15, 1.0)
@@ -117,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        indexes=[rr.TimeSecondsColumn("time", times)],
+        indexes=[rr.IndexColumn("time", timedelta=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),
@@ -126,11 +118,44 @@ class Points3D(Points3DExt, Archetype):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1200w.png">
-      <img src="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+      <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update specific properties of a point cloud over time:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_points3d_partial_updates", spawn=True)
+
+    positions = [[i, 0, 0] for i in range(10)]
+
+    rr.set_index("frame", sequence=0)
+    rr.log("points", rr.Points3D(positions))
+
+    for i in range(10):
+        colors = [[20, 200, 20] if n < i else [200, 20, 20] for n in range(10)]
+        radii = [0.6 if n < i else 0.2 for n in range(10)]
+
+        # Update only the colors and radii, leaving everything else as-is.
+        rr.set_index("frame", sequence=i)
+        rr.log("points", rr.Points3D.from_fields(radii=radii, colors=colors))
+
+    # Update the positions and radii, and clear everything else in the process.
+    rr.set_index("frame", sequence=20)
+    rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1200w.png">
+      <img src="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/full.png" width="640">
     </picture>
     </center>
 
@@ -305,11 +330,35 @@ class Points3D(Points3DExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "positions": positions,
+            "radii": radii,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "class_ids": class_ids,
+            "keypoint_ids": keypoint_ids,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     positions: components.Position3DBatch | None = field(

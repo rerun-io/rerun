@@ -1,16 +1,15 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::Array as _;
+use arrow::array::{Array as _, RecordBatch as ArrowRecordBatch};
 use egui_extras::{Column, TableRow};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
-use re_chunk_store::external::re_chunk::TransportChunk;
 use re_chunk_store::Chunk;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 
 use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 
@@ -62,11 +61,11 @@ impl ChunkUi {
         let chunk = match &self.sort_column.column {
             ChunkColumn::RowId => self.chunk.clone(),
             ChunkColumn::Timeline(timeline) => {
-                Arc::new(self.chunk.sorted_by_timeline_if_unsorted(timeline))
+                Arc::new(self.chunk.sorted_by_timeline_if_unsorted(timeline.name()))
             }
         };
 
-        let row_ids = chunk.row_ids().collect_vec();
+        let row_ids = chunk.row_ids_slice();
         let reverse = self.sort_column.direction == SortDirection::Descending;
 
         //
@@ -204,8 +203,8 @@ impl ChunkUi {
                 }
             };
 
-        let fields_ui = |ui: &mut egui::Ui, transport: &TransportChunk| {
-            for field in &transport.schema_ref().fields {
+        let fields_ui = |ui: &mut egui::Ui, batch: &ArrowRecordBatch| {
+            for field in &batch.schema_ref().fields {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
@@ -277,14 +276,14 @@ impl ChunkUi {
 
         list_item::list_item_scope(ui, "chunk_stats", |ui| {
             ui.list_item_collapsible_noninteractive_label("Stats", false, chunk_stats_ui);
-            match self.chunk.to_transport() {
-                Ok(transport) => {
+            match self.chunk.to_record_batch() {
+                Ok(batch) => {
                     ui.list_item_collapsible_noninteractive_label("Transport", false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
-                            metadata_ui(ui, &transport.schema_ref().metadata);
+                            metadata_ui(ui, &batch.schema_ref().metadata);
                         });
                         ui.list_item_collapsible_noninteractive_label("Fields", false, |ui| {
-                            fields_ui(ui, &transport);
+                            fields_ui(ui, &batch);
                         });
                     });
                 }

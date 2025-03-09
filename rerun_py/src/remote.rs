@@ -1,10 +1,11 @@
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use arrow::{
-    array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
-    datatypes::Schema as ArrowSchema,
+    array::{Float32Array, RecordBatch, RecordBatchIterator, RecordBatchReader, StringArray},
+    datatypes::{Field, Schema as ArrowSchema},
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
@@ -14,37 +15,47 @@ use pyo3::{
     types::PyDict,
     Bound, PyResult,
 };
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, TimelineName};
 use re_chunk_store::ChunkStore;
-use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_dataframe::{
+    ChunkStoreHandle, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
+    TimeColumnSelector, ViewContentsSelector,
+};
 use re_grpc_client::TonicStatusError;
-use re_log_encoding::codec::wire::{decoder::Decode, encoder::Encode};
+use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
-    common::v0::RecordingId,
-    remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
-        FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
-        RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
+    common::v1alpha1::{EntityPath, IndexColumnSelector, RecordingId},
+    remote_store::v1alpha1::{
+        index_properties::Props, storage_node_service_client::StorageNodeServiceClient,
+        CatalogEntry, CatalogFilter, ColumnProjection, FetchRecordingRequest,
+        GetRecordingSchemaRequest, IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType,
+        RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
-use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
+use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
 
-use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
+use crate::dataframe::{
+    ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
+    PyRecordingHandle, PyRecordingView, PySchema,
+};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyStorageNodeClient>()?;
+    m.add_class::<PyVectorDistanceMetric>()?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
 
     Ok(())
 }
 
-async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transport::Channel>> {
+async fn connect_async(
+    addr: String,
+) -> PyResult<StorageNodeServiceClient<tonic::transport::Channel>> {
     #[cfg(not(target_arch = "wasm32"))]
     let tonic_client = tonic::transport::Endpoint::new(addr)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
@@ -52,7 +63,7 @@ async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transp
         .await
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-    Ok(StorageNodeClient::new(tonic_client))
+    Ok(StorageNodeServiceClient::new(tonic_client))
 }
 
 /// Load a rerun archive from an RRD file.
@@ -88,7 +99,7 @@ pub struct PyStorageNodeClient {
     runtime: tokio::runtime::Runtime,
 
     /// The actual tonic connection.
-    client: StorageNodeClient<tonic::transport::Channel>,
+    client: StorageNodeServiceClient<tonic::transport::Channel>,
 }
 
 impl PyStorageNodeClient {
@@ -100,6 +111,9 @@ impl PyStorageNodeClient {
                 let resp = self
                     .client
                     .query_catalog(QueryCatalogRequest {
+                        entry: Some(CatalogEntry {
+                            name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                        }),
                         column_projection: None, // fetch all columns
                         filter: Some(CatalogFilter {
                             recording_ids: vec![RecordingId { id: id.to_owned() }],
@@ -110,7 +124,13 @@ impl PyStorageNodeClient {
                     .into_inner()
                     .map(|resp| {
                         resp.and_then(|r| {
-                            r.decode()
+                            r.data
+                                .ok_or_else(|| {
+                                    tonic::Status::internal(
+                                        "missing DataframePart in QueryCatalogResponse",
+                                    )
+                                })?
+                                .decode()
                                 .map_err(|err| tonic::Status::internal(err.to_string()))
                         })
                     })
@@ -129,10 +149,7 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::store_info_from_catalog_chunk(
-                    &re_chunk::TransportChunk::from(resp[0].clone()),
-                    id,
-                )
+                re_grpc_client::redap::store_info_from_catalog_chunk(&resp[0], id)
             })
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -145,7 +162,7 @@ impl PyStorageNodeClient {
         id: StoreId,
         query: QueryExpression,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let query: re_protos::common::v0::Query = query.into();
+        let query: re_protos::common::v1alpha1::Query = query.into();
 
         let batches = self.runtime.block_on(async {
             // TODO(#8536): Avoid the need to collect here.
@@ -153,6 +170,9 @@ impl PyStorageNodeClient {
             let batches = self
                 .client
                 .query(QueryRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                    }),
                     recording_id: Some(id.into()),
                     query: Some(query.clone()),
                 })
@@ -161,7 +181,11 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in QueryResponse")
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -215,6 +239,9 @@ impl PyStorageNodeClient {
                     .collect(),
             });
             let request = QueryCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 column_projection,
                 filter,
             };
@@ -227,7 +254,13 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        r.decode()
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal(
+                                    "missing DataframePart in QueryCatalogResponse",
+                                )
+                            })?
+                            .decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -268,6 +301,9 @@ impl PyStorageNodeClient {
     fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
         self.runtime.block_on(async {
             let request = GetRecordingSchemaRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 recording_id: Some(RecordingId { id }),
             };
 
@@ -283,12 +319,11 @@ impl PyStorageNodeClient {
             let arrow_schema = ArrowSchema::try_from(&schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let column_descriptors =
-                re_sorbet::ColumnDescriptor::from_arrow_fields(&arrow_schema.fields)
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let chunk_schema = re_sorbet::ChunkSchema::try_from(&arrow_schema)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             Ok(PySchema {
-                schema: column_descriptors,
+                schema: chunk_schema.columns.clone(),
             })
         })
     }
@@ -297,16 +332,24 @@ impl PyStorageNodeClient {
     ///
     /// Parameters
     /// ----------
+    /// entry : str
+    ///     Catalog entry in which to register the recording in.
     /// storage_url : str
     ///     The URL to the storage location.
     /// metadata : Optional[Table | RecordBatch]
     ///     A pyarrow Table or RecordBatch containing the metadata to update.
     ///     This Table must contain only a single row.
     #[pyo3(signature = (
+        entry,
         storage_url,
         metadata = None
     ))]
-    fn register(&mut self, storage_url: &str, metadata: Option<MetadataLike>) -> PyResult<String> {
+    fn register(
+        &mut self,
+        entry: &str,
+        storage_url: &str,
+        metadata: Option<MetadataLike>,
+    ) -> PyResult<String> {
         self.runtime.block_on(async {
             let storage_url = url::Url::parse(storage_url)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -331,6 +374,9 @@ impl PyStorageNodeClient {
                 .transpose()?;
 
             let request = RegisterRecordingRequest {
+                entry: Some(CatalogEntry {
+                    name: entry.to_owned(),
+                }),
                 // TODO(jleibs): Description should really just be in the metadata
                 description: Default::default(),
                 storage_url: storage_url.to_string(),
@@ -345,6 +391,10 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
             let metadata = resp
+                .data
+                .ok_or_else(|| {
+                    PyRuntimeError::new_err("missing DataframePart in RegisterRecordingResponse")
+                })?
                 .decode()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -358,6 +408,350 @@ impl PyStorageNodeClient {
 
             Ok(recording_id)
         })
+    }
+
+    /// Create a vector index.
+    ///
+    /// Parameters
+    /// ----------
+    /// entry : str
+    ///     The name of the catalog entry to index.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// num_partitions : int
+    ///     The number of partitions for the index.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors for the index.
+    /// distance_metric : VectorDistanceMetric
+    ///     The distance metric to use for the index.
+    #[pyo3(signature = (
+        entry,
+        column,
+        time_index,
+        num_partitions,
+        num_sub_vectors,
+        distance_metric
+    ))]
+    fn create_vector_index(
+        &mut self,
+        entry: String,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        num_partitions: u32,
+        num_sub_vectors: u32,
+        distance_metric: VectorDistanceMetricLike,
+    ) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let time_selector: TimeColumnSelector = time_index.into();
+            let column_selector: ComponentColumnSelector = column.into();
+            let distance_metric: re_protos::remote_store::v1alpha1::VectorDistanceMetric =
+                distance_metric.try_into()?;
+
+            let index_column = IndexColumn {
+                entity_path: Some(EntityPath {
+                    path: column_selector.entity_path.to_string(),
+                }),
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: column_selector.component_name,
+            };
+
+            let time_index = IndexColumnSelector {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
+                    name: time_selector.timeline.to_string(),
+                }),
+            };
+
+            self.client
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
+                        props: Some(Props::Vector(VectorIvfPqIndex {
+                            num_partitions,
+                            num_sub_vectors,
+                            distance_metrics: distance_metric.into(),
+                        })),
+                    }),
+                    column: Some(index_column),
+                    time_index: Some(time_index),
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    /// Create a full-text-search index.
+    ///
+    /// Parameters
+    /// ----------
+    /// entry : str
+    ///     The name of the catalog entry to index.
+    /// column : ComponentColumnSelector
+    ///     The component column to index.
+    /// time_index : IndexColumnSelector
+    ///     The index column to use for the time index.
+    /// store_position : bool
+    ///     Whether to store the position of the token in the document.
+    /// base_tokenizer : str
+    ///     The base tokenizer to use.
+    #[pyo3(signature = (
+        entry,
+        column,
+        time_index,
+        store_position,
+        base_tokenizer
+    ))]
+    fn create_fts_index(
+        &mut self,
+        entry: String,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        store_position: bool,
+        base_tokenizer: &str,
+    ) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let time_selector: TimeColumnSelector = time_index.into();
+            let column_selector: ComponentColumnSelector = column.into();
+
+            let index_column = IndexColumn {
+                entity_path: Some(EntityPath {
+                    path: column_selector.entity_path.to_string(),
+                }),
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: column_selector.component_name,
+            };
+
+            let time_index = IndexColumnSelector {
+                timeline: Some(re_protos::common::v1alpha1::Timeline {
+                    name: time_selector.timeline.to_string(),
+                }),
+            };
+
+            self.client
+                .create_index(re_protos::remote_store::v1alpha1::CreateIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexProperties {
+                        props: Some(Props::Inverted(
+                            re_protos::remote_store::v1alpha1::InvertedIndex {
+                                store_position,
+                                base_tokenizer: base_tokenizer.to_owned(),
+                            },
+                        )),
+                    }),
+                    column: Some(index_column),
+                    time_index: Some(time_index),
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    /// Search over a vector index.
+    ///
+    /// Parameters
+    /// ----------
+    /// entry : str
+    ///     The name of the catalog entry to search.
+    /// query : VectorLike
+    ///     The input to search for.
+    /// column : ComponentColumnSelector
+    ///     The component column to search over.
+    /// top_k : int
+    ///     The number of results to return.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
+    #[pyo3(signature = (
+            entry,
+            query,
+            column,
+            top_k,
+        ))]
+    fn search_vector_index(
+        &mut self,
+        entry: String,
+        query: VectorLike<'_>,
+        column: PyComponentColumnSelector,
+        top_k: u32,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            let column_selector: ComponentColumnSelector = column.into();
+            let query = query.to_record_batch()?;
+
+            let transport_chunks = self
+                .client
+                .search_index(SearchIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    column: Some(IndexColumn {
+                        entity_path: Some(EntityPath {
+                            path: column_selector.entity_path.to_string(),
+                        }),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: column_selector.component_name,
+                    }),
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
+                        props: Some(
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Vector(
+                                re_protos::remote_store::v1alpha1::VectorIndexQuery { top_k },
+                            ),
+                        ),
+                    }),
+                    query: Some(
+                        query
+                            .encode()
+                            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                    ),
+                    limit: None,
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .map(|resp| {
+                    resp.and_then(|r| {
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks.into_iter().map(Ok).collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
+    /// Search over a full-text-search index.
+    ///
+    /// Parameters
+    /// ----------
+    /// entry : str
+    ///     The name of the catalog entry to search.
+    /// query : str
+    ///     The input to search for.
+    /// column : ComponentColumnSelector
+    ///     The component column to search over.
+    /// limit : Optional[int]
+    ///     The maximum number of results to return.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     The results of the query.
+    #[allow(rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        entry,
+        query,
+        column,
+        limit = None
+    ))]
+    fn search_fts_index(
+        &mut self,
+        entry: String,
+        query: String,
+        column: PyComponentColumnSelector,
+        limit: Option<u32>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            let column_selector: ComponentColumnSelector = column.into();
+
+            let schema = arrow::datatypes::Schema::new_with_metadata(
+                vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
+                Default::default(),
+            );
+
+            let query = RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(StringArray::from_iter_values([query]))],
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let transport_chunks = self
+                .client
+                .search_index(SearchIndexRequest {
+                    entry: Some(CatalogEntry { name: entry }),
+                    column: Some(IndexColumn {
+                        entity_path: Some(EntityPath {
+                            path: column_selector.entity_path.to_string(),
+                        }),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: column_selector.component_name,
+                    }),
+                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
+                        props: Some(
+                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Inverted(
+                                re_protos::remote_store::v1alpha1::InvertedIndexQuery {},
+                            ),
+                        ),
+                    }),
+                    query: Some(
+                        query
+                            .encode()
+                            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                    ),
+                    limit,
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .map(|resp| {
+                    resp.and_then(|r| {
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                            })?
+                            .decode()
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks.into_iter().map(Ok).collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
     }
 
     /// Update the catalog metadata for one or more recordings.
@@ -389,6 +783,9 @@ impl PyStorageNodeClient {
             }
 
             let request = UpdateCatalogRequest {
+                entry: Some(CatalogEntry {
+                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                }),
                 metadata: Some(
                     metadata
                         .encode()
@@ -457,6 +854,9 @@ impl PyStorageNodeClient {
             let mut resp = self
                 .client
                 .fetch_recording(FetchRecordingRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) #9116 */
+                    }),
                     recording_id: Some(RecordingId { id: id.to_owned() }),
                 })
                 .await
@@ -480,14 +880,19 @@ impl PyStorageNodeClient {
             store.set_info(store_info);
 
             while let Some(result) = resp.next().await {
-                let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                let response = result
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                    .chunk
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("missing DataframePart in FetchRecordingResponse")
+                    })?;
                 let batch = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {
                         return Err(PyRuntimeError::new_err(err.to_string()));
                     }
                 };
-                let chunk = Chunk::from_record_batch(batch)
+                let chunk = Chunk::from_record_batch(&batch)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 store
@@ -507,6 +912,63 @@ impl PyStorageNodeClient {
             store: handle,
             cache,
         })
+    }
+}
+
+#[pyclass(name = "VectorDistanceMetric", eq, eq_int)]
+#[derive(Clone, Debug, PartialEq)]
+enum PyVectorDistanceMetric {
+    L2,
+    Cosine,
+    Dot,
+    Hamming,
+}
+
+impl From<PyVectorDistanceMetric> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
+    fn from(metric: PyVectorDistanceMetric) -> Self {
+        match metric {
+            PyVectorDistanceMetric::L2 => Self::L2,
+            PyVectorDistanceMetric::Cosine => Self::Cosine,
+            PyVectorDistanceMetric::Dot => Self::Dot,
+            PyVectorDistanceMetric::Hamming => Self::Hamming,
+        }
+    }
+}
+
+/// A type alias for either a `VectorDistanceMetric` enum or a string literal.
+#[derive(FromPyObject)]
+enum VectorDistanceMetricLike {
+    #[pyo3(transparent, annotation = "enum")]
+    VectorDistanceMetric(PyVectorDistanceMetric),
+
+    #[pyo3(transparent, annotation = "literal")]
+    CatchAll(String),
+}
+
+impl TryFrom<VectorDistanceMetricLike> for re_protos::remote_store::v1alpha1::VectorDistanceMetric {
+    type Error = PyErr;
+
+    fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
+        match metric {
+            VectorDistanceMetricLike::VectorDistanceMetric(metric) => Ok(metric.into()),
+            VectorDistanceMetricLike::CatchAll(metric) => match metric.to_lowercase().as_str() {
+                "l2" => Ok(PyVectorDistanceMetric::L2.into()),
+                "cosine" => Ok(PyVectorDistanceMetric::Cosine.into()),
+                "dot" => Ok(PyVectorDistanceMetric::Dot.into()),
+                "hamming" => Ok(PyVectorDistanceMetric::Hamming.into()),
+                _ => Err(PyValueError::new_err(format!(
+                    "Unknown vector distance metric: {metric}"
+                ))),
+            },
+        }
+    }
+}
+
+impl From<PyVectorDistanceMetric> for i32 {
+    fn from(metric: PyVectorDistanceMetric) -> Self {
+        let proto_typed = re_protos::remote_store::v1alpha1::VectorDistanceMetric::from(metric);
+
+        proto_typed as Self
     }
 }
 
@@ -531,6 +993,50 @@ impl MetadataLike {
 
         arrow::compute::concat_batches(&schema, &batches)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+/// A type alias for a vector (vector search input data).
+#[derive(FromPyObject)]
+enum VectorLike<'py> {
+    NumPy(numpy::PyArrayLike1<'py, f32>),
+    Vector(Vec<f32>),
+}
+
+impl VectorLike<'_> {
+    fn to_record_batch(&self) -> PyResult<RecordBatch> {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new(
+                "items",
+                arrow::datatypes::DataType::Float32,
+                false,
+            )],
+            Default::default(),
+        );
+
+        match self {
+            VectorLike::NumPy(array) => {
+                let floats: Vec<f32> = array
+                    .as_array()
+                    .as_slice()
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Failed to convert numpy array to slice".to_owned())
+                    })?
+                    .to_vec();
+
+                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
+                    .map_err(|err| {
+                        PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+                    })
+            }
+            VectorLike::Vector(floats) => RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(Float32Array::from(floats.clone()))],
+            )
+            .map_err(|err| {
+                PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+            }),
+        }
     }
 }
 
@@ -726,7 +1232,7 @@ impl PyRemoteRecording {
 
         // TODO(jleibs): Need to get this from the remote schema
         //let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
-        let timeline = Timeline::new_sequence(index);
+        let timeline = TimelineName::new(index);
 
         let contents = Self::extract_contents_expr(contents)?;
 

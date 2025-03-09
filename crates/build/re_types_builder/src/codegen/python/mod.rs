@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use unindent::unindent;
 
 use crate::{
@@ -1177,24 +1177,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             ..
         } = &example.base;
 
-        let mut example_lines = example.lines.clone();
-
-        if let Some(first_line) = example_lines.first() {
-            if first_line.starts_with("\"\"\"")
-                && first_line.ends_with("\"\"\"")
-                && first_line.len() > 6
-            {
-                // Remove one-line docstring, otherwise we can't embed this.
-                example_lines.remove(0);
-            }
-        }
-
-        // Remove leading blank lines:
-        while example_lines.first() == Some(&String::default()) {
-            example_lines.remove(0);
-        }
-
-        for line in &example_lines {
+        for line in &example.lines {
             assert!(
                 !line.contains("```"),
                 "Example {path:?} contains ``` in it, so we can't embed it in the Python API docs."
@@ -1211,7 +1194,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
-        lines.extend(example_lines.into_iter());
+        lines.extend(example.lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
             lines.extend(
@@ -1414,9 +1397,9 @@ fn quote_array_method_from_obj(
     let field_name = &obj.fields[0].name;
     unindent(&format!(
         "
-        def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+        def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype)
+            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -2420,7 +2403,10 @@ fn quote_init_method(
     objects: &Objects,
 ) -> String {
     let parameters = compute_init_parameters(obj, objects);
-    let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
+    let head = format!(
+        "def __init__(self: Any, {}) -> None:",
+        parameters.join(", ")
+    );
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let mut doc_string_lines = vec![format!(
@@ -2505,6 +2491,17 @@ fn quote_clear_methods(obj: &Object) -> String {
     ))
 }
 
+fn quote_kwargs(obj: &Object) -> String {
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{field_name}': {field_name}")
+        })
+        .collect_vec()
+        .join(",\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -2520,15 +2517,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         .join(",\n");
     let parameters = indent::indent_by(8, parameters);
 
-    let kwargs = obj
-        .fields
-        .iter()
-        .map(|field| {
-            let field_name = field.snake_case_name();
-            format!("'{field_name}': {field_name}")
-        })
-        .collect_vec()
-        .join(",\n");
+    let kwargs = quote_kwargs(obj);
     let kwargs = indent::indent_by(12, kwargs);
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
@@ -2628,6 +2617,9 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
+    let kwargs = quote_kwargs(obj);
+    let kwargs = indent::indent_by(12, kwargs);
+
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
     unindent(&format!(
@@ -2649,11 +2641,29 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             if len(batches) == 0:
                 return ComponentColumnList([])
 
-            lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-            columns = [batch.partition(lengths) for batch in batches]
+            kwargs = {{
+                {kwargs}
+            }}
+            columns = []
 
-            indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+            for batch in batches:
+                arrow_array = batch.as_arrow_array()
 
+                # For primitive arrays, we infer partition size from the input shape.
+                if pa.types.is_primitive(arrow_array.type):
+                    param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
+                    shape = np.shape(param)  # type: ignore[arg-type]
+
+                    batch_length = shape[1] if len(shape) > 1 else 1 # type: ignore[redundant-expr,misc]
+                    num_rows = shape[0] if len(shape) >= 1 else 1    # type: ignore[redundant-expr,misc]
+                    sizes = batch_length * np.ones(num_rows)
+                else:
+                    # For non-primitive types, default to partitioning each element separately.
+                    sizes = np.ones(len(arrow_array))
+
+                columns.append(batch.partition(sizes))
+
+            indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
             return ComponentColumnList([indicator_column] + columns)
         "#
     ))

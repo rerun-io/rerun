@@ -1,0 +1,72 @@
+---
+source: crates/viewer/re_time_panel/tests/time_panel_filter_tests.rs
+expression: streams_tree_data
+---
+children:
+  - entity_path: []
+    label: /
+    highlight_sections: []
+    default_open: true
+    children:
+      - entity_path:
+          - path
+        label: path/
+        highlight_sections: []
+        default_open: true
+        children:
+          - entity_path:
+              - path
+              - onto
+            label: onto/
+            highlight_sections:
+              - start: 2
+                end: 4
+            default_open: true
+            children:
+              - entity_path:
+                  - path
+                  - onto
+                  - their
+                label: their/
+                highlight_sections:
+                  - start: 0
+                    end: 3
+                default_open: true
+                children:
+                  - entity_path:
+                      - path
+                      - onto
+                      - their
+                      - coils
+                    label: coils
+                    highlight_sections: []
+                    default_open: false
+                    children: []
+          - entity_path:
+              - path
+              - to
+            label: to/
+            highlight_sections:
+              - start: 0
+                end: 2
+            default_open: true
+            children:
+              - entity_path:
+                  - path
+                  - to
+                  - the
+                label: the/
+                highlight_sections:
+                  - start: 0
+                    end: 3
+                default_open: true
+                children:
+                  - entity_path:
+                      - path
+                      - to
+                      - the
+                      - void
+                    label: void
+                    highlight_sections: []
+                    default_open: false
+                    children: []

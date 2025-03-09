@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
+use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{icons, UiExt as _};
 use re_viewer_context::{
-    Item, StoreHub, SystemCommand, SystemCommandSender, UiLayout, ViewerContext,
+    Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -60,14 +60,12 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::RerunGrpcStream { url }
-            | SmartChannelSource::MessageProxy { url } => format!("Loading {url}…"),
+            | SmartChannelSource::RedapGrpcStream { url } => format!("Loading {url}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
+            | SmartChannelSource::MessageProxy { .. }
             | SmartChannelSource::Sdk
-            | SmartChannelSource::WsClient { .. }
-            | SmartChannelSource::TcpServer { .. }
             | SmartChannelSource::Stdin => {
                 // These show up in the top panel - see `top_panel.rs`.
                 continue;
@@ -92,7 +90,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                     resp
                 }),
             );
-            if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
+            if let SmartChannelSource::MessageProxy { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
         }
@@ -127,7 +125,7 @@ fn recording_list_ui(
     if let Some(entity_dbs) = entity_dbs_map.remove(&StoreHub::welcome_screen_app_id()) {
         // Always show welcome screen first, if at all:
         if ctx
-            .app_options
+            .app_options()
             .include_welcome_screen_button_in_recordings_panel
             && !welcome_screen_state.hide
         {
@@ -197,7 +195,7 @@ fn app_and_its_recordings_ui(
                 "Close this application and all its recordings. This cannot be undone.",
             );
             if resp.clicked() {
-                ctx.command_sender
+                ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
             }
             resp
@@ -212,7 +210,13 @@ fn app_and_its_recordings_ui(
                 } else {
                     for entity_db in entity_dbs {
                         let include_app_id = false; // we already show it in the parent
-                        entity_db_button_ui(ctx, ui, entity_db, include_app_id);
+                        entity_db_button_ui(
+                            ctx,
+                            ui,
+                            entity_db,
+                            UiLayout::SelectionPanel,
+                            include_app_id,
+                        );
                     }
                 }
             })
@@ -227,7 +231,7 @@ fn app_and_its_recordings_ui(
 
     if item_response.clicked() {
         // Switch to this application:
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ActivateApp(
                 app_id.clone(),
             ));
@@ -235,13 +239,13 @@ fn app_and_its_recordings_ui(
 }
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    use re_ui::UICommandSender;
+    use re_ui::UICommandSender as _;
 
     if ui
         .small_icon_button(&re_ui::icons::ADD)
         .on_hover_text(re_ui::UICommand::Open.tooltip_with_shortcut(ui.ctx()))
         .clicked()
     {
-        ctx.command_sender.send_ui(re_ui::UICommand::Open);
+        ctx.command_sender().send_ui(re_ui::UICommand::Open);
     }
 }

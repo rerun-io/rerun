@@ -6,15 +6,33 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+/// TUID: Time-based Unique Identifier.
+///
+/// Time-ordered globally unique 128-bit identifiers.
+///
+/// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
+/// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
+#[repr(C, align(1))]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(
+    feature = "bytemuck",
+    derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
+)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    time_ns: u64,
+    ///
+    /// A big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// We use big-endian so that the raw bytes of the `Tuid` sorts in time order.
+    time_ns: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
-    inc: u64,
+    ///
+    /// Uses big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
+    ///
+    /// We use big-endian so that the raw bytes of the `Tuid` sorts in creation order.
+    inc: [u8; 8],
 }
 
 impl Tuid {
@@ -24,15 +42,34 @@ impl Tuid {
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
+/// Formats the [`Tuid`] as a hex string.
+///
+/// The format uses upper case for the first 16 hex digits, and lower case for the last 16 hex digits.
+/// This is to make it easily distinguished from other hex strings.
+///
+/// Example: `182342300C5F8C327a7b4a6e5a379ac4`
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(
+            f,
+            "{:016X}{:016x}",
+            self.nanoseconds_since_epoch(),
+            self.inc()
+        )
+    }
+}
+
+impl std::str::FromStr for Tuid {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u128::from_str_radix(s, 16).map(Self::from_u128)
     }
 }
 
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:032X}", self.as_u128())
+        write!(f, "{self}")
     }
 }
 
@@ -52,12 +89,15 @@ impl<'a> From<&'a Tuid> for std::borrow::Cow<'a, Tuid> {
 
 impl Tuid {
     /// All zeroes.
-    pub const ZERO: Self = Self { time_ns: 0, inc: 0 };
+    pub const ZERO: Self = Self {
+        time_ns: [0; 8],
+        inc: [0; 8],
+    };
 
     /// All ones.
     pub const MAX: Self = Self {
-        time_ns: u64::MAX,
-        inc: u64::MAX,
+        time_ns: u64::MAX.to_be_bytes(),
+        inc: u64::MAX.to_be_bytes(),
     };
 
     /// Create a new unique [`Tuid`] based on the current time.
@@ -67,24 +107,21 @@ impl Tuid {
         use std::cell::RefCell;
 
         thread_local! {
-            pub static LATEST_TUID: RefCell<Tuid> = RefCell::new(Tuid{
-                time_ns: monotonic_nanos_since_epoch(),
+            pub static LATEST_TUID: RefCell<Tuid> = RefCell::new(Tuid::from_nanos_and_inc(
+                 monotonic_nanos_since_epoch(),
 
                 // Leave top bit at zero so we have plenty of room to grow.
-                inc: random_u64() & !(1_u64 << 63),
-            });
+                 random_u64() & !(1_u64 << 63),
+            ));
         }
 
         LATEST_TUID.with(|latest_tuid| {
             let mut latest = latest_tuid.borrow_mut();
 
-            let new = Self {
-                time_ns: monotonic_nanos_since_epoch(),
-                inc: latest.inc + 1,
-            };
+            let new = Self::from_nanos_and_inc(monotonic_nanos_since_epoch(), latest.inc() + 1);
 
             debug_assert!(
-                latest.time_ns <= new.time_ns,
+                latest.nanoseconds_since_epoch() <= new.nanoseconds_since_epoch(),
                 "Time should be monotonically increasing"
             );
 
@@ -98,20 +135,31 @@ impl Tuid {
     /// The first should be nano-seconds since epoch.
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
-        Self { time_ns, inc }
-    }
-
-    #[inline]
-    pub fn from_u128(id: u128) -> Self {
         Self {
-            time_ns: (id >> 64) as u64,
-            inc: (id & (!0 >> 64)) as u64,
+            time_ns: time_ns.to_be_bytes(),
+            inc: inc.to_be_bytes(),
         }
     }
 
     #[inline]
+    pub fn from_u128(id: u128) -> Self {
+        Self::from_nanos_and_inc((id >> 64) as u64, (id & (!0 >> 64)) as u64)
+    }
+
+    #[inline]
     pub fn as_u128(&self) -> u128 {
-        ((self.time_ns as u128) << 64) | (self.inc as u128)
+        ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
+    }
+
+    #[inline]
+    pub fn from_bytes(bytes: [u8; 16]) -> Self {
+        Self::from_u128(u128::from_be_bytes(bytes))
+    }
+
+    /// Returns most significant byte first (big endian).
+    #[inline]
+    pub fn as_bytes(&self) -> [u8; 16] {
+        self.as_u128().to_be_bytes()
     }
 
     /// Approximate nanoseconds since unix epoch.
@@ -119,7 +167,7 @@ impl Tuid {
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.time_ns
+        u64::from_be_bytes(self.time_ns)
     }
 
     /// The increment part of the [`Tuid`].
@@ -127,7 +175,7 @@ impl Tuid {
     /// The lower 64 bits of the [`Tuid`].
     #[inline]
     pub fn inc(&self) -> u64 {
-        self.inc
+        u64::from_be_bytes(self.inc)
     }
 
     /// Returns the next logical [`Tuid`].
@@ -143,7 +191,7 @@ impl Tuid {
 
         Self {
             time_ns,
-            inc: inc.wrapping_add(1),
+            inc: u64::from_be_bytes(inc).wrapping_add(1).to_be_bytes(),
         }
     }
 
@@ -160,7 +208,7 @@ impl Tuid {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
-            inc: inc.wrapping_add(n),
+            inc: u64::from_be_bytes(inc).wrapping_add(n).to_be_bytes(),
         }
     }
 
@@ -209,7 +257,7 @@ fn nanos_since_epoch() -> u64 {
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
     getrandom::getrandom(&mut bytes).expect("Couldn't get random bytes");
-    u64::from_le_bytes(bytes)
+    u64::from_be_bytes(bytes)
 }
 
 impl re_byte_size::SizeBytes for Tuid {
@@ -231,12 +279,75 @@ fn test_tuid() {
     }
 
     let num = 100_000;
-    let ids: Vec<Tuid> = (0..num).map(|_| Tuid::new()).collect();
+    let mut ids = Vec::with_capacity(num);
+    ids.push(Tuid::ZERO);
+    ids.push(Tuid::from_nanos_and_inc(123_456, 789_123));
+    ids.push(Tuid::from_nanos_and_inc(123_456, u64::MAX));
+    ids.extend((0..num - 5).map(|_| Tuid::new()));
+    ids.push(Tuid::from_nanos_and_inc(u64::MAX, 1));
+    ids.push(Tuid::MAX);
+
     assert!(is_sorted(&ids));
     assert_eq!(ids.iter().copied().collect::<HashSet::<Tuid>>().len(), num);
     assert_eq!(ids.iter().copied().collect::<BTreeSet::<Tuid>>().len(), num);
 
-    for id in ids {
-        assert_eq!(id, Tuid::from_u128(id.as_u128()));
+    for &tuid in &ids {
+        assert_eq!(tuid, Tuid::from_u128(tuid.as_u128()));
+        assert_eq!(tuid, tuid.to_string().parse().unwrap());
+    }
+
+    let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+    assert!(
+        is_sorted(&id_strings),
+        "Ids should sort the same when converted to strings"
+    );
+}
+
+#[test]
+fn test_tuid_size_and_alignment() {
+    assert_eq!(std::mem::size_of::<Tuid>(), 16);
+    assert_eq!(std::mem::align_of::<Tuid>(), 1);
+}
+
+#[test]
+fn test_tuid_formatting() {
+    assert_eq!(
+        Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4).to_string(),
+        "182342300C5F8C327a7b4a6e5a379ac4"
+    );
+}
+
+// -------------------------------------------------------------------------------
+
+// For backwards compatibility with our MsgPack encoder/decoder
+#[cfg(feature = "serde")]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+struct LegacyTuid {
+    time_ns: u64,
+    inc: u64,
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Tuid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        LegacyTuid {
+            time_ns: self.nanoseconds_since_epoch(),
+            inc: self.inc(),
+        }
+        .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Tuid {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let LegacyTuid { time_ns, inc } = serde::Deserialize::deserialize(deserializer)?;
+        Ok(Self::from_nanos_and_inc(time_ns, inc))
     }
 }

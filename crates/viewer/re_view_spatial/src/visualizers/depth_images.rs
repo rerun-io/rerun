@@ -13,9 +13,9 @@ use re_types::{
 };
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
-    QueryContext, TypedComponentFallbackProvider, ViewClass, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    QueryContext, TypedComponentFallbackProvider, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -85,7 +85,8 @@ impl DepthImageVisualizer {
                     // Don't use fallback provider since it has to query information we already have.
                     let image_stats = ctx
                         .viewer_ctx
-                        .cache
+                        .store_context
+                        .caches
                         .entry(|c: &mut ImageStatsCache| c.entry(&image));
                     ColormapWithRange::default_range_for_depth_images(&image_stats)
                 });
@@ -317,7 +318,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         let mut draw_data_list = Vec::new();
 
         match re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &DepthClouds {
                 clouds: depth_clouds,
                 radius_boost_in_ui_points_for_outlines:
@@ -335,7 +336,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         }
 
         draw_data_list.push(PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx,
+            ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?);
 
@@ -381,7 +382,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                     format: format.0,
                     kind: ImageKind::Depth,
                 };
-                let cache = ctx.viewer_ctx.cache;
+                let cache = ctx.viewer_ctx.store_context.caches;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                 let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();

@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Range1D", "Range1DArrayLike", "Range1DBatch", "Range1DLike"]
 class Range1D(Range1DExt):
     """**Datatype**: A 1D range, specifying a lower and upper bound."""
 
-    def __init__(self: Any, range: Range1DLike):
+    def __init__(self: Any, range: Range1DLike) -> None:
         """Create a new instance of the Range1D datatype."""
 
         # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py
@@ -35,9 +36,9 @@ class Range1D(Range1DExt):
 
     range: npt.NDArray[np.float64] = field(converter=to_np_float64)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Range1DExt in range1d_ext.py
-        return np.asarray(self.range, dtype=dtype)
+        return np.asarray(self.range, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

@@ -34,12 +34,10 @@ __pycache__
 *.pyd
 *.so
 **/.pytest_cache
+**/.ipynb_checkpoints/
 
 # Pixi environment
 .pixi
-
-# Unpacked test assets:
-/tests/assets/rerun.obj
 
 .gdb_history
 perf.data*
@@ -73,3 +71,10 @@ icd.json
 /meilisearch
 
 .pixi/*
+justfile
+
+# heaptrack files
+*.zst
+
+# IDE stuff
+/.idea

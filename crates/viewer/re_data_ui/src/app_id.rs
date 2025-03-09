@@ -19,10 +19,12 @@ impl crate::DataUi for ApplicationId {
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Application ID");
-                ui.label(self.to_string());
+
+                let mut label = self.to_string();
                 if self == &ctx.store_context.app_id {
-                    ui.label("(active)");
+                    label.push_str(" (active)");
                 }
+                UiLayout::List.label(ui, label);
                 ui.end_row();
             });
 
@@ -50,7 +52,7 @@ impl crate::DataUi for ApplicationId {
                 ui.add_space(8.0);
                 ui.strong("Loaded recordings for this app");
                 for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, true);
+                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
                 }
             });
         }

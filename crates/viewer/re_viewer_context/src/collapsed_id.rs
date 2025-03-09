@@ -5,7 +5,7 @@ use std::hash::Hash;
 
 use re_log_types::EntityPath;
 
-use crate::{ContainerId, Item, ViewId};
+use crate::{ContainerId, Contents, Item, ViewId};
 
 /// The various scopes for which we want to track collapsed state.
 #[derive(Debug, Clone, Copy, Hash)]
@@ -64,6 +64,14 @@ impl CollapseScope {
         CollapsedId {
             item: CollapseItem::View(view_id),
             scope: self,
+        }
+    }
+
+    /// Create a [`CollapsedId`] for a [`Contents`] in this scope.
+    pub fn contents(self, contents: Contents) -> CollapsedId {
+        match contents {
+            Contents::Container(container_id) => self.container(container_id),
+            Contents::View(view_id) => self.view(view_id),
         }
     }
 

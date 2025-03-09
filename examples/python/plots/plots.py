@@ -27,12 +27,8 @@ The full source code for this example is available [on GitHub](https://github.co
 """.strip()
 
 
-def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
-    return max(smallest, min(n, largest))
-
-
 def log_bar_chart() -> None:
-    rr.set_time_sequence("frame_nr", 0)
+    rr.set_index("frame_nr", sequence=0)
     # Log a gauss bell as a bar chart
     mean = 0
     std = 1
@@ -51,10 +47,10 @@ def log_parabola() -> None:
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
-        rr.set_time_sequence("frame_nr", t)
+        rr.set_index("frame_nr", sequence=t)
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        width = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
+        width = np.clip(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -70,8 +66,8 @@ def log_parabola() -> None:
 
 
 def log_trig() -> None:
-    for t in range(0, int(tau * 2 * 100.0)):
-        rr.set_time_sequence("frame_nr", t)
+    for t in range(int(tau * 2 * 100.0)):
+        rr.set_index("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
         rr.log("trig/sin", rr.Scalar(sin_of_t))
@@ -80,9 +76,25 @@ def log_trig() -> None:
         rr.log("trig/cos", rr.Scalar(cos_of_t))
 
 
+def log_spiral() -> None:
+    times = np.arange(int(tau * 2 * 100.0))
+    theta = times / 100.0
+
+    x = theta * np.cos(theta)
+    y = theta * np.sin(theta)
+
+    # want this in column major, and numpy is row-major by default
+    scalars = np.array((x, y)).T
+    rr.send_columns(
+        "spiral",
+        indexes=[rr.IndexColumn("frame_nr", sequence=times)],
+        columns=[*rr.Scalar.columns(scalar=scalars)],
+    )
+
+
 def log_classification() -> None:
     for t in range(0, 1000, 2):
-        rr.set_time_sequence("frame_nr", t)
+        rr.set_index("frame_nr", sequence=t)
 
         f_of_t = (2 * 0.01 * t) + 2
         rr.log("classification/line", rr.Scalar(f_of_t))
@@ -107,36 +119,44 @@ def log_classification() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
+        description="demonstrates how to integrate python's native `logging` with the Rerun SDK",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     blueprint = rrb.Blueprint(
         rrb.Horizontal(
-            rrb.Grid(
-                rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
-                rrb.TimeSeriesView(
-                    name="Curves",
-                    origin="/curves",
+            rrb.Vertical(
+                rrb.Grid(
+                    rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
+                    rrb.TimeSeriesView(
+                        name="Curves",
+                        origin="/curves",
+                    ),
+                    rrb.TimeSeriesView(
+                        name="Trig",
+                        origin="/trig",
+                        overrides={
+                            "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+                            "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+                        },
+                    ),
+                    rrb.TimeSeriesView(
+                        name="Classification",
+                        origin="/classification",
+                        overrides={
+                            "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+                            # This ensures that the `SeriesPoint` visualizers is used for this entity.
+                            "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
+                        },
+                    ),
                 ),
                 rrb.TimeSeriesView(
-                    name="Trig",
-                    origin="/trig",
-                    overrides={
-                        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
-                        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
-                    },
+                    name="Spiral",
+                    origin="/spiral",
+                    overrides={"spiral": [rr.components.NameBatch(["0.01t cos(0.01t)", "0.01t sin(0.01t)"])]},
                 ),
-                rrb.TimeSeriesView(
-                    name="Classification",
-                    origin="/classification",
-                    overrides={
-                        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-                        # This ensures that the `SeriesPoint` visualizers is used for this entity.
-                        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
-                    },
-                ),
+                row_shares=[2, 1],
             ),
             rrb.TextDocumentView(name="Description", origin="/description"),
             column_shares=[3, 1],
@@ -151,6 +171,7 @@ def main() -> None:
     log_bar_chart()
     log_parabola()
     log_trig()
+    log_spiral()
     log_classification()
 
     rr.script_teardown(args)

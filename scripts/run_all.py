@@ -53,9 +53,7 @@ SKIP_LIST = [
     "examples/python/external_data_loader",
 ]
 
-MAC_SKIP_LIST = [
-    "examples/python/signed_distance_fields",
-]
+MAC_SKIP_LIST = []
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
@@ -86,7 +84,7 @@ def run_py_example(path: str, viewer_port: int | None = None, *, wait: bool = Tr
     if save is not None:
         args += [f"--save={save}"]
     if viewer_port is not None:
-        args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
+        args += ["--connect", f"--url=rerun+http://127.0.0.1:{viewer_port}/proxy"]
 
     return start_process(
         args,
@@ -116,7 +114,6 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/plots",
             "examples/python/raw_mesh",
             "examples/python/rgbd",
-            "examples/python/signed_distance_fields",
             "examples/python/structure_from_motion",
         ]
     else:
@@ -160,7 +157,7 @@ class Viewer:
     ws_server_port: int  # the WebSocket port where we serve the log stream
     process: Any | None
 
-    def __init__(self, close: bool = False, web: bool = False):
+    def __init__(self, close: bool = False, web: bool = False) -> None:
         self.should_close = close
         self.web = web
         self.sdk_port = get_free_port()
@@ -180,7 +177,7 @@ class Viewer:
             args += [
                 "--web-viewer",
                 f"--web-viewer-port={self.web_viewer_port}",
-                f"--ws-server-port={self.ws_server_port}",
+                f"--port={self.ws_server_port}",
             ]
 
         self.process = subprocess.Popen(args)
@@ -353,7 +350,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
     parser.add_argument(
-        "--install-requirements", action="store_true", help="Install Python requirements for each example."
+        "--install-requirements",
+        action="store_true",
+        help="Install Python requirements for each example.",
     )
     parser.add_argument("--web", action="store_true", help="Run examples in a web viewer.")
     parser.add_argument(
@@ -362,7 +361,9 @@ def main() -> None:
         help="Run examples and save them to disk as rrd.",
     )
     parser.add_argument(
-        "--load", action="store_true", help="Run examples using rrd files previously saved via `--save`."
+        "--load",
+        action="store_true",
+        help="Run examples using rrd files previously saved via `--save`.",
     )
     parser.add_argument("--fast", action="store_true", help="Run only examples which complete quickly.")
     parser.add_argument("--parallel", action="store_true", help="Run all examples in parallel.")

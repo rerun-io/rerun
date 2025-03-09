@@ -11,7 +11,7 @@ pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
 // TODO(#2579): Implement equivalent for web
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
-    use anyhow::Context;
+    use anyhow::Context as _;
 
     let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) else {
         anyhow::bail!("Error finding project directory for blueprints.")
@@ -67,7 +67,7 @@ pub fn encode_to_file(
     let mut file = std::fs::File::create(path)
         .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
         .map(|_| ())
         .context("Message encode")

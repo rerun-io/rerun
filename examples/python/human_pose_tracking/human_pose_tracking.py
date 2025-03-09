@@ -6,10 +6,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp
@@ -54,7 +55,7 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
                 info=rr.AnnotationInfo(id=1, label="Person"),
                 keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
                 keypoint_connections=mp_pose.POSE_CONNECTIONS,
-            )
+            ),
         ),
         static=True,
     )
@@ -77,8 +78,8 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
                 break
 
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=bgr_frame.data)
-            rr.set_time_seconds("time", bgr_frame.time)
-            rr.set_time_sequence("frame_idx", bgr_frame.idx)
+            rr.set_index("time", timedelta=bgr_frame.time)
+            rr.set_index("frame_idx", sequence=bgr_frame.idx)
 
             results = pose_landmarker.detect_for_video(mp_image, int(bgr_frame.time * 1000))
             h, w, _ = bgr_frame.data.shape
@@ -136,7 +137,7 @@ class VideoFrame:
 
 
 class VideoSource:
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.capture = cv2.VideoCapture(path)
 
         if not self.capture.isOpened():

@@ -1,6 +1,6 @@
 use re_log_types::LogMsg;
+use re_uri::ProxyEndpoint;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
-use re_ws_comms::{RerunServer, RerunServerPort};
 
 // ----------------------------------------------------------------------------
 
@@ -11,22 +11,25 @@ pub enum WebViewerSinkError {
     #[error(transparent)]
     WebViewerServer(#[from] WebViewerServerError),
 
-    /// Failure to host the Rerun WebSocket server.
+    /// Invalid host IP.
     #[error(transparent)]
-    RerunServer(#[from] re_ws_comms::RerunServerError),
+    InvalidAddress(#[from] std::net::AddrParseError),
 }
 
 /// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
-/// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
+/// * A gRPC server to relay messages from the sink to any connected web viewers
 /// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
     open_browser: bool,
 
-    /// Sender to send messages to the [`re_ws_comms::RerunServer`]
+    /// Sender to send messages to the gRPC server.
     sender: re_smart_channel::Sender<LogMsg>,
 
+    /// The gRPC server thread.
+    _server_handle: std::thread::JoinHandle<()>,
+
     /// Rerun websocket server.
-    rerun_server: RerunServer,
+    server_shutdown_signal: re_grpc_server::shutdown::Signal,
 
     /// The http server serving wasm & html.
     _webviewer_server: WebViewerServer,
@@ -38,26 +41,43 @@ impl WebViewerSink {
         open_browser: bool,
         bind_ip: &str,
         web_port: WebViewerServerPort,
-        ws_port: RerunServerPort,
+        grpc_port: u16,
         server_memory_limit: re_memory::MemoryLimit,
     ) -> Result<Self, WebViewerSinkError> {
-        // TODO(cmc): the sources here probably don't make much sense…
-        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::Sdk,
+        let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
+
+        let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
+        let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
+            re_smart_channel::SmartMessageSource::MessageProxy {
+                url: format!("rerun+http://{grpc_server_addr}/proxy"),
+            },
             re_smart_channel::SmartChannelSource::Sdk,
         );
+        let server_handle = std::thread::Builder::new()
+            .name("message_proxy_server".to_owned())
+            .spawn(move || {
+                let mut builder = tokio::runtime::Builder::new_current_thread();
+                builder.enable_all();
+                let rt = builder.build().expect("failed to build tokio runtime");
 
-        let rerun_server = RerunServer::new(
-            re_smart_channel::ReceiveSet::new(vec![rerun_rx]),
-            bind_ip,
-            ws_port,
-            server_memory_limit,
-        )?;
+                rt.block_on(re_grpc_server::serve_from_channel(
+                    grpc_server_addr,
+                    server_memory_limit,
+                    shutdown,
+                    channel_rx,
+                ));
+            })
+            .expect("failed to spawn thread for message proxy server");
         let webviewer_server = WebViewerServer::new(bind_ip, web_port)?;
 
         let http_web_viewer_url = webviewer_server.server_url();
-        let ws_server_url = rerun_server.server_url();
-        let viewer_url = format!("{http_web_viewer_url}?url={ws_server_url}");
+
+        let viewer_url =
+            if grpc_server_addr.ip().is_unspecified() || grpc_server_addr.ip().is_loopback() {
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://localhost:{grpc_port}/proxy")
+            } else {
+                format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}/proxy")
+            };
 
         re_log::info!("Hosting a web-viewer at {viewer_url}");
         if open_browser {
@@ -66,8 +86,9 @@ impl WebViewerSink {
 
         Ok(Self {
             open_browser,
-            sender: rerun_tx,
-            rerun_server,
+            sender: channel_tx,
+            _server_handle: server_handle,
+            server_shutdown_signal,
             _webviewer_server: webviewer_server,
         })
     }
@@ -90,7 +111,7 @@ impl crate::sink::LogSink for WebViewerSink {
 
 impl Drop for WebViewerSink {
     fn drop(&mut self) {
-        if self.open_browser && self.rerun_server.num_accepted_clients() == 0 {
+        if self.open_browser {
             // For small scripts that execute fast we run the risk of finishing
             // before the browser has a chance to connect.
             // Let's give it a little more time:
@@ -98,9 +119,7 @@ impl Drop for WebViewerSink {
             std::thread::sleep(std::time::Duration::from_millis(1000));
         }
 
-        if self.rerun_server.num_accepted_clients() == 0 {
-            re_log::info!("Shutting down without any clients ever having connected. Consider sleeping to give them more time to connect");
-        }
+        self.server_shutdown_signal.stop();
     }
 }
 
@@ -121,9 +140,9 @@ pub struct WebViewerConfig {
 
     /// The url from which a spawned webviewer should source
     ///
-    /// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].
+    /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<String>,
+    pub source_url: Option<ProxyEndpoint>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -191,6 +210,12 @@ impl WebViewerConfig {
         };
 
         if let Some(source_url) = source_url {
+            // TODO(jan): remove after we change to `rerun-http`
+            let source_url = source_url.to_string();
+            let source_url = percent_encoding::utf8_percent_encode(
+                &source_url,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
             append_argument(format!("url={source_url}"));
         }
         if let Some(force_graphics) = force_wgpu_backend {
@@ -226,14 +251,14 @@ pub fn new_sink(
     open_browser: bool,
     bind_ip: &str,
     web_port: WebViewerServerPort,
-    ws_port: RerunServerPort,
+    grpc_port: u16,
     server_memory_limit: re_memory::MemoryLimit,
 ) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
         bind_ip,
         web_port,
-        ws_port,
+        grpc_port,
         server_memory_limit,
     )?))
 }

@@ -28,28 +28,27 @@ namespace rerun::archetypes {
     ///
     /// ## Examples
     ///
-    /// ### Simple line plot
-    /// ![image](https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png)
+    /// ### Update a scalar over time
+    /// ![image](https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png)
     ///
     /// ```cpp
-    /// #include <rerun.hpp>
-    ///
     /// #include <cmath>
     ///
+    /// #include <rerun.hpp>
+    ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Log the data on a timeline called "step".
     ///     for (int step = 0; step <64; ++step) {
-    ///         rec.set_time_sequence("step", step);
-    ///         rec.log("scalar", rerun::Scalar(std::sin(static_cast<double>(step) / 10.0)));
+    ///         rec.set_index_sequence("step", step);
+    ///         rec.log("scalars", rerun::Scalar(sin(static_cast<double>(step) / 10.0)));
     ///     }
     /// }
     /// ```
     ///
-    /// ### Multiple scalars in a single `send_columns` call
-    /// ![image](https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png)
+    /// ### Update a scalar over time, in a single operation
+    /// ![image](https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png)
     ///
     /// ```cpp
     /// #include <cmath>
@@ -59,7 +58,7 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_send_columns");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Native scalars & times.

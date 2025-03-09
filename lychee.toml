@@ -67,7 +67,7 @@ exclude_path = [
   "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
-  "crates/store/re_grpc_client/src/address.rs",    # Contains some malformed URLs, but they are not actual links.
+  "crates/utils/re_uri/src/lib.rs",                # Contains some malformed URLs, but they are not actual links.
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -111,10 +111,14 @@ exclude = [
   'file://foo',
   'http://foo.com/',
   'https://link.to',
+  'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
+  'http://foo.zip',
+  'https://foo.zip',
+  'https://redap.rerun.io',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -142,7 +146,6 @@ exclude = [
   'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
 
   # Temporarily down or not accessible.
-  'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
 
@@ -153,20 +156,20 @@ exclude = [
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 
   # Snippets that haven't been released yet.
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_column_updates.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.cpp',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.py',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_send_columns.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.cpp',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.py',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.cpp',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.py',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_send_columns.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_send_columns.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.cpp',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.cpp',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.cpp',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.cpp',

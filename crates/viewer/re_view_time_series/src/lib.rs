@@ -11,8 +11,9 @@ mod point_visualizer_system;
 mod util;
 mod view_class;
 
-use re_log_types::EntityPath;
 use re_types::components::{AggregationPolicy, MarkerShape};
+use re_viewer_context::external::re_entity_db::InstancePath;
+
 pub use view_class::TimeSeriesView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
@@ -73,6 +74,16 @@ pub enum PlotSeriesKind {
 
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
+    pub instance_path: InstancePath,
+
+    /// Id used for this series in the egui plot view.
+    pub id: egui::Id,
+
+    /// Whether the individual series is visible.
+    ///
+    /// If this is false, [`PlotSeries::points`] is allowed to be empty.
+    pub visible: bool,
+
     /// Label of the series.
     pub label: String,
 
@@ -83,7 +94,6 @@ pub struct PlotSeries {
 
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
-    pub entity_path: EntityPath,
 
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: i64,

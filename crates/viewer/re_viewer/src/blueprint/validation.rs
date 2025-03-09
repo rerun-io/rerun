@@ -1,6 +1,6 @@
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::Timeline;
 use re_types_core::Component;
 
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
@@ -19,7 +19,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
             // Otherwise, our usage of serde-fields means we still might have a problem
             // this can go away once we stop using serde-fields.
             // Walk the blueprint and see if any cells fail to deserialize for this component type.
-            let query = LatestAtQuery::latest(Timeline::new_sequence(""));
+            let query = LatestAtQuery::latest(TimelineName::new(""));
             for path in blueprint.entity_paths() {
                 if let Some(array) = engine
                     .cache()

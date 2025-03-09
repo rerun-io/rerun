@@ -35,9 +35,9 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
 
     try:
         # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
+        return tensor.numpy(force=True)
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class Mesh3DExt:
@@ -54,7 +54,7 @@ class Mesh3DExt:
         albedo_texture: ImageLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Mesh3D archetype.
 
@@ -105,7 +105,10 @@ class Mesh3DExt:
                         datatype = ChannelDatatype.from_np_dtype(albedo_texture.dtype)
                         albedo_texture_buffer = albedo_texture.tobytes()
                         albedo_texture_format = ImageFormat(
-                            width=w, height=h, color_model=color_model, channel_datatype=datatype
+                            width=w,
+                            height=h,
+                            color_model=color_model,
+                            channel_datatype=datatype,
                         )
                     except KeyError:
                         _send_warning_or_raise(f"Unsupported dtype {albedo_texture.dtype} for Mesh3D:s albedo texture")

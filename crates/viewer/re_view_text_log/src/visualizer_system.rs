@@ -9,7 +9,7 @@ use re_types::{
     components::{Color, Text, TextLogLevel},
     Component as _,
 };
-use re_view::{range_with_blueprint_resolved_data, RangeResultsExt};
+use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerQueryInfo, VisualizerSystem,
@@ -104,7 +104,7 @@ impl TextLogSystem {
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints(&Text::name()));
 
-        let timeline = query.timeline();
+        let timeline = *query.timeline();
         let all_texts = results.iter_as(timeline, Text::name());
         let all_levels = results.iter_as(timeline, TextLogLevel::name());
         let all_colors = results.iter_as(timeline, Color::name());

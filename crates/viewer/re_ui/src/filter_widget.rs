@@ -1,7 +1,8 @@
 use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
-use itertools::Either;
+use itertools::Itertools as _;
+use smallvec::SmallVec;
 
 use crate::{list_item, UiExt as _};
 
@@ -176,95 +177,324 @@ impl FilterState {
 // --
 
 /// Full-text, case-insensitive matcher.
+///
+/// All keywords must match for the filter to match (`AND` semantics).
 pub struct FilterMatcher {
-    /// The lowercase version of the query string.
+    /// Lowercase keywords.
     ///
     /// If this is `None`, the filter is inactive and the matcher will accept everything. If this
-    /// is `Some("")`, the matcher will reject any input.
-    lowercase_query: Option<String>,
+    /// is `Some([])`, the matcher will reject any input.
+    keywords: Option<Vec<Keyword>>,
 }
 
 impl FilterMatcher {
     fn new(query: Option<&str>) -> Self {
         Self {
-            lowercase_query: query.map(|s| s.to_lowercase()),
+            keywords: query.map(|s| s.split_whitespace().map(Keyword::new).collect()),
         }
     }
 
     /// Is the filter currently active?
     pub fn is_active(&self) -> bool {
-        self.lowercase_query.is_some()
+        self.keywords.is_some()
     }
 
     /// Is the filter set to match everything?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
     pub fn matches_everything(&self) -> bool {
-        self.lowercase_query.is_none()
+        self.keywords.is_none()
     }
 
     /// Is the filter set to match nothing?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
     pub fn matches_nothing(&self) -> bool {
-        self.lowercase_query
+        self.keywords
             .as_ref()
-            .is_some_and(|query| query.is_empty())
+            .is_some_and(|keywords| keywords.is_empty())
     }
 
-    /// Does the given text match the filter?
-    pub fn matches(&self, text: &str) -> bool {
-        match self.lowercase_query.as_deref() {
-            None => true,
-            Some("") => false,
-            Some(query) => text.to_lowercase().contains(query),
-        }
-    }
+    /// Match a path and return the highlight ranges if any.
+    ///
+    /// `None`: the filter is active, but the path didn't match the keyword
+    /// `Some(ranges)`: either the filter is inactive (i.e., it matches everything), or it is active
+    /// and all keywords matched at least once.
+    pub fn match_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> Option<PathRanges> {
+        match self.keywords.as_deref() {
+            None => Some(PathRanges::default()),
+            Some([]) => None,
+            Some(keywords) => {
+                let path = path.into_iter().map(str::to_lowercase).collect_vec();
 
-    /// Find all matches in the given text.
-    ///
-    /// Can be used to format the text, e.g. with [`format_matching_text`].
-    ///
-    /// Returns `None` when there is no match.
-    /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
-    /// actual match.
-    pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
-        let query = match self.lowercase_query.as_deref() {
-            None => {
-                return Some(Either::Left(std::iter::empty()));
+                let all_ranges = keywords
+                    .iter()
+                    .map(|keyword| keyword.match_path(path.iter().map(String::as_str)))
+                    .collect_vec();
+
+                // all keywords must match!
+                if all_ranges.iter().any(|ranges| ranges.is_empty()) {
+                    None
+                } else {
+                    let mut result = PathRanges::default();
+                    for ranges in all_ranges {
+                        result.merge(ranges);
+                    }
+                    Some(result)
+                }
             }
-            Some("") => {
-                return None;
-            }
-            Some(query) => query,
-        };
-
-        let mut start = 0;
-        let lower_case_text = text.to_lowercase();
-        let query_len = query.len();
-
-        if !lower_case_text.contains(query) {
-            return None;
         }
-
-        Some(Either::Right(std::iter::from_fn(move || {
-            let index = lower_case_text[start..].find(query)?;
-            let start_index = start + index;
-            start = start_index + query_len;
-            Some(start_index..(start_index + query_len))
-        })))
-    }
-
-    /// Returns a formatted version of the text with the matching sections highlighted.
-    ///
-    /// Returns `None` when there is no match (so nothing should be displayed).
-    /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
-    /// actual match.
-    pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
-        self.find_matches(text)
-            .map(|match_iter| format_matching_text(ctx, text, match_iter, None))
     }
 }
+
+/// A single keyword from a query.
+///
+/// ## Semantics
+///
+/// If the keyword has a single part, it can match anywhere in any part of the tested path, unless
+/// `match_from_first_part_start` and/or `match_to_last_part_end`, which have the same behavior as
+/// regex's `^` and `$`.
+///
+/// If the keyword has multiple parts, e.g. "first/second", the tested path must have at least one instance of contiguous
+/// parts which match the corresponding keyword parts. In that context, the keyword parts have the
+/// following behavior:
+/// - First keyword part: `^part$` if `match_from_first_part_start`, `part$` otherwise
+/// - Last keyword part: `^part$` if `match_to_last_part_end`, `^part` otherwise
+/// - Other keyword parts: `^part$`
+#[derive(Debug, Clone, PartialEq)]
+struct Keyword {
+    /// The parts of a keyword.
+    ///
+    /// To match, a path needs to have some contiguous parts which each match the corresponding
+    /// keyword parts.
+    parts: Vec<String>,
+    match_from_first_part_start: bool,
+    match_to_last_part_end: bool,
+}
+
+impl Keyword {
+    /// Create a [`Self`] based on a keyword string.
+    ///
+    /// The string must not contain any whitespace!
+    fn new(mut keyword: &str) -> Self {
+        // Invariant: keywords are not empty
+        debug_assert!(!keyword.is_empty());
+        debug_assert!(!keyword.contains(char::is_whitespace));
+
+        let match_from_first_part_start = if let Some(k) = keyword.strip_prefix('/') {
+            keyword = k;
+            true
+        } else {
+            false
+        };
+
+        let match_to_last_part_end = if let Some(k) = keyword.strip_suffix('/') {
+            keyword = k;
+            true
+        } else {
+            false
+        };
+
+        let parts = keyword.split('/').map(str::to_lowercase).collect();
+
+        Self {
+            parts,
+            match_from_first_part_start,
+            match_to_last_part_end,
+        }
+    }
+
+    /// Match the keyword against the provided path.
+    ///
+    /// An empty [`PathRanges`] means that the keyword didn't match the path.
+    ///
+    /// Implementation notes:
+    /// - This function is akin to a "sliding window" of the keyword parts against the path parts,
+    ///   trying to find some "alignment" yielding a match.
+    /// - We must be thorough as we want to find _all_ match highlights (i.e., we don't early out as
+    ///   soon as we find a match).
+    fn match_path<'a>(&self, lowercase_path: impl ExactSizeIterator<Item = &'a str>) -> PathRanges {
+        let mut state_machines = vec![];
+
+        let path_length = lowercase_path.len();
+
+        for (path_part_index, path_part) in lowercase_path.into_iter().enumerate() {
+            // Only start a new state machine if it has a chance to be matched entirely.
+            if self.parts.len() <= (path_length - path_part_index) {
+                state_machines.push(MatchStateMachine::new(self));
+            }
+
+            for state_machine in &mut state_machines {
+                state_machine.process_next_path_part(path_part, path_part_index);
+            }
+        }
+
+        state_machines
+            .into_iter()
+            .filter_map(|state_machine| {
+                if state_machine.did_match() {
+                    Some(state_machine.ranges)
+                } else {
+                    None
+                }
+            })
+            .fold(PathRanges::default(), |mut acc, ranges| {
+                acc.merge(ranges);
+                acc
+            })
+    }
+}
+
+/// Accumulates highlight ranges for the various parts of a path.
+///
+/// The ranges are accumulated and stored unmerged and unordered, but are _always_ ordered and
+/// merged when read, which only happens with [`Self::remove`].
+#[derive(Debug, Default)]
+pub struct PathRanges {
+    ranges: ahash::HashMap<usize, Vec<Range<usize>>>,
+}
+
+impl PathRanges {
+    /// Merge another [`Self`].
+    pub fn merge(&mut self, other: Self) {
+        for (part_index, part_ranges) in other.ranges {
+            self.ranges
+                .entry(part_index)
+                .or_default()
+                .extend(part_ranges);
+        }
+    }
+
+    /// Add ranges to a given part index.
+    pub fn extend(&mut self, part_index: usize, ranges: impl IntoIterator<Item = Range<usize>>) {
+        self.ranges.entry(part_index).or_default().extend(ranges);
+    }
+
+    /// Add a single range to a given part index.
+    pub fn push(&mut self, part_index: usize, range: Range<usize>) {
+        self.ranges.entry(part_index).or_default().push(range);
+    }
+
+    /// Remove the ranges for the given part and (if any) return them sorted and merged.
+    pub fn remove(&mut self, part_index: usize) -> Option<impl Iterator<Item = Range<usize>>> {
+        self.ranges.remove(&part_index).map(MergeRanges::new)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ranges.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.ranges.clear();
+    }
+
+    /// Convert to a `Vec` based structure.
+    #[cfg(test)]
+    fn into_vec(mut self, length: usize) -> Vec<Vec<Range<usize>>> {
+        let result = (0..length)
+            .map(|i| {
+                self.remove(i)
+                    .map(|iter| iter.collect_vec())
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        debug_assert!(self.is_empty());
+
+        result
+    }
+}
+
+// ---
+
+#[derive(Debug)]
+enum MatchState {
+    InProgress,
+    Match,
+    NoMatch,
+}
+
+/// State machine used to test a given keyword against a given sequence of path parts.
+#[derive(Debug)]
+struct MatchStateMachine<'a> {
+    /// The keyword we're matching with.
+    keyword: &'a Keyword,
+
+    /// Which part of the keyword are we currently matching?
+    current_keyword_part: usize,
+
+    /// Our current state.
+    state: MatchState,
+
+    /// The highlight ranges we've gathered so far.
+    ranges: PathRanges,
+}
+
+impl<'a> MatchStateMachine<'a> {
+    fn new(keyword: &'a Keyword) -> Self {
+        Self {
+            keyword,
+            current_keyword_part: 0,
+            state: MatchState::InProgress,
+            ranges: Default::default(),
+        }
+    }
+
+    fn did_match(&self) -> bool {
+        matches!(self.state, MatchState::Match)
+    }
+
+    fn process_next_path_part(&mut self, part: &str, part_index: usize) {
+        if matches!(self.state, MatchState::Match | MatchState::NoMatch) {
+            return;
+        }
+
+        let keyword_part = &self.keyword.parts[self.current_keyword_part];
+
+        let has_part_after = self.current_keyword_part < self.keyword.parts.len() - 1;
+        let has_part_before = 0 < self.current_keyword_part;
+        let must_match_from_start = has_part_before || self.keyword.match_from_first_part_start;
+        let must_match_to_end = has_part_after || self.keyword.match_to_last_part_end;
+
+        let mut ranges = SmallVec::<[Range<usize>; 2]>::new();
+        match (must_match_from_start, must_match_to_end) {
+            (false, false) => {
+                ranges.extend(single_keyword_matches(part, keyword_part));
+            }
+
+            (true, false) => {
+                if part.starts_with(keyword_part) {
+                    ranges.push(0..keyword_part.len());
+                }
+            }
+
+            (false, true) => {
+                if part.ends_with(keyword_part) {
+                    ranges.push(part.len() - keyword_part.len()..part.len());
+                }
+            }
+
+            (true, true) => {
+                if part == keyword_part {
+                    ranges.push(0..part.len());
+                }
+            }
+        }
+
+        if ranges.is_empty() {
+            self.state = MatchState::NoMatch;
+        } else {
+            self.ranges.extend(part_index, ranges);
+            self.current_keyword_part += 1;
+        }
+
+        if self.current_keyword_part == self.keyword.parts.len() {
+            self.state = MatchState::Match;
+        }
+    }
+}
+
+// ---
 
 /// Given a list of highlight sections defined by start/end indices and a string, produce a properly
 /// highlighted [`egui::WidgetText`].
@@ -319,4 +549,242 @@ pub fn format_matching_text(
     }
 
     job.into()
+}
+
+/// Helper function to extract all matches of a given keyword in the given text.
+fn single_keyword_matches<'a>(
+    lower_case_text: &'a str,
+    keyword: &'a str,
+) -> impl Iterator<Item = Range<usize>> + 'a {
+    let keyword_len = keyword.len();
+    let mut start = 0;
+    std::iter::from_fn(move || {
+        let index = lower_case_text[start..].find(keyword)?;
+        let start_index = start + index;
+        start = start_index + keyword_len;
+        Some(start_index..(start_index + keyword_len))
+    })
+}
+
+// ---
+
+/// Given a vector of ranges, iterate over the sorted, merged ranges.
+struct MergeRanges {
+    ranges: Vec<Range<usize>>,
+    current: Option<Range<usize>>,
+}
+
+impl MergeRanges {
+    fn new(mut ranges: Vec<Range<usize>>) -> Self {
+        ranges.sort_by_key(|r| usize::MAX - r.start);
+        let current = ranges.pop();
+        Self { ranges, current }
+    }
+}
+
+impl Iterator for MergeRanges {
+    type Item = Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut current = self.current.take()?;
+
+        while let Some(next) = self.ranges.pop() {
+            if next.start <= current.end {
+                current.end = current.end.max(next.end);
+            } else {
+                self.current = Some(next);
+                return Some(current);
+            }
+        }
+
+        Some(current)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![expect(clippy::single_range_in_vec_init)]
+
+    use super::*;
+
+    #[test]
+    fn test_merge_range() {
+        // merge to one
+        assert_eq!(MergeRanges::new(vec![0..10, 5..15]).collect_vec(), [0..15]);
+        assert_eq!(MergeRanges::new(vec![5..15, 0..10]).collect_vec(), [0..15]);
+        assert_eq!(
+            MergeRanges::new(vec![0..4, 3..4, 1..2, 5..15, 5..15, 0..10]).collect_vec(),
+            [0..15]
+        );
+        assert_eq!(MergeRanges::new(vec![0..11, 11..15]).collect_vec(), [0..15]);
+
+        // independent
+        assert_eq!(
+            MergeRanges::new(vec![0..5, 11..15]).collect_vec(),
+            [0..5, 11..15]
+        );
+        assert_eq!(
+            MergeRanges::new(vec![11..15, 0..5]).collect_vec(),
+            [0..5, 11..15]
+        );
+
+        // mixed
+        assert_eq!(
+            MergeRanges::new(vec![0..5, 20..30, 3..6, 25..27, 30..35]).collect_vec(),
+            [0..6, 20..35]
+        );
+    }
+
+    #[test]
+    fn test_keyword() {
+        assert_eq!(
+            Keyword::new("a"),
+            Keyword {
+                parts: vec!["a".into()],
+                match_from_first_part_start: false,
+                match_to_last_part_end: false
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("/a"),
+            Keyword {
+                parts: vec!["a".into()],
+                match_from_first_part_start: true,
+                match_to_last_part_end: false
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("a/"),
+            Keyword {
+                parts: vec!["a".into()],
+                match_from_first_part_start: false,
+                match_to_last_part_end: true
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("/a/"),
+            Keyword {
+                parts: vec!["a".into()],
+                match_from_first_part_start: true,
+                match_to_last_part_end: true
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("a/b"),
+            Keyword {
+                parts: vec!["a".into(), "b".into()],
+                match_from_first_part_start: false,
+                match_to_last_part_end: false
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("a/b/"),
+            Keyword {
+                parts: vec!["a".into(), "b".into()],
+                match_from_first_part_start: false,
+                match_to_last_part_end: true
+            }
+        );
+
+        assert_eq!(
+            Keyword::new("/a/b/c/d"),
+            Keyword {
+                parts: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+                match_from_first_part_start: true,
+                match_to_last_part_end: false
+            }
+        );
+    }
+
+    #[test]
+    fn test_keyword_match_path() {
+        fn match_and_normalize(query: &str, lowercase_path: &[&str]) -> Vec<Vec<Range<usize>>> {
+            Keyword::new(query)
+                .match_path(lowercase_path.iter().copied())
+                .into_vec(lowercase_path.len())
+        }
+
+        assert_eq!(match_and_normalize("a", &["a"]), vec![vec![0..1]]);
+        assert_eq!(match_and_normalize("a", &["aaa"]), vec![vec![0..3]]);
+
+        assert_eq!(
+            match_and_normalize("a/", &["aaa", "aaa"]),
+            vec![vec![2..3], vec![2..3]]
+        );
+
+        assert_eq!(
+            match_and_normalize("/a", &["aaa", "aaa"]),
+            vec![vec![0..1], vec![0..1]]
+        );
+
+        assert_eq!(
+            match_and_normalize("/a", &["aaa", "bbb"]),
+            vec![vec![0..1], vec![]]
+        );
+
+        assert_eq!(
+            match_and_normalize("a/b", &["aaa", "bbb"]),
+            vec![vec![2..3], vec![0..1]]
+        );
+
+        assert_eq!(
+            match_and_normalize("a/b/c", &["aaa", "b", "cccc"]),
+            vec![vec![2..3], vec![0..1], vec![0..1]]
+        );
+
+        assert!(
+            match_and_normalize("/a/b/c", &["aaa", "b", "cccc"])
+                .into_iter()
+                .flatten()
+                .count()
+                == 0,
+        );
+
+        assert!(
+            match_and_normalize("a/b/c/", &["aaa", "b", "cccc"])
+                .into_iter()
+                .flatten()
+                .count()
+                == 0,
+        );
+
+        assert_eq!(
+            match_and_normalize("ab/cd", &["xxxab", "cdab", "cdxxx"]),
+            vec![vec![3..5], vec![0..4], vec![0..2]]
+        );
+
+        assert_eq!(
+            match_and_normalize("ab/ab", &["xxxab", "ab", "abxxx"]),
+            vec![vec![3..5], vec![0..2], vec![0..2]]
+        );
+    }
+
+    #[test]
+    fn test_match_path() {
+        fn match_and_normalize(query: &str, path: &[&str]) -> Option<Vec<Vec<Range<usize>>>> {
+            FilterMatcher::new(Some(query))
+                .match_path(path.iter().copied())
+                .map(|ranges| ranges.into_vec(path.len()))
+        }
+
+        assert_eq!(
+            match_and_normalize("ab/cd", &["xxxAb", "cDaB", "Cdxxx"]),
+            Some(vec![vec![3..5], vec![0..4], vec![0..2]])
+        );
+
+        assert_eq!(
+            match_and_normalize("ab/cd xx/", &["xxxAb", "cDaB", "Cdxxx"]),
+            Some(vec![vec![3..5], vec![0..4], vec![0..2, 3..5]])
+        );
+
+        assert_eq!(
+            match_and_normalize("ab/cd bla", &["xxxAb", "cDaB", "Cdxxx"]),
+            None
+        );
+    }
 }

@@ -91,7 +91,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 {
                     batch_data.lines.push(
                         line.iter()
-                            .map(|pos| walkers::Position::from_lat_lon(pos[0], pos[1]))
+                            .map(|pos| walkers::lat_lon(pos[0], pos[1]))
                             .collect(),
                     );
                     batch_data.radii.push(Radius((*radius).into()));
@@ -126,7 +126,7 @@ impl GeoLineStringsVisualizer {
                 .iter()
                 .flat_map(|(_, batch)| batch.lines.iter())
                 .flatten()
-                .map(|pos| (pos.lat(), pos.lon())),
+                .map(|pos| (pos.y(), pos.x())),
         )
     }
 
@@ -167,10 +167,7 @@ impl GeoLineStringsVisualizer {
                     .radius(super::radius_to_size(
                         *radius,
                         projector,
-                        strip
-                            .first()
-                            .copied()
-                            .unwrap_or(walkers::Position::from_lat_lon(0.0, 0.0)),
+                        strip.first().copied().unwrap_or(walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
                     .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)

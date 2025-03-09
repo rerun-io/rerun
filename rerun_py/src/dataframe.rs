@@ -21,13 +21,14 @@ use pyo3::{
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
+    ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
-use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
+use re_sorbet::SorbetColumnDescriptors;
 
 #[cfg(feature = "remote")]
 use crate::remote::PyRemoteRecording;
@@ -70,12 +71,12 @@ fn py_rerun_warn(msg: &str) -> PyResult<()> {
 /// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
-struct PyIndexColumnDescriptor(TimeColumnDescriptor);
+struct PyIndexColumnDescriptor(IndexColumnDescriptor);
 
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.name())
+        format!("Index(timeline:{})", self.0.column_name())
     }
 
     /// The name of the index.
@@ -83,7 +84,7 @@ impl PyIndexColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn name(&self) -> &str {
-        self.0.name()
+        self.0.column_name()
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
@@ -94,8 +95,8 @@ impl PyIndexColumnDescriptor {
     }
 }
 
-impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
-    fn from(desc: TimeColumnDescriptor) -> Self {
+impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
+    fn from(desc: IndexColumnDescriptor) -> Self {
         Self(desc)
     }
 }
@@ -111,7 +112,7 @@ impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
 ///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(frozen, name = "IndexColumnSelector")]
 #[derive(Clone)]
-struct PyIndexColumnSelector(TimeColumnSelector);
+pub struct PyIndexColumnSelector(TimeColumnSelector);
 
 #[pymethods]
 impl PyIndexColumnSelector {
@@ -120,9 +121,7 @@ impl PyIndexColumnSelector {
     #[new]
     #[pyo3(text_signature = "(self, index)")]
     fn new(index: &str) -> Self {
-        Self(TimeColumnSelector {
-            timeline: index.into(),
-        })
+        Self(TimeColumnSelector::from(index))
     }
 
     fn __repr__(&self) -> String {
@@ -138,6 +137,12 @@ impl PyIndexColumnSelector {
     }
 }
 
+impl From<PyIndexColumnSelector> for TimeColumnSelector {
+    fn from(selector: PyIndexColumnSelector) -> Self {
+        selector.0
+    }
+}
+
 /// The descriptor of a component column.
 ///
 /// Component columns contain the data for a specific component of an entity.
@@ -147,7 +152,7 @@ impl PyIndexColumnSelector {
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
     fn from(desc: ComponentColumnDescriptor) -> Self {
@@ -182,7 +187,7 @@ impl PyComponentColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn component_name(&self) -> &str {
-        &self.0.component_name
+        self.0.component_name.full_name()
     }
 
     /// Whether the column is static.
@@ -212,7 +217,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
-struct PyComponentColumnSelector(ComponentColumnSelector);
+pub struct PyComponentColumnSelector(ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
@@ -251,6 +256,12 @@ impl PyComponentColumnSelector {
     }
 }
 
+impl From<PyComponentColumnSelector> for ComponentColumnSelector {
+    fn from(selector: PyComponentColumnSelector) -> Self {
+        selector.0
+    }
+}
+
 /// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
 enum AnyColumn {
@@ -271,9 +282,7 @@ impl AnyColumn {
         match self {
             Self::Name(name) => {
                 if !name.contains(':') && !name.contains('/') {
-                    Ok(ColumnSelector::Time(TimeColumnSelector {
-                        timeline: name.into(),
-                    }))
+                    Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
                     let component_path =
                         re_log_types::ComponentPath::from_str(&name).map_err(|err| {
@@ -470,7 +479,7 @@ impl SchemaIterator {
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
-    pub schema: Vec<ColumnDescriptor>,
+    pub schema: SorbetColumnDescriptors,
 }
 
 /// The schema representing a set of available columns.
@@ -479,13 +488,13 @@ pub struct PySchema {
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
-    /// Iterate over all the column descriptors in the schema.
+    /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
         let py = slf.py();
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .clone()
+                .indices_and_components()
                 .into_iter()
                 .map(|col| match col {
                     ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
@@ -502,28 +511,18 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
+            .indices
             .iter()
-            .filter_map(|column| {
-                if let ColumnDescriptor::Time(col) = column {
-                    Some(col.clone().into())
-                } else {
-                    None
-                }
-            })
+            .map(|c| c.clone().into())
             .collect()
     }
 
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
+            .components
             .iter()
-            .filter_map(|column| {
-                if let ColumnDescriptor::Component(col) = column {
-                    Some(col.clone().into())
-                } else {
-                    None
-                }
-            })
+            .map(|c| c.clone().into())
             .collect()
     }
 
@@ -547,13 +546,12 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.iter().find_map(|col| {
-            if let ColumnDescriptor::Component(col) = col {
-                if col.matches(&entity_path, &component.0) {
-                    return Some(col.clone().into());
-                }
+        self.schema.components.iter().find_map(|col| {
+            if col.matches(&entity_path, &component.0) {
+                Some(col.clone().into())
+            } else {
+                None
             }
-            None
         })
     }
 }
@@ -661,10 +659,8 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
-                let contents = query_handle.view_contents();
-
                 Ok(PySchema {
-                    schema: contents.to_vec(),
+                    schema: query_handle.view_contents().clone(),
                 })
             }
             #[cfg(feature = "remote")]
@@ -723,11 +719,7 @@ impl PyRecordingView {
 
                 // If the only contents found are static, we might need to warn the user since
                 // this means we won't naturally have any rows in the result.
-                let available_data_columns = query_handle
-                    .view_contents()
-                    .iter()
-                    .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
-                    .collect::<Vec<_>>();
+                let available_data_columns = &query_handle.view_contents().components;
 
                 // We only consider all contents static if there at least some columns
                 let all_contents_are_static = !available_data_columns.is_empty()
@@ -815,9 +807,10 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)?
                     .schema
+                    .components
                     .iter()
                     .filter(|col| col.is_static())
-                    .map(|col| col.clone().into())
+                    .map(|col| ColumnDescriptor::Component(col.clone()).into())
                     .collect())
             })?;
 
@@ -883,13 +876,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not a sequence.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not a sequence.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -954,13 +947,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not temporal.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this check? If so, how can we accomplish it?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not temporal.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -1006,13 +999,13 @@ impl PyRecordingView {
     ///     The original view will not be modified.
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
-            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-                return Err(PyValueError::new_err(format!(
-                    "Index for {} is not temporal.",
-                    filtered_index.name()
-                )));
-            }
-
+            // TODO(#9084): do we need this?
+            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+            //     return Err(PyValueError::new_err(format!(
+            //         "Index for {} is not temporal.",
+            //         filtered_index.name()
+            //     )));
+            // }
             Some(_) => {}
 
             None => {
@@ -1343,11 +1336,9 @@ impl PyRecording {
         let borrowed_self = slf.borrow();
 
         // Look up the type of the timeline
-        let selector = TimeColumnSelector {
-            timeline: index.into(),
-        };
+        let selector = TimeColumnSelector::from(index);
 
-        let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
+        let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
@@ -1356,7 +1347,7 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(timeline.timeline()),
+            filtered_index: Some(*time_column.timeline().name()),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,

@@ -1,10 +1,10 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text},
-    ArrowString, Component,
+    ArrowString, Component as _,
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
@@ -180,14 +180,14 @@ impl VisualizerSystem for Points3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx);
+        let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go
         // with the dynamic allocation approach.
-        let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );

@@ -28,7 +28,7 @@ impl std::ops::Deref for MaybeVisualizableEntities {
 ///
 /// In order to be a match the entity must have at some point in time on any timeline had any of
 /// the indicator components specified by the respective visualizer system.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct IndicatedEntities(pub IntSet<EntityPath>);
 
 impl std::ops::Deref for IndicatedEntities {

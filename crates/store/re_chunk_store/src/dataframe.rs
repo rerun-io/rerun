@@ -9,12 +9,15 @@ use arrow::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
+use re_sorbet::{
+    ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, SorbetColumnDescriptors,
+};
 use re_types_core::ComponentName;
+use tap::Tap as _;
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -63,11 +66,45 @@ pub struct TimeColumnSelector {
     pub timeline: TimelineName,
 }
 
-impl From<TimeColumnDescriptor> for TimeColumnSelector {
+impl From<TimelineName> for TimeColumnSelector {
     #[inline]
-    fn from(desc: TimeColumnDescriptor) -> Self {
+    fn from(timeline: TimelineName) -> Self {
+        Self { timeline }
+    }
+}
+
+impl From<Timeline> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: Timeline) -> Self {
         Self {
-            timeline: *desc.timeline.name(),
+            timeline: *timeline.name(),
+        }
+    }
+}
+
+impl From<&str> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: &str) -> Self {
+        Self {
+            timeline: timeline.into(),
+        }
+    }
+}
+
+impl From<String> for TimeColumnSelector {
+    #[inline]
+    fn from(timeline: String) -> Self {
+        Self {
+            timeline: timeline.into(),
+        }
+    }
+}
+
+impl From<IndexColumnDescriptor> for TimeColumnSelector {
+    #[inline]
+    fn from(desc: IndexColumnDescriptor) -> Self {
+        Self {
+            timeline: desc.timeline_name(),
         }
     }
 }
@@ -95,7 +132,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name.to_string(),
+            component_name: desc.component_name.short_name().to_owned(),
         }
     }
 }
@@ -106,7 +143,7 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: C::name().to_string(),
+            component_name: C::name().short_name().to_owned(),
         }
     }
 
@@ -115,7 +152,7 @@ impl ComponentColumnSelector {
     pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component_name: component_name.to_string(),
+            component_name: component_name.short_name().to_owned(),
         }
     }
 }
@@ -215,7 +252,7 @@ impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContent
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
-pub type Index = Timeline;
+pub type Index = TimelineName;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `TimeInt`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
@@ -294,7 +331,7 @@ pub struct QueryExpression {
     ///
     /// If left unspecified, the results will only contain static data.
     ///
-    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
+    /// Examples: `Some(TimelineName("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
     pub filtered_index: Option<Index>,
@@ -374,15 +411,16 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema(&self) -> Vec<ColumnDescriptor> {
+    pub fn schema(&self) -> SorbetColumnDescriptors {
         re_tracing::profile_function!();
 
-        let timelines = self
-            .all_timelines_sorted()
-            .into_iter()
-            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor::from(timeline)));
+        let indices = self
+            .timelines()
+            .values()
+            .map(|timeline| IndexColumnDescriptor::from(*timeline))
+            .collect();
 
-        let mut components = self
+        let components = self
             .per_column_metadata
             .iter()
             .flat_map(|(entity_path, per_name)| {
@@ -405,6 +443,8 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
+                component_descr.component_name.sanity_check();
+
                 ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
@@ -423,26 +463,27 @@ impl ChunkStore {
                     is_semantically_empty,
                 }
             })
-            .collect_vec();
+            .collect_vec()
+            .tap_mut(|components| components.sort());
 
-        components.sort();
-
-        timelines
-            .chain(components.into_iter().map(ColumnDescriptor::Component))
-            .collect()
+        SorbetColumnDescriptors {
+            row_id: Some(re_sorbet::RowIdColumnDescriptor { is_sorted: false }),
+            indices,
+            components,
+        }
+        .tap(|schema| schema.sanity_check())
     }
 
-    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
-    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
-        let timelines = self.all_timelines();
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> IndexColumnDescriptor {
+        let timelines = self.timelines();
 
         let timeline = timelines
-            .iter()
-            .find(|timeline| timeline.name() == &selector.timeline)
+            .get(&selector.timeline)
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor::from(timeline)
+        IndexColumnDescriptor::from(timeline)
     }
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
@@ -476,6 +517,8 @@ impl ChunkStore {
 
         let component_name =
             component_descr.map_or(selected_component_name, |descr| descr.component_name);
+
+        component_name.sanity_check();
 
         let ColumnMetadata {
             is_static,
@@ -538,7 +581,7 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
+    pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
         re_tracing::profile_function!();
 
         let QueryExpression {
@@ -581,12 +624,6 @@ impl ChunkStore {
                 && passes_tombstone_check()
         };
 
-        self.schema()
-            .into_iter()
-            .filter(|column| match column {
-                ColumnDescriptor::Time(_) => true,
-                ColumnDescriptor::Component(column) => filter(column),
-            })
-            .collect()
+        self.schema().filter_components(filter)
     }
 }

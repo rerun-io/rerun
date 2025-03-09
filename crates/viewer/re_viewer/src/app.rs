@@ -4,26 +4,27 @@ use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
+use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
+use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
-    ViewClassRegistryError,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
-use crate::app_blueprint::PanelStateOverrides;
 use crate::{
-    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+    app_blueprint::{AppBlueprint, PanelStateOverrides},
+    app_state::WelcomeScreenState,
+    background_tasks::BackgroundTasks,
     AppState,
 };
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -236,16 +237,45 @@ pub struct App {
     /// This field isn't used directly, but is propagated to all recording configs
     /// when they are created.
     pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
+
+    /// The async runtime that should be used for all asynchronous operations.
+    ///
+    /// Using the global tokio runtime should be avoided since:
+    /// * we don't have a tokio runtime on web
+    /// * we want the user to have full control over the runtime,
+    ///   and not expect that a global runtime exists.
+    async_runtime: AsyncRuntimeHandle,
 }
 
 impl App {
-    /// Create a viewer that receives new log messages over time
     pub fn new(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        tokio_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        Self::with_commands(
+            main_thread_token,
+            build_info,
+            app_env,
+            startup_options,
+            creation_context,
+            tokio_runtime,
+            command_channel(),
+        )
+    }
+
+    /// Create a viewer that receives new log messages over time
+    pub fn with_commands(
+        main_thread_token: MainThreadToken,
+        build_info: re_build_info::BuildInfo,
+        app_env: &crate::AppEnvironment,
+        startup_options: StartupOptions,
+        creation_context: &eframe::CreationContext<'_>,
+        tokio_runtime: AsyncRuntimeHandle,
+        command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -301,7 +331,7 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(&creation_context.egui_ctx, screenshot_path);
         }
 
-        let (command_sender, command_receiver) = command_channel();
+        let (command_sender, command_receiver) = command_channel;
 
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
@@ -314,7 +344,7 @@ impl App {
         let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Empty,
-                re_renderer::config::DeviceTier::Limited,
+                re_renderer::device_caps::DeviceCapabilityTier::Limited,
             ),
             |render_state| {
                 let egui_renderer = render_state.renderer.read();
@@ -324,9 +354,10 @@ impl App {
 
                 (
                     render_state.adapter.get_info().backend,
-                    render_ctx.map_or(re_renderer::config::DeviceTier::Limited, |ctx| {
-                        ctx.device_caps().tier
-                    }),
+                    render_ctx.map_or(
+                        re_renderer::device_caps::DeviceCapabilityTier::Limited,
+                        |ctx| ctx.device_caps().tier,
+                    ),
                 )
             },
         );
@@ -432,6 +463,7 @@ impl App {
             reflection,
 
             timeline_callbacks,
+            async_runtime: tokio_runtime,
         }
     }
 
@@ -537,16 +569,13 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. }
-                    | SmartChannelSource::MessageProxy { .. } => false,
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
-                    SmartChannelSource::WsClient { .. }
-                    | SmartChannelSource::JsChannel { .. }
+                    SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
-                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::RedapGrpcStream { .. }
+                    | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
                 });
             }
@@ -561,6 +590,15 @@ impl App {
                 self.add_receiver(rx);
             }
 
+            SystemCommand::ChangeDisplayMode(display_mode) => {
+                self.state.display_mode = display_mode;
+            }
+            SystemCommand::AddRedapServer { endpoint } => {
+                self.state.redap_servers.add_server(endpoint.origin);
+                self.state.display_mode = DisplayMode::RedapBrowser;
+                self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
@@ -572,9 +610,24 @@ impl App {
                     egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
                 });
 
-                match data_source.stream(Some(waker)) {
-                    Ok(rx) => {
-                        self.add_receiver(rx);
+                let command_sender = self.command_sender.clone();
+                let on_cmd = Box::new(move |cmd| match cmd {
+                    re_data_source::DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                        rec_id: recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
+                match data_source.stream(on_cmd, Some(waker)) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        self.command_sender
+                            .send_system(SystemCommand::AddRedapServer { endpoint });
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -651,6 +704,19 @@ impl App {
             SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                 if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
                     rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
+            }
+
+            SystemCommand::SetLoopSelection {
+                rec_id,
+                timeline,
+                time_range,
+            } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    let mut guard = rec_cfg.time_ctrl.write();
+                    guard.set_timeline(timeline);
+                    guard.set_loop_selection(time_range);
+                    guard.set_looping(re_viewer_context::Looping::Selection);
                 }
             }
 
@@ -836,6 +902,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearActiveBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprint);
+            }
             UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
@@ -858,12 +928,24 @@ impl App {
             UICommand::ToggleBlueprintPanel => {
                 app_blueprint.toggle_blueprint_panel(&self.command_sender);
             }
+            UICommand::ExpandBlueprintPanel => {
+                if !app_blueprint.blueprint_panel_state().is_expanded() {
+                    app_blueprint.toggle_blueprint_panel(&self.command_sender);
+                }
+            }
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => self.state.show_datastore_ui ^= true,
+            UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+                DisplayMode::LocalRecordings | DisplayMode::RedapBrowser => {
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
+                }
+                DisplayMode::ChunkStoreBrowser => {
+                    self.state.display_mode = DisplayMode::LocalRecordings;
+                }
+            },
 
             #[cfg(debug_assertions)]
             UICommand::ToggleBlueprintInspectionPanel => {
@@ -968,6 +1050,10 @@ impl App {
                 }
             }
 
+            UICommand::CopyTimeRangeLink => {
+                self.run_copy_time_range_link_command(store_context);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGl => {
                 if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
@@ -1019,17 +1105,15 @@ impl App {
         }
     }
 
+    /// Retrieve the link to the current viewer.
     #[cfg(target_arch = "wasm32")]
-    fn run_copy_direct_link_command(
-        &mut self,
-        store_context: Option<&StoreContext<'_>>,
-    ) -> Option<()> {
-        use crate::web_tools::JsResultExt as _;
-
-        let location = web_sys::window()?.location();
-        let origin = location.origin().ok_or_log_js_error_once()?;
-        let host = location.host().ok_or_log_js_error_once()?;
-        let pathname = location.pathname().ok_or_log_js_error_once()?;
+    fn get_viewer_url(&self) -> Result<String, wasm_bindgen::JsValue> {
+        let location = web_sys::window()
+            .ok_or_else(|| "failed to get window".to_owned())?
+            .location();
+        let origin = location.origin()?;
+        let host = location.host()?;
+        let pathname = location.pathname()?;
 
         let hosted_viewer_path = if self.build_info.is_final() {
             // final release, use version tag
@@ -1040,13 +1124,24 @@ impl App {
         };
 
         // links to `app.rerun.io` can be made into permanent links:
-        let href = if host == "app.rerun.io" {
+        let url = if host == "app.rerun.io" {
             format!("https://app.rerun.io/{hosted_viewer_path}")
         } else if host == "rerun.io" && pathname.starts_with("/viewer") {
             format!("https://rerun.io/viewer/{hosted_viewer_path}")
         } else {
             format!("{origin}{pathname}")
         };
+
+        Ok(url)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn run_copy_direct_link_command(
+        &mut self,
+        store_context: Option<&StoreContext<'_>>,
+    ) -> Option<()> {
+        use crate::web_tools::JsResultExt as _;
+        let href = self.get_viewer_url().ok_or_log_js_error()?;
 
         let direct_link = match store_context
             .map(|ctx| ctx.recording)
@@ -1061,6 +1156,72 @@ impl App {
             .success(format!("Copied {direct_link:?} to clipboard"));
 
         Some(())
+    }
+
+    fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            re_log::warn!("Could not copy time range link: No active recording");
+            return;
+        };
+
+        let Some(SmartChannelSource::RedapGrpcStream { url: base_url }) = &entity_db.data_source
+        else {
+            re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
+            return;
+        };
+
+        let rec_id = entity_db.store_id();
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
+            re_log::warn!("Could not copy time range link: Failed to get recording config");
+            return;
+        };
+        let time_ctrl = rec_cfg.time_ctrl.get_mut();
+
+        let Some(range) = time_ctrl.loop_selection() else {
+            // no loop selection
+            re_log::warn!("Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop");
+            return;
+        };
+
+        let time_range = re_uri::TimeRange {
+            timeline: *time_ctrl.timeline(),
+            range,
+        };
+
+        // On web we can produce a link to the web viewer,
+        // which can be used to share the time range.
+        //
+        // On native we only produce a link to the time range
+        // which can be passed to `rerun-cli`.
+        #[cfg(target_arch = "wasm32")]
+        let url = {
+            use crate::web_tools::JsResultExt as _;
+            let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
+                // error was logged already
+                return;
+            };
+
+            let time_range_url = format!("{base_url}?time_range={time_range}");
+            // %-encode the time range URL, because it's a url-within-a-url.
+            // This results in VERY ugly links.
+            // TODO(jan): Tweak the asciiset used here.
+            //            Alternatively, use a better (shorter, simpler) format
+            //            for linking to recordings that isn't a full url and
+            //            can actually exist in a query value.
+            let url_query = percent_encoding::utf8_percent_encode(
+                &time_range_url,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+
+            format!("{viewer_url}?url={url_query}")
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let url = format!("{base_url}?time_range={time_range}");
+
+        self.egui_ctx.copy_text(url.clone());
+        self.notifications
+            .success(format!("Copied {url:?} to clipboard"));
     }
 
     fn memory_panel_ui(
@@ -1170,19 +1331,20 @@ impl App {
                     .get_mut::<re_renderer::RenderContext>()
                 {
                     if let Some(store_context) = store_context {
-                        let entity_db = store_context.recording;
-
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
+
+                        self.state
+                            .redap_servers
+                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
 
                         render_ctx.begin_frame();
                         self.state.show(
                             app_blueprint,
                             ui,
                             render_ctx,
-                            entity_db,
                             store_context,
                             &self.reflection,
                             &self.component_ui_registry,
@@ -1231,24 +1393,7 @@ impl App {
 
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        let log_msg =
-                            format!("Data source {} has left unexpectedly: {err}", msg.source);
-
-                        #[cfg(not(target_arch = "wasm32"))]
-                        if err
-                            .downcast_ref::<re_sdk_comms::ConnectionError>()
-                            .is_some_and(|e| {
-                                matches!(e, re_sdk_comms::ConnectionError::UnknownClient)
-                            })
-                        {
-                            // This can happen if a client tried to connect but didn't send the `re_sdk_comms::PROTOCOL_HEADER`.
-                            // Likely an unknown client stumbled onto the wrong port - don't log as an error.
-                            // (for more information see https://github.com/rerun-io/rerun/issues/5883).
-                            re_log::debug!("{log_msg}");
-                            continue;
-                        }
-
-                        re_log::warn!("{log_msg}");
+                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
@@ -1583,20 +1728,18 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RerunGrpcStream { .. }
-                | SmartChannelSource::MessageProxy { .. }
+                | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. }
                 | SmartChannelSource::JsChannel { .. } => {
                     return true; // We expect data soon, so fade-in
                 }
 
-                SmartChannelSource::TcpServer { .. } => {
-                    // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
+                SmartChannelSource::MessageProxy { .. } => {
+                    // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
-                    // However, we also use the TCP server for sending data from the logging SDKs
+                    // However, we also use the gRPC server for sending data from the logging SDKs
                     // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
                     // Therefore `spawn()` uses the special `--expect-data-soon` flag
                     // (handled earlier in this function), so here we know we are in the other case:
@@ -1726,6 +1869,11 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
+    }
+
+    pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
+        self.command_sender
+            .send_system(SystemCommand::AddRedapServer { endpoint });
     }
 }
 
@@ -2073,7 +2221,7 @@ fn paint_background_fill(ui: &egui::Ui) {
 
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
@@ -2087,7 +2235,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_rounding(),
+        re_ui::DesignTokens::native_window_corner_radius(),
         re_ui::design_tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
@@ -2214,7 +2362,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(re_entity_db::Timeline, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
@@ -2353,7 +2501,7 @@ async fn async_save_dialog(
 
     let bytes = re_log_encoding::encoder::encode_as_bytes(
         rrd_version,
-        re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED,
+        re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED,
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")

@@ -18,9 +18,6 @@ else()
     include(FetchContent)
     FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL})
     FetchContent_MakeAvailable(rerun_sdk)
-
-    # Rerun requires at least C++17, but it should be compatible with newer versions.
-    set_property(TARGET example_incremental_logging PROPERTY CXX_STANDARD 17)
 endif()
 
 # Link against rerun_sdk.

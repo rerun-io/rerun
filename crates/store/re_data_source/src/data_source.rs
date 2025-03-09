@@ -1,12 +1,14 @@
-use crate::FileContents;
+use re_grpc_client::message_proxy;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+
+use crate::FileContents;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 
 /// Somewhere we can get Rerun data from.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
@@ -24,21 +26,18 @@ pub enum DataSource {
     /// This is what you get when loading a file on Web, or when using drag-n-drop.
     FileContents(re_log_types::FileSource, FileContents),
 
-    /// A remote Rerun server.
-    WebSocketAddr(String),
-
     // RRD data streaming in from standard input.
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A file or a metadata catalog on a Rerun Data Platform server,
-    /// over `rerun://` gRPC interface.
-    #[cfg(feature = "grpc")]
-    RerunGrpcUrl { url: String },
+    /// A `rerun://` URI pointing to a recording or catalog.
+    RerunGrpcStream(re_uri::RedapUri),
+}
 
-    /// A stream of messages over gRPC, relayed from the SDK.
-    #[cfg(feature = "grpc")]
-    MessageProxy { url: String },
+// TODO(#9058): Temporary hack, see issue for how to fix this.
+pub enum StreamSource {
+    LogMessages(Receiver<LogMsg>),
+    CatalogData { endpoint: re_uri::CatalogEndpoint },
 }
 
 impl DataSource {
@@ -46,94 +45,71 @@ impl DataSource {
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> Self {
-        use itertools::Itertools as _;
-
-        fn looks_like_windows_abs_path(path: &str) -> bool {
-            let path = path.as_bytes();
-            // "C:/" etc
-            path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
-        }
-
-        fn looks_like_a_file_path(uri: &str) -> bool {
-            // How do we distinguish a file path from a web url? "example.zip" could be either.
-
-            if uri.starts_with('/') {
-                return true; // Unix absolute path
-            }
-            if looks_like_windows_abs_path(uri) {
-                return true;
-            }
-
-            // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-            // like "example.com/foo.zip".
-            // If there is only one dot, we treat it as an extension and look it up in a list of common
-            // file extensions:
-
-            let parts = uri.split('.').collect_vec();
-            if parts.len() <= 1 {
-                true // No dots. Weird. Let's assume it is a file path.
-            } else if parts.len() == 2 {
-                // Extension or `.com` etc?
-                re_data_loader::is_supported_file_extension(parts[1])
-            } else {
-                false // Too many dots; assume an url
-            }
-        }
-
-        // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
-        // come up with more convoluted than that…) can lead to many unexpected,
-        // platform-specific problems that aren't even necessarily consistent across runs.
-        //
-        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
-        // throwing errors when we shouldn't), we just make reading from standard input explicit.
-        if uri == "-" {
-            return Self::Stdin;
-        }
-
-        let path = std::path::Path::new(&uri).to_path_buf();
-
-        #[cfg(feature = "grpc")]
-        if uri.starts_with("rerun://") {
-            return Self::RerunGrpcUrl { url: uri };
-        }
-
-        // TODO(#8761): URL prefix
-        #[cfg(feature = "grpc")]
-        if uri.starts_with("temp://") {
-            return Self::MessageProxy { url: uri };
-        }
-
-        if uri.starts_with("file://") || path.exists() {
-            Self::FilePath(file_source, path)
-        } else if uri.starts_with("http://")
-            || uri.starts_with("https://")
-            || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
+    #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
+    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
         {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
-            }
-        } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
-            Self::WebSocketAddr(uri)
+            use itertools::Itertools as _;
 
-        // Now we are into heuristics territory:
-        } else if looks_like_a_file_path(&uri) {
-            Self::FilePath(file_source, path)
-        } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::RrdHttpUrl {
-                url: uri,
-                follow: false,
+            fn looks_like_windows_abs_path(path: &str) -> bool {
+                let path = path.as_bytes();
+                // "C:/" etc
+                path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
             }
-        } else {
-            // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::debug!("Assuming WebSocket endpoint");
-            if !uri.contains("://") {
-                uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+
+            fn looks_like_a_file_path(uri: &str) -> bool {
+                // How do we distinguish a file path from a web url? "example.zip" could be either.
+
+                if uri.starts_with('/') {
+                    return true; // Unix absolute path
+                }
+                if looks_like_windows_abs_path(uri) {
+                    return true;
+                }
+
+                // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+                // like "example.com/foo.zip".
+                // If there is only one dot, we treat it as an extension and look it up in a list of common
+                // file extensions:
+
+                let parts = uri.split('.').collect_vec();
+                if parts.len() == 2 {
+                    // Extension or `.com` etc?
+                    re_data_loader::is_supported_file_extension(parts[1])
+                } else {
+                    false // Too many dots; assume an url
+                }
             }
-            Self::WebSocketAddr(uri)
+
+            // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+            // come up with more convoluted than that…) can lead to many unexpected,
+            // platform-specific problems that aren't even necessarily consistent across runs.
+            //
+            // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+            // throwing errors when we shouldn't), we just make reading from standard input explicit.
+            if uri == "-" {
+                return Self::Stdin;
+            }
+
+            let path = std::path::Path::new(&uri).to_path_buf();
+
+            if uri.starts_with("file://") || path.exists() {
+                return Self::FilePath(_file_source, path);
+            }
+
+            if looks_like_a_file_path(&uri) {
+                return Self::FilePath(_file_source, path);
+            }
+        }
+
+        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
+            return Self::RerunGrpcStream(endpoint);
+        }
+
+        // by default, we just assume an rrd over http
+        Self::RrdHttpUrl {
+            url: uri,
+            follow: false,
         }
     }
 
@@ -143,13 +119,9 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
-            Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            #[cfg(feature = "grpc")]
-            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
-            #[cfg(feature = "grpc")]
-            Self::MessageProxy { .. } => None,
+            Self::RerunGrpcStream { .. } => None,
         }
     }
 
@@ -162,18 +134,22 @@ impl DataSource {
     /// Will do minimal checks (e.g. that the file exists), for synchronous errors,
     /// but the loading is done in a background task.
     ///
+    /// `on_cmd` is used to respond to UI commands.
+    ///
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<LogMsg>> {
+    ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
+
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(
+            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
-            ),
+            )),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
@@ -200,7 +176,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(StreamSource::LogMessages(rx))
             }
 
             // When loading a file on Web, or when using drag-n-drop.
@@ -234,11 +210,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
-            }
-
-            Self::WebSocketAddr(rerun_server_ws_url) => {
-                crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
+                Ok(StreamSource::LogMessages(rx))
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -254,26 +226,96 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(StreamSource::LogMessages(rx))
             }
 
-            #[cfg(feature = "grpc")]
-            Self::RerunGrpcUrl { url } => {
-                re_grpc_client::stream_from_redap(url, on_msg).map_err(|err| err.into())
+            Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
+                re_log::debug!(
+                    "Loading recording `{}` from `{}`…",
+                    endpoint.recording_id,
+                    endpoint.origin
+                );
+
+                let url = endpoint.to_string();
+
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url: url.clone() },
+                );
+
+                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
+                    re_grpc_client::redap::Command::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => on_cmd(DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
+                spawn_future(async move {
+                    if let Err(err) =
+                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_cmd, on_msg)
+                            .await
+                    {
+                        re_log::warn!(
+                            "Error while streaming {url}: {}",
+                            re_error::format_ref(&err)
+                        );
+                    }
+                });
+                Ok(StreamSource::LogMessages(rx))
             }
 
-            #[cfg(feature = "grpc")]
-            Self::MessageProxy { url } => {
-                re_grpc_client::message_proxy::stream(url, on_msg).map_err(|err| err.into())
+            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
+                Ok(StreamSource::CatalogData { endpoint })
             }
+
+            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
+                StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
+            ),
         }
     }
+}
+
+pub enum DataSourceCommand {
+    SetLoopSelection {
+        recording_id: re_log_types::StoreId,
+        timeline: re_log_types::Timeline,
+        time_range: re_log_types::ResolvedTimeRangeF,
+    },
+}
+
+// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
+// requires:
+// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
+//   where).
+// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
+//   (maybe it should be in `GlobalContext`?).
+#[cfg(target_arch = "wasm32")]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static + Send,
+{
+    tokio::spawn(future);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn test_data_source_from_uri() {
     use re_log_types::FileSource;
+
+    let mut failed = false;
 
     let file = [
         "file://foo",
@@ -283,13 +325,19 @@ fn test_data_source_from_uri() {
         "D:/file",
     ];
     let http = [
-        "http://foo.zip",
-        "https://foo.zip",
         "example.zip/foo.rrd",
         "www.foo.zip/foo.rrd",
         "www.foo.zip/blueprint.rbl",
     ];
-    let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
+    let grpc = [
+        "rerun://foo.zip",
+        "rerun+http://foo.zip",
+        "rerun+https://foo.zip",
+        "rerun://127.0.0.1:9876",
+        "rerun+http://127.0.0.1:9876",
+        "rerun://redap.rerun.io",
+        "rerun+https://redap.rerun.io",
+    ];
 
     let file_source = FileSource::DragAndDrop {
         recommended_application_id: None,
@@ -298,32 +346,34 @@ fn test_data_source_from_uri() {
     };
 
     for uri in file {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::FilePath { .. }
-            ),
-            "Expected {uri:?} to be categorized as FilePath"
-        );
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::FilePath { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as FilePath");
+            failed = true;
+        }
     }
 
     for uri in http {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::RrdHttpUrl { .. }
-            ),
-            "Expected {uri:?} to be categorized as RrdHttpUrl"
-        );
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::RrdHttpUrl { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
+            failed = true;
+        }
     }
 
-    for uri in ws {
-        assert!(
-            matches!(
-                DataSource::from_uri(file_source.clone(), uri.to_owned()),
-                DataSource::WebSocketAddr(_)
-            ),
-            "Expected {uri:?} to be categorized as WebSocketAddr"
-        );
+    for uri in grpc {
+        if !matches!(
+            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::RerunGrpcStream { .. }
+        ) {
+            eprintln!("Expected {uri:?} to be categorized as MessageProxy");
+            failed = true;
+        }
     }
+
+    assert!(!failed, "one or more test cases failed");
 }

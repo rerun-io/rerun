@@ -1,48 +1,54 @@
 use std::collections::HashSet;
 
-use crate::dataframe_ui::HideColumnAction;
-use crate::view_query::Query;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
+use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
+use crate::dataframe_ui::HideColumnAction;
+use crate::view_query::Query;
+
 // Accessors wrapping reads/writes to the blueprint store.
 impl Query {
-    /// Get the query timeline.
+    /// Get the query timeline name.
     ///
-    /// This tries to read the timeline name from the blueprint. If missing or invalid, the current
-    /// timeline is used and saved back to the blueprint.
-    pub(crate) fn timeline(
+    /// This dis-regards whether a timeline actually exists with this name.
+    pub(crate) fn timeline_name(
         &self,
         ctx: &ViewerContext<'_>,
-    ) -> Result<re_log_types::Timeline, ViewSystemExecutionError> {
-        // read the timeline and make sure it actually exists
-        let timeline = self
+    ) -> Result<re_log_types::TimelineName, ViewSystemExecutionError> {
+        let timeline_name = self
             .query_property
-            .component_or_empty::<components::TimelineName>()?
-            .and_then(|name| {
-                ctx.recording()
-                    .timelines()
-                    .find(|timeline| timeline.name() == &TimelineName::from(name.as_str()))
-                    .copied()
-            });
+            .component_or_empty::<components::TimelineName>()?;
 
         // if the timeline is unset, we "freeze" it to the current time panel timeline
-        let save_timeline = timeline.is_none();
-        let timeline = timeline.unwrap_or_else(|| *ctx.rec_cfg.time_ctrl.read().timeline());
-        if save_timeline {
-            self.save_timeline_name(ctx, timeline.name());
-        }
+        if let Some(timeline_name) = timeline_name {
+            Ok(timeline_name.into())
+        } else {
+            let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
+            self.save_timeline_name(ctx, &timeline_name);
 
-        Ok(timeline)
+            Ok(timeline_name)
+        }
+    }
+
+    /// Get the query timeline.
+    ///
+    /// This returns the query timeline if it actually exists, or `None` otherwise.
+    pub fn timeline(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> Result<Option<Timeline>, ViewSystemExecutionError> {
+        let timeline_name = self.timeline_name(ctx)?;
+
+        Ok(ctx.recording().timelines().get(&timeline_name).copied())
     }
 
     /// Save the timeline to the one specified.
     ///
     /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
     /// invalidated.
-    pub(super) fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
+    pub fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
         self.query_property
             .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
 
@@ -51,8 +57,7 @@ impl Query {
             .clear_blueprint_component::<components::FilterByRange>(ctx);
     }
 
-    pub(crate) fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
-        #[allow(clippy::map_unwrap_or)]
+    pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>()?
@@ -60,7 +65,7 @@ impl Query {
             .unwrap_or(ResolvedTimeRange::EVERYTHING))
     }
 
-    pub(super) fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
+    pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
         if range == ResolvedTimeRange::EVERYTHING {
             self.query_property
                 .clear_blueprint_component::<components::FilterByRange>(ctx);
@@ -73,7 +78,7 @@ impl Query {
     }
 
     /// Get the filter column for the filter-is-not-null feature, if active.
-    pub(crate) fn filter_is_not_null(
+    pub fn filter_is_not_null(
         &self,
     ) -> Result<Option<ComponentColumnSelector>, ViewSystemExecutionError> {
         Ok(self
@@ -88,7 +93,7 @@ impl Query {
     }
 
     /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
-    pub(super) fn filter_is_not_null_raw(
+    pub fn filter_is_not_null_raw(
         &self,
     ) -> Result<Option<components::FilterIsNotNull>, ViewSystemExecutionError> {
         Ok(self
@@ -96,7 +101,7 @@ impl Query {
             .component_or_empty::<components::FilterIsNotNull>()?)
     }
 
-    pub(super) fn save_filter_is_not_null(
+    pub fn save_filter_is_not_null(
         &self,
         ctx: &ViewerContext<'_>,
         filter_is_not_null: &components::FilterIsNotNull,
@@ -105,19 +110,19 @@ impl Query {
             .save_blueprint_component(ctx, filter_is_not_null);
     }
 
-    pub(crate) fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
+    pub fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
             .is_some_and(|comp| *comp.0))
     }
 
-    pub(crate) fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
+    pub fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
         self.query_property
             .save_blueprint_component(ctx, &components::ApplyLatestAt(enabled.into()));
     }
 
-    pub(super) fn save_selected_columns(
+    pub fn save_selected_columns(
         &self,
         ctx: &ViewerContext<'_>,
         columns: impl IntoIterator<Item = ColumnSelector>,
@@ -148,12 +153,12 @@ impl Query {
             .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
     }
 
-    pub(super) fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
+    pub fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .clear_blueprint_component::<components::SelectedColumns>(ctx);
     }
 
-    pub(super) fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
+    pub fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .save_blueprint_component(ctx, &components::SelectedColumns::default());
     }
@@ -165,7 +170,7 @@ impl Query {
     ///
     /// Returns `Ok(None)` if all columns should be displayed (aka a column selection isn't provided
     /// in the blueprint).
-    pub(crate) fn apply_column_visibility_to_view_columns(
+    pub fn apply_column_visibility_to_view_columns(
         &self,
         ctx: &ViewerContext<'_>,
         view_columns: &[ColumnDescriptor],
@@ -198,14 +203,14 @@ impl Query {
             })
             .collect::<HashSet<_>>();
 
-        let query_timeline_name = *self.timeline(ctx)?.name();
+        let query_timeline_name = self.timeline_name(ctx)?;
         let result = view_columns
             .iter()
             .filter(|column| match column {
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
-                    desc.name() == &query_timeline_name
-                        || selected_time_columns.contains(desc.name())
+                    desc.timeline_name() == query_timeline_name
+                        || selected_time_columns.contains(&desc.timeline_name())
                 }
 
                 ColumnDescriptor::Component(desc) => {

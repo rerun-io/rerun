@@ -15,7 +15,7 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, RectInt, Rgba,
+    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -47,6 +47,9 @@ struct ViewTargetSetup {
 
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
+
+    /// The main target with MSAA resolved.
+    /// If MSAA is disabled, this is the same as `main_target_msaa`.
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
 
@@ -311,20 +314,21 @@ impl ViewBuilder {
     /// [`wgpu::TextureFormat::Depth32Float`] on the other hand is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
     pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
-    ///
-    /// 4 samples are the only thing `WebGPU` supports, and currently wgpu as well
-    /// ([tracking issue for more options on native](https://github.com/gfx-rs/wgpu/issues/2910))
-    pub const MAIN_TARGET_SAMPLE_COUNT: u32 = 4;
-
     /// Default multisample state that any [`wgpu::RenderPipeline`] drawing to the main target needs to use.
     ///
     /// In rare cases, pipelines may want to enable alpha to coverage and/or sample masks.
-    pub const MAIN_TARGET_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
-        count: Self::MAIN_TARGET_SAMPLE_COUNT,
-        mask: !0,
-        alpha_to_coverage_enabled: false,
-    };
+    pub fn main_target_default_msaa_state(
+        config: &RenderConfig,
+        need_alpha_to_coverage: bool,
+    ) -> wgpu::MultisampleState {
+        let alpha_to_coverage_enabled = need_alpha_to_coverage && config.msaa_mode != MsaaMode::Off;
+
+        wgpu::MultisampleState {
+            count: config.msaa_mode.sample_count(),
+            mask: !0,
+            alpha_to_coverage_enabled,
+        }
+    }
 
     /// Default value for clearing depth buffer to infinity.
     ///
@@ -359,41 +363,63 @@ impl ViewBuilder {
         assert_ne!(config.resolution_in_pixel[0], 0);
         assert_ne!(config.resolution_in_pixel[1], 0);
 
-        // TODO(andreas): Should tonemapping preferences go here as well? Likely!
-        let main_target_desc = TextureDesc {
-            label: format!("{:?} - main target", config.name).into(),
-            size: wgpu::Extent3d {
-                width: config.resolution_in_pixel[0],
-                height: config.resolution_in_pixel[1],
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: Self::MAIN_TARGET_SAMPLE_COUNT,
-            dimension: wgpu::TextureDimension::D2,
-            format: Self::MAIN_TARGET_COLOR_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        let render_cfg = ctx.render_config();
+        let msaa_enabled = render_cfg.msaa_mode != MsaaMode::Off;
+        let size = wgpu::Extent3d {
+            width: config.resolution_in_pixel[0],
+            height: config.resolution_in_pixel[1],
+            depth_or_array_layers: 1,
         };
-        let hdr_render_target_msaa = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &main_target_desc);
-        // Like hdr_render_target, but with MSAA resolved.
-        let main_target_resolved = ctx.gpu_resources.textures.alloc(
+
+        // TODO(andreas): Should tonemapping preferences go here as well? Likely!
+        let main_target_msaa = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: format!("{:?} - main target resolved", config.name).into(),
-                sample_count: 1,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                ..main_target_desc
+                label: format!("{:?} - main target", config.name).into(),
+                size,
+                mip_level_count: 1,
+                sample_count: render_cfg.msaa_mode.sample_count(),
+                dimension: wgpu::TextureDimension::D2,
+                format: Self::MAIN_TARGET_COLOR_FORMAT,
+                usage: if msaa_enabled {
+                    // If MSAA is enabled, we don't read this texture ourselves as it is only used for resolve.
+                    wgpu::TextureUsages::RENDER_ATTACHMENT
+                } else {
+                    wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING
+                },
             },
         );
+
+        // Like hdr_render_target, but with MSAA resolved.
+        // We only need to distinguish this if we're using MSAA.
+        let main_target_resolved = if msaa_enabled {
+            ctx.gpu_resources.textures.alloc(
+                &ctx.device,
+                &TextureDesc {
+                    label: format!("{:?} - main target resolved", config.name).into(),
+                    size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: Self::MAIN_TARGET_COLOR_FORMAT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                },
+            )
+        } else {
+            main_target_msaa.clone()
+        };
+
         let depth_buffer = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: format!("{:?} - depth buffer", config.name).into(),
+                size,
+                mip_level_count: 1,
+                sample_count: render_cfg.msaa_mode.sample_count(),
+                dimension: wgpu::TextureDimension::D2,
                 format: Self::MAIN_TARGET_DEPTH_FORMAT,
-                ..main_target_desc
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             },
         );
 
@@ -511,7 +537,7 @@ impl ViewBuilder {
         let setup = ViewTargetSetup {
             name: config.name,
             bind_group_0,
-            main_target_msaa: hdr_render_target_msaa,
+            main_target_msaa,
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
@@ -607,11 +633,14 @@ impl ViewBuilder {
         {
             re_tracing::profile_scope!("main target pass");
 
+            let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
+
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
-                    resolve_target: Some(&setup.main_target_resolved.default_view),
+                    resolve_target: needs_msaa_resolve
+                        .then_some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: clear_color.r() as f64,
@@ -619,9 +648,14 @@ impl ViewBuilder {
                             b: clear_color.b() as f64,
                             a: clear_color.a() as f64,
                         }),
-                        // Don't care about the result, it's going to be resolved to the resolve target.
-                        // This can have be much better perf, especially on tiler gpus.
-                        store: wgpu::StoreOp::Discard,
+                        store: if needs_msaa_resolve {
+                            // Don't care about the result, if it's going to be resolved to the resolve target.
+                            // This can have be much better perf, especially on tiler gpus.
+                            wgpu::StoreOp::Discard
+                        } else {
+                            // Otherwise, we do need the result for the next pass.
+                            wgpu::StoreOp::Store
+                        },
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {

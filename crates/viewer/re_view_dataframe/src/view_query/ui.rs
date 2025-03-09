@@ -6,7 +6,7 @@ use re_log_types::{
 };
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{TimeDragValue, ViewId, ViewSystemExecutionError, ViewerContext};
 
 use crate::view_query::Query;
@@ -17,9 +17,8 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        timeline: &Timeline,
+        mut timeline_name: TimelineName,
     ) -> Result<(), ViewSystemExecutionError> {
-        let mut timeline_name = *timeline.name();
         egui::Grid::new("dataframe_view_query_ui_timeline")
             .num_columns(2)
             .spacing(egui::vec2(8.0, 10.0))
@@ -39,14 +38,22 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        timeline: &Timeline,
+        timeline: Option<&Timeline>,
     ) -> Result<(), ViewSystemExecutionError> {
-        let time_drag_value = if let Some(times) = ctx.recording().time_histogram(timeline) {
-            TimeDragValue::from_time_histogram(times)
-        } else {
-            debug_assert!(false, "This should never happen because `timeline` is guaranteed to be valid by `Self::timeline()`");
-            TimeDragValue::from_time_range(0..=0)
-        };
+        let time_drag_value_and_type = timeline.map(|timeline| {
+            let time_drag_value =
+                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
+                    TimeDragValue::from_time_histogram(times)
+                } else {
+                    debug_assert!(
+                        false,
+                        "This should never happen because `timeline` should exist if not `None`"
+                    );
+                    TimeDragValue::from_time_range(0..=0)
+                };
+
+            (time_drag_value, timeline.typ())
+        });
 
         ui.label("Filter rows by time range:");
         let range = self.filter_by_range()?;
@@ -63,18 +70,25 @@ impl Query {
                         reset_start = true;
                     })
                     .value_fn(|ui, _| {
-                        let response = time_boundary_ui(
-                            ui,
-                            &time_drag_value,
-                            None,
-                            timeline.typ(),
-                            ctx.app_options.time_zone,
-                            &mut start,
-                        );
+                        if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
+                            let response = time_boundary_ui(
+                                ui,
+                                time_drag_value,
+                                None,
+                                *timeline_type,
+                                ctx.app_options().time_zone,
+                                &mut start,
+                            );
 
-                        changed |= response.changed();
-                        should_display_time_range |=
-                            response.hovered() || response.dragged() || response.has_focus();
+                            changed |= response.changed();
+                            should_display_time_range |=
+                                response.hovered() || response.dragged() || response.has_focus();
+                        } else {
+                            ui.add_enabled(false, egui::Label::new("n/a"))
+                                .on_disabled_hover_text(
+                                    "Select an existing timeline to edit this property",
+                                );
+                        }
                     }),
             );
 
@@ -91,18 +105,25 @@ impl Query {
                         reset_to = true;
                     })
                     .value_fn(|ui, _| {
-                        let response = time_boundary_ui(
-                            ui,
-                            &time_drag_value,
-                            Some(start),
-                            timeline.typ(),
-                            ctx.app_options.time_zone,
-                            &mut end,
-                        );
+                        if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
+                            let response = time_boundary_ui(
+                                ui,
+                                time_drag_value,
+                                Some(start),
+                                *timeline_type,
+                                ctx.app_options().time_zone,
+                                &mut end,
+                            );
 
-                        changed |= response.changed();
-                        should_display_time_range |=
-                            response.hovered() || response.dragged() || response.has_focus();
+                            changed |= response.changed();
+                            should_display_time_range |=
+                                response.hovered() || response.dragged() || response.has_focus();
+                        } else {
+                            ui.add_enabled(false, egui::Label::new("n/a"))
+                                .on_disabled_hover_text(
+                                    "Select an existing timeline to edit this property",
+                                );
+                        }
                     }),
             );
 
@@ -118,7 +139,7 @@ impl Query {
 
         if should_display_time_range {
             let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-            if time_ctrl.timeline() == timeline {
+            if Some(time_ctrl.timeline()) == timeline {
                 time_ctrl.highlighted_range = Some(ResolvedTimeRange::new(start, end));
             }
         }
@@ -130,7 +151,7 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        timeline: &Timeline,
+        timeline: Option<&TimelineName>,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         //
@@ -154,7 +175,37 @@ impl Query {
         // Filter active?
         //
 
-        ui.re_checkbox(&mut active, "Filter rows where column is not null:");
+        ui.add_enabled_ui(timeline.is_some(), |ui| {
+            ui.re_checkbox(&mut active, "Filter rows where column is not null:")
+                .on_disabled_hover_text("Select an existing timeline to edit this property");
+        });
+
+        //
+        // Fallback UI if timeline is not found
+        //
+
+        let Some(timeline) = timeline else {
+            ui.add_enabled_ui(false, |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Entity")
+                        .value_text(filter_entity.unwrap_or_else(EntityPath::root).to_string()),
+                )
+                .on_disabled_hover_text("Select an existing timeline to edit this property");
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Component").value_text(
+                        filter_component
+                            .unwrap_or_else(|| ComponentName::from("-"))
+                            .short_name(),
+                    ),
+                )
+                .on_disabled_hover_text("Select an existing timeline to edit this property");
+            });
+
+            return Ok(());
+        };
 
         //
         // Filter entity
@@ -165,7 +216,7 @@ impl Query {
         let mut filter_entity = filter_entity
             .and_then(|entity| all_entities.contains(&entity).then_some(entity))
             .or_else(|| all_entities.iter().next().cloned())
-            .unwrap_or_else(|| EntityPath::from("/"));
+            .unwrap_or_else(EntityPath::root);
 
         //
         // Filter component
@@ -187,7 +238,7 @@ impl Query {
                 .filter_map(|c| {
                     c.indicator_component_archetype()
                         .and_then(|archetype_short_name| {
-                            ctx.reflection
+                            ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)
                         })
                 })
@@ -258,6 +309,21 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
+        timeline: Option<&Timeline>,
+        view_columns: Option<&[ColumnDescriptor]>,
+    ) -> Result<(), ViewSystemExecutionError> {
+        if let (Some(timeline), Some(view_columns)) = (timeline, view_columns) {
+            self.column_visibility_ui_impl(ctx, ui, timeline, view_columns)
+        } else {
+            Self::column_visibility_ui_fallback(ui);
+            Ok(())
+        }
+    }
+
+    fn column_visibility_ui_impl(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
         timeline: &Timeline,
         view_columns: &[ColumnDescriptor],
     ) -> Result<(), ViewSystemExecutionError> {
@@ -314,7 +380,7 @@ impl Query {
 
                 // The query timeline is always active because it's necessary for the dataframe ui
                 // (for tooltips).
-                let is_query_timeline = time_column_descriptor.name() == timeline.name();
+                let is_query_timeline = time_column_descriptor.timeline() == *timeline;
                 let is_enabled = !is_query_timeline;
                 let mut is_visible =
                     is_query_timeline || selected_columns.contains(&column_selector);
@@ -390,6 +456,18 @@ impl Query {
         Ok(())
     }
 
+    fn column_visibility_ui_fallback(ui: &mut egui::Ui) {
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
+            |ui, _| {
+                ui.add_enabled_ui(false, |ui| {
+                    ui.label("n/a").on_disabled_hover_text(
+                        "Select an existing timeline to edit this property",
+                    );
+                });
+            },
+        ));
+    }
+
     pub(super) fn latest_at_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -422,7 +500,7 @@ impl Query {
 fn all_pov_entities_for_view(
     ctx: &ViewerContext<'_>,
     view_id: ViewId,
-    timeline: &Timeline,
+    timeline: &TimelineName,
 ) -> BTreeSet<EntityPath> {
     let mut all_entities = BTreeSet::new();
     ctx.lookup_query_result(view_id).tree.visit(&mut |node| {
@@ -487,10 +565,8 @@ fn edit_timeline_name(
     let mut combobox_response = egui::ComboBox::from_id_salt(value.as_str())
         .selected_text(value.as_str())
         .show_ui(ui, |ui| {
-            for timeline in ctx.recording().timelines() {
-                let response =
-                    ui.selectable_value(value, *timeline.name(), timeline.name().as_str());
-
+            for &timeline in ctx.recording().timelines().keys() {
+                let response = ui.selectable_value(value, timeline, timeline.as_str());
                 changed |= response.changed();
             }
         });

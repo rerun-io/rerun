@@ -2,12 +2,13 @@
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::PathBuf,
 };
 
-use anyhow::Context;
+use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools as _;
 
 use crate::{CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter};
 
@@ -26,7 +27,7 @@ struct SnippetsRef {
     components: OptOut,
 
     // <feature_name, vec<snippet_name_qualified>>
-    features: BTreeMap<String, Vec<String>>,
+    features: Vec<(String, Vec<String>)>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -50,7 +51,6 @@ struct Snippet<'o> {
     description: Option<String>,
     contents: String,
 
-    features: BTreeSet<String>,
     archetypes: BTreeSet<&'o Object>,
     components: BTreeSet<&'o Object>,
     archetypes_blueprint: BTreeSet<&'o Object>,
@@ -61,7 +61,8 @@ struct Snippet<'o> {
 /// Maps objects (archetypes, components, etc) back to snippets.
 #[derive(Default, Debug)]
 struct Snippets<'o> {
-    per_feature: BTreeMap<String, Vec<Snippet<'o>>>,
+    per_name_qualified: HashMap<String, Snippet<'o>>,
+    per_feature: Vec<(String, Vec<Snippet<'o>>)>,
     per_archetype: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_archetype_blueprint: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_view: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
@@ -70,18 +71,15 @@ struct Snippets<'o> {
 impl<'o> Snippets<'o> {
     fn merge_extend(&mut self, rhs: Self) {
         let Self {
+            per_name_qualified,
             per_feature,
             per_archetype,
             per_archetype_blueprint,
             per_view,
         } = self;
 
-        for (feature, snippets) in rhs.per_feature {
-            per_feature
-                .entry(feature.clone())
-                .or_default()
-                .extend(snippets);
-        }
+        per_name_qualified.extend(rhs.per_name_qualified);
+        per_feature.extend(rhs.per_feature);
 
         let merge_extend = |a: &mut BTreeMap<&'o Object, Vec<Snippet<'o>>>, b| {
             for (obj, snippets) in b {
@@ -274,19 +272,7 @@ impl SnippetsRefCodeGenerator {
             .per_feature
             .iter()
             .flat_map(|(feature, snippets)| {
-                let mut snippets = snippets.clone();
-                // NOTE: Gotta sort twice to make sure it stays stable after the second one.
-                snippets.sort_by(|a, b| a.name_qualified.cmp(&b.name_qualified));
-                snippets.sort_by(|a, b| {
-                    if a.name.contains(feature) {
-                        // Snippets that contain the feature in question in their name should
-                        // bubble up to the top.
-                        Ordering::Less
-                    } else {
-                        a.name.cmp(&b.name)
-                    }
-                });
-                snippets.into_iter().map(move |snippet| (feature, snippet))
+                snippets.iter().map(move |snippet| (feature, snippet))
             })
             .map(|(feature, snippet)| {
                 let snippet_name = &snippet.name;
@@ -356,7 +342,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 ## Features
 
 | Feature | Example | Description | Python | Rust | C+⁠+ |
-| ------- | ------- | ----------- | ------ | ---- | --- |
+| ------- | ------- | ----------- | :----: | :--: | :-------: |
 {per_feature_table}
 
 
@@ -368,7 +354,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 _All snippets, organized by the [`Archetype`](https://rerun.io/docs/reference/types/archetypes)(s) they use._
 
 | Archetype | Snippet | Description | Python | Rust | C+⁠+ |
-| --------- | ------- | ----------- | ------ | ---- | --- |
+| --------- | ------- | ----------- | :----: | :--: | :-------: |
 {per_archetype_table}
 
 
@@ -377,7 +363,7 @@ _All snippets, organized by the [`Archetype`](https://rerun.io/docs/reference/ty
 _All snippets, organized by the [`View`](https://rerun.io/docs/reference/types/views)(s) they use._
 
 | Component | Snippet | Description | Python | Rust | C+⁠+ |
-| --------- | ------- | ----------- | ------ | ---- | --- |
+| --------- | ------- | ----------- | :----: | :--: | :-------: |
 {per_view_table}
 
 
@@ -386,7 +372,7 @@ _All snippets, organized by the [`View`](https://rerun.io/docs/reference/types/v
 _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io/docs/reference/types/archetypes)(s) they use._
 
 | Archetype | Snippet | Description | Python | Rust | C+⁠+ |
-| --------- | ------- | ----------- | ------ | ---- | --- |
+| --------- | ------- | ----------- | :----: | :--: | :-------: |
 {per_archetype_blueprint_table}
 "
         );
@@ -427,18 +413,28 @@ fn collect_snippets_recursively<'o>(
         }
 
         // We only track the Python one. We'll derive the other two from there, if they exist at all.
-        if !path.extension().is_some_and(|p| p == "py") {
+        if path.extension().is_none_or(|p| p != "py") {
             continue;
         }
 
         let contents = std::fs::read_to_string(&path)?;
-        let description = contents.lines().take(1).next().and_then(|s| {
-            s.contains("\"\"\"")
-                .then(|| s.replace("\"\"\"", "").trim_end_matches('.').to_owned())
-        });
+
+        let description = {
+            let lines = contents
+                .lines()
+                .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
+                .collect_vec();
+            if lines.first().is_some_and(|line| line.trim() == "\"\"\"") {
+                // Multi-line Python docstrings.
+                lines.iter().skip(1).take(1).next()
+            } else {
+                // Single-line Python docstrings.
+                lines.iter().take(1).next().filter(|s| s.contains("\"\"\""))
+            }
+            .map(|s| s.replace("\"\"\"", "").trim_end_matches('.').to_owned())
+        };
 
         // All archetypes, components, etc that this snippet refers to.
-        let mut features = BTreeSet::default();
         let mut archetypes = BTreeSet::default();
         let mut components = BTreeSet::default();
         let mut archetypes_blueprint = BTreeSet::default();
@@ -446,11 +442,6 @@ fn collect_snippets_recursively<'o>(
         let mut views = BTreeSet::default();
 
         // Fill the sets by grepping into the snippet's contents.
-        for (feature, snippets) in &config.snippets_ref.features {
-            if snippets.contains(&name_qualified) {
-                features.insert(feature.clone());
-            }
-        }
         for (objs, set) in [
             (&known_objects.archetypes, &mut archetypes),
             (&known_objects.components, &mut components),
@@ -488,7 +479,6 @@ fn collect_snippets_recursively<'o>(
             rust,
             cpp,
 
-            features,
             archetypes,
             components,
             archetypes_blueprint,
@@ -496,14 +486,11 @@ fn collect_snippets_recursively<'o>(
             views,
         };
 
+        snippets
+            .per_name_qualified
+            .insert(snippet.name_qualified.clone(), snippet.clone());
+
         // Fill the reverse indices.
-        for feature in &snippet.features {
-            snippets
-                .per_feature
-                .entry(feature.clone())
-                .or_default()
-                .push(snippet.clone());
-        }
         for (objs, index) in [
             (&snippet.archetypes, &mut snippets.per_archetype),
             (&snippet.views, &mut snippets.per_view),
@@ -516,6 +503,22 @@ fn collect_snippets_recursively<'o>(
                 index.entry(obj).or_default().push(snippet.clone());
             }
         }
+    }
+
+    {
+        let mut per_feature = Vec::new();
+        for (feature, names_qualified) in &config.snippets_ref.features {
+            per_feature.push((
+                feature.clone(),
+                names_qualified
+                    .iter()
+                    .filter_map(|name_qualified| {
+                        snippets.per_name_qualified.get(name_qualified).cloned()
+                    })
+                    .collect_vec(),
+            ));
+        }
+        snippets.per_feature = per_feature;
     }
 
     Ok(snippets)

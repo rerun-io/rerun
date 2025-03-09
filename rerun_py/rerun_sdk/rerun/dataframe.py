@@ -39,7 +39,7 @@ RERUN_KIND_INDEX = b"index"
 
 
 class RawIndexColumn(TimeColumnLike):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
         self.metadata = metadata
         self.col = col
 
@@ -54,16 +54,16 @@ class RawIndexColumn(TimeColumnLike):
 
 
 class RawComponentBatchLike(ComponentColumn):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
         self.metadata = metadata
         self.col = col
 
     def component_descriptor(self) -> ComponentDescriptor:
         kwargs = {}
         if SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype_name"] = "rerun.archetypes" + self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
+            kwargs["archetype_name"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
         if SORBET_COMPONENT_NAME in self.metadata:
-            kwargs["component_name"] = "rerun.components." + self.metadata[SORBET_COMPONENT_NAME].decode("utf-8")
+            kwargs["component_name"] = self.metadata[SORBET_COMPONENT_NAME].decode("utf-8")
         if SORBET_ARCHETYPE_FIELD in self.metadata:
             kwargs["archetype_field_name"] = self.metadata[SORBET_ARCHETYPE_FIELD].decode("utf-8")
 
@@ -105,7 +105,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
     for entity_path, archetype_set in archetypes.items():
         for archetype in archetype_set:
-            data[entity_path].append(IndicatorComponentBatch("rerun.archetypes." + archetype))
+            data[entity_path].append(IndicatorComponentBatch(archetype))
 
     for entity_path, columns in data.items():
         send_columns(

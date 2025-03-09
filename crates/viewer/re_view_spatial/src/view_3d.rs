@@ -1,18 +1,18 @@
 use ahash::HashSet;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Component, View,
+    blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
     ViewClassIdentifier,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,
@@ -60,8 +60,8 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_3d::help_markdown(egui_ctx)
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        super::ui_3d::help(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
@@ -304,8 +304,7 @@ impl ViewClass for SpatialView3D {
                             .child_spaces
                             .iter()
                             .filter(|child| {
-                                topo.subspace_for_subspace_origin(child.hash()).map_or(
-                                    false,
+                                topo.subspace_for_subspace_origin(child.hash()).is_some_and(
                                     |child_space| {
                                         child_space
                                             .connection_to_parent
@@ -459,7 +458,7 @@ fn view_property_ui_grid3d(
         ctx.blueprint_query,
         view_id,
     );
-    let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
+    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
             "Missing reflection data for archetype {:?}.",
             property.archetype_name

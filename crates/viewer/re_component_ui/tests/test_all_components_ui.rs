@@ -5,18 +5,18 @@ use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 use arrow::array::ArrayRef;
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_component_ui::create_component_ui_registry;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::{EntityPath, TimelineName};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, RecordingUri, Text},
+    components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
 use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     external::re_chunk_store::{external::re_chunk, LatestAtQuery},
     test_context::TestContext,
@@ -62,10 +62,6 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             "nv12",
         ),
         TestCase::from_component(QueryExpression::from("+ /world/**"), "simple"),
-        TestCase::from_component(
-            RecordingUri::from("rerun://0.0.0.0:1234/recordings/XYZ"),
-            "simple",
-        ),
         TestCase::from_component(Text::from("Hello World!"), "simple"),
         TestCase::from_arrow(
             ComponentName::from("any_value"),
@@ -86,6 +82,13 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         TestCase::from_arrow(
             ComponentName::from("custom_url_string"),
             arrow::array::StringArray::from(vec!["https://rerun.io"]),
+            "any_value_url_string",
+        ),
+        //TODO(ab): this will look like the previous test case, but we eventually would like to have
+        // a specific icon for it, so we already have a test case for it :)
+        TestCase::from_arrow(
+            ComponentName::from("custom_catalog_string"),
+            arrow::array::StringArray::from(vec!["rerun://rerun.io:1234/catalog"]),
             "any_value_url_string",
         ),
         TestCase::from_arrow(
@@ -230,13 +233,13 @@ fn test_single_component_ui_as_list_item(
     let actual_ui = |ctx: &ViewerContext<'_>, ui: &mut egui::Ui| {
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("ComponentName").value_fn(|ui, _| {
-                ctx.component_ui_registry.ui_raw(
+                ctx.component_ui_registry().ui_raw(
                     ctx,
                     ui,
                     UiLayout::List,
                     // Note: recording and queries are only used for tooltips,
                     // which we are not testing here.
-                    &LatestAtQuery::latest(Timeline::log_time()),
+                    &LatestAtQuery::latest(TimelineName::log_time()),
                     ctx.recording(),
                     &EntityPath::root(),
                     test_case.component_name,

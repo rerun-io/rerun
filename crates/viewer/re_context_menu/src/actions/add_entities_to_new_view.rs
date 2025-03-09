@@ -1,5 +1,5 @@
 use egui::{Response, Ui};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
@@ -24,7 +24,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
     }
 
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut Ui) -> Response {
-        let view_class_registry = ctx.viewer_context.view_class_registry;
+        let view_class_registry = ctx.viewer_context.view_class_registry();
 
         let recommended_view_classes = recommended_views_for_selection(ctx);
         let other_view_classes: IntSet<_> = view_class_registry
@@ -84,7 +84,7 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
 
     let mut output: IntSet<ViewClassIdentifier> = IntSet::default();
 
-    let view_class_registry = ctx.viewer_context.view_class_registry;
+    let view_class_registry = ctx.viewer_context.view_class_registry();
     let recording = ctx.viewer_context.recording();
     let maybe_visualizable_entities = view_class_registry
         .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
@@ -139,7 +139,7 @@ fn create_view_for_selected_entities(
 
     let origin = ctx
         .viewer_context
-        .view_class_registry
+        .view_class_registry()
         .get_class_or_log_error(identifier)
         .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);

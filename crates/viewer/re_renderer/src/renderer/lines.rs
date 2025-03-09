@@ -9,9 +9,7 @@
 //! The quads are oriented and spanned in a vertex shader.
 //!
 //! It is tempting to use instancing and store per-instance (==quad) data in a instance-stepped vertex buffer.
-//! However, GPUs are notoriously bad at processing instances with a small batch size as
-//! [various](https://gamedev.net/forums/topic/676540-fastest-way-to-draw-quads/5279146/)
-//! [people](https://gamedev.net/forums/topic/702292-performance-fastest-quad-drawing/5406023/)
+//! However, at least historically GPUs are notoriously bad at processing instances with a small batch size as
 //! [point](https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/)
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
 //! […](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
@@ -675,11 +673,7 @@ impl Renderer for LineRenderer {
                 ..Default::default()
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-            multisample: wgpu::MultisampleState {
-                // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
-                alpha_to_coverage_enabled: true,
-                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-            },
+            multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
             render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);

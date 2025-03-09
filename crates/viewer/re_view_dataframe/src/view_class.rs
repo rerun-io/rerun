@@ -1,16 +1,18 @@
 use std::any::Any;
 
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
-};
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
+use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
-    ViewStateExt, ViewSystemExecutionError, ViewerContext,
+    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+};
+
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
+    visualizer_system::EmptySystem,
 };
 
 #[derive(Default)]
@@ -48,26 +50,17 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Dataframe view
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Dataframe view")
+            .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
+            .markdown(
+                "This view displays entity content in a tabular form.
 
-This view displays the content of the entities it contains in tabular form.
-
-## View types
-
-The Dataframe view operates in two modes: the _latest-at_ mode and the _time range_ mode. You can
-select the mode in the selection panel.
-
-In the _latest-at_ mode, the view displays the latest data for the timeline and time set in the time
-panel. A row is shown for each entity instance.
-
-In the _time range_ mode, the view displays all the data logged within the time range set for each
-view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
-if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
-
-Note that the default visible time range depends on the selected mode. In particular, the time range
-mode sets the default time range to _everything_. You can override this in the selection panel."
-            .to_owned()
+Configure in the selection panel:
+ - Handling of empty cells
+ - Column visibility
+ - Row filtering by time range",
+            )
     }
 
     fn on_register(
@@ -104,12 +97,7 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, view_id);
-        let Some(view_columns) = &state.view_columns else {
-            // Shouldn't happen, except maybe on the first frame, which is too early
-            // for the user to click the menu anyway.
-            return Ok(());
-        };
-        view_query.selection_panel_ui(ctx, ui, view_id, view_columns)
+        view_query.selection_panel_ui(ctx, ui, view_id, state.view_columns.as_deref())
     }
 
     fn ui(
@@ -124,6 +112,14 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let state = state.downcast_mut::<DataframeViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, query.view_id);
+
+        // Make sure we know which timeline to query or display an error message.
+        let timeline = view_query.timeline(ctx)?;
+
+        let Some(timeline) = timeline else {
+            timeline_not_found_ui(ctx, ui, query.view_id);
+            return Ok(());
+        };
 
         let query_engine = QueryEngine {
             engine: ctx.recording().storage_engine_arc(),
@@ -142,7 +138,7 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: Some(view_query.timeline(ctx)?),
+            filtered_index: Some(*timeline.name()),
             filtered_index_range: Some(view_query.filter_by_range()?),
             filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,
@@ -156,7 +152,9 @@ mode sets the default time range to _everything_. You can override this in the s
             include_tombstone_columns: false,
         };
 
-        let view_columns = query_engine.schema_for_query(&dataframe_query);
+        let view_columns = query_engine
+            .schema_for_query(&dataframe_query)
+            .indices_and_components();
         dataframe_query.selection =
             view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
 
@@ -174,6 +172,34 @@ mode sets the default time range to _everything_. You can override this in the s
 
         state.view_columns = Some(view_columns);
         Ok(())
+    }
+}
+
+fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
+    let full_view_rect = ui.available_rect_before_wrap();
+
+    egui::Frame::new()
+        .inner_margin(re_ui::DesignTokens::view_padding())
+        .show(ui, |ui| {
+            ui.warning_label("Unknown timeline");
+
+            ui.label(
+                "The timeline currently configured for this view does not exist in the current \
+                recording. Select another timeline in the view properties found in the selection \
+                panel.",
+            )
+        });
+
+    // select the view when clicked
+    if ui
+        .interact(
+            full_view_rect,
+            egui::Id::from("dataframe_view_empty").with(view_id),
+            egui::Sense::click(),
+        )
+        .clicked()
+    {
+        ctx.selection_state.set_selection(Item::View(view_id));
     }
 }
 

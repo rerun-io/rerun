@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import collections
+from collections.abc import Sequence
 from math import prod
-from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
+from typing import TYPE_CHECKING, Any, Final, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -36,7 +37,7 @@ def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
         # Make available to the cpu
         return tensor.numpy(force=True)  # type: ignore[union-attr]
     except AttributeError:
-        return np.array(tensor, copy=False)
+        return np.asarray(tensor)
 
 
 class TensorDataExt:
@@ -105,14 +106,14 @@ class TensorDataExt:
                     _send_warning_or_raise(
                         (
                             f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}). "
-                            + "Ignoring shape argument."
+                            "Ignoring shape argument."
                         ),
                         2,
                     )
                 resolved_shape = None
 
             if resolved_shape is None:
-                resolved_shape = [size for size in array.shape]
+                resolved_shape = list(array.shape)
 
         if resolved_shape is not None:
             self.shape: npt.NDArray[np.uint64] = resolved_shape
@@ -133,7 +134,7 @@ class TensorDataExt:
                 _send_warning_or_raise(
                     (
                         f"len(shape) = {len(self.shape)} != "
-                        + f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
+                        f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
                     ),
                     2,
                 )
@@ -141,7 +142,7 @@ class TensorDataExt:
         expected_buffer_size = prod(d for d in self.shape)
         if len(self.buffer.inner) != expected_buffer_size:
             raise ValueError(
-                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
+                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}",
             )
 
     ################################################################################
@@ -186,7 +187,7 @@ class TensorDataExt:
 
     def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
         """Convert the TensorData back to a numpy array."""
-        dims = [d for d in self.shape]
+        dims = list(self.shape)
         return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]
 
 

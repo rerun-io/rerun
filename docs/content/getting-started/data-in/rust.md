@@ -61,12 +61,12 @@ Checkout `rerun --help` for more options.
 
 To get going we want to create a [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html):
 We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html).
-We then connect it to the already running Viewer via [`connect_tcp`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_tcp), returning the `RecordingStream` upon success.
+We then connect it to the already running Viewer via [`connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link), returning the `RecordingStream` upon success.
 
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .connect_tcp()?;
+        .connect_grpc()?;
 
     Ok(())
 }
@@ -147,10 +147,10 @@ Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structur
 These are [_entity paths_](../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
-### Batches
+### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Batches of data](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Component batches](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -241,7 +241,7 @@ Let's add our custom timeline:
 for i in 0..400 {
     let time = i as f32 * 0.01;
 
-    rec.set_time_seconds("stable_time", time as f64);
+    rec.set_index("stable_time", timedelta=time as f64);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
@@ -280,7 +280,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, add this at the beginning of the main function:
 
 ```rust
-rec.set_time_seconds("stable_time", 0f64);
+rec.set_index("stable_time", timedelta=0f64);
 ```
 
 <picture>

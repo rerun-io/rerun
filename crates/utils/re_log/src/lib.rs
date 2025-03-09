@@ -86,7 +86,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "winit",
 ];
 
-/// Get `RUST_LOG` environment variable or `info`, if not set.
+/// Get `RUST_LOG` environment variable or `warn`, if not set.
 ///
 /// Also sets some other log levels on crates that are too loud.
 #[cfg(not(target_arch = "wasm32"))]
@@ -95,7 +95,7 @@ pub fn default_log_filter() -> String {
         if cfg!(debug_assertions) {
             "debug".to_owned()
         } else {
-            "info".to_owned()
+            "warn".to_owned()
         }
     });
 

@@ -131,10 +131,10 @@ Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/
 These are [_entity paths_](../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
-### Batches
+### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Batches of data](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Component batches](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -204,7 +204,7 @@ time_offsets = np.random.rand(NUM_POINTS)
 
 for i in range(400):
     time = i * 0.01
-    rr.set_time_seconds("stable_time", time)
+    rr.set_index("stable_time", timedelta=time)
 
     times = np.repeat(time, NUM_POINTS) + time_offsets
     beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]
@@ -236,7 +236,7 @@ To fix this, go back to the top of the file and add:
 
 ```python
 rr.spawn()
-rr.set_time_seconds("stable_time", 0)
+rr.set_index("stable_time", timedelta=0)
 ```
 
 <picture>
@@ -265,7 +265,7 @@ simply add a second loop like this:
 ```python
 for i in range(400):
     time = i * 0.01
-    rr.set_time_seconds("stable_time", time)
+    rr.set_index("stable_time", timedelta=time)
     rr.log(
         "dna/structure",
         rr.Transform3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),

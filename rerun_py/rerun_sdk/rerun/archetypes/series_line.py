@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -46,8 +47,8 @@ class SeriesLine(Archetype):
     rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
 
     # Log the data on a timeline called "step".
-    for t in range(0, int(tau * 2 * 100.0)):
-        rr.set_time_sequence("step", t)
+    for t in range(int(tau * 2 * 100.0)):
+        rr.set_index("step", sequence=t)
 
         rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
         rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
@@ -70,8 +71,9 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesLine archetype.
 
@@ -85,6 +87,12 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which lines are visible.
+
+            If not set, all line series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -96,7 +104,13 @@ class SeriesLine(Archetype):
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, width=width, name=name, aggregation_policy=aggregation_policy)
+            self.__attrs_init__(
+                color=color,
+                width=width,
+                name=name,
+                visible_series=visible_series,
+                aggregation_policy=aggregation_policy,
+            )
             return
         self.__attrs_clear__()
 
@@ -106,6 +120,7 @@ class SeriesLine(Archetype):
             color=None,
             width=None,
             name=None,
+            visible_series=None,
             aggregation_policy=None,
         )
 
@@ -124,6 +139,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ) -> SeriesLine:
         """
@@ -141,6 +157,12 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which lines are visible.
+
+            If not set, all line series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -156,6 +178,7 @@ class SeriesLine(Archetype):
                 "color": color,
                 "width": width,
                 "name": name,
+                "visible_series": visible_series,
                 "aggregation_policy": aggregation_policy,
             }
 
@@ -180,6 +203,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32ArrayLike | None = None,
         width: datatypes.Float32ArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -200,6 +224,12 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which lines are visible.
+
+            If not set, all line series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -215,6 +245,7 @@ class SeriesLine(Archetype):
                 color=color,
                 width=width,
                 name=name,
+                visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
             )
 
@@ -222,11 +253,33 @@ class SeriesLine(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "color": color,
+            "width": width,
+            "name": name,
+            "visible_series": visible_series,
+            "aggregation_policy": aggregation_policy,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     color: components.ColorBatch | None = field(
@@ -255,6 +308,19 @@ class SeriesLine(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    visible_series: components.SeriesVisibleBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
+    )
+    # Which lines are visible.
+    #
+    # If not set, all line series on this entity are visible.
+    # Unlike with the regular visibility property of the entire entity, any series that is hidden
+    # via this property will still be visible in the legend.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

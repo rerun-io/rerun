@@ -77,15 +77,12 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
           # default: for the rendering step
           # wheel-test-min: minimal env for roundtrips (less heavy than wheel-test/examples)
           environments: >-
             default
             wheel-test-min
-
-      - name: Download test assets
-        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
 
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV

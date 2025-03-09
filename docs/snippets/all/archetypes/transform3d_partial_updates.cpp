@@ -1,4 +1,4 @@
-// Log different transforms with visualized coordinates axes.
+//! Update specific properties of a transform over time.
 
 #include <rerun.hpp>
 

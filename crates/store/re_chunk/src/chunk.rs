@@ -3,20 +3,21 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use ahash::HashMap;
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
+        ListArray as ArrowListArray,
     },
-    buffer::ScalarBuffer as ArrowScalarBuffer,
+    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools};
+use itertools::{izip, Either, Itertools as _};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
+use re_log_types::{
+    EntityPath, NonMinI64, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
+};
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable, LoggableBatch,
-    SerializationError,
+    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -45,6 +46,18 @@ pub enum ChunkError {
 
     #[error("Deserialization: {0}")]
     Deserialization(#[from] DeserializationError),
+
+    #[error(transparent)]
+    UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+
+    #[error(transparent)]
+    MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
+
+    #[error(transparent)]
+    InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;
@@ -170,7 +183,7 @@ impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
 /// Its time columns might or might not be ascendingly sorted, depending on how the data was logged.
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
-/// data within. For transport, see [`crate::TransportChunk`] instead.
+/// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
 #[derive(Debug)]
 pub struct Chunk {
     pub(crate) id: ChunkId,
@@ -187,14 +200,14 @@ pub struct Chunk {
     pub(crate) is_sorted: bool,
 
     /// The respective [`RowId`]s for each row of data.
-    pub(crate) row_ids: ArrowStructArray,
+    pub(crate) row_ids: FixedSizeBinaryArray,
 
     /// The time columns.
     ///
     /// Each column must be the same length as `row_ids`.
     ///
     /// Empty if this is a static chunk.
-    pub(crate) timelines: IntMap<Timeline, TimeColumn>,
+    pub(crate) timelines: IntMap<TimelineName, TimeColumn>,
 
     /// A sparse `ListArray` for each component.
     ///
@@ -256,7 +269,7 @@ impl Chunk {
 
     /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
     ///
-    /// In particular, this ignores chunks and row IDs, as well as temporal timestamps.
+    /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
     ///
     /// Useful for tests.
     pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
@@ -275,18 +288,14 @@ impl Chunk {
             && {
                 let timelines: IntMap<_, _> = timelines
                     .iter()
-                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
-                    .filter(|(timeline, _time_chunk)| {
-                        timeline.typ() != re_log_types::TimeType::Time
-                    })
+                    .map(|(timeline, time_column)| (*timeline, time_column))
+                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
                     .collect();
                 let rhs_timelines: IntMap<_, _> = rhs
                     .timelines
                     .iter()
-                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
-                    .filter(|(timeline, _time_chunk)| {
-                        timeline.typ() != re_log_types::TimeType::Time
-                    })
+                    .map(|(timeline, time_column)| (*timeline, time_column))
+                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
                     .collect();
                 timelines == rhs_timelines
             }
@@ -366,18 +375,9 @@ impl Chunk {
         .take(self.row_ids.len())
         .collect_vec();
 
-        #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
-            // Unwrap: native RowIds cannot fail to serialize.
-            .unwrap()
-            .downcast_array_ref::<ArrowStructArray>()
-            // Unwrap: RowId schema is known in advance to be a struct array -- always.
-            .unwrap()
-            .clone();
-
         Self {
             id,
-            row_ids,
+            row_ids: RowId::arrow_from_slice(&row_ids),
             ..self.clone()
         }
     }
@@ -395,14 +395,7 @@ impl Chunk {
             .take(self.row_ids.len())
             .collect_vec();
 
-        #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
-            // Unwrap: native RowIds cannot fail to serialize.
-            .unwrap()
-            .downcast_array_ref::<ArrowStructArray>()
-            // Unwrap: RowId schema is known in advance to be a struct array -- always.
-            .unwrap()
-            .clone();
+        let row_ids = RowId::arrow_from_slice(&row_ids);
 
         Self { row_ids, ..self }
     }
@@ -418,15 +411,15 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<Timeline, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
+    ) -> IntMap<TimelineName, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
     {
         re_tracing::profile_function!();
 
         self.timelines
             .iter()
-            .map(|(&timeline, time_column)| {
+            .map(|(timeline_name, time_column)| {
                 (
-                    timeline,
+                    *timeline_name,
                     time_column.time_range_per_component(&self.components),
                 )
             })
@@ -462,7 +455,7 @@ impl Chunk {
     /// the returned vector is guaranteed to be unique).
     pub fn num_events_cumulative_per_unique_time(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
@@ -728,8 +721,8 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: ArrowStructArray,
-        timelines: IntMap<Timeline, TimeColumn>,
+        row_ids: FixedSizeBinaryArray,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let mut chunk = Self {
@@ -763,23 +756,11 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: &[RowId],
-        timelines: IntMap<Timeline, TimeColumn>,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
-        let row_ids = row_ids
-            .to_arrow()
-            // NOTE: impossible, but better safe than sorry.
-            .map_err(|err| ChunkError::Malformed {
-                reason: format!("RowIds failed to serialize: {err}"),
-            })?
-            .downcast_array_ref::<ArrowStructArray>()
-            // NOTE: impossible, but better safe than sorry.
-            .ok_or_else(|| ChunkError::Malformed {
-                reason: "RowIds failed to downcast".to_owned(),
-            })?
-            .clone();
-
+        let row_ids = RowId::arrow_from_slice(row_ids);
         Self::new(id, entity_path, is_sorted, row_ids, timelines, components)
     }
 
@@ -793,7 +774,7 @@ impl Chunk {
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
-        timelines: IntMap<Timeline, TimeColumn>,
+        timelines: IntMap<TimelineName, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let count = components
@@ -824,7 +805,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: ArrowStructArray,
+        row_ids: FixedSizeBinaryArray,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         Self::new(
@@ -844,11 +825,7 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: arrow::array::StructBuilder::from_fields(
-                re_types_core::tuid_arrow_fields(),
-                0,
-            )
-            .finish(),
+            row_ids: RowId::arrow_from_slice(&[]),
             timelines: Default::default(),
             components: Default::default(),
         }
@@ -878,7 +855,7 @@ impl Chunk {
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines
-            .insert(chunk_timeline.timeline, chunk_timeline);
+            .insert(*chunk_timeline.timeline.name(), chunk_timeline);
         self.sanity_check()
     }
 }
@@ -1023,24 +1000,35 @@ impl TimeColumn {
         #![allow(clippy::manual_map)]
 
         if array.null_count() > 0 {
-            return Err(TimeColumnError::ContainsNulls);
+            Err(TimeColumnError::ContainsNulls)
+        } else {
+            Self::read_nullable_array(array).map(|(times, _nulls)| times)
         }
+    }
+
+    /// Parse the given [`ArrowArray`] as a time column where null values are acceptable.
+    ///
+    /// Results in an error if the array is of the wrong datatype.
+    pub fn read_nullable_array(
+        array: &dyn ArrowArray,
+    ) -> Result<(ArrowScalarBuffer<i64>, Option<ArrowNullBuffer>), TimeColumnError> {
+        #![allow(clippy::manual_map)]
 
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
         if let Some(times) = array.downcast_array_ref::<arrow::array::Int64Array>() {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::Time64NanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else if let Some(times) =
             array.downcast_array_ref::<arrow::array::DurationNanosecondArray>()
         {
-            Ok(times.values().clone())
+            Ok((times.values().clone(), times.nulls().cloned()))
         } else {
             Err(TimeColumnError::UnsupportedDataType(
                 array.data_type().clone(),
@@ -1105,34 +1093,21 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn row_ids_array(&self) -> &ArrowStructArray {
+    pub fn row_ids_array(&self) -> &FixedSizeBinaryArray {
         &self.row_ids
     }
 
-    /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
-    pub fn row_ids_raw(&self) -> (&ArrowUInt64Array, &ArrowUInt64Array) {
-        let [times, counters] = self.row_ids.columns() else {
-            panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
-        };
-
-        #[allow(clippy::unwrap_used)]
-        let times = times.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
-
-        #[allow(clippy::unwrap_used)]
-        let counters = counters.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
-
-        (times, counters)
+    pub fn row_ids_slice(&self) -> &[RowId] {
+        RowId::slice_from_arrow(&self.row_ids)
     }
 
     /// All the [`RowId`] in this chunk.
     ///
     /// This could be in any order if this chunk is unsorted.
     #[inline]
-    pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
-        let (times, counters) = self.row_ids_raw();
-        izip!(times.values(), counters.values())
-            .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
+    pub fn row_ids(&self) -> impl ExactSizeIterator<Item = RowId> + '_ {
+        self.row_ids_slice().iter().copied()
     }
 
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
@@ -1172,41 +1147,20 @@ impl Chunk {
             return None;
         }
 
-        let (times, counters) = self.row_ids_raw();
-        let (times, counters) = (times.values(), counters.values());
+        let row_ids = self.row_ids_slice();
 
         #[allow(clippy::unwrap_used)] // checked above
-        let (index_min, index_max) = if self.is_sorted() {
+        Some(if self.is_sorted() {
             (
-                (
-                    times.first().copied().unwrap(),
-                    counters.first().copied().unwrap(),
-                ),
-                (
-                    times.last().copied().unwrap(),
-                    counters.last().copied().unwrap(),
-                ),
+                row_ids.first().copied().unwrap(),
+                row_ids.last().copied().unwrap(),
             )
         } else {
             (
-                (
-                    times.iter().min().copied().unwrap(),
-                    counters.iter().min().copied().unwrap(),
-                ),
-                (
-                    times.iter().max().copied().unwrap(),
-                    counters.iter().max().copied().unwrap(),
-                ),
+                row_ids.iter().min().copied().unwrap(),
+                row_ids.iter().max().copied().unwrap(),
             )
-        };
-
-        let (time_min, counter_min) = index_min;
-        let (time_max, counter_max) = index_max;
-
-        Some((
-            RowId::from_u128((time_min as u128) << 64 | (counter_min as u128)),
-            RowId::from_u128((time_max as u128) << 64 | (counter_max as u128)),
-        ))
+        })
     }
 
     #[inline]
@@ -1215,7 +1169,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn timelines(&self) -> &IntMap<Timeline, TimeColumn> {
+    pub fn timelines(&self) -> &IntMap<TimelineName, TimeColumn> {
         &self.timelines
     }
 
@@ -1242,8 +1196,8 @@ impl Chunk {
     #[inline]
     pub fn timepoint_max(&self) -> TimePoint {
         self.timelines
-            .iter()
-            .map(|(timeline, info)| (*timeline, info.time_range.max()))
+            .values()
+            .map(|info| (info.timeline, info.time_range.max()))
             .collect()
     }
 }
@@ -1251,11 +1205,11 @@ impl Chunk {
 impl std::fmt::Display for Chunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let transport_chunk = self.to_transport().map_err(|err| {
+        let batch = self.to_record_batch().map_err(|err| {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        transport_chunk.fmt(f)
+        re_format_arrow::format_record_batch_with_width(&batch, f.width()).fmt(f)
     }
 }
 
@@ -1286,9 +1240,21 @@ impl TimeColumn {
         self.timeline.typ().make_arrow_array(self.times.clone())
     }
 
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
         self.times.as_ref()
+    }
+
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
+    #[inline]
+    pub fn times_nonmin(&self) -> impl DoubleEndedIterator<Item = NonMinI64> + '_ {
+        self.times_raw()
+            .iter()
+            .copied()
+            .map(NonMinI64::saturating_from_i64)
     }
 
     #[inline]
@@ -1424,6 +1390,7 @@ impl Chunk {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         re_tracing::profile_function!();
 
@@ -1478,13 +1445,13 @@ impl Chunk {
         }
 
         // Timelines
-        for (timeline, time_column) in timelines {
+        for (timeline_name, time_column) in timelines {
             if time_column.times.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs.\
-                         Found {} row IDs but {} timestamps for timeline {:?}",
-                        row_ids.len(), time_column.times.len(), timeline.name(),
+                        "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
+                         Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
+                        row_ids.len(), time_column.times.len(),
                     ),
                 });
             }
@@ -1493,30 +1460,27 @@ impl Chunk {
         }
 
         // Components
-        for (_component_name, per_desc) in components.iter() {
+        for (component_name, per_desc) in components.iter() {
+            component_name.sanity_check();
             for (component_desc, list_array) in per_desc {
-                if !matches!(list_array.data_type(), arrow::datatypes::DataType::List(_)) {
+                component_desc.component_name.sanity_check();
+                // Ensure that each cell is a list (we don't support mono-components yet).
+                if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
+                    // We don't check `field.is_nullable()` here because we support both.
+                    // TODO(#6819): Remove support for inner nullability.
+                } else {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
+                            "The inner array in a chunked component batch must be a list, got {:?}",
                             list_array.data_type(),
                         ),
                     });
                 }
-                if let arrow::datatypes::DataType::List(field) = list_array.data_type() {
-                    if !field.is_nullable() {
-                        return Err(ChunkError::Malformed {
-                            reason: format!(
-                                "The outer array in chunked component batch must be a sparse list, got {:?}",
-                                list_array.data_type(),
-                            ),
-                        });
-                    }
-                }
+
                 if list_array.len() != row_ids.len() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs.\
+                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
                             row_ids.len(), list_array.len(),
                         ),
@@ -1545,6 +1509,7 @@ impl TimeColumn {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
+    #[track_caller]
     pub fn sanity_check(&self) -> ChunkResult<()> {
         let Self {
             timeline: _,

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -71,20 +72,24 @@ class Image(ImageExt, Archetype):
     rr.init("rerun_example_image_formats", spawn=True)
 
     # Simple gradient image, logged in different formats.
-    image = np.array([[[x, min(255, x + y), y] for x in range(0, 256)] for y in range(0, 256)], dtype=np.uint8)
+    image = np.array([[[x, min(255, x + y), y] for x in range(256)] for y in range(256)], dtype=np.uint8)
     rr.log("image_rgb", rr.Image(image))
     rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
     rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
 
     # New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
-    y = bytes([128 for y in range(0, 256) for x in range(0, 256)])
-    u = bytes([x * 2 for y in range(0, 256) for x in range(0, 128)])  # Half horizontal resolution for chroma.
-    v = bytes([y for y in range(0, 256) for x in range(0, 128)])
+    y = bytes([128 for y in range(256) for x in range(256)])
+    u = bytes([x * 2 for y in range(256) for x in range(128)])  # Half horizontal resolution for chroma.
+    v = bytes([y for y in range(256) for x in range(128)])
     rr.log("image_yuv422", rr.Image(bytes=y + u + v, width=256, height=256, pixel_format=rr.PixelFormat.Y_U_V16_FullRange))
     ```
     <center>
     <picture>
-      <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png">
+      <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png" width="640">
     </picture>
     </center>
 
@@ -210,11 +215,27 @@ class Image(ImageExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {"buffer": buffer, "format": format, "opacity": opacity, "draw_order": draw_order}
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     buffer: components.ImageBufferBatch | None = field(

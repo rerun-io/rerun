@@ -22,7 +22,6 @@ class ViewOrigin(datatypes.EntityPath, ComponentMixin):
     # You can define your own __init__ function as a member of ViewOriginExt in view_origin_ext.py
 
     # Note: there are no fields here because ViewOrigin delegates to datatypes.EntityPath
-    pass
 
 
 class ViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):

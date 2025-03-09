@@ -18,7 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk.workspace = true
@@ -28,10 +27,12 @@ re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
-re_types.workspace = true
+re_sorbet.workspace = true
+re_uri.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true
+futures.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
 url.workspace = true
@@ -39,7 +40,11 @@ url.workspace = true
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio.workspace = true
-tonic = { workspace = true, default-features = false, features = ["transport"] }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+  "tls",
+  "tls-native-roots",
+] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

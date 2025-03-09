@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use arrow::array::UInt32Array as ArrowUInt32Array;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
+use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{build_frame_nr, Timeline};
 use re_types::Component as _;
 use re_types_core::Archetype as _;
 
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     eprintln!("store:\n{store}");
 
     let entity_path = "points";
-    let timeline = Timeline::new_sequence("frame_nr");
+    let timeline = TimelineName::new("frame_nr");
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 

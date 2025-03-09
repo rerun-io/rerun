@@ -16,10 +16,10 @@ def test_load_recording() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rrd = tmpdir + "/tmp.rrd"
 
-        rr.init("rerun_example_test_recording")
-        rr.set_time_sequence("my_index", 1)
-        rr.log("log", rr.TextLog("Hello"))
-        rr.save(rrd)
+        with rr.new_recording("rerun_example_test_recording") as rec:
+            rec.save(rrd)
+            rec.set_index("my_index", sequence=1)
+            rec.log("log", rr.TextLog("Hello"))
 
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
@@ -46,18 +46,16 @@ def test_load_recording() -> None:
 
 class TestDataframe:
     def setup_method(self) -> None:
-        rr.init(APP_ID, recording_id=RECORDING_ID)
-
-        rr.set_time_sequence("my_index", 1)
-        rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
-        rr.set_time_sequence("my_index", 7)
-        rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
-        rr.log("static_text", rr.TextLog("Hello"), static=True)
-
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            rr.save(rrd)
+            with rr.new_recording(APP_ID, recording_id=RECORDING_ID) as rec:
+                rec.save(rrd)
+                rec.set_index("my_index", sequence=1)
+                rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
+                rec.set_index("my_index", sequence=7)
+                rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+                rec.log("static_text", rr.TextLog("Hello"), static=True)
 
             self.recording = rr.dataframe.load_recording(rrd)
 
@@ -316,7 +314,7 @@ class TestDataframe:
             pa.array(
                 [0, 5, 9],
                 type=pa.int64(),
-            )
+            ),
         ])
 
         assert table.column("my_index").equals(expected_index)
@@ -390,9 +388,9 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            rr.init("rerun_example_test_recording")
-            rr.dataframe.send_dataframe(df)
-            rr.save(rrd)
+            with rr.new_recording("rerun_example_test_recording") as rec:
+                rec.save(rrd)
+                rr.dataframe.send_dataframe(df, rec=rec)
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 

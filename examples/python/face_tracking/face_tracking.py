@@ -8,8 +8,9 @@ import itertools
 import logging
 import math
 import os
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp
@@ -109,7 +110,7 @@ class FaceDetectorLogger:
         "blaze_face_short_range.tflite"
     )
 
-    def __init__(self, video_mode: bool = False):
+    def __init__(self, video_mode: bool = False) -> None:
         self._video_mode = video_mode
 
         # download model if necessary
@@ -185,7 +186,7 @@ class FaceLandmarkerLogger:
         "face_landmarker.task"
     )
 
-    def __init__(self, video_mode: bool = False, num_faces: int = 1):
+    def __init__(self, video_mode: bool = False, num_faces: int = 1) -> None:
         self._video_mode = video_mode
 
         # download model if necessary
@@ -238,7 +239,7 @@ class FaceLandmarkerLogger:
                 rr.ClassDescription(
                     info=rr.AnnotationInfo(id=i),
                     keypoint_connections=klass,
-                )
+                ),
             )
 
         rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
@@ -257,7 +258,7 @@ class FaceLandmarkerLogger:
             else self._detector.detect(image)
         )
 
-        def is_empty(i):  # type: ignore[no-untyped-def]
+        def is_empty(i: Iterator[Any]) -> bool:
             try:
                 next(i)
                 return False
@@ -270,7 +271,7 @@ class FaceLandmarkerLogger:
             rr.log("blendshapes", rr.Clear(recursive=True), static=ALL_STATIC)
 
         for i, (landmark, blendshapes) in enumerate(
-            zip(detection_result.face_landmarks, detection_result.face_blendshapes)
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes),
         ):
             if len(landmark) == 0 or len(blendshapes) == 0:
                 rr.log(
@@ -390,8 +391,8 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
                 frame_time_nano = int(frame_idx * 1000 / fps * 1e6)
 
             # log data
-            rr.set_time_sequence("frame_nr", frame_idx)
-            rr.set_time_nanos("frame_time", frame_time_nano)
+            rr.set_index("frame_nr", sequence=frame_idx)
+            rr.set_index("frame_time", timedelta=1e-9 * frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
             landmarker.detect_and_log(frame, frame_time_nano)
             rr.log(
@@ -460,8 +461,7 @@ def main() -> None:
         type=int,
         default=1,
         help=(
-            "Max number of faces detected by the landmark model "
-            "(temporal smoothing is applied only for a value of 1)."
+            "Max number of faces detected by the landmark model (temporal smoothing is applied only for a value of 1)."
         ),
     )
     parser.add_argument("--static", action="store_true", help="If set, logs everything as static")

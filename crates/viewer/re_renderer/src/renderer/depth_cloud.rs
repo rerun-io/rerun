@@ -11,7 +11,7 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
@@ -432,11 +432,7 @@ impl Renderer for DepthCloudRenderer {
                 ..Default::default()
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-            multisample: wgpu::MultisampleState {
-                // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
-                alpha_to_coverage_enabled: true,
-                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-            },
+            multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
             render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);

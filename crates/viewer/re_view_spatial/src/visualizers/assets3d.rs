@@ -58,26 +58,31 @@ impl Asset3DVisualizer {
 
             // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
-            let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
-                let key = MeshCacheKey {
-                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    query_result_hash: data.query_result_hash,
-                    media_type: data.media_type.clone().map(Into::into),
-                };
+            let mesh = ctx
+                .viewer_ctx
+                .store_context
+                .caches
+                .entry(|c: &mut MeshCache| {
+                    let key = MeshCacheKey {
+                        versioned_instance_path_hash: picking_instance_hash
+                            .versioned(primary_row_id),
+                        query_result_hash: data.query_result_hash,
+                        media_type: data.media_type.clone().map(Into::into),
+                    };
 
-                c.entry(
-                    &entity_path.to_string(),
-                    key.clone(),
-                    AnyMesh::Asset {
-                        asset: crate::mesh_loader::NativeAsset3D {
-                            bytes: data.blob.as_slice(),
-                            media_type: data.media_type.clone().map(Into::into),
-                            albedo_factor: data.albedo_factor.map(|a| a.0.into()),
+                    c.entry(
+                        &entity_path.to_string(),
+                        key.clone(),
+                        AnyMesh::Asset {
+                            asset: crate::mesh_loader::NativeAsset3D {
+                                bytes: data.blob.as_slice(),
+                                media_type: data.media_type.clone().map(Into::into),
+                                albedo_factor: data.albedo_factor.map(|a| a.0.into()),
+                            },
                         },
-                    },
-                    ctx.viewer_ctx.render_ctx,
-                )
-            });
+                        ctx.viewer_ctx.render_ctx(),
+                    )
+                });
 
             if let Some(mesh) = mesh {
                 re_tracing::profile_scope!("mesh instances");
@@ -182,7 +187,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");

@@ -26,7 +26,6 @@ class ForceIterations(datatypes.UInt64, ComponentMixin):
     # You can define your own __init__ function as a member of ForceIterationsExt in force_iterations_ext.py
 
     # Note: there are no fields here because ForceIterations delegates to datatypes.UInt64
-    pass
 
 
 class ForceIterationsBatch(datatypes.UInt64Batch, ComponentBatchMixin):

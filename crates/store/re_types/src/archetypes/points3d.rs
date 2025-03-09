@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -22,23 +22,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Examples
 ///
-/// ### Randomly distributed 3D points with varying color and radius
+/// ### Simple 3D points
 /// ```ignore
-/// use rand::{distributions::Uniform, Rng as _};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").spawn()?;
-///
-///     let mut rng = rand::thread_rng();
-///     let dist = Uniform::new(-5., 5.);
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d").spawn()?;
 ///
 ///     rec.log(
-///         "random",
-///         &rerun::Points3D::new(
-///             (0..10).map(|_| (rng.sample(dist), rng.sample(dist), rng.sample(dist))),
-///         )
-///         .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
-///         .with_radii((0..10).map(|_| rng.gen::<f32>())),
+///         "points",
+///         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
 ///     )?;
 ///
 ///     Ok(())
@@ -46,65 +37,65 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png">
-///   <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+///   <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" width="640">
 /// </picture>
 /// </center>
 ///
-/// ### Log points with radii given in UI points
+/// ### Update a point cloud over time
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_ui_radius").spawn()?;
-///
-///     // Two blue points with scene unit radii of 0.1 and 0.3.
-///     rec.log(
-///         "scene_units",
-///         &rerun::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0)])
-///             // By default, radii are interpreted as world-space units.
-///             .with_radii([0.1, 0.3])
-///             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
-///     )?;
-///
-///     // Two red points with ui point radii of 40 and 60.
-///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
-///     // For 100% ui scaling, UI points are equal to pixels.
-///     rec.log(
-///         "ui_points",
-///         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 0.0, 1.0)])
-///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
-///             .with_radii([
-///                 rerun::Radius::new_ui_points(40.0),
-///                 rerun::Radius::new_ui_points(60.0),
-///             ])
-///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
-///     )?;
-///
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png">
-///   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
-/// </picture>
-/// </center>
-///
-/// ### Send several point clouds with varying point count over time in a single call
-/// ```ignore
-/// use rerun::TimeColumn;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_send_columns").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_row_updates").spawn()?;
 ///
 ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
-///     let times = TimeColumn::new_seconds("time", 10..15);
+///     #[rustfmt::skip]
+///     let positions = [
+///         vec![[1.0, 0.0, 1.0], [0.5, 0.5, 2.0]],
+///         vec![[1.5, -0.5, 1.5], [1.0, 1.0, 2.5], [-0.5, 1.5, 1.0], [-1.5, 0.0, 2.0]],
+///         vec![[2.0, 0.0, 2.0], [1.5, -1.5, 3.0], [0.0, -2.0, 2.5], [1.0, -1.0, 3.5]],
+///         vec![[-2.0, 0.0, 2.0], [-1.5, 1.5, 3.0], [-1.0, 1.0, 3.5]],
+///         vec![[1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0]],
+///     ];
 ///
+///     // At each timestep, all points in the cloud share the same but changing color and radius.
+///     let colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF];
+///     let radii = [0.05, 0.01, 0.2, 0.1, 0.3];
+///
+///     for (time, positions, color, radius) in itertools::izip!(10..15, positions, colors, radii) {
+///         rec.set_time_seconds("time", time);
+///
+///         let point_cloud = rerun::Points3D::new(positions)
+///             .with_colors([color])
+///             .with_radii([radius]);
+///
+///         rec.log("points", &point_cloud)?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+///   <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Update a point cloud over time, in a single operation
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_points3d_column_updates").spawn()?;
+///
+///     let times = rerun::TimeColumn::new_seconds("time", 10..15);
+///
+///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 ///     #[rustfmt::skip]
 ///     let positions = [
 ///         [1.0, 0.0, 1.0], [0.5, 0.5, 2.0],
@@ -134,11 +125,64 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1200w.png">
-///   <img src="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+///   <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Update specific properties of a point cloud over time
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_points3d_partial_updates").spawn()?;
+///
+///     let positions = || (0..10).map(|i| (i as f32, 0.0, 0.0));
+///
+///     rec.set_time_sequence("frame", 0);
+///     rec.log("points", &rerun::Points3D::new(positions()))?;
+///
+///     for i in 0..10 {
+///         let colors = (0..10).map(|n| {
+///             if n < i {
+///                 rerun::Color::from_rgb(20, 200, 20)
+///             } else {
+///                 rerun::Color::from_rgb(200, 20, 20)
+///             }
+///         });
+///         let radii = (0..10).map(|n| if n < i { 0.6 } else { 0.2 });
+///
+///         // Update only the colors and radii, leaving everything else as-is.
+///         rec.set_time_sequence("frame", i);
+///         rec.log(
+///             "points",
+///             &rerun::Points3D::update_fields()
+///                 .with_radii(radii)
+///                 .with_colors(colors),
+///         )?;
+///     }
+///
+///     // Update the positions and radii, and clear everything else in the process.
+///     rec.set_time_sequence("frame", 20);
+///     rec.log(
+///         "points",
+///         &rerun::Points3D::clear_fields()
+///             .with_positions(positions())
+///             .with_radii([0.3]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1200w.png">
+///   <img src="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]

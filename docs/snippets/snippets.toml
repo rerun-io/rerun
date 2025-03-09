@@ -15,27 +15,55 @@
 # Add anything you can think about!
 #
 # Tip: use UTF8 NBSPs (https://unicode-explorer.com/c/00A0) as needed.
-[snippets_ref.features]
-"Query dataframes" = [
-  "reference/dataframe_query",
-  "reference/dataframe_view_query",
-]
-"Send partial updates" = [
-  "archetypes/mesh3d_partial_updates",
-  "archetypes/points3d_partial_updates",
-  "archetypes/transform3d_partial_updates",
-]
-"Send columnar data" = [
-  "archetypes/image_send_columns",
-  "archetypes/points3d_send_columns",
-  "archetypes/scalar_send_columns",
-  "howto/any_values_send_columns",
-  "howto/any_batch_value_send_columns",
-]
-"Send custom data" = [
-  "tutorials/any_values",
-  "tutorials/extra_values",
-  "tutorials/custom_data",
+[snippets_ref]
+features = [
+  [
+    "Update rows",
+    [
+      "archetypes/scalar_row_updates",
+      "archetypes/points3d_row_updates",
+      "archetypes/transform3d_row_updates",
+    ],
+  ],
+  [
+    "Update columns",
+    [
+      "archetypes/scalar_column_updates",
+      "archetypes/points3d_column_updates",
+      "archetypes/transform3d_column_updates",
+      "archetypes/image_column_updates",       # bonus!
+    ],
+  ],
+  [
+    "Partial updates",
+    [
+      "archetypes/points3d_partial_updates",
+      "archetypes/transform3d_partial_updates",
+      "archetypes/mesh3d_partial_updates",
+    ],
+  ],
+  [
+    "Send custom data",
+    [
+      "tutorials/any_values",
+      "tutorials/extra_values",
+      "tutorials/custom_data",
+    ],
+  ],
+  [
+    "Send columns of custom data",
+    [
+      "howto/any_values_column_updates",
+      "howto/any_batch_value_column_updates",
+    ],
+  ],
+  [
+    "Query dataframes",
+    [
+      "reference/dataframe_query",
+      "reference/dataframe_view_query",
+    ],
+  ],
 ]
 
 # These entries won't run at all.
@@ -44,6 +72,11 @@
 # for one or more specific SDKs.
 [opt_out.run]
 "concepts/explicit_recording" = [ # python-specific check
+  "cpp",
+  "rust",
+]
+"concepts/how_helix_was_logged" = [ # pseudo-code
+  "py",
   "cpp",
   "rust",
 ]
@@ -175,18 +208,40 @@
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-concepts = [ # Only python
-  "cpp",
+"concepts/explicit_recording" = ["cpp", "rust"] # Only python
+"concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
+"concepts/different_data_per_timeline" = [
+  # TODO(#5521): log VisualBounds2D in all languages
   "py",
-  "rust",
+]
+"concepts/viscomp-base" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-default" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override-multiple" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/arrows3d_simple" = [ # Python uses doubles
-  "py",
+"archetypes/arrows3d_simple" = [
+  "py",  # Python uses doubles
+  "cpp", # Trigonometry doesn't work out the same with all C++ toolchains (*some* Windows machines yield a different result)
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
@@ -256,7 +311,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
-# Note that the snippet comparison tool will automatically run `/tests/assets/download_test_assets.py` before running the snippets.
 [extra_args]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]

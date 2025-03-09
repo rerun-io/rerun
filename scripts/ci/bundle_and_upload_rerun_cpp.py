@@ -14,13 +14,17 @@ from google.cloud import storage
 
 
 def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: int | None = None,
+    cwd: str | None = None,
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert (
-        result.returncode == 0
-    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    )
 
 
 def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
@@ -104,7 +108,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser(
-        description="Bundle and upload rerun_cpp_sdk. Assumes rerun_c already built & uploaded."
+        description="Bundle and upload rerun_cpp_sdk. Assumes rerun_c already built & uploaded.",
     )
     parser.add_argument(
         "--git-hash",
@@ -140,7 +144,10 @@ def main() -> None:
 
         logging.info("Copying files…")
         shutil.copytree(
-            src="rerun_cpp/", dst=package_dir + "/", ignore=shutil.ignore_patterns("tests"), dirs_exist_ok=True
+            src="rerun_cpp/",
+            dst=package_dir + "/",
+            ignore=shutil.ignore_patterns("tests"),
+            dirs_exist_ok=True,
         )
 
         logging.info("Copying LICENSE files…")
@@ -149,7 +156,10 @@ def main() -> None:
 
         logging.info(f"Packaging {package_dir}.zip…")
         rerun_zip = shutil.make_archive(
-            scratch_dir + "/" + package_name, "zip", root_dir=scratch_dir, base_dir=package_name
+            scratch_dir + "/" + package_name,
+            "zip",
+            root_dir=scratch_dir,
+            base_dir=package_name,
         )
 
         if args.local_path is not None:

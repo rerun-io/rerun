@@ -10,9 +10,9 @@ use re_types::{
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorData,
-    View, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
@@ -64,13 +64,14 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Tensor view
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Tensor view")
+            .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
+            .markdown(
+                "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
 
-Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
-
-Note: select the view to configure which dimensions are shown."
-            .to_owned()
+Set the displayed dimensions in a selection panel.",
+            )
     }
 
     fn on_register(
@@ -133,7 +134,8 @@ Note: select the view to configure which dimensions are shown."
             }) = &state.tensor
             {
                 let tensor_stats = ctx
-                    .cache
+                    .store_context
+                    .caches
                     .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
@@ -177,9 +179,9 @@ Note: select the view to configure which dimensions are shown."
             if ui
                 .add_enabled(
                     slice_property.any_non_empty(),
-                    egui::Button::new("Reset to default"),
+                    egui::Button::new("Reset to heuristic"),
                 )
-                .on_hover_text("Reset dimension mapping to the default, i.e. as if never set")
+                .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
                 .on_disabled_hover_text("No custom dimension mapping set")
                 .clicked()
             {
@@ -356,7 +358,7 @@ impl TensorView {
             value_range: [data_range.start() as f32, data_range.end() as f32],
         };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             *tensor_row_id,
             tensor,
             slice_selection,
@@ -397,7 +399,7 @@ impl TensorView {
         };
 
         gpu_bridge::render_image(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &painter,
             image_rect,
             colormapped_texture,
@@ -491,7 +493,7 @@ fn paint_axis_names(
 
     let text_color = ui.visuals().text_color();
 
-    let rounding = re_ui::DesignTokens::normal_rounding();
+    let rounding = re_ui::DesignTokens::normal_corner_radius();
     let inner_margin = rounding;
     let outer_margin = 8.0;
 

@@ -1,7 +1,7 @@
 use arrow::datatypes::DataType as ArrowDatatype;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline};
+use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
@@ -63,10 +63,8 @@ fn temporal_sorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = RangeQuery::with_extras(
-            Timeline::new_sequence("frame"),
-            ResolvedTimeRange::EVERYTHING,
-        );
+        let query =
+            RangeQuery::with_extras(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -119,7 +117,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
 
     {
         let query =
-            RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
+            RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
         query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
@@ -195,7 +193,8 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::EVERYTHING);
+        let query =
+            RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::EVERYTHING);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -248,7 +247,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
 
     {
         let query =
-            RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
+            RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
         query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
@@ -313,11 +312,8 @@ fn static_sorted() -> anyhow::Result<()> {
         .build()?;
 
     let queries = [
-        RangeQuery::with_extras(
-            Timeline::new_sequence("frame"),
-            ResolvedTimeRange::EVERYTHING,
-        ),
-        RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
+        RangeQuery::with_extras(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING),
+        RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::new(1020, 1050)),
     ];
 
     for query in queries {
@@ -394,11 +390,8 @@ fn static_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     let queries = [
-        RangeQuery::with_extras(
-            Timeline::new_sequence("frame"),
-            ResolvedTimeRange::EVERYTHING,
-        ),
-        RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
+        RangeQuery::with_extras(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING),
+        RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::new(1020, 1050)),
     ];
 
     for query in queries {

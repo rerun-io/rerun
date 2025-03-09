@@ -27,7 +27,6 @@ class Opacity(datatypes.Float32, ComponentMixin):
     # You can define your own __init__ function as a member of OpacityExt in opacity_ext.py
 
     # Note: there are no fields here because Opacity delegates to datatypes.Float32
-    pass
 
 
 class OpacityBatch(datatypes.Float32Batch, ComponentBatchMixin):

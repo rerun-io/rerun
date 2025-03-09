@@ -10,8 +10,8 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types::ComponentBatch;
-use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
+use re_types::ComponentBatch as _;
+use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents as _};
 
 // ---
 
@@ -61,7 +61,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).unwrap();
             let (_, _, got_color) =
@@ -85,7 +85,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
 
@@ -106,7 +106,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             let (_, _, got_color) =
                 query_latest_component::<MyColor>(&db, &entity_path_child2, &query).unwrap();
 
@@ -129,7 +129,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
             assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
@@ -166,7 +166,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
             assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
@@ -202,14 +202,14 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 9);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 9);
             let (_, _, got_instance) =
                 query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(instance, got_instance);
         }
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             assert!(query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).is_none());
         }
     }
@@ -230,7 +230,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 9);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 9);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
             let (_, _, got_color) =
@@ -241,7 +241,7 @@ fn clears() -> anyhow::Result<()> {
         }
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_none());
             assert!(query_latest_component::<MyColor>(&db, &entity_path_child1, &query).is_none());
         }
@@ -263,7 +263,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 9);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 9);
             let (_, _, got_point) =
                 query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).unwrap();
             let (_, _, got_color) =
@@ -274,7 +274,7 @@ fn clears() -> anyhow::Result<()> {
         }
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             assert!(query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).is_none());
             assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_none());
         }
@@ -294,7 +294,7 @@ fn clears() -> anyhow::Result<()> {
         db.add_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 9);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 9);
             let (_, _, got_color) =
                 query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).unwrap();
 
@@ -302,7 +302,7 @@ fn clears() -> anyhow::Result<()> {
         }
 
         {
-            let query = LatestAtQuery::new(timeline_frame, 11);
+            let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             assert!(
                 query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).is_none()
             );
@@ -336,7 +336,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     db.add_chunk(&Arc::new(chunk))?;
 
     {
-        let query = LatestAtQuery::new(timeline_frame, 11);
+        let query = LatestAtQuery::new(*timeline_frame.name(), 11);
         let (_, _, got_point) =
             query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(point, got_point);
@@ -354,7 +354,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     db.add_chunk(&Arc::new(chunk))?;
 
     {
-        let query = LatestAtQuery::new(timeline_frame, 11);
+        let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
         let (_, _, got_point) =
             query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
@@ -381,7 +381,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     db.add_chunk(&Arc::new(chunk))?;
 
     {
-        let query = LatestAtQuery::new(timeline_frame, 11);
+        let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
         assert!(query_latest_component::<MyPoint>(&db, &entity_path, &query).is_none());
 

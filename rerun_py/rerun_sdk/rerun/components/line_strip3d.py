@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +44,7 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, points: LineStrip3DLike):
+    def __init__(self: Any, points: LineStrip3DLike) -> None:
         """Create a new instance of the LineStrip3D component."""
 
         # You can define your own __init__ function as a member of LineStrip3DExt in line_strip3d_ext.py

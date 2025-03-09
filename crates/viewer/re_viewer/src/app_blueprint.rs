@@ -5,7 +5,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{blueprint::components::PanelState, ComponentBatch};
-use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _};
 
 const TOP_PANEL_PATH: &str = "top_panel";
 const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";

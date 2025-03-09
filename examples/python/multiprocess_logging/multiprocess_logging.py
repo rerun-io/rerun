@@ -24,13 +24,13 @@ def task(child_index: int) -> None:
     rr.init("rerun_example_multiprocessing")
 
     # We then have to connect to the viewer instance.
-    rr.connect_tcp()
+    rr.connect_grpc()
 
     title = f"task_{child_index}"
     rr.log(
         "log",
         rr.TextLog(
-            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
+            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
         ),  # noqa: E501 line too long
     )
     if child_index == 0:

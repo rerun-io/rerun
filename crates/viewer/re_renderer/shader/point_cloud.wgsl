@@ -131,9 +131,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 /// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
 /// perspective projection is not taken into account.
 fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f) -> f32 {
-    let distance = distance(circle_center, world_position);
-    let feathering_radius = fwidth(distance) * 0.5;
-    return smoothstep(radius + feathering_radius, radius - feathering_radius, distance);
+    let circle_distance = distance(circle_center, world_position);
+    let feathering_radius = fwidth(circle_distance) * 0.5;
+    return smoothstep(radius + feathering_radius, radius - feathering_radius, circle_distance);
 }
 
 fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
@@ -147,8 +147,8 @@ fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage < 0.001 {
+    let cov = coverage(in.world_position, in.radius, in.point_center);
+    if cov < 0.001 {
         discard;
     }
 
@@ -159,13 +159,13 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4f(in.color.rgb * shading, coverage);
+    return vec4f(in.color.rgb * shading, cov);
 }
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage <= 0.5 {
+    let cov = coverage(in.world_position, in.radius, in.point_center);
+    if cov <= 0.5 {
         discard;
     }
     return vec4u(batch.picking_layer_object_id, in.picking_instance_id);
@@ -175,8 +175,8 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage <= 0.5 {
+    let cov = coverage(in.world_position, in.radius, in.point_center);
+    if cov <= 0.5 {
         discard;
     }
     return batch.outline_mask;

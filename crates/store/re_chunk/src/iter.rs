@@ -10,10 +10,10 @@ use arrow::{
     buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::ArrowNativeType,
 };
-use itertools::{izip, Either, Itertools};
+use itertools::{izip, Either, Itertools as _};
 
-use re_arrow_util::{arrow_util::offsets_lengths, ArrowArrayDowncastRef as _};
-use re_log_types::{TimeInt, TimePoint, Timeline};
+use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
+use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types_core::{ArrowString, Component, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
@@ -36,7 +36,10 @@ impl Chunk {
     /// * [`Self::iter_component_indices`].
     /// * [`Self::iter_indices_owned`].
     #[inline]
-    pub fn iter_indices(&self, timeline: &Timeline) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+    pub fn iter_indices(
+        &self,
+        timeline: &TimelineName,
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         if self.is_static() {
             Either::Right(Either::Left(izip!(
                 std::iter::repeat(TimeInt::STATIC),
@@ -62,7 +65,7 @@ impl Chunk {
     /// See also [`Self::iter_indices`].
     pub fn iter_component_indices(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         let Some(list_array) = self.get_first_component(component_name) else {
@@ -244,7 +247,7 @@ impl Chunk {
         &'a self,
         component_name: ComponentName,
         field_name: &'a str,
-    ) -> impl Iterator<Item = S::Item<'a>> + '_ {
+    ) -> impl Iterator<Item = S::Item<'a>> + 'a {
         let Some(list_array) = self.get_first_component(&component_name) else {
             return Either::Left(std::iter::empty());
         };
@@ -702,16 +705,7 @@ impl Iterator for ChunkIndicesIter {
         let i = self.index;
         self.index += 1;
 
-        let row_id = {
-            let (times, incs) = self.chunk.row_ids_raw();
-            let times = times.values();
-            let incs = incs.values();
-
-            let time = *times.get(i)?;
-            let inc = *incs.get(i)?;
-
-            RowId::from_u128(((time as u128) << 64) | (inc as u128))
-        };
+        let row_id = *self.chunk.row_ids_slice().get(i)?;
 
         if let Some(time_column) = &self.time_column {
             let time = *time_column.times_raw().get(i)?;
@@ -735,7 +729,7 @@ impl Chunk {
     #[inline]
     pub fn iter_indices_owned(
         self: Arc<Self>,
-        timeline: &Timeline,
+        timeline: &TimelineName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> {
         if self.is_static() {
             Either::Left(ChunkIndicesIter {
@@ -900,7 +894,7 @@ impl Chunk {
 mod tests {
     use std::sync::Arc;
 
-    use itertools::{izip, Itertools};
+    use itertools::{izip, Itertools as _};
     use re_log_types::{example_components::MyPoint, EntityPath, TimeInt, TimePoint};
 
     use crate::{Chunk, RowId, Timeline};
@@ -941,12 +935,12 @@ mod tests {
 
         {
             let got = Arc::clone(&chunk)
-                .iter_indices_owned(&timeline_frame)
+                .iter_indices_owned(timeline_frame.name())
                 .collect_vec();
             let expected = izip!(
                 chunk
                     .timelines
-                    .get(&timeline_frame)
+                    .get(timeline_frame.name())
                     .map(|time_column| time_column.times().collect_vec())
                     .unwrap_or_default(),
                 chunk.row_ids()
@@ -989,7 +983,7 @@ mod tests {
 
         {
             let got = Arc::clone(&chunk)
-                .iter_indices_owned(&timeline_frame)
+                .iter_indices_owned(timeline_frame.name())
                 .collect_vec();
             let expected = izip!(std::iter::repeat(TimeInt::STATIC), chunk.row_ids()).collect_vec();
 

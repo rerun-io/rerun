@@ -45,6 +45,7 @@ examples = [
   "rrt_star",
   "rgbd",
   "nv12",
+  "imu_signals",
 ]
 
 [categories.generative-vision]
@@ -77,6 +78,7 @@ examples = [
   # display order, most interesting first
   "detect_and_track_objects",
   "face_tracking",
+  "prompt_depth_anything",
   "sam2_depthanything",
   "human_pose_tracking",
   "gesture_detection",
@@ -104,7 +106,6 @@ examples = [
   "glomap",
   "hloc_glomap",
   "instant_splat",
-  "signed_distance_fields",
   "raw_mesh",
 ]
 
@@ -153,6 +154,7 @@ examples = [
   "live_scrolling_plot",
   "raw_mesh",
   "air_traffic_data",
+  "imu_signals",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included

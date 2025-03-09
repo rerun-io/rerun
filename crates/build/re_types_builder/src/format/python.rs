@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::CodeFormatter;

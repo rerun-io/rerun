@@ -27,7 +27,7 @@ target_include_directories(rerun_sdk PUBLIC
 )
 
 # Rerun needs at least C++17.
-set_target_properties(rerun_sdk PROPERTIES CXX_STANDARD 17)
+target_compile_features(rerun_sdk PUBLIC cxx_std_17)
 
 # Do multithreaded compiling on MSVC.
 if(MSVC)
@@ -84,11 +84,11 @@ if(NOT TARGET rerun_c)
 endif()
 
 if(APPLE)
-    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
+    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit" "-framework Security")
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
+    target_link_libraries(rerun_c INTERFACE ws2_32 Bcrypt Userenv ntdll Crypt32 Secur32 Ncrypt)
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_c)

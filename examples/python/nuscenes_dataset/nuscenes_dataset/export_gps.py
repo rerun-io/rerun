@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 EARTH_RADIUS_METERS = 6.378137e6
 REFERENCE_COORDINATES = {
@@ -43,7 +43,7 @@ def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) 
     angular_distance = dist / EARTH_RADIUS_METERS
 
     target_lat = math.asin(
-        math.sin(lat) * math.cos(angular_distance) + math.cos(lat) * math.sin(angular_distance) * math.cos(bearing)
+        math.sin(lat) * math.cos(angular_distance) + math.cos(lat) * math.sin(angular_distance) * math.cos(bearing),
     )
     target_lon = lon + math.atan2(
         math.sin(bearing) * math.sin(angular_distance) * math.cos(lat),
@@ -73,9 +73,9 @@ def derive_latlon(location: str, pose: dict[str, Sequence[float]]) -> tuple[floa
     Latitude and longitude coordinates in degrees.
 
     """
-    assert (
-        location in REFERENCE_COORDINATES.keys()
-    ), f"Error: The given location: {location}, has no available reference."
+    assert location in REFERENCE_COORDINATES.keys(), (
+        f"Error: The given location: {location}, has no available reference."
+    )
 
     reference_lat, reference_lon = REFERENCE_COORDINATES[location]
     x, y = pose["translation"][:2]

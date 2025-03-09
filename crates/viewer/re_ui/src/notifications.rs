@@ -8,7 +8,7 @@ use crate::design_tokens;
 use crate::icons;
 use crate::ColorToken;
 use crate::Scale;
-use crate::UiExt;
+use crate::UiExt as _;
 
 fn now() -> OffsetDateTime {
     OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
@@ -242,7 +242,7 @@ impl NotificationPanel {
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
                     .fill(design_tokens().color(ColorToken::gray(Scale::S150)))
-                    .rounding(8.0)
+                    .corner_radius(8)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
                         ui.set_width(panel_width);
@@ -374,7 +374,7 @@ fn show_notification(
     };
 
     egui::Frame::window(ui.style())
-        .rounding(4.0)
+        .corner_radius(4)
         .inner_margin(10.0)
         .fill(background_color)
         .shadow(egui::Shadow::NONE)

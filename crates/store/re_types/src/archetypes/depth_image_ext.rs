@@ -61,4 +61,28 @@ impl DepthImage {
     pub fn from_gray16(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_data_type_and_bytes(bytes, resolution, ChannelDatatype::U16)
     }
+
+    /// Construct a depth image given the encoded content of some image file, e.g. a TIFF or PNG
+    ///
+    /// [`Self::format`] will be guessed from the bytes.
+    #[cfg(feature = "image")]
+    pub fn from_file_contents(bytes: Vec<u8>) -> Result<Self, crate::image::ImageLoadError> {
+        let image_format = image::guess_format(&bytes)?;
+        if image_format == image::ImageFormat::Tiff {
+            let (blob, format) = crate::image::blob_and_format_from_tiff(&bytes)?;
+
+            Ok(Self::from_data_type_and_bytes(
+                blob,
+                [format.width, format.height],
+                format.datatype(),
+            ))
+        } else {
+            re_log::warn_once!("Unsupported image format encountered while processing file contents. Only TIFF files with valid dimensions and supported data types are currently supported.");
+
+            Ok(Self::new(
+                ImageBuffer(bytes.into()),
+                ImageFormat::depth([0, 0], ChannelDatatype::F32),
+            ))
+        }
+    }
 }

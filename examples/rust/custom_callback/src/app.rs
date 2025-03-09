@@ -1,10 +1,7 @@
 //! The external application that will be controlled by the extended viewer ui.
 
 use core::f32;
-use std::{
-    f32::consts::{PI, TAU},
-    net::ToSocketAddrs,
-};
+use std::f32::consts::{PI, TAU};
 
 use custom_callback::comms::{app::ControlApp, protocol::Message};
 
@@ -18,9 +15,9 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = ControlApp::bind("127.0.0.1:8888").await?.run();
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback")
-        .connect_tcp_opts(
-            "127.0.0.1:9877".to_socket_addrs().unwrap().next().unwrap(),
-            None,
+        .connect_grpc_opts(
+            "rerun+http://127.0.0.1:9877/proxy",
+            rerun::default_flush_timeout(),
         )?;
 
     // Add a handler for incoming messages

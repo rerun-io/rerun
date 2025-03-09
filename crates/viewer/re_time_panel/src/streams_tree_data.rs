@@ -8,12 +8,13 @@ use re_data_ui::sorted_component_list_for_ui;
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::EntityPath;
 use re_types_core::ComponentName;
-use re_ui::filter_widget::FilterMatcher;
+use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 
 use crate::time_panel::TimePanelSource;
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct StreamsTreeData {
     pub children: Vec<EntityData>,
 }
@@ -31,7 +32,14 @@ impl StreamsTreeData {
             TimePanelSource::Blueprint => ctx.blueprint_db(),
         };
 
-        let root_data = EntityData::from_entity_tree_and_filter(db.tree(), filter_matcher, false);
+        let mut hierarchy = Vec::default();
+        let mut hierarchy_highlights = PathRanges::default();
+        let root_data = EntityData::from_entity_tree_and_filter(
+            db.tree(),
+            filter_matcher,
+            &mut hierarchy,
+            &mut hierarchy_highlights,
+        );
 
         // We show "/" on top only for recording streams, because the `/` entity in blueprint
         // is always empty, so it's just lost space. This works around an issue where the
@@ -79,6 +87,7 @@ impl StreamsTreeData {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct EntityData {
     pub entity_path: EntityPath,
 
@@ -94,88 +103,115 @@ impl EntityData {
     pub fn from_entity_tree_and_filter(
         entity_tree: &EntityTree,
         filter_matcher: &FilterMatcher,
-        mut is_already_a_match: bool,
+        hierarchy: &mut Vec<String>,
+        hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
         // Early out
         if filter_matcher.matches_nothing() {
             return None;
         }
 
-        let mut label = entity_tree
+        let entity_part_ui_string = entity_tree
             .path
             .last()
-            .map(|entity_part| entity_part.ui_string())
-            .unwrap_or("/".to_owned());
+            .map(|entity_part| entity_part.ui_string());
+        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
 
-        //
-        // Filtering
-        //
-
-        let (entity_part_matches, highlight_sections) = if filter_matcher.matches_everything() {
-            // fast path (filter is inactive)
-            (true, SmallVec::new())
-        } else if let Some(entity_part) = entity_tree.path.last() {
-            // Nominal case of matching the hierarchy.
-            if let Some(match_sections) = filter_matcher.find_matches(&entity_part.ui_string()) {
-                (true, match_sections.collect())
-            } else {
-                (false, SmallVec::new())
-            }
+        let must_pop = if let Some(part) = &entity_part_ui_string {
+            hierarchy.push(part.clone());
+            true
         } else {
-            // we are the root, it can never match anything
-            (false, SmallVec::new())
+            false
         };
 
-        // We want to keep entire branches if a single of its node matches. So we must propagate the
-        // "matched" state so we can make the right call when we reach leaf nodes.
-        is_already_a_match |= entity_part_matches;
-
         //
-        // Recurse
+        // Gather some info about the current node…
         //
 
-        if entity_tree.children.is_empty() {
-            // Discard a leaf item unless it is already a match.
-            is_already_a_match.then(|| {
-                // Leaf items are always collapsed by default, even when the filter is active.
-                let default_open = false;
+        /// Temporary structure to hold local information.
+        struct NodeInfo {
+            is_leaf: bool,
+            is_this_a_match: bool,
+            children: Vec<EntityData>,
+            default_open: bool,
+        }
 
-                Self {
-                    entity_path: entity_tree.path.clone(),
-                    label,
-                    highlight_sections,
-                    default_open,
-                    children: vec![],
-                }
-            })
+        let node_info = if entity_tree.children.is_empty() {
+            // Key insight: we only ever need to match the hierarchy from the leaf nodes.
+            // Non-leaf nodes know they are a match if any child remains after walking their
+            // subtree.
+
+            let highlights = filter_matcher.match_path(hierarchy.iter().map(String::as_str));
+
+            let is_this_a_match = if let Some(highlights) = highlights {
+                hierarchy_highlights.merge(highlights);
+                true
+            } else {
+                false
+            };
+
+            NodeInfo {
+                is_leaf: true,
+                is_this_a_match,
+                children: vec![],
+                default_open: false,
+            }
         } else {
             let children = entity_tree
                 .children
                 .values()
                 .filter_map(|sub_tree| {
-                    Self::from_entity_tree_and_filter(sub_tree, filter_matcher, is_already_a_match)
+                    Self::from_entity_tree_and_filter(
+                        sub_tree,
+                        filter_matcher,
+                        hierarchy,
+                        hierarchy_highlights,
+                    )
                 })
                 .collect_vec();
 
-            (is_already_a_match || !children.is_empty()).then(|| {
-                // Only top-level non-leaf entities are expanded by default, unless the filter is
-                // active.
-                let default_open = filter_matcher.is_active() || entity_tree.path.len() <= 1;
-                Self {
-                    entity_path: entity_tree.path.clone(),
-                    label: if children.is_empty() || entity_tree.path.is_root() {
-                        label
-                    } else {
-                        // Indicate that we have children
-                        label.push('/');
-                        label
-                    },
-                    highlight_sections,
-                    default_open,
-                    children,
-                }
-            })
+            let is_this_a_match = !children.is_empty();
+            let default_open = filter_matcher.is_active() || entity_tree.path.len() <= 1;
+
+            NodeInfo {
+                is_leaf: false,
+                is_this_a_match,
+                children,
+                default_open,
+            }
+        };
+
+        //
+        // …then handle the node accordingly.
+        //
+
+        let result = node_info.is_this_a_match.then(|| {
+            let highlight_sections = hierarchy_highlights
+                .remove(hierarchy.len().saturating_sub(1))
+                .map(Iterator::collect)
+                .unwrap_or_default();
+
+            Self {
+                entity_path: entity_tree.path.clone(),
+                label: if node_info.is_leaf || entity_tree.path.is_root() {
+                    label
+                } else {
+                    // Indicate that we have children
+                    label.push('/');
+                    label
+                },
+                highlight_sections,
+                default_open: node_info.default_open,
+                children: node_info.children,
+            }
+        });
+
+        if must_pop {
+            hierarchy_highlights.remove(hierarchy.len().saturating_sub(1));
+            hierarchy.pop();
         }
+
+        result
     }
 
     /// Visit this entity, included its components in the provided store.

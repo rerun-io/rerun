@@ -1,4 +1,4 @@
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, TimelineName};
 use re_types::Archetype;
 use re_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
@@ -154,7 +154,7 @@ use re_chunk_store::external::re_chunk;
 /// See [`Chunk::iter_component`] for more information.
 pub fn iter_component<'a, C: re_types::Component>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
+    timeline: TimelineName,
     component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
@@ -170,7 +170,7 @@ pub fn iter_component<'a, C: re_types::Component>(
 /// See [`Chunk::iter_slices`] for more information.
 pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
+    timeline: TimelineName,
     component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
     chunks.iter().flat_map(move |chunk| {

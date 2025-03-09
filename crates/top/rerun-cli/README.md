@@ -20,7 +20,7 @@ Alternatively, you may skip enabling the `nasm` feature, but this may result in 
 
 The `rerun` CLI can act either as a server, a viewer, or both, depending on which options you use when you start it.
 
-Running `rerun` with no arguments will start the viewer, waiting for an SDK to connect to it over TCP.
+Running `rerun` with no arguments will start the viewer, waiting for an SDK to connect to it over gRPC.
 
 Run `rerun --help` for more.
 

@@ -368,9 +368,31 @@ impl ChunkStore {
             .or_default()
             .push(chunk.id());
 
+        for (name, columns) in chunk.timelines() {
+            let new_typ = columns.timeline().typ();
+            if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ) {
+                if old_typ != new_typ {
+                    re_log::warn_once!(
+                        "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
+                        Rerun does not support using different types for the same timeline.",
+                    );
+                }
+            }
+        }
+
         for (component_descr, list_array) in chunk.components().iter_flattened() {
-            self.type_registry
-                .insert(component_descr.component_name, list_array.value_type());
+            if let Some(old_typ) = self
+                .type_registry
+                .insert(component_descr.component_name, list_array.value_type())
+            {
+                if old_typ != list_array.value_type() {
+                    re_log::warn_once!(
+                        "Component column '{}' changed type from {old_typ:?} to {:?}",
+                        component_descr.component_name,
+                        list_array.value_type()
+                    );
+                }
+            }
 
             let column_metadata_state = self
                 .per_column_metadata
@@ -384,7 +406,7 @@ impl ChunkStore {
                 });
             {
                 let is_semantically_empty =
-                    re_arrow_util::arrow_util::is_list_array_semantically_empty(list_array);
+                    re_arrow_util::is_list_array_semantically_empty(list_array);
 
                 column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }
@@ -439,9 +461,10 @@ impl ChunkStore {
                 *candidates_below_threshold
                     .entry(candidate_chunk_id)
                     .or_insert_with(|| {
-                        store.chunks_per_chunk_id.get(&candidate_chunk_id).map_or(
-                            false,
-                            |candidate| {
+                        store
+                            .chunks_per_chunk_id
+                            .get(&candidate_chunk_id)
+                            .is_some_and(|candidate| {
                                 if !chunk.concatenable(candidate) {
                                     return false;
                                 }
@@ -458,8 +481,7 @@ impl ChunkStore {
                                 };
 
                                 is_below_bytes_threshold && is_below_rows_threshold
-                            },
-                        )
+                            })
                     })
             };
 
@@ -553,6 +575,7 @@ impl ChunkStore {
             id,
             info: _,
             config: _,
+            time_type_registry: _,
             type_registry: _,
             per_column_metadata,
             chunks_per_chunk_id,

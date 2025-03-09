@@ -9,11 +9,11 @@
 #include "../../blueprint/components/grid_columns.hpp"
 #include "../../blueprint/components/included_content.hpp"
 #include "../../blueprint/components/row_share.hpp"
-#include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/name.hpp"
+#include "../../components/visible.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -108,7 +108,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
             ArchetypeName, "visible",
-            Loggable<rerun::blueprint::components::Visible>::Descriptor.component_name
+            Loggable<rerun::components::Visible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `grid_columns` field.
         static constexpr auto Descriptor_grid_columns = ComponentDescriptor(
@@ -203,7 +203,7 @@ namespace rerun::blueprint::archetypes {
         /// Whether this container is visible.
         ///
         /// Defaults to true if not specified.
-        ContainerBlueprint with_visible(const rerun::blueprint::components::Visible& _visible) && {
+        ContainerBlueprint with_visible(const rerun::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             return std::move(*this);
         }

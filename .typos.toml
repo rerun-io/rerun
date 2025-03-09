@@ -158,4 +158,6 @@ extend-ignore-re = [
   "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
 
   "_LEVL_", # USed in air_traffic_data.py
+
+  "thrEEone", # Used in a test
 ]

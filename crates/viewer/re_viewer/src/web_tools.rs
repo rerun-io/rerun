@@ -1,9 +1,13 @@
 //! Web-specific tools used by various parts of the application.
 
-use anyhow::Context as _;
-use re_log::ResultExt;
-use serde::Deserialize;
 use std::{ops::ControlFlow, sync::Arc};
+
+use re_log::ResultExt as _;
+use re_viewer_context::CommandSender;
+use re_viewer_context::SystemCommand;
+use re_viewer_context::SystemCommandSender as _;
+
+use serde::Deserialize;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
@@ -79,6 +83,7 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
+// TODO(#9134): Unify with `re_data_source::DataSource`.
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///
@@ -86,48 +91,23 @@ enum EndpointCategory {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    RerunGrpc(String),
-
-    /// A remote Rerun server.
-    WebSocket(String),
+    RerunGrpcStream(re_uri::RedapUri),
 
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
-
-    #[cfg(feature = "grpc")]
-    /// A stream of messages over gRPC, relayed from the SDK.
-    MessageProxy(String),
 }
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri)
-        } else if uri.starts_with("rerun://") {
-            Self::RerunGrpc(uri)
-        } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri)
-        } else if uri.starts_with("web_event:") {
+        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+            return Self::RerunGrpcStream(uri);
+        }
+
+        if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
-        } else if uri.starts_with("temp:") {
-            // TODO(#8761): URL prefix
-            #[cfg(feature = "grpc")]
-            {
-                Self::MessageProxy(uri)
-            }
-            #[cfg(not(feature = "grpc"))]
-            {
-                panic!("Required the 'grpc' feature flag to be enabled");
-            }
         } else {
-            // If this is something like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::info!("Assuming WebSocket endpoint");
-            if uri.contains("://") {
-                Self::WebSocket(uri)
-            } else {
-                Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
-            }
+            // if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
+            Self::HttpRrd(uri)
         }
     }
 }
@@ -137,14 +117,15 @@ pub fn url_to_receiver(
     egui_ctx: egui::Context,
     follow_if_http: bool,
     url: String,
-) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
+    command_sender: CommandSender,
+) -> Option<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
         // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
     match EndpointCategory::categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => Ok(
+        EndpointCategory::HttpRrd(url) => Some(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
                 follow_if_http,
@@ -152,14 +133,34 @@ pub fn url_to_receiver(
             ),
         ),
 
-        #[cfg(feature = "grpc")]
-        EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
+            let on_cmd = Box::new(move |cmd| match cmd {
+                re_grpc_client::redap::Command::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            });
+            Some(re_grpc_client::redap::stream_from_redap(
+                endpoint,
+                on_cmd,
+                Some(ui_waker),
+            ))
         }
-        #[cfg(not(feature = "grpc"))]
-        EndpointCategory::RerunGrpc(_url) => {
-            anyhow::bail!("Missing 'grpc' feature flag");
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+            None
         }
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
+            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+        ),
+
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
@@ -191,15 +192,7 @@ pub fn url_to_receiver(
                     }
                 }
             }));
-            Ok(rx)
-        }
-        EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
-            .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
-
-        #[cfg(feature = "grpc")]
-        EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker))
-                .map_err(|err| err.into())
+            Some(rx)
         }
     }
 }

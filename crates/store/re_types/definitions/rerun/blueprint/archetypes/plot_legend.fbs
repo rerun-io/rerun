@@ -1,8 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-
-// ---
-
 /// Configuration for the legend of a plot.
 table PlotLegend (
     "attr.rerun.scope": "blueprint",
@@ -19,5 +16,5 @@ table PlotLegend (
     /// Whether the legend is shown at all.
     ///
     /// True by default.
-    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 2200);
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 2200);
 }

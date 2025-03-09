@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -47,14 +48,14 @@ class InstancePoses3D(Archetype):
 
     rr.init("rerun_example_instance_pose3d_combined", spawn=True)
 
-    rr.set_time_sequence("frame", 0)
+    rr.set_index("frame", sequence=0)
 
     # Log a box and points further down in the hierarchy.
     rr.log("world/box", rr.Boxes3D(half_sizes=[[1.0, 1.0, 1.0]]))
     rr.log("world/box/points", rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T))
 
-    for i in range(0, 180):
-        rr.set_time_sequence("frame", i)
+    for i in range(180):
+        rr.set_index("frame", sequence=i)
 
         # Log a regular transform which affects both the box and the points.
         rr.log("world/box", rr.Transform3D(rotation_axis_angle=rr.RotationAxisAngle([0, 0, 1], angle=rr.Angle(deg=i * 2))))
@@ -82,7 +83,7 @@ class InstancePoses3D(Archetype):
         quaternions: datatypes.QuaternionArrayLike | None = None,
         scales: datatypes.Vec3DArrayLike | None = None,
         mat3x3: datatypes.Mat3x3ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the InstancePoses3D archetype.
 
@@ -232,11 +233,33 @@ class InstancePoses3D(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "translations": translations,
+            "rotation_axis_angles": rotation_axis_angles,
+            "quaternions": quaternions,
+            "scales": scales,
+            "mat3x3": mat3x3,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     translations: components.PoseTranslation3DBatch | None = field(

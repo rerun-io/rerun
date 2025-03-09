@@ -22,7 +22,6 @@ class Enabled(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of EnabledExt in enabled_ext.py
 
     # Note: there are no fields here because Enabled delegates to datatypes.Bool
-    pass
 
 
 class EnabledBatch(datatypes.BoolBatch, ComponentBatchMixin):

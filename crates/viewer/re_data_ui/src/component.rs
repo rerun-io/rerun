@@ -1,9 +1,9 @@
-use egui::NumExt;
+use egui::NumExt as _;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, Instance, TimeInt};
-use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt};
+use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -92,10 +92,8 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     );
                 }
             } else {
-                let formatted_time = query
-                    .timeline()
-                    .typ()
-                    .format(time, ctx.app_options.time_zone);
+                let typ = db.timeline_type(&query.timeline());
+                let formatted_time = typ.format(time, ctx.app_options().time_zone);
                 ui.horizontal(|ui| {
                     ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
                     ui.label(format!("Temporal component at {formatted_time}"));
@@ -128,7 +126,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         };
 
         if num_instances <= 1 {
-            ctx.component_ui_registry.ui(
+            ctx.component_ui_registry().ui(
                 ctx,
                 ui,
                 ui_layout,
@@ -176,7 +174,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                             );
                         });
                         row.col(|ui| {
-                            ctx.component_ui_registry.ui(
+                            ctx.component_ui_registry().ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,

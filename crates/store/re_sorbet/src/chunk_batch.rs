@@ -1,24 +1,101 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::{
+    array::{
+        ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray,
+        RecordBatch as ArrowRecordBatch,
+    },
+    datatypes::Fields as ArrowFields,
+};
 
 use re_log_types::EntityPath;
+use re_types_core::ChunkId;
+
+use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError, WrongDatatypeError};
 
 #[derive(thiserror::Error, Debug)]
-pub enum ChunkBatchError {
-    #[error("Missing record batch metadata key `{0}`")]
-    MissingRecordBatchMetadataKey(&'static str),
+pub enum MismatchedChunkSchemaError {
+    #[error("{0}")]
+    Custom(String),
+
+    #[error(transparent)]
+    WrongDatatypeError(#[from] WrongDatatypeError),
 }
 
-/// The arrow [`ArrowRecordBatch`] representation of a Rerun chunk.
+impl MismatchedChunkSchemaError {
+    pub fn custom(s: impl Into<String>) -> Self {
+        Self::Custom(s.into())
+    }
+}
+
+/// The [`ArrowRecordBatch`] representation of a Rerun chunk.
 ///
-/// This is a wrapper around a [`ArrowRecordBatch`].
+/// This is a wrapper around a [`ChunkSchema`] and a [`ArrowRecordBatch`].
 ///
 /// Each [`ChunkBatch`] contains logging data for a single [`EntityPath`].
-/// It walwyas have a [`RowId`] column.
+/// It always has a [`re_types_core::RowId`] column.
 #[derive(Debug, Clone)]
 pub struct ChunkBatch {
-    entity_path: EntityPath,
-    batch: ArrowRecordBatch,
+    schema: ChunkSchema,
+    sorbet_batch: SorbetBatch,
+}
+
+impl ChunkBatch {
+    pub fn try_new(
+        schema: ChunkSchema,
+        row_ids: ArrowArrayRef,
+        index_arrays: Vec<ArrowArrayRef>,
+        data_arrays: Vec<ArrowArrayRef>,
+    ) -> Result<Self, SorbetError> {
+        Self::try_from(SorbetBatch::try_new(
+            crate::BatchType::Chunk,
+            schema.into(),
+            Some(row_ids),
+            index_arrays,
+            data_arrays,
+        )?)
+    }
+}
+
+impl ChunkBatch {
+    /// The parsed rerun schema of this chunk.
+    #[inline]
+    pub fn chunk_schema(&self) -> &ChunkSchema {
+        &self.schema
+    }
+
+    /// The globally unique ID of this chunk.
+    #[inline]
+    pub fn chunk_id(&self) -> ChunkId {
+        self.schema.chunk_id()
+    }
+
+    /// Which entity is this chunk for?
+    #[inline]
+    pub fn entity_path(&self) -> &EntityPath {
+        self.schema.entity_path()
+    }
+
+    #[inline]
+    pub fn fields(&self) -> &ArrowFields {
+        &self.schema_ref().fields
+    }
+
+    /// The `RowId` column.
+    pub fn row_id_column(&self) -> (&RowIdColumnDescriptor, &FixedSizeBinaryArray) {
+        // The first column is always the row IDs.
+        (
+            self.schema.row_id_column(),
+            self.columns()[0].as_fixed_size_binary(),
+        )
+    }
+
+    /// Returns self but with all rows removed.
+    #[must_use]
+    pub fn drop_all_rows(self) -> Self {
+        Self {
+            schema: self.schema.clone(),
+            sorbet_batch: self.sorbet_batch.drop_all_rows(),
+        }
+    }
 }
 
 impl std::fmt::Display for ChunkBatch {
@@ -28,81 +105,62 @@ impl std::fmt::Display for ChunkBatch {
     }
 }
 
-impl AsRef<ArrowRecordBatch> for ChunkBatch {
+impl AsRef<SorbetBatch> for ChunkBatch {
     #[inline]
-    fn as_ref(&self) -> &ArrowRecordBatch {
-        &self.batch
+    fn as_ref(&self) -> &SorbetBatch {
+        &self.sorbet_batch
     }
 }
 
 impl std::ops::Deref for ChunkBatch {
-    type Target = ArrowRecordBatch;
+    type Target = SorbetBatch;
 
     #[inline]
-    fn deref(&self) -> &ArrowRecordBatch {
-        &self.batch
+    fn deref(&self) -> &SorbetBatch {
+        &self.sorbet_batch
     }
 }
 
 impl From<ChunkBatch> for ArrowRecordBatch {
     #[inline]
     fn from(chunk: ChunkBatch) -> Self {
-        chunk.batch
+        chunk.sorbet_batch.into()
     }
 }
 
-impl TryFrom<ArrowRecordBatch> for ChunkBatch {
-    type Error = ChunkBatchError;
-
-    fn try_from(batch: ArrowRecordBatch) -> Result<Self, Self::Error> {
-        let mut schema = ArrowSchema::clone(&*batch.schema());
-        let metadata = &mut schema.metadata;
-
-        {
-            // Verify version
-            if let Some(batch_version) = metadata.get(Self::CHUNK_METADATA_KEY_VERSION) {
-                if batch_version != Self::CHUNK_METADATA_VERSION {
-                    re_log::warn_once!(
-                        "ChunkBatch version mismatch. Expected {:?}, got {batch_version:?}",
-                        Self::CHUNK_METADATA_VERSION
-                    );
-                }
-            }
-            metadata.insert(
-                Self::CHUNK_METADATA_KEY_VERSION.to_owned(),
-                Self::CHUNK_METADATA_VERSION.to_owned(),
-            );
-        }
-
-        let entity_path =
-            if let Some(entity_path) = metadata.get(Self::CHUNK_METADATA_KEY_ENTITY_PATH) {
-                EntityPath::parse_forgiving(entity_path)
-            } else {
-                return Err(ChunkBatchError::MissingRecordBatchMetadataKey(
-                    Self::CHUNK_METADATA_KEY_ENTITY_PATH,
-                ));
-            };
-
-        Ok(Self { entity_path, batch })
-    }
-}
-
-/// ## Metadata keys for the record batch metadata
-impl ChunkBatch {
-    /// The key used to identify the version of the Rerun schema.
-    const CHUNK_METADATA_KEY_VERSION: &'static str = "rerun.version";
-
-    /// The version of the Rerun schema.
-    const CHUNK_METADATA_VERSION: &'static str = "1";
-
-    /// The key used to identify a Rerun [`EntityPath`] in the record batch metadata.
-    const CHUNK_METADATA_KEY_ENTITY_PATH: &'static str = "rerun.entity_path";
-}
-
-impl ChunkBatch {
-    /// Returns the [`EntityPath`] of the batch.
+impl From<&ChunkBatch> for ArrowRecordBatch {
     #[inline]
-    pub fn entity_path(&self) -> &EntityPath {
-        &self.entity_path
+    fn from(chunk: &ChunkBatch) -> Self {
+        chunk.sorbet_batch.clone().into()
+    }
+}
+
+impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
+    type Error = SorbetError;
+
+    /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
+        re_tracing::profile_function!();
+
+        Self::try_from(SorbetBatch::try_from_record_batch(
+            batch,
+            crate::BatchType::Chunk,
+        )?)
+    }
+}
+
+impl TryFrom<SorbetBatch> for ChunkBatch {
+    type Error = SorbetError;
+
+    /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    fn try_from(sorbet_batch: SorbetBatch) -> Result<Self, Self::Error> {
+        re_tracing::profile_function!();
+
+        let chunk_schema = ChunkSchema::try_from(sorbet_batch.sorbet_schema().clone())?;
+
+        Ok(Self {
+            schema: chunk_schema,
+            sorbet_batch,
+        })
     }
 }

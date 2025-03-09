@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::match_same_arms)]
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
-    SparseFillStrategy, StoreKind, TimeInt, Timeline,
+    SparseFillStrategy, StoreKind, TimeInt,
 };
 use re_format_arrow::format_record_batch;
 use re_log_encoding::VersionPolicy;
@@ -34,15 +34,6 @@ fn main() -> anyhow::Result<()> {
     let entity_path_filter =
         EntityPathFilter::parse_strict(args.get(5).map_or("/**", |s| s.as_str()))?;
 
-    // TODO(cmc): We need to take a selector, not a Timeline.
-    let timeline = match timeline_name {
-        "log_time" => Timeline::new_temporal(timeline_name),
-        "log_tick" => Timeline::new_sequence(timeline_name),
-        "frame" => Timeline::new_sequence(timeline_name),
-        "frame_nr" => Timeline::new_sequence(timeline_name),
-        _ => Timeline::new_temporal(timeline_name),
-    };
-
     let engines = QueryEngine::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
@@ -55,7 +46,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         let query = QueryExpression {
-            filtered_index: Some(timeline),
+            filtered_index: Some(timeline_name.into()),
             view_contents: Some(
                 engine
                     .iter_entity_paths_sorted(&entity_path_filter)

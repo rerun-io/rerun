@@ -31,6 +31,9 @@ def main() -> None:
     latest_commit = pr.get_commits().reversed[0]
     print(f"Latest commit: {latest_commit.sha}")
 
+    if not pr.body:
+        return
+
     checkboxes = get_unchecked_checkboxes(pr.body)
 
     if len(checkboxes) != 0:

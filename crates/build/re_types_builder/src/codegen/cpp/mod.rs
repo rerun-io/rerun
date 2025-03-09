@@ -6,7 +6,7 @@ mod method;
 use std::collections::HashSet;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
@@ -599,6 +599,8 @@ impl QuotedObject {
                     definition_body: quote! {
                         #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
                         #NEWLINE_TOKEN
+                        // `*this` is *always* an lvalue, so we have to move it.
+                        // https://stackoverflow.com/a/25334892
                         return std::move(*this);
                     },
                     inline: true,
@@ -627,6 +629,8 @@ impl QuotedObject {
                     definition_body: quote! {
                         #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
                         #NEWLINE_TOKEN
+                        // `*this` is *always* an lvalue, so we have to move it.
+                        // https://stackoverflow.com/a/25334892
                         return std::move(*this);
                     },
                     inline: true,

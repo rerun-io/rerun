@@ -1,5 +1,5 @@
 use egui::NumExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
@@ -160,15 +160,13 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             match source.as_ref() {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RerunGrpcStream { .. }
+                | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
 
                 SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. }
-                | SmartChannelSource::TcpServer { .. }
                 | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::JsChannel { .. } => true,
             }
@@ -200,14 +198,12 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
-            | SmartChannelSource::RerunGrpcStream { .. }
-            | SmartChannelSource::MessageProxy { .. }
+            | SmartChannelSource::RedapGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::WsClient { .. } => None,
+            | SmartChannelSource::Sdk => None,
 
-            SmartChannelSource::TcpServer { .. } => {
+            SmartChannelSource::MessageProxy { .. } => {
                 Some("Waiting for an SDK to connect".to_owned())
             }
         };
@@ -226,9 +222,9 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             }
             re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
             re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
-            | re_smart_channel::SmartChannelSource::RerunGrpcStream { url }
+            | re_smart_channel::SmartChannelSource::RedapGrpcStream { url }
             | re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                format!("Loading {url}…")
+                format!("Waiting for data on {url}…")
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener
             | re_smart_channel::SmartChannelSource::JsChannel { .. } => {
@@ -236,13 +232,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             }
             re_smart_channel::SmartChannelSource::Sdk => {
                 "Waiting for logging data from SDK".to_owned()
-            }
-            re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
-                // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-                format!("Waiting for data from {ws_server_url}")
-            }
-            re_smart_channel::SmartChannelSource::TcpServer { port } => {
-                format!("Listening on TCP port {port}")
             }
         }
     }

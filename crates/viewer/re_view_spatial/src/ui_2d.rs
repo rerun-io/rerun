@@ -8,7 +8,7 @@ use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
 };
-use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
+use re_ui::{icon_text, icons, ContextExt as _, Help, ModifiersText, MouseButtonText};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
     gpu_bridge, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -113,20 +113,22 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help_markdown(egui_ctx: &egui::Context) -> String {
-    format!(
-        "# 2D View
-
-Display 2D content in the reference frame defined by the space origin.
-
-## Navigation controls
-- Pinch gesture or {zoom_scroll_modifier} + scroll to zoom.
-- Click and drag with the {drag_pan2d_button} to pan.
-- Double-click to reset the view.",
-        zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-        drag_pan2d_button = MouseButtonMarkdown(DRAG_PAN2D_BUTTON),
-    )
-    .to_owned()
+pub fn help(egui_ctx: &egui::Context) -> Help<'static> {
+    Help::new("2D view")
+        .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
+        .control(
+            "Pan",
+            icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+        )
+        .control(
+            "Zoom",
+            icon_text!(
+                ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
+                "+",
+                icons::SCROLL
+            ),
+        )
+        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
@@ -214,7 +216,7 @@ impl SpatialView2D {
             SpatialViewKind::TwoD,
         );
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
 
         if let Some(pointer_pos_ui) = response.hover_pos() {
             let picking_context = crate::picking::PickingContext::new(
@@ -249,7 +251,7 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx(), self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

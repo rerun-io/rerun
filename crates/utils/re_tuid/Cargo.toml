@@ -22,6 +22,9 @@ all-features = true
 [features]
 default = []
 
+## Enable bytemuck support.
+bytemuck = ["dep:bytemuck"]
+
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
 
@@ -35,10 +38,12 @@ once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies
+bytemuck = { workspace = true, optional = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
 
 [lib]
 bench = false

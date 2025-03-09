@@ -85,7 +85,7 @@ namespace rerun::archetypes {
     ///
     ///     // TODO(#5521): log two views as in the python example
     ///
-    ///     rec.set_time_seconds("sim_time", 0.0);
+    ///     rec.set_index_duration_secs("sim_time", 0.0);
     ///
     ///     // Planetary motion is typically in the XY plane.
     ///     rec.log_static("/", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
@@ -127,7 +127,7 @@ namespace rerun::archetypes {
     ///     // Movement via transforms.
     ///     for (int i = 0; i <6 * 120; i++) {
     ///         float time = static_cast<float>(i) / 120.0f;
-    ///         rec.set_time_seconds("sim_time", time);
+    ///         rec.set_index_duration_secs("sim_time", time);
     ///         float r_moon = time * 5.0f;
     ///         float r_planet = time * 2.0f;
     ///
@@ -149,6 +149,155 @@ namespace rerun::archetypes {
     ///                 .with_relation(rerun::components::TransformRelation::ChildFromParent)
     ///         );
     ///     }
+    /// }
+    /// ```
+    ///
+    /// ### Update a transform over time
+    /// ![image](https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// float truncated_radians(int deg) {
+    ///     auto degf = static_cast<float>(deg);
+    ///     const auto pi = 3.14159265358979323846f;
+    ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
+    /// }
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_row_updates");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.set_index_sequence("tick", 0);
+    ///     rec.log(
+    ///         "box",
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
+    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///     );
+    ///
+    ///     for (int t = 0; t <100; t++) {
+    ///         rec.set_index_sequence("tick", t + 1);
+    ///         rec.log(
+    ///             "box",
+    ///             rerun::Transform3D()
+    ///                 .with_translation({0.0f, 0.0f, static_cast<float>(t) / 10.0f})
+    ///                 .with_rotation_axis_angle(rerun::RotationAxisAngle(
+    ///                     {0.0f, 1.0f, 0.0f},
+    ///                     rerun::Angle::radians(truncated_radians(t * 4))
+    ///                 ))
+    ///         );
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ### Update a transform over time, in a single operation
+    /// ![image](https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png)
+    ///
+    /// ```cpp
+    /// #include <cmath>
+    /// #include <numeric>
+    /// #include <vector>
+    ///
+    /// #include <rerun.hpp>
+    ///
+    /// float truncated_radians(int deg) {
+    ///     auto degf = static_cast<float>(deg);
+    ///     const auto pi = 3.14159265358979323846f;
+    ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
+    /// }
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_column_updates");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.set_index_sequence("tick", 0);
+    ///     rec.log(
+    ///         "box",
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
+    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///     );
+    ///
+    ///     std::vector<std::array<float, 3>> translations;
+    ///     std::vector<rerun::RotationAxisAngle> rotations;
+    ///     for (int t = 0; t <100; t++) {
+    ///         translations.push_back({0.0f, 0.0f, static_cast<float>(t) / 10.0f});
+    ///         rotations.push_back(rerun::RotationAxisAngle(
+    ///             {0.0f, 1.0f, 0.0f},
+    ///             rerun::Angle::radians(truncated_radians(t * 4))
+    ///         ));
+    ///     }
+    ///
+    ///     std::vector<int64_t> ticks(100);
+    ///     std::iota(ticks.begin(), ticks.end(), 1);
+    ///
+    ///     rec.send_columns(
+    ///         "box",
+    ///         rerun::TimeColumn::from_sequence("tick", ticks),
+    ///         rerun::Transform3D()
+    ///             .with_many_translation(translations)
+    ///             .with_many_rotation_axis_angle(rotations)
+    ///             .columns()
+    ///     );
+    /// }
+    /// ```
+    ///
+    /// ### Update specific properties of a transform over time
+    /// ![image](https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// float truncated_radians(int deg) {
+    ///     auto degf = static_cast<float>(deg);
+    ///     const auto pi = 3.14159265358979323846f;
+    ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
+    /// }
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_partial_updates");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Set up a 3D box.
+    ///     rec.log(
+    ///         "box",
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
+    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///     );
+    ///
+    ///     // Update only the rotation of the box.
+    ///     for (int deg = 0; deg <= 45; deg++) {
+    ///         auto rad = truncated_radians(deg * 4);
+    ///         rec.log(
+    ///             "box",
+    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
+    ///             )
+    ///         );
+    ///     }
+    ///
+    ///     // Update only the position of the box.
+    ///     for (int t = 0; t <= 50; t++) {
+    ///         rec.log(
+    ///             "box",
+    ///             rerun::Transform3D::update_fields().with_translation(
+    ///                 {0.0f, 0.0f, static_cast<float>(t) / 10.0f}
+    ///             )
+    ///         );
+    ///     }
+    ///
+    ///     // Update only the rotation of the box.
+    ///     for (int deg = 0; deg <= 45; deg++) {
+    ///         auto rad = truncated_radians((deg + 45) * 4);
+    ///         rec.log(
+    ///             "box",
+    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
+    ///             )
+    ///         );
+    ///     }
+    ///
+    ///     // Clear all of the box's attributes, and reset its axis length.
+    ///     rec.log("box", rerun::Transform3D::clear_fields().with_axis_length(15.0));
     /// }
     /// ```
     struct Transform3D {

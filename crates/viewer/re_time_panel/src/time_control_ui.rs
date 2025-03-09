@@ -61,6 +61,8 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         ui.re_hyperlink(
                             "Full documentation",
                             "https://rerun.io/docs/concepts/timelines",
+                            // Always open in a new tab
+                            true,
                         );
                     });
                 })

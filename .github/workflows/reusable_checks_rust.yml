@@ -37,7 +37,11 @@ env:
   RUST_BACKTRACE: full
 
   # Sourced from https://vulkan.lunarg.com/sdk/home#linux
-  VULKAN_SDK_VERSION: "1.3.296.0"
+  VULKAN_SDK_VERSION: "1.3.290.0"
+
+  # Via: https://nexte.st/docs/installation/pre-built-binaries/#using-nextest-in-github-actions
+  # ANSI color codes should be supported by default on GitHub Actions.
+  CARGO_TERM_COLOR: always
 
 defaults:
   run:
@@ -70,16 +74,16 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1.0.5
+        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: false
+          cache: true
           stripdown: true
 
       - name: Setup software rasterizer
@@ -87,15 +91,7 @@ jobs:
 
       - name: Rust checks (PR subset)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
-
-      - name: Download test assets
-        run: pixi run python ./tests/assets/download_test_assets.py
-
-      - name: Run tests (`cargo test --all-targets --all-features`)
-        if: ${{ inputs.CHANNEL == 'pr' }}
-        # Need to use pixi due to NASM dependency.
-        run: pixi run cargo test --all-targets --all-features
+        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs tests
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
@@ -104,6 +100,12 @@ jobs:
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
+
+      - name: .rrd backwards compatibility
+        # We don't yet guarantee backwards compatibility, but we at least check it
+        # so that we _know_ if/when we break it.
+        # See tests/assets/rrd/README.md for more
+        run: pixi run check-backwards-compatibility
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
@@ -135,13 +137,13 @@ jobs:
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
         if: ${{ matrix.name != 'macos' }}
-        uses: jakoch/install-vulkan-sdk-action@v1.0.5
+        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
@@ -151,13 +153,9 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Download test assets
-        run: pixi run python ./tests/assets/download_test_assets.py
-
-      - name: Run tests (`cargo test --all-targets --all-features`)
+      - name: Rust tests
         if: ${{ inputs.CHANNEL == 'main' }}
-        # Need to use pixi due to NASM dependency.
-        run: pixi run cargo test --all-targets --all-features
+        run: pixi run rs-check --only tests
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}

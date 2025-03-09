@@ -6,8 +6,8 @@ import rerun as rr
 # Initialize the SDK and give our recording a unique name
 rr.init("rerun_example_quick_start_connect")
 
-# Connect to a local viewer using the default port
-rr.connect_tcp()
+# Connect to a local viewer using the default URL
+rr.connect_grpc()
 
 
 # Create some data

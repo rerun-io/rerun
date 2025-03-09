@@ -27,12 +27,12 @@ df["jawOpenState"] = df["jawOpen"] > 0.15
 
 # Connect to the viewer
 rr.init(recording.application_id(), recording_id=recording.recording_id())
-rr.connect_tcp()
+rr.connect_grpc()
 
 # log the jaw open state signal as a scalar
 rr.send_columns(
     "/jaw_open_state",
-    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    indexes=[rr.IndexColumn("frame_nr", sequence=df["frame_nr"])],
     columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
 )
 
@@ -41,6 +41,6 @@ target_entity = "/video/detector/faces/0/bbox"
 rr.log(target_entity, rr.Boxes2D.from_fields(show_labels=True), static=True)
 rr.send_columns(
     target_entity,
-    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    indexes=[rr.IndexColumn("frame_nr", sequence=df["frame_nr"])],
     columns=rr.Boxes2D.columns(labels=np.where(df["jawOpenState"], "OPEN", "CLOSE")),
 )

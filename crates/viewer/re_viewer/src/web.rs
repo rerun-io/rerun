@@ -9,8 +9,9 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::{SystemCommand, SystemCommandSender};
+use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
 
+use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
 use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
 
@@ -177,8 +178,12 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(app.egui_ctx.clone(), follow_if_http, url.to_owned());
-        if let Some(rx) = rx.ok_or_log_error() {
+        if let Some(rx) = url_to_receiver(
+            app.egui_ctx.clone(),
+            follow_if_http,
+            url.to_owned(),
+            app.command_sender.clone(),
+        ) {
             app.add_receiver(rx);
         }
     }
@@ -345,7 +350,7 @@ impl WebHandle {
     ///
     /// This does nothing if the timeline can't be found.
     #[wasm_bindgen]
-    pub fn set_active_timeline(&self, store_id: &str, timeline: &str) {
+    pub fn set_active_timeline(&self, store_id: &str, timeline_name: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -366,49 +371,37 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
-        let Some(timeline) = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)
-        else {
+        let rec_cfg =
+            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+
+        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
 
-        rec_cfg.time_ctrl.write().set_timeline(*timeline);
+        rec_cfg.time_ctrl.write().set_timeline(timeline);
 
         egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, store_id: &str, timeline: &str) -> Option<f64> {
+    pub fn get_time_for_timeline(&self, store_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
-        let crate::App {
-            store_hub: Some(ref hub),
-            state,
-            ..
-        } = &*app
-        else {
-            return None;
-        };
 
         let store_id = re_log_types::StoreId::from_string(
             re_log_types::StoreKind::Recording,
             store_id.to_owned(),
         );
-        let recording = hub.store_bundle().get(&store_id)?;
-        let rec_cfg = state.recording_config(&store_id)?;
-        let timeline = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)?;
+        let rec_cfg = app.state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
-        time_ctrl.time_for_timeline(*timeline).map(|v| v.as_f64())
+        time_ctrl
+            .time_for_timeline(timeline_name.into())
+            .map(|v| v.as_f64())
     }
 
     #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, store_id: &str, timeline: &str, time: f64) {
+    pub fn set_time_for_timeline(&self, store_id: &str, timeline_name: &str, time: f64) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -429,25 +422,22 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
-        let Some(timeline) = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)
-        else {
+        let rec_cfg =
+            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
         };
 
         rec_cfg
             .time_ctrl
             .write()
-            .set_timeline_and_time(*timeline, time);
+            .set_timeline_and_time(timeline, time);
         egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, store_id: &str, timeline: &str) -> JsValue {
+    pub fn get_timeline_time_range(&self, store_id: &str, timeline_name: &str) -> JsValue {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return JsValue::null();
         };
@@ -466,14 +456,8 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return JsValue::null();
         };
-        let Some(timeline) = recording
-            .timelines()
-            .find(|t| t.name().as_str() == timeline)
-        else {
-            return JsValue::null();
-        };
 
-        let Some(time_range) = recording.time_range_for(timeline) else {
+        let Some(time_range) = recording.time_range_for(&timeline_name.into()) else {
             return JsValue::null();
         };
 
@@ -534,9 +518,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return;
-        };
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, store_id, recording);
 
         let play_state = if value {
             re_viewer_context::PlayState::Playing
@@ -702,7 +684,14 @@ fn create_app(
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
-    let mut app = crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
+    let mut app = crate::App::new(
+        main_thread_token,
+        build_info,
+        &app_env,
+        startup_options,
+        cc,
+        AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
+    );
 
     if enable_history {
         install_popstate_listener(&mut app).ok_or_log_js_error();
@@ -715,9 +704,12 @@ fn create_app(
     if let Some(urls) = url {
         let follow_if_http = false;
         for url in urls.into_inner() {
-            if let Some(receiver) =
-                url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
-            {
+            if let Some(receiver) = url_to_receiver(
+                cc.egui_ctx.clone(),
+                follow_if_http,
+                url,
+                app.command_sender.clone(),
+            ) {
                 app.command_sender
                     .send_system(SystemCommand::AddReceiver(receiver));
             }

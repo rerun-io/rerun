@@ -22,7 +22,11 @@ def get_repo_root() -> str:
 
 
 def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: int | None = None,
+    cwd: str | None = None,
 ) -> None:
     # Run from the repo root if not specify otherwise.
     if cwd is None:
@@ -30,11 +34,18 @@ def run(
 
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(
-        args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True, encoding="utf-8"
+        args,
+        env=env,
+        cwd=cwd,
+        timeout=timeout,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
     )
-    assert (
-        result.returncode == 0
-    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    )
 
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:

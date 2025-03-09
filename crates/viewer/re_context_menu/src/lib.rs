@@ -21,6 +21,7 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
+    CopyEntityPathToClipboard,
 };
 use sub_menu::SubMenu;
 
@@ -152,6 +153,7 @@ fn action_list(
                 Box::new(ShowAction),
                 Box::new(HideAction),
                 Box::new(RemoveAction),
+                Box::new(CopyEntityPathToClipboard),
             ],
             vec![
                 Box::new(actions::ScreenshotAction::CopyScreenshot),
@@ -175,7 +177,7 @@ fn action_list(
                 Box::new(SubMenu {
                     label: "Add view".to_owned(),
                     actions: ctx
-                        .view_class_registry
+                        .view_class_registry()
                         .iter_registry()
                         .map(|entry| {
                             Box::new(AddViewAction {
@@ -275,7 +277,7 @@ impl<'a> ContextMenuContext<'a> {
     }
 
     pub fn egui_context(&self) -> &egui::Context {
-        self.viewer_context.egui_ctx
+        self.viewer_context.egui_ctx()
     }
 }
 

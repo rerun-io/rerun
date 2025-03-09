@@ -4,10 +4,10 @@
 #pragma once
 
 #include "../../blueprint/components/corner2d.hpp"
-#include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
+#include "../../components/visible.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -46,7 +46,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
             ArchetypeName, "visible",
-            Loggable<rerun::blueprint::components::Visible>::Descriptor.component_name
+            Loggable<rerun::components::Visible>::Descriptor.component_name
         );
 
       public:
@@ -75,7 +75,7 @@ namespace rerun::blueprint::archetypes {
         /// Whether the legend is shown at all.
         ///
         /// True by default.
-        PlotLegend with_visible(const rerun::blueprint::components::Visible& _visible) && {
+        PlotLegend with_visible(const rerun::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             return std::move(*this);
         }

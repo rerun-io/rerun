@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -82,10 +83,10 @@ class Transform3D(Transform3DExt, Archetype):
 
     # One space with the sun in the center, and another one with the planet.
     rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
+        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
     )
 
-    rr.set_time_seconds("sim_time", 0)
+    rr.set_index("sim_time", timedelta=0)
 
     # Planetary motion is typically in the XY plane.
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
@@ -105,9 +106,9 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
     # Movement via transforms.
-    for i in range(0, 6 * 120):
+    for i in range(6 * 120):
         time = i / 120.0
-        rr.set_time_seconds("sim_time", time)
+        rr.set_index("sim_time", timedelta=time)
         r_moon = time * 5.0
         r_planet = time * 2.0
 
@@ -133,6 +134,151 @@ class Transform3D(Transform3DExt, Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png">
       <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update a transform over time:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_row_updates", spawn=True)
+
+    rr.set_index("tick", sequence=0)
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    for t in range(100):
+        rr.set_index("tick", sequence=t + 1)
+        rr.log(
+            "box",
+            rr.Transform3D(
+                clear=False,
+                translation=[0, 0, t / 10.0],
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)),
+            ),
+        )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+      <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update a transform over time, in a single operation:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_column_updates", spawn=True)
+
+    rr.set_index("tick", sequence=0)
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    rr.send_columns(
+        "box",
+        indexes=[rr.IndexColumn("tick", sequence=range(1, 101))],
+        columns=rr.Transform3D.columns(
+            translation=[[0, 0, t / 10.0] for t in range(100)],
+            rotation_axis_angle=[
+                rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)) for t in range(100)
+            ],
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+      <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Update specific properties of a transform over time:
+    ```python
+    import math
+
+    import rerun as rr
+
+
+    def truncated_radians(deg: float) -> float:
+        return float(int(math.radians(deg) * 1000.0)) / 1000.0
+
+
+    rr.init("rerun_example_transform3d_partial_updates", spawn=True)
+
+    # Set up a 3D box.
+    rr.log(
+        "box",
+        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Transform3D(clear=False, axis_length=10),
+    )
+
+    # Update only the rotation of the box.
+    for deg in range(46):
+        rad = truncated_radians(deg * 4)
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            ),
+        )
+
+    # Update only the position of the box.
+    for t in range(51):
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(translation=[0, 0, t / 10.0]),
+        )
+
+    # Update only the rotation of the box.
+    for deg in range(46):
+        rad = truncated_radians((deg + 45) * 4)
+        rr.log(
+            "box",
+            rr.Transform3D.from_fields(
+                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            ),
+        )
+
+    # Clear all of the box's attributes, and reset its axis length.
+    rr.log(
+        "box",
+        rr.Transform3D.from_fields(clear_unset=True, axis_length=15),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png">
+      <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" width="640">
     </picture>
     </center>
 
@@ -283,11 +429,35 @@ class Transform3D(Transform3DExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "translation": translation,
+            "rotation_axis_angle": rotation_axis_angle,
+            "quaternion": quaternion,
+            "scale": scale,
+            "mat3x3": mat3x3,
+            "relation": relation,
+            "axis_length": axis_length,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     translation: components.Translation3DBatch | None = field(

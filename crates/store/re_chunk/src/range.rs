@@ -1,4 +1,4 @@
-use re_log_types::{ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ResolvedTimeRange, TimeInt, TimelineName};
 use re_types_core::ComponentName;
 
 use crate::Chunk;
@@ -13,7 +13,7 @@ use crate::Chunk;
 /// Motivation: all data is considered alive until the next logging to the same component path.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
-    pub timeline: Timeline,
+    pub timeline: TimelineName,
     pub range: ResolvedTimeRange,
     pub options: RangeQueryOptions,
 }
@@ -76,10 +76,10 @@ impl Default for RangeQueryOptions {
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging {}..={} on {:?} ([{}]keep_timelines [{}]keep_components [{}]extended_bounds)>",
-            self.timeline.typ().format_utc(self.range.min()),
-            self.timeline.typ().format_utc(self.range.max()),
-            self.timeline.name(),
+            "<ranging {:?}..={:?} on {:?} ([{}]keep_timelines [{}]keep_components [{}]extended_bounds)>",
+            self.range.min(),
+            self.range.max(),
+            self.timeline,
             if self.options.keep_extra_timelines {
                 "✓"
             } else {
@@ -102,7 +102,7 @@ impl std::fmt::Debug for RangeQuery {
 impl RangeQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub const fn new(timeline: Timeline, range: ResolvedTimeRange) -> Self {
+    pub const fn new(timeline: TimelineName, range: ResolvedTimeRange) -> Self {
         Self {
             timeline,
             range,
@@ -114,7 +114,7 @@ impl RangeQuery {
     ///
     /// Keeps all extra timelines and components around.
     #[inline]
-    pub const fn with_extras(timeline: Timeline, range: ResolvedTimeRange) -> Self {
+    pub const fn with_extras(timeline: TimelineName, range: ResolvedTimeRange) -> Self {
         Self {
             timeline,
             range,
@@ -127,7 +127,7 @@ impl RangeQuery {
     }
 
     #[inline]
-    pub const fn everything(timeline: Timeline) -> Self {
+    pub const fn everything(timeline: TimelineName) -> Self {
         Self {
             timeline,
             range: ResolvedTimeRange::EVERYTHING,
@@ -157,8 +157,8 @@ impl RangeQuery {
     }
 
     #[inline]
-    pub fn timeline(&self) -> Timeline {
-        self.timeline
+    pub fn timeline(&self) -> &TimelineName {
+        &self.timeline
     }
 
     #[inline]
@@ -210,7 +210,7 @@ impl Chunk {
         // (e.g. the range query itself) much cheaper to compute.
         use std::borrow::Cow;
         let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(query.timeline()))
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
         } else {
             Cow::Borrowed(self)
         };
@@ -225,13 +225,13 @@ impl Chunk {
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
             chunk.latest_at(
-                &crate::LatestAtQuery::new(query.timeline(), TimeInt::MAX),
+                &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
                 component_name,
             )
         } else {
             let Some(is_sorted_by_time) = chunk
                 .timelines
-                .get(&query.timeline())
+                .get(query.timeline())
                 .map(|time_column| time_column.is_sorted())
             else {
                 return chunk.emptied();
@@ -244,12 +244,12 @@ impl Chunk {
                 chunk
             } else {
                 // Temporal, unsorted chunk
-                chunk.sorted_by_timeline_if_unsorted(&query.timeline())
+                chunk.sorted_by_timeline_if_unsorted(query.timeline())
             };
 
             let Some(times) = chunk
                 .timelines
-                .get(&query.timeline())
+                .get(query.timeline())
                 .map(|time_column| time_column.times_raw())
             else {
                 return chunk.emptied();

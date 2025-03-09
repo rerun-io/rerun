@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +34,7 @@ class Rgba32(Rgba32Ext):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    def __init__(self: Any, rgba: Rgba32Like):
+    def __init__(self: Any, rgba: Rgba32Like) -> None:
         """Create a new instance of the Rgba32 datatype."""
 
         # You can define your own __init__ function as a member of Rgba32Ext in rgba32_ext.py
@@ -43,9 +44,9 @@ class Rgba32(Rgba32Ext):
         converter=Rgba32Ext.rgba__field_converter_override,  # type: ignore[misc]
     )
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Rgba32Ext in rgba32_ext.py
-        return np.asarray(self.rgba, dtype=dtype)
+        return np.asarray(self.rgba, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.rgba)

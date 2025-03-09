@@ -13,9 +13,51 @@ use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
+    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
+
+pub trait HarnessExt {
+    /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
+    //
+    // TODO(emilk/egui#5683): this should be natively supported by kittest
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    );
+}
+
+impl HarnessExt for egui_kittest::Harness<'_> {
+    fn snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) {
+        match self.try_snapshot(name) {
+            Ok(_) => {}
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    assert!(
+                        broken_percent <= broken_percent_threshold,
+                        "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                    );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+}
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -33,8 +75,14 @@ pub struct TestContext {
     pub recording_store: EntityDb,
     pub blueprint_store: EntityDb,
     pub view_class_registry: ViewClassRegistry,
-    pub selection_state: ApplicationSelectionState,
-    pub recording_config: RecordingConfig,
+
+    // Mutex is needed, so we can update these from the `run` method
+    pub selection_state: Mutex<ApplicationSelectionState>,
+    pub focused_item: Mutex<Option<crate::Item>>,
+
+    // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
+    pub recording_config: Arc<RecordingConfig>,
+    pub view_states: Mutex<ViewStates>,
 
     // Populating this in `run` would pull in too many dependencies into the test harness for now.
     pub query_results: HashMap<ViewId, DataQueryResult>,
@@ -52,9 +100,7 @@ pub struct TestContext {
 
 impl Default for TestContext {
     fn default() -> Self {
-        // We rely a lot on logging in the viewer to identify issues.
-        // Make sure logging is set up if it hasn't been done yet.
-        let _ = env_logger::builder().is_test(true).try_init();
+        re_log::setup_logging();
 
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
@@ -77,7 +123,9 @@ impl Default for TestContext {
             blueprint_store,
             view_class_registry: Default::default(),
             selection_state: Default::default(),
-            recording_config,
+            focused_item: Default::default(),
+            recording_config: Arc::new(recording_config),
+            view_states: Default::default(),
             blueprint_query,
             query_results: Default::default(),
             component_ui_registry,
@@ -141,6 +189,7 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
             shared_wgpu_setup.device.clone(),
             shared_wgpu_setup.queue.clone(),
             wgpu::TextureFormat::Rgba8Unorm,
+            |_| re_renderer::RenderConfig::testing(),
         )
         .expect("Failed to initialize re_renderer"),
     );
@@ -163,9 +212,9 @@ static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(&re_renderer::config::testing_instance_descriptor());
-    let adapter = re_renderer::config::select_testing_adapter(&instance);
-    let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
+    let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
+    let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+    let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
         pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
@@ -208,11 +257,12 @@ impl TestContext {
             .set_timeline(timeline);
     }
 
-    pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
-        edit_fn(&mut self.selection_state);
+    pub fn edit_selection(&self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
+        let mut selection_state = self.selection_state.lock();
+        edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        self.selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|_| true, None);
     }
 
     /// Log an entity to the recording store.
@@ -256,6 +306,9 @@ impl TestContext {
             hub: &Default::default(),
             should_enable_heuristics: false,
         };
+        let indicated_entities_per_visualizer = self
+            .view_class_registry
+            .indicated_entities_per_visualizer(&store_context.recording.store_id());
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -268,24 +321,28 @@ impl TestContext {
             .expect("No re_renderer::RenderContext in egui_render_state");
         render_ctx.begin_frame();
 
+        let mut selection_state = self.selection_state.lock();
+        let mut focused_item = self.focused_item.lock();
+
         let ctx = ViewerContext {
-            app_options: &Default::default(),
-            cache: &Default::default(),
-            reflection: &self.reflection,
-            component_ui_registry: &self.component_ui_registry,
-            view_class_registry: &self.view_class_registry,
+            global_context: GlobalContext {
+                app_options: &Default::default(),
+                reflection: &self.reflection,
+                component_ui_registry: &self.component_ui_registry,
+                view_class_registry: &self.view_class_registry,
+                egui_ctx,
+                command_sender: &self.command_sender,
+                render_ctx,
+            },
             store_context: &store_context,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
-            indicated_entities_per_visualizer: &Default::default(),
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,
             blueprint_cfg: &Default::default(),
-            selection_state: &self.selection_state,
+            selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            egui_ctx,
-            render_ctx,
-            command_sender: &self.command_sender,
-            focused_item: &None,
+            focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
@@ -301,6 +358,9 @@ impl TestContext {
                 to ensure that kittest & re_renderer use the same graphics device.");
 
         render_ctx.before_submit();
+
+        selection_state.on_frame_start(|_| true, None);
+        *focused_item = None;
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
@@ -383,7 +443,11 @@ impl TestContext {
                 }
 
                 SystemCommand::SetSelection(item) => {
-                    self.selection_state.set_selection(item);
+                    self.selection_state.lock().set_selection(item);
+                }
+
+                SystemCommand::SetFocus(item) => {
+                    *self.focused_item.lock() = Some(item);
                 }
 
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
@@ -395,20 +459,22 @@ impl TestContext {
                 }
 
                 // not implemented
-                SystemCommand::SetFocus(_)
-                | SystemCommand::ActivateApp(_)
+                SystemCommand::ActivateApp(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
-                | SystemCommand::AddReceiver(_)
+                | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
+                | SystemCommand::ChangeDisplayMode(_)
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings => handled = false,
+                | SystemCommand::CloseAllRecordings
+                | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,
@@ -434,7 +500,7 @@ mod test {
     /// from `TestContext::run`.
     #[test]
     fn test_edit_selection() {
-        let mut test_context = TestContext::default();
+        let test_context = TestContext::default();
 
         let item = Item::InstancePath(InstancePath::entity_all("/entity/path".into()));
 

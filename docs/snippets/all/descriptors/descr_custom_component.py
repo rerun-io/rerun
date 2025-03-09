@@ -12,7 +12,7 @@ positions = rr.components.Position3DBatch([1, 2, 3]).with_descriptor(
         "user.CustomPosition3D",
         archetype_name="user.CustomArchetype",
         archetype_field_name="custom_positions",
-    )
+    ),
 )
 rr.log("data", [positions], static=True)
 

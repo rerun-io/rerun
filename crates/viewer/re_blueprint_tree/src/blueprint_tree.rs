@@ -12,7 +12,7 @@ use re_ui::{
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
     DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender, ViewId, ViewerContext, VisitorControlFlow,
+    SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 
@@ -99,7 +99,7 @@ impl BlueprintTree {
                     .menu_button(&re_ui::icons::MORE, |ui| {
                         add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
                         set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, viewport_blueprint, ui);
+                        set_blueprint_to_auto_menu_button(ctx, ui);
                     }),
                 );
             });
@@ -364,7 +364,7 @@ impl BlueprintTree {
         let item = Item::View(view_data.id);
 
         let class = ctx
-            .view_class_registry
+            .view_class_registry()
             .get_class_or_log_error(view_data.class_identifier);
 
         let is_item_hovered =
@@ -485,7 +485,7 @@ impl BlueprintTree {
                 );
 
                 let item_content = list_item::LabelContent::new(format_matching_text(
-                    ctx.egui_ctx,
+                    ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
                     is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
@@ -665,7 +665,7 @@ impl BlueprintTree {
             return;
         }
 
-        let modifiers = ctx.egui_ctx.input(|i| i.modifiers);
+        let modifiers = ctx.egui_ctx().input(|i| i.modifiers);
 
         if modifiers.shift {
             if let Some(anchor_item) = &self.range_selection_anchor_item {
@@ -739,7 +739,7 @@ impl BlueprintTree {
             }
 
             let is_expanded = blueprint_tree_item
-                .is_open(ctx.egui_ctx, collapse_scope)
+                .is_open(ctx.egui_ctx(), collapse_scope)
                 .unwrap_or(false);
 
             if is_expanded {
@@ -1084,26 +1084,22 @@ impl BlueprintTree {
         egui_ctx: &egui::Context,
         focused_contents: &Contents,
     ) {
-        //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
-        let expend_contents = |contents: &Contents| match contents {
-            Contents::Container(container_id) => self
-                .collapse_scope()
-                .container(*container_id)
-                .set_open(egui_ctx, true),
-            Contents::View(view_id) => self
-                .collapse_scope()
-                .view(*view_id)
-                .set_open(egui_ctx, true),
-        };
-
         viewport.visit_contents(&mut |contents, hierarchy| {
             if contents == focused_contents {
-                expend_contents(contents);
+                self.collapse_scope()
+                    .contents(*contents)
+                    .set_open(egui_ctx, true);
+
                 for parent in hierarchy {
-                    expend_contents(&Contents::Container(*parent));
+                    self.collapse_scope()
+                        .container(*parent)
+                        .set_open(egui_ctx, true);
                 }
+
+                VisitorControlFlow::Break(())
+            } else {
+                VisitorControlFlow::Continue
             }
-            true
         });
     }
 
@@ -1197,17 +1193,18 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
 
     if response.clicked() {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
 }
 
-fn set_blueprint_to_auto_menu_button(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &mut egui::Ui,
-) {
-    let enabled = !viewport.auto_layout() || !viewport.auto_views();
+fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    // Figuring out when resetting to heuristic blueprint is not changing anything is actually quite hard.
+    // There's a wide variety of things to consider that aren't easily caught:
+    // * does running view-generation/layout-generation change anything?
+    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
+    // * any changes in overrides/defaults/view-property means that a reset would change something
+    let enabled = true;
 
     if ui
         .add_enabled(
@@ -1218,7 +1215,7 @@ fn set_blueprint_to_auto_menu_button(
         .clicked()
     {
         ui.close_menu();
-        ctx.command_sender
+        ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }
 }
@@ -1231,14 +1228,15 @@ fn list_views_with_entity(
     entity_path: &EntityPath,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
-    viewport.visit_contents(&mut |contents, _| {
+    viewport.visit_contents::<()>(&mut |contents, _| {
         if let Contents::View(view_id) = contents {
             let result_tree = &ctx.lookup_query_result(*view_id).tree;
             if result_tree.lookup_node_by_path(entity_path).is_some() {
                 view_ids.push(*view_id);
             }
         }
-        true
+
+        VisitorControlFlow::Continue
     });
     view_ids
 }

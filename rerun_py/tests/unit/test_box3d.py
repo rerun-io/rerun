@@ -90,7 +90,7 @@ def test_boxes3d() -> None:
             f"    labels={labels!r}\n"
             f"    fill_mode={fill_mode!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f")"
+            f")",
         )
         arch = rr.Boxes3D(
             half_sizes=half_sizes,
@@ -108,7 +108,8 @@ def test_boxes3d() -> None:
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
         assert arch.centers == centers_expected(centers, PoseTranslation3DBatch)
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
-            rotation_axis_angles, PoseRotationAxisAngleBatch
+            rotation_axis_angles,
+            PoseRotationAxisAngleBatch,
         )
         assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
         assert arch.colors == colors_expected(colors)
@@ -135,7 +136,7 @@ def test_boxes3d_rotations_quat() -> None:
         half_sizes = cast(Vec3DArrayLike, half_sizes)
         quaternions = cast(QuaternionArrayLike, quaternions)
 
-        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={quaternions!r}\n" f")")
+        print(f"rr.Boxes3D(\n    half_sizes={half_sizes}\n    rotations={quaternions!r}\n)")
         arch = rr.Boxes3D(
             half_sizes=half_sizes,
             rotations=quaternions,
@@ -165,7 +166,7 @@ def test_boxes3d_rotations_rotation_axis_angle() -> None:
         half_sizes = cast(Vec3DArrayLike, half_sizes)
         rotation_axis_angles = cast(RotationAxisAngleArrayLike, rotation_axis_angles)
 
-        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={rotation_axis_angles}\n" f")")
+        print(f"rr.Boxes3D(\n    half_sizes={half_sizes}\n    rotations={rotation_axis_angles}\n)")
         arch = rr.Boxes3D(
             half_sizes=half_sizes,
             rotations=rotation_axis_angles,
@@ -180,11 +181,12 @@ def test_boxes3d_rotations_rotation_axis_angle() -> None:
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
 
         print(
-            f"{arch.rotation_axis_angles} == {expected_rotation_axis_angles(rotation_axis_angles, PoseRotationAxisAngleBatch)}"
+            f"{arch.rotation_axis_angles} == {expected_rotation_axis_angles(rotation_axis_angles, PoseRotationAxisAngleBatch)}",
         )
 
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
-            rotation_axis_angles, PoseRotationAxisAngleBatch
+            rotation_axis_angles,
+            PoseRotationAxisAngleBatch,
         )
 
 

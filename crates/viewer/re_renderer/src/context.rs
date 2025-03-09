@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceCaps, WgpuBackendType},
+    device_caps::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -26,7 +26,68 @@ pub enum RenderContextError {
         "The GPU/graphics driver is lacking some abilities: {0}. \
         Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
-    InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
+    InsufficientDeviceCapabilities(#[from] crate::device_caps::InsufficientDeviceCapabilities),
+}
+
+/// Controls MSAA (Multi-Sampling Anti-Aliasing)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MsaaMode {
+    /// Disabled MSAA.
+    ///
+    /// Preferred option for testing since MSAA implementations vary across devices,
+    /// especially in alpha-to-coverage cases.
+    ///
+    /// Note that this doesn't necessarily mean that we never use any multisampled targets,
+    /// merely that the main render target is not multisampled.
+    /// Some renderers/postprocessing effects may still incorporate textures with a sample count higher than 1.
+    Off,
+
+    /// 4x MSAA.
+    ///
+    /// As of writing 4 samples is the only option (other than _Off_) that works with `WebGPU`,
+    /// and it is guaranteed to be always available.
+    // TODO(andreas): On native we could offer higher counts.
+    #[default]
+    Msaa4x,
+}
+
+impl MsaaMode {
+    /// Returns the number of samples for this MSAA mode.
+    pub const fn sample_count(&self) -> u32 {
+        match self {
+            Self::Off => 1,
+            Self::Msaa4x => 4,
+        }
+    }
+}
+
+/// Configures global properties of the renderer.
+///
+/// For simplicity, we don't allow changing any of these properties without tearing down the [`RenderContext`],
+/// even though it may be possible.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RenderConfig {
+    pub msaa_mode: MsaaMode,
+    // TODO(andreas): Add a way to force the render tier?
+}
+
+impl RenderConfig {
+    /// Returns the best config for the given [`DeviceCaps`].
+    pub fn best_for_device_caps(_device_caps: &DeviceCaps) -> Self {
+        Self {
+            msaa_mode: MsaaMode::Msaa4x,
+        }
+    }
+
+    /// Render config preferred for running most tests.
+    ///
+    /// This is optimized for low discrepancy between devices in order to
+    /// to keep image comparison thresholds low.
+    pub fn testing() -> Self {
+        Self {
+            msaa_mode: MsaaMode::Off,
+        }
+    }
 }
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
@@ -36,6 +97,7 @@ pub struct RenderContext {
     pub queue: wgpu::Queue,
 
     device_caps: DeviceCaps,
+    config: RenderConfig,
     output_format_color: wgpu::TextureFormat,
 
     /// Global bindings, always bound to 0 bind group slot zero.
@@ -129,11 +191,12 @@ impl RenderContext {
         device: wgpu::Device,
         queue: wgpu::Queue,
         output_format_color: wgpu::TextureFormat,
+        config_provider: impl FnOnce(&DeviceCaps) -> RenderConfig,
     ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();
 
-        // Validate capabilities of the device.
         let device_caps = DeviceCaps::from_adapter(adapter)?;
+        let config = config_provider(&device_caps);
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
@@ -202,6 +265,7 @@ impl RenderContext {
             device,
             queue,
             device_caps,
+            config,
             output_format_color,
             global_bindings,
             renderers: RwLock::new(Renderers {
@@ -427,6 +491,11 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         &self.device_caps
     }
 
+    /// Returns the active render config.
+    pub fn render_config(&self) -> &RenderConfig {
+        &self.config
+    }
+
     /// Returns the final output format for color (i.e. the surface's format).
     pub fn output_format_color(&self) -> wgpu::TextureFormat {
         self.output_format_color
@@ -503,24 +572,31 @@ impl ActiveFrameContext {
 fn log_adapter_info(info: &wgpu::AdapterInfo) {
     re_tracing::profile_function!();
 
+    // See https://github.com/rerun-io/rerun/issues/3089
     let is_software_rasterizer_with_known_crashes = {
-        // See https://github.com/rerun-io/rerun/issues/3089
-        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
-            "lavapipe", // Vulkan software rasterizer
-            "llvmpipe", // OpenGL software rasterizer
-        ];
+        // `llvmpipe` is Mesa's software rasterizer.
+        // It may describe EITHER a Vulkan or OpenGL software rasterizer.
+        // `lavapipe` is the name given to the Vulkan software rasterizer,
+        // but this name doesn't seem to show up in the info string.
+        let is_mesa_software_rasterizer = info.driver == "llvmpipe";
 
-        // I'm not sure where the incriminating string will appear, so check all fields at once:
-        let info_string = format!("{info:?}").to_lowercase();
-
-        KNOWN_SOFTWARE_RASTERIZERS
-            .iter()
-            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+        // TODO(andreas):
+        // Some versions of lavapipe are problematic (we observed crashes in the past),
+        // but we haven't isolated for what versions this happens.
+        // (we are happily using lavapipe without any issues on CI)
+        // However, there's reason to be more skeptical of OpenGL software rasterizers,
+        // so we mark those as problematic regardless.
+        // A user might as well just use Vulkan software rasterizer if they're in a situation where they
+        // can't use a GPU for which we do have test coverage.
+        info.backend == wgpu::Backend::Gl && is_mesa_software_rasterizer
     };
 
     let human_readable_summary = adapter_info_summary(info);
 
-    if is_software_rasterizer_with_known_crashes {
+    if cfg!(test) {
+        // If we're testing then software rasterizers are just fine, preferred even!
+        re_log::debug!("wgpu adapter {human_readable_summary}");
+    } else if is_software_rasterizer_with_known_crashes {
         re_log::warn!("Bad software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
         re_log::info!("wgpu adapter {human_readable_summary}");
     } else if info.device_type == wgpu::DeviceType::Cpu {

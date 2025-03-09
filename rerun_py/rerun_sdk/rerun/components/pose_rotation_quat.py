@@ -28,7 +28,6 @@ class PoseRotationQuat(datatypes.Quaternion, ComponentMixin):
     # You can define your own __init__ function as a member of PoseRotationQuatExt in pose_rotation_quat_ext.py
 
     # Note: there are no fields here because PoseRotationQuat delegates to datatypes.Quaternion
-    pass
 
 
 class PoseRotationQuatBatch(datatypes.QuaternionBatch, ComponentBatchMixin):

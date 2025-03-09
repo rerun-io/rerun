@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use re_chunk::TimelineName;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{TimeInt, Timeline};
 
@@ -7,13 +8,27 @@ use re_log_types::{TimeInt, Timeline};
 
 pub type TimeCounts = BTreeMap<TimeInt, u64>;
 
+pub struct TimelineStats {
+    pub timeline: Timeline,
+    pub per_time: TimeCounts,
+}
+
+impl TimelineStats {
+    pub fn new(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            per_time: Default::default(),
+        }
+    }
+}
+
 /// A [`ChunkStoreSubscriber`] that keeps track of all unique timestamps on each [`Timeline`].
 ///
 /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-pub struct TimesPerTimeline(BTreeMap<Timeline, TimeCounts>);
+pub struct TimesPerTimeline(BTreeMap<TimelineName, TimelineStats>);
 
 impl std::ops::Deref for TimesPerTimeline {
-    type Target = BTreeMap<Timeline, TimeCounts>;
+    type Target = BTreeMap<TimelineName, TimelineStats>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -23,15 +38,19 @@ impl std::ops::Deref for TimesPerTimeline {
 
 impl TimesPerTimeline {
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> + '_ {
+        self.0.values().map(|stats| &stats.timeline)
     }
 }
 
 // Always ensure we have a default "log_time" timeline.
 impl Default for TimesPerTimeline {
     fn default() -> Self {
-        Self(BTreeMap::from([(Timeline::log_time(), Default::default())]))
+        let timeline = Timeline::log_time();
+        Self(BTreeMap::from([(
+            *timeline.name(),
+            TimelineStats::new(timeline),
+        )]))
     }
 }
 
@@ -57,10 +76,13 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
 
         for event in events {
             for (&timeline, time_column) in event.chunk.timelines() {
-                let per_time = self.0.entry(timeline).or_default();
+                let stats = self
+                    .0
+                    .entry(timeline)
+                    .or_insert_with(|| TimelineStats::new(*time_column.timeline()));
 
                 for time in time_column.times() {
-                    let count = per_time.entry(time).or_default();
+                    let count = stats.per_time.entry(time).or_default();
 
                     let delta = event.delta();
 
@@ -89,7 +111,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                     }
 
                     if *count == 0 {
-                        per_time.remove(&time);
+                        stats.per_time.remove(&time);
                     }
                 }
             }

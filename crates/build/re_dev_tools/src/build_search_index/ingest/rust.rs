@@ -5,15 +5,15 @@ use crate::build_search_index::util::ProgressBarExt as _;
 use anyhow::Context as _;
 use cargo_metadata::semver::Version;
 use indicatif::ProgressBar;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
+use rayon::prelude::IntoParallelIterator as _;
+use rayon::prelude::ParallelIterator as _;
 use rustdoc_types::Crate;
 use rustdoc_types::Id as ItemId;
 use rustdoc_types::Impl;
-use rustdoc_types::Import;
 use rustdoc_types::Item;
 use rustdoc_types::ItemEnum;
 use rustdoc_types::Type;
+use rustdoc_types::Use;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
@@ -38,7 +38,11 @@ use std::sync::mpsc;
 /// - associated `fn`
 ///
 /// It will also walk through any `pub mod`, and correctly resolve `pub use mod::item` where `mod` is not `pub`.
-pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
+pub fn ingest(
+    ctx: &Context,
+    exclude_crates: &[String],
+    rust_toolchain: &str,
+) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("rustdoc");
 
     let mut crates = Vec::new();
@@ -69,7 +73,7 @@ pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
         }
 
         let path = rustdoc_json::Builder::default()
-            .toolchain("nightly-2024-08-10")
+            .toolchain(rust_toolchain)
             .all_features(true)
             .quiet(true)
             .manifest_path(&pkg.manifest_path)
@@ -150,7 +154,7 @@ impl<'a> Visitor<'a> {
         if self.visited.contains(id) {
             return;
         }
-        self.visited.insert(id.clone());
+        self.visited.insert(*id);
 
         let mut module_path = &path[..path.len() - 1];
         let name = path.last().unwrap();
@@ -227,7 +231,7 @@ impl<'a> Visitor<'a> {
                 }
                 self.module_path.pop();
             }
-            I::Import(import) => self.visit_import(import),
+            I::Use(import) => self.visit_import(import),
             I::Impl(impl_) => {
                 // we only care about inherent impls of the form:
                 //   impl Thing {}
@@ -287,13 +291,13 @@ impl<'a> Visitor<'a> {
             | I::ExternCrate { .. }
             | I::TraitAlias(_)
             | I::Static(_)
-            | I::ForeignType
+            | I::ExternType
             | I::ProcMacro(_)
             | I::Primitive(_) => {}
         }
     }
 
-    fn visit_import(&mut self, import: &Import) {
+    fn visit_import(&mut self, import: &Use) {
         let Some(id) = import.id.as_ref() else {
             return;
         };
@@ -313,7 +317,7 @@ impl<'a> Visitor<'a> {
         }
 
         let item = &self.krate.index[id];
-        if import.glob {
+        if import.is_glob {
             let ItemEnum::Module(module) = &item.inner else {
                 unreachable!()
             };

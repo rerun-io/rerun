@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt as _};
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{DataLoader, DataLoaderError, LoadedData, RrdLoader};
+use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 
 // ---
 
@@ -34,6 +34,17 @@ pub fn load_from_path(
     }
 
     re_log::info!("Loading {path:?}…");
+
+    // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
+    // loader handles this automatically.
+    let settings = if crate::lerobot::is_lerobot_dataset(path) {
+        &crate::DataLoaderSettings {
+            force_store_info: false,
+            ..settings.clone()
+        }
+    } else {
+        settings
+    };
 
     let rx = load(settings, path, None)?;
 

@@ -1,0 +1,79 @@
+---
+source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
+expression: blueprint_tree_data
+---
+root_container:
+  name:
+    Placeholder: Grid
+  kind: Grid
+  visible: true
+  default_open: true
+  children:
+    - View:
+        class_identifier: 3D
+        name:
+          Placeholder: path/to
+        visible: true
+        default_open: true
+        origin_tree: ~
+        projection_trees:
+          - kind: EntityPart
+            entity_path: []
+            visible: true
+            label: / (root)
+            highlight_sections: []
+            default_open: true
+            children:
+              - kind: EntityPart
+                entity_path:
+                  - path
+                visible: true
+                label: path
+                highlight_sections:
+                  - start: 1
+                    end: 4
+                default_open: true
+                children:
+                  - kind: EntityPart
+                    entity_path:
+                      - path
+                      - onto
+                    visible: true
+                    label: onto
+                    highlight_sections:
+                      - start: 2
+                        end: 3
+                    default_open: true
+                    children:
+                      - kind: EntityPart
+                        entity_path:
+                          - path
+                          - onto
+                          - their
+                        visible: true
+                        label: their
+                        highlight_sections:
+                          - start: 0
+                            end: 1
+                        default_open: true
+                        children:
+                          - kind: EntityPart
+                            entity_path:
+                              - path
+                              - onto
+                              - their
+                              - coils
+                            visible: true
+                            label: coils
+                            highlight_sections: []
+                            default_open: true
+                            children: []
+                  - kind: OriginProjectionPlaceholder
+                    entity_path:
+                      - path
+                      - to
+                    visible: true
+                    label: to
+                    highlight_sections: []
+                    default_open: false
+                    children: []

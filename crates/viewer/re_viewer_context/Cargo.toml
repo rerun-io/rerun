@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 ## Enable for testing utilities.
-testing = ["dep:pollster", "dep:egui_kittest", "dep:env_logger"]
+testing = ["dep:pollster", "dep:egui_kittest"]
 
 [dependencies]
 re_capabilities.workspace = true
@@ -40,6 +40,7 @@ re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true
 re_ui.workspace = true
+re_uri.workspace = true
 re_video = { workspace = true, features = ["serde"] }
 
 ahash.workspace = true
@@ -75,12 +76,12 @@ wgpu.workspace = true
 
 # Optional dependencies:
 egui_kittest = { workspace = true, features = ["wgpu"], optional = true }
-env_logger = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home.workspace = true
+tokio.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

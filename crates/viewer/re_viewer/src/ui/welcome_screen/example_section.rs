@@ -488,7 +488,7 @@ impl ExampleDescLayout {
             egui::Rect::from_min_max(egui::Pos2::new(0.0, a), egui::Pos2::new(1.0, 1.0 - a))
         };
 
-        let rounding = egui::Rounding {
+        let cr = egui::CornerRadius {
             nw: THUMBNAIL_RADIUS,
             ne: THUMBNAIL_RADIUS,
             sw: 0,
@@ -496,7 +496,7 @@ impl ExampleDescLayout {
         };
         egui::Image::new(&self.desc.thumbnail.url)
             .uv(uv_rect)
-            .rounding(rounding)
+            .corner_radius(cr)
             .paint_at(ui, thumbnail_rect);
         ui.advance_cursor_after_rect(thumbnail_rect);
     }
@@ -536,7 +536,7 @@ impl ExampleDescLayout {
                                 .text_style(re_ui::DesignTokens::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
-                        .rounding(6.0)
+                        .corner_radius(6)
                         .fill(egui::Color32::from_rgb(26, 29, 30))
                         .stroke(egui::Stroke::new(
                             1.0,

@@ -113,14 +113,14 @@ jobs:
             linux-arm64)
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
-                container="'rerunio/ci_docker:0.14.0'" # Required to be manylinux compatible
+                container="'rerunio/ci_docker:0.15.0'" # Required to be manylinux compatible
                 compat="manylinux_2_31"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_31"
-              container="'rerunio/ci_docker:0.14.0'" # Required to be manylinux compatible
+              container="'rerunio/ci_docker:0.15.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
@@ -190,7 +190,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       - name: Get sha
         id: get-sha

@@ -78,8 +78,8 @@ def compare(
     before_header: str,
     after_header: str,
 ) -> None:
-    previous = json.loads(Path(previous_path).read_text())
-    current = json.loads(Path(current_path).read_text())
+    previous = json.loads(Path(previous_path).read_text(encoding="utf-8"))
+    current = json.loads(Path(current_path).read_text(encoding="utf-8"))
 
     entries = {}
     for entry in current:
@@ -111,11 +111,11 @@ def compare(
                 previous_bytes = previous * previous_divisor
                 current_bytes = current * current_divisor
 
-                previous = previous_bytes / div
-                current = current_bytes / div
-
                 unit = get_unit(min(previous_bytes, current_bytes))
                 div = get_divisor(unit)
+
+                previous = previous_bytes / div
+                current = current_bytes / div
 
             if previous == current:
                 change_pct = 0  # e.g. both are zero

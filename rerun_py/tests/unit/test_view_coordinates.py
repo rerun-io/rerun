@@ -11,7 +11,8 @@ from .common_arrays import none_empty_or_value
 
 def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:
     expected = none_empty_or_value(
-        obj, [rrc.ViewCoordinates.ViewDir.Right, rrc.ViewCoordinates.ViewDir.Down, rrc.ViewCoordinates.ViewDir.Forward]
+        obj,
+        [rrc.ViewCoordinates.ViewDir.Right, rrc.ViewCoordinates.ViewDir.Down, rrc.ViewCoordinates.ViewDir.Forward],
     )
 
     return rrc.ViewCoordinatesBatch(expected)

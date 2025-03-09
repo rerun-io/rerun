@@ -8,7 +8,7 @@ from rerun.components import ClearIsRecursive, ClearIsRecursiveBatch
 def test_clear() -> None:
     recursive = True
 
-    print(f"rr.Clear(\n" f"recursive={recursive}\n" f")")
+    print(f"rr.Clear(\nrecursive={recursive}\n)")
     arch = rr.Clear(recursive=recursive)
     print(f"{arch}\n")
 

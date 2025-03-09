@@ -420,8 +420,9 @@ impl MemoryPanel {
 
         use itertools::Itertools as _;
 
-        fn to_line(history: &egui::util::History<i64>) -> egui_plot::Line {
+        fn to_line<'a>(name: &str, history: &egui::util::History<i64>) -> egui_plot::Line<'a> {
             egui_plot::Line::new(
+                name,
                 history
                     .iter()
                     .map(|(time, bytes)| [time, bytes as f64])
@@ -441,16 +442,13 @@ impl MemoryPanel {
             .show(ui, |plot_ui| {
                 if let Some(max_bytes) = limit.max_bytes {
                     plot_ui.hline(
-                        egui_plot::HLine::new(max_bytes as f64)
-                            .name("Limit (counted)")
-                            .width(2.0),
+                        egui_plot::HLine::new("Limit (counted)", max_bytes as f64).width(2.0),
                     );
                 }
 
                 for &time in &self.memory_purge_times {
                     plot_ui.vline(
-                        egui_plot::VLine::new(time)
-                            .name("RAM purge")
+                        egui_plot::VLine::new("RAM purge", time)
                             .color(egui::Color32::from_rgb(252, 161, 3))
                             .width(2.0),
                     );
@@ -465,20 +463,12 @@ impl MemoryPanel {
                     counted_blueprint,
                 } = &self.history;
 
-                plot_ui.line(to_line(resident).name("Resident").width(1.5));
-                plot_ui.line(to_line(counted).name("Counted").width(1.5));
-                plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
-                plot_ui.line(to_line(counted_store).name("Counted store 2").width(1.5));
-                plot_ui.line(
-                    to_line(counted_primary_caches)
-                        .name("Counted primary caches")
-                        .width(1.5),
-                );
-                plot_ui.line(
-                    to_line(counted_blueprint)
-                        .name("Counted blueprint")
-                        .width(1.5),
-                );
+                plot_ui.line(to_line("Resident", resident).width(1.5));
+                plot_ui.line(to_line("Counted", counted).width(1.5));
+                plot_ui.line(to_line("Counted GPU", counted_gpu).width(1.5));
+                plot_ui.line(to_line("Counted store 2", counted_store).width(1.5));
+                plot_ui.line(to_line("Counted primary caches", counted_primary_caches).width(1.5));
+                plot_ui.line(to_line("Counted blueprint", counted_blueprint).width(1.5));
             });
     }
 }

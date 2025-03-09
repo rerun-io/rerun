@@ -95,7 +95,7 @@ def log_trees() -> None:
         colors.append(random.choice(color_scheme))
         edges.append((existing, new_node))
 
-        rr.set_time_sequence("frame", i)
+        rr.set_index("frame", sequence=i)
         rr.log(
             "node_link",
             rr.GraphNodes(nodes, labels=nodes, radii=radii, colors=colors),
@@ -141,7 +141,7 @@ def log_markov_chain() -> None:
         colors = [inactive_color] * len(state_names)
         colors[next_state_index] = active_colors[next_state_index]
 
-        rr.set_time_sequence("frame", i)
+        rr.set_index("frame", sequence=i)
         rr.log(
             "markov_chain",
             rr.GraphNodes(state_names, labels=state_names, colors=colors, positions=positions),
@@ -182,8 +182,8 @@ def log_blueprint() -> None:
                     ),
                     rrb.TextDocumentView(origin="description", name="Description"),
                 ),
-            )
-        )
+            ),
+        ),
     )
 
 

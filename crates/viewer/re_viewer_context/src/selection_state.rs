@@ -1,8 +1,9 @@
 use ahash::HashMap;
 use indexmap::IndexMap;
+use itertools::Itertools as _;
 use parking_lot::Mutex;
 
-use crate::{item::resolve_mono_instance_path_item, ViewerContext};
+use crate::{global_context::resolve_mono_instance_path_item, ViewerContext};
 use re_entity_db::EntityPath;
 use re_log_types::StoreKind;
 
@@ -93,6 +94,11 @@ impl InteractionHighlight {
             selection: self.selection.max(other.selection),
             hover: self.hover.max(other.hover),
         }
+    }
+
+    /// Returns true if either selection or hover is active.
+    pub fn any(&self) -> bool {
+        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
     }
 }
 
@@ -223,6 +229,101 @@ impl ItemCollection {
     /// Extend the selection with more items.
     pub fn extend(&mut self, other: impl IntoIterator<Item = (Item, Option<ItemContext>)>) {
         self.0.extend(other);
+    }
+
+    /// Tries to copy a description of the selection to the clipboard.
+    ///
+    /// Only certain elements are copyable right now.
+    pub fn copy_to_clipboard(&self, egui_ctx: &egui::Context) {
+        if self.is_empty() {
+            return;
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        enum ClipboardTextDesc {
+            FilePath,
+            Url,
+            AppId,
+            StoreId,
+            EntityPath,
+        }
+
+        #[allow(clippy::match_same_arms)]
+        let clipboard_texts_per_type = self
+            .iter()
+            .filter_map(|(item, _)| match item {
+                Item::Container(_) => None,
+                Item::View(_) => None,
+
+                Item::DataSource(source) => match source {
+                    re_smart_channel::SmartChannelSource::File(path) => {
+                        Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
+                    }
+                    re_smart_channel::SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                        Some((ClipboardTextDesc::Url, url.clone()))
+                    }
+                    re_smart_channel::SmartChannelSource::RrdWebEventListener => None,
+                    re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
+                    re_smart_channel::SmartChannelSource::Sdk => None,
+                    re_smart_channel::SmartChannelSource::Stdin => None,
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url } => {
+                        Some((ClipboardTextDesc::Url, url.clone()))
+                    }
+                    re_smart_channel::SmartChannelSource::MessageProxy { url } => {
+                        Some((ClipboardTextDesc::Url, url.clone()))
+                    }
+                },
+
+                Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
+                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, id.to_string())),
+
+                Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
+                    ClipboardTextDesc::EntityPath,
+                    instance_path.entity_path.to_string(),
+                )),
+                Item::ComponentPath(component_path) => Some((
+                    ClipboardTextDesc::EntityPath,
+                    component_path.entity_path.to_string(),
+                )),
+            })
+            .chunk_by(|(desc, _)| *desc);
+
+        let mut clipboard_text = String::new();
+        let mut content_description = String::new();
+
+        for (desc, entries) in &clipboard_texts_per_type {
+            let entries = entries.map(|(_, text)| text).collect_vec();
+
+            let desc = match desc {
+                ClipboardTextDesc::FilePath => "file path",
+                ClipboardTextDesc::Url => "URL",
+                ClipboardTextDesc::AppId => "app id",
+                ClipboardTextDesc::StoreId => "store id",
+                ClipboardTextDesc::EntityPath => "entity path",
+            };
+            if !content_description.is_empty() {
+                content_description.push_str(", ");
+            }
+            if entries.len() == 1 {
+                content_description.push_str(desc);
+            } else {
+                content_description.push_str(&format!("{desc}s"));
+            }
+
+            let texts = entries.into_iter().join("\n");
+            if !clipboard_text.is_empty() {
+                clipboard_text.push('\n');
+            }
+            clipboard_text.push_str(&texts);
+        }
+
+        if !clipboard_text.is_empty() {
+            re_log::info!(
+                "Copied {content_description} to clipboard:\n{}",
+                &clipboard_text
+            );
+            egui_ctx.copy_text(clipboard_text);
+        }
     }
 }
 

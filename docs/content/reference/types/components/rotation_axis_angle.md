@@ -5,7 +5,8 @@ title: "RotationAxisAngle"
 
 3D rotation represented by a rotation around a given axis.
 
-If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
+angle is zero in which case it is treated as an identity.
 
 ## Rerun datatype
 [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)

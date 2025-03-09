@@ -1,4 +1,4 @@
-use std::hash::BuildHasher;
+use std::hash::BuildHasher as _;
 
 use once_cell::sync::Lazy;
 

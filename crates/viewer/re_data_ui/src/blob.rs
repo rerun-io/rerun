@@ -1,5 +1,13 @@
-use re_types::components::{Blob, MediaType, VideoTimestamp};
-use re_ui::{list_item::PropertyContent, UiExt};
+use std::sync::Arc;
+
+use re_types::{
+    components::{Blob, MediaType, VideoTimestamp},
+    RowId,
+};
+use re_ui::{
+    list_item::{self, PropertyContent},
+    UiExt as _,
+};
 use re_viewer_context::UiLayout;
 
 use crate::{
@@ -108,9 +116,14 @@ pub fn blob_preview_and_save_ui(
     let mut video_result_for_frame_preview = None;
 
     if let Some(blob_row_id) = blob_row_id {
+        if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
+            exif_ui(ui, blob_row_id, blob);
+        }
+
         // Try to treat it as an image:
         image = ctx
-            .cache
+            .store_context
+            .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
                 c.entry(blob_row_id, blob, media_type)
             })
@@ -121,16 +134,19 @@ pub fn blob_preview_and_save_ui(
             image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
         } else {
             // Try to treat it as a video.
-            let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-                let debug_name = entity_path.to_string();
-                c.entry(
-                    debug_name,
-                    blob_row_id,
-                    blob,
-                    media_type,
-                    ctx.app_options.video_decoder_settings(),
-                )
-            });
+            let video_result =
+                ctx.store_context
+                    .caches
+                    .entry(|c: &mut re_viewer_context::VideoCache| {
+                        let debug_name = entity_path.to_string();
+                        c.entry(
+                            debug_name,
+                            blob_row_id,
+                            blob,
+                            media_type,
+                            ctx.app_options().video_decoder_settings(),
+                        )
+                    });
             video_result_ui(ui, ui_layout, &video_result);
             video_result_for_frame_preview = Some(video_result);
         }
@@ -155,7 +171,7 @@ pub fn blob_preview_and_save_ui(
                     file_name.push_str(file_extension);
                 }
 
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender().save_file_dialog(
                     re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save blob".to_owned(),
@@ -165,7 +181,8 @@ pub fn blob_preview_and_save_ui(
 
             if let Some(image) = image {
                 let image_stats = ctx
-                    .cache
+                    .store_context
+                    .caches
                     .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
                 let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
                     &image_stats,
@@ -181,7 +198,7 @@ pub fn blob_preview_and_save_ui(
                 ui.separator();
 
                 show_decoded_frame_info(
-                    ctx.render_ctx,
+                    ctx.render_ctx(),
                     ui,
                     ui_layout,
                     video,
@@ -190,5 +207,42 @@ pub fn blob_preview_and_save_ui(
                 );
             }
         }
+    }
+}
+
+/// Show EXIF data about the given blob (image), if possible.
+fn exif_ui(ui: &mut egui::Ui, blob_row_id: RowId, blob: &re_types::datatypes::Blob) {
+    let exif_result = ui.ctx().memory_mut(|mem| {
+        // Cache EXIF parsing to avoid re-parsing every frame.
+        // The parsing is really fast, so this is not really needed.
+        let key = blob_row_id;
+        let cache = mem
+            .caches
+            .cache::<egui::cache::FramePublisher<RowId, Arc<rexif::ExifResult>>>();
+        cache.get(&key).cloned().unwrap_or_else(|| {
+            re_tracing::profile_scope!("exif-parse");
+            let (result, _warnings) = rexif::parse_buffer_quiet(blob);
+            let result = Arc::new(result);
+            cache.set(key, result.clone());
+            result
+        })
+    });
+
+    if let Ok(exif) = &*exif_result {
+        ui.list_item_collapsible_noninteractive_label("EXIF", false, |ui| {
+            list_item::list_item_scope(ui, "exif", |ui| {
+                for entry in &exif.entries {
+                    let tag_string = if entry.tag == rexif::ExifTag::UnknownToMe {
+                        "<Unknown tag>".to_owned()
+                    } else {
+                        entry.tag.to_string()
+                    };
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new(tag_string)
+                            .value_text(entry.value_more_readable.to_string()),
+                    );
+                }
+            });
+        });
     }
 }

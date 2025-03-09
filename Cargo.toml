@@ -10,6 +10,7 @@ members = [
   "examples/rust/*",
   "rerun_py",
   "run_wasm",
+  "tests/rust/experimental_multi_scalar",
   "tests/rust/log_benchmark",
   "tests/rust/plot_dashboard_stress",
   "tests/rust/roundtrips/*",
@@ -30,8 +31,8 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.81"
-version = "0.22.0-alpha.1+dev"
+rust-version = "1.84"
+version = "0.23.0-alpha.1+dev"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
@@ -40,81 +41,82 @@ version = "0.22.0-alpha.1+dev"
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 
 # crates/build:
-re_build_info = { path = "crates/build/re_build_info", version = "=0.22.0-alpha.1", default-features = false }
-re_build_tools = { path = "crates/build/re_build_tools", version = "=0.22.0-alpha.1", default-features = false }
-re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.22.0-alpha.1", default-features = false }
-re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.22.0-alpha.1", default-features = false }
-re_types_builder = { path = "crates/build/re_types_builder", version = "=0.22.0-alpha.1", default-features = false }
+re_build_info = { path = "crates/build/re_build_info", version = "=0.23.0-alpha.1", default-features = false }
+re_build_tools = { path = "crates/build/re_build_tools", version = "=0.23.0-alpha.1", default-features = false }
+re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.23.0-alpha.1", default-features = false }
+re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.23.0-alpha.1", default-features = false }
+re_types_builder = { path = "crates/build/re_types_builder", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/store:
-re_chunk = { path = "crates/store/re_chunk", version = "=0.22.0-alpha.1", default-features = false }
-re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.22.0-alpha.1", default-features = false }
-re_data_loader = { path = "crates/store/re_data_loader", version = "=0.22.0-alpha.1", default-features = false }
-re_data_source = { path = "crates/store/re_data_source", version = "=0.22.0-alpha.1", default-features = false }
-re_dataframe = { path = "crates/store/re_dataframe", version = "=0.22.0-alpha.1", default-features = false }
-re_entity_db = { path = "crates/store/re_entity_db", version = "=0.22.0-alpha.1", default-features = false }
-re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.22.0-alpha.1", default-features = false }
-re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.22.0-alpha.1", default-features = false }
-re_protos = { path = "crates/store/re_protos", version = "=0.22.0-alpha.1", default-features = false }
-re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.22.0-alpha.1", default-features = false }
-re_log_types = { path = "crates/store/re_log_types", version = "=0.22.0-alpha.1", default-features = false }
-re_query = { path = "crates/store/re_query", version = "=0.22.0-alpha.1", default-features = false }
-re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.22.0-alpha.1", default-features = false }
-re_sorbet = { path = "crates/store/re_sorbet", version = "=0.22.0-alpha.1", default-features = false }
-re_types = { path = "crates/store/re_types", version = "=0.22.0-alpha.1", default-features = false }
-re_types_core = { path = "crates/store/re_types_core", version = "=0.22.0-alpha.1", default-features = false }
-re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.22.0-alpha.1", default-features = false }
+re_chunk = { path = "crates/store/re_chunk", version = "=0.23.0-alpha.1", default-features = false }
+re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.23.0-alpha.1", default-features = false }
+re_data_loader = { path = "crates/store/re_data_loader", version = "=0.23.0-alpha.1", default-features = false }
+re_data_source = { path = "crates/store/re_data_source", version = "=0.23.0-alpha.1", default-features = false }
+re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1", default-features = false }
+re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
+re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
+re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
+re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.23.0-alpha.1", default-features = false }
+re_protos = { path = "crates/store/re_protos", version = "=0.23.0-alpha.1", default-features = false }
+re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.23.0-alpha.1", default-features = false }
+re_log_types = { path = "crates/store/re_log_types", version = "=0.23.0-alpha.1", default-features = false }
+re_query = { path = "crates/store/re_query", version = "=0.23.0-alpha.1", default-features = false }
+re_sorbet = { path = "crates/store/re_sorbet", version = "=0.23.0-alpha.1", default-features = false }
+re_types = { path = "crates/store/re_types", version = "=0.23.0-alpha.1", default-features = false }
+re_types_core = { path = "crates/store/re_types_core", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/top:
-re_sdk = { path = "crates/top/re_sdk", version = "=0.22.0-alpha.1", default-features = false }
-rerun = { path = "crates/top/rerun", version = "=0.22.0-alpha.1", default-features = false }
-rerun_c = { path = "crates/top/rerun_c", version = "=0.22.0-alpha.1", default-features = false }
-rerun-cli = { path = "crates/top/rerun-cli", version = "=0.22.0-alpha.1", default-features = false }
+re_sdk = { path = "crates/top/re_sdk", version = "=0.23.0-alpha.1", default-features = false }
+rerun = { path = "crates/top/rerun", version = "=0.23.0-alpha.1", default-features = false }
+rerun_c = { path = "crates/top/rerun_c", version = "=0.23.0-alpha.1", default-features = false }
+rerun-cli = { path = "crates/top/rerun-cli", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/utils:
-re_analytics = { path = "crates/utils/re_analytics", version = "=0.22.0-alpha.1", default-features = false }
-re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.22.0-alpha.1", default-features = false }
-re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.22.0-alpha.1", default-features = false }
-re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.22.0-alpha.1", default-features = false }
-re_case = { path = "crates/utils/re_case", version = "=0.22.0-alpha.1", default-features = false }
-re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.22.0-alpha.1", default-features = false }
-re_error = { path = "crates/utils/re_error", version = "=0.22.0-alpha.1", default-features = false }
-re_format = { path = "crates/utils/re_format", version = "=0.22.0-alpha.1", default-features = false }
-re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.22.0-alpha.1", default-features = false }
-re_log = { path = "crates/utils/re_log", version = "=0.22.0-alpha.1", default-features = false }
-re_memory = { path = "crates/utils/re_memory", version = "=0.22.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.22.0-alpha.1", default-features = false }
-re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.22.0-alpha.1", default-features = false }
-re_tracing = { path = "crates/utils/re_tracing", version = "=0.22.0-alpha.1", default-features = false }
-re_tuid = { path = "crates/utils/re_tuid", version = "=0.22.0-alpha.1", default-features = false }
-re_video = { path = "crates/utils/re_video", version = "=0.22.0-alpha.1", default-features = false }
+re_analytics = { path = "crates/utils/re_analytics", version = "=0.23.0-alpha.1", default-features = false }
+re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.23.0-alpha.1", default-features = false }
+re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.23.0-alpha.1", default-features = false }
+re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.23.0-alpha.1", default-features = false }
+re_case = { path = "crates/utils/re_case", version = "=0.23.0-alpha.1", default-features = false }
+re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.23.0-alpha.1", default-features = false }
+re_error = { path = "crates/utils/re_error", version = "=0.23.0-alpha.1", default-features = false }
+re_format = { path = "crates/utils/re_format", version = "=0.23.0-alpha.1", default-features = false }
+re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.23.0-alpha.1", default-features = false }
+re_log = { path = "crates/utils/re_log", version = "=0.23.0-alpha.1", default-features = false }
+re_memory = { path = "crates/utils/re_memory", version = "=0.23.0-alpha.1", default-features = false }
+re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.23.0-alpha.1", default-features = false }
+re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.23.0-alpha.1", default-features = false }
+re_tracing = { path = "crates/utils/re_tracing", version = "=0.23.0-alpha.1", default-features = false }
+re_tuid = { path = "crates/utils/re_tuid", version = "=0.23.0-alpha.1", default-features = false }
+re_uri = { path = "crates/utils/re_uri", version = "=0.23.0-alpha.1", default-features = false }
+re_video = { path = "crates/utils/re_video", version = "=0.23.0-alpha.1", default-features = false }
 
 # crates/viewer:
-re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.22.0-alpha.1", default-features = false }
-re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.22.0-alpha.1", default-features = false }
-re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.22.0-alpha.1", default-features = false }
-re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.22.0-alpha.1", default-features = false }
-re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.22.0-alpha.1", default-features = false }
-re_renderer = { path = "crates/viewer/re_renderer", version = "=0.22.0-alpha.1", default-features = false }
-re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.22.0-alpha.1", default-features = false }
-re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.22.0-alpha.1", default-features = false }
-re_view = { path = "crates/viewer/re_view", version = "=0.22.0-alpha.1", default-features = false }
-re_view_bar_chart = { path = "crates/viewer/re_view_bar_chart", version = "=0.22.0-alpha.1", default-features = false }
-re_view_spatial = { path = "crates/viewer/re_view_spatial", version = "=0.22.0-alpha.1", default-features = false }
-re_view_dataframe = { path = "crates/viewer/re_view_dataframe", version = "=0.22.0-alpha.1", default-features = false }
-re_view_graph = { path = "crates/viewer/re_view_graph", version = "=0.22.0-alpha.1", default-features = false }
-re_view_map = { path = "crates/viewer/re_view_map", version = "=0.22.0-alpha.1", default-features = false }
-re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.22.0-alpha.1", default-features = false }
-re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.22.0-alpha.1", default-features = false }
-re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.22.0-alpha.1", default-features = false }
-re_view_time_series = { path = "crates/viewer/re_view_time_series", version = "=0.22.0-alpha.1", default-features = false }
-re_time_panel = { path = "crates/viewer/re_time_panel", version = "=0.22.0-alpha.1", default-features = false }
-re_ui = { path = "crates/viewer/re_ui", version = "=0.22.0-alpha.1", default-features = false }
-re_viewer = { path = "crates/viewer/re_viewer", version = "=0.22.0-alpha.1", default-features = false }
-re_viewer_context = { path = "crates/viewer/re_viewer_context", version = "=0.22.0-alpha.1", default-features = false }
-re_viewport = { path = "crates/viewer/re_viewport", version = "=0.22.0-alpha.1", default-features = false }
-re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version = "=0.22.0-alpha.1", default-features = false }
-re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.22.0-alpha.1", default-features = false }
+re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.23.0-alpha.1", default-features = false }
+re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.23.0-alpha.1", default-features = false }
+re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.23.0-alpha.1", default-features = false }
+re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.23.0-alpha.1", default-features = false }
+re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.23.0-alpha.1", default-features = false }
+re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.23.0-alpha.1", default-features = false }
+re_renderer = { path = "crates/viewer/re_renderer", version = "=0.23.0-alpha.1", default-features = false }
+re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.23.0-alpha.1", default-features = false }
+re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.23.0-alpha.1", default-features = false }
+re_time_panel = { path = "crates/viewer/re_time_panel", version = "=0.23.0-alpha.1", default-features = false }
+re_ui = { path = "crates/viewer/re_ui", version = "=0.23.0-alpha.1", default-features = false }
+re_view = { path = "crates/viewer/re_view", version = "=0.23.0-alpha.1", default-features = false }
+re_view_bar_chart = { path = "crates/viewer/re_view_bar_chart", version = "=0.23.0-alpha.1", default-features = false }
+re_view_spatial = { path = "crates/viewer/re_view_spatial", version = "=0.23.0-alpha.1", default-features = false }
+re_view_dataframe = { path = "crates/viewer/re_view_dataframe", version = "=0.23.0-alpha.1", default-features = false }
+re_view_graph = { path = "crates/viewer/re_view_graph", version = "=0.23.0-alpha.1", default-features = false }
+re_view_map = { path = "crates/viewer/re_view_map", version = "=0.23.0-alpha.1", default-features = false }
+re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.23.0-alpha.1", default-features = false }
+re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.23.0-alpha.1", default-features = false }
+re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.23.0-alpha.1", default-features = false }
+re_view_time_series = { path = "crates/viewer/re_view_time_series", version = "=0.23.0-alpha.1", default-features = false }
+re_viewer = { path = "crates/viewer/re_viewer", version = "=0.23.0-alpha.1", default-features = false }
+re_viewer_context = { path = "crates/viewer/re_viewer_context", version = "=0.23.0-alpha.1", default-features = false }
+re_viewport = { path = "crates/viewer/re_viewport", version = "=0.23.0-alpha.1", default-features = false }
+re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version = "=0.23.0-alpha.1", default-features = false }
+re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.23.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
 ewebsock = "0.8.0"
@@ -127,27 +129,27 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # egui-crates:
-ecolor = "0.30.0"
-eframe = { version = "0.30.0", default-features = false, features = [
+ecolor = "0.31.1"
+eframe = { version = "0.31.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.30.0", features = [
+egui = { version = "0.31.1", features = [
   "callstack",
   "color-hex",
   "log",
   "rayon",
 ] }
-egui_commonmark = { version = "0.19", default-features = false }
-egui_extras = { version = "0.30.0", features = ["http", "image", "serde"] }
-egui_kittest = { version = "0.30.0", features = ["wgpu", "snapshot", "eframe"] }
-egui_plot = "0.30.0" # https://github.com/emilk/egui_plot
-egui_table = "0.2.0" # https://github.com/rerun-io/egui_table
-egui_tiles = "0.11.0" # https://github.com/rerun-io/egui_tiles
-egui-wgpu = "0.30.0"
-emath = "0.30.0"
+egui_commonmark = { version = "0.20.0", default-features = false }
+egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
+egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
+egui_plot = "0.31.0" # https://github.com/emilk/egui_plot
+egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
+egui_tiles = "0.12.0" # https://github.com/rerun-io/egui_tiles
+egui-wgpu = "0.31.1"
+emath = "0.31.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -177,9 +179,11 @@ clean-path = "0.2"
 colored = "2.1"
 comfy-table = { version = "7.0", default-features = false }
 console_error_panic_hook = "0.1.6"
+const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
+crossbeam-channel = "0.5"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -190,6 +194,7 @@ ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
 flatbuffers = "24.12.23"
+futures = "0.3"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
@@ -231,8 +236,10 @@ object_store = { version = "0.10.2" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
+parquet = { version = "53.4", default-features = false }
 paste = "1.0"
 pathdiff = "0.2"
+percent-encoding = "2.3"
 pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
@@ -243,6 +250,7 @@ proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
 prost = "0.13.3"
 prost-build = "0.13.3"
+prost-types = "0.13.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.22.5"
@@ -251,16 +259,16 @@ quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
+rexif = "0.7.5"
 rfd = { version = "0.15", default-features = false, features = [
   "async-std",
   "xdg-portal",
 ] }
-rmp-serde = "1"
 ron = "0.8.0"
 roxmltree = "0.19.0"
 rust-format = "0.3"
-rustdoc-json = "0.9.2"
-rustdoc-types = "0.29.1"
+rustdoc-json = "0.9.4"
+rustdoc-types = "0.35.0"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
@@ -281,6 +289,7 @@ sysinfo = { version = "0.30.1", default-features = false }
 tap = "1.0.1"
 tempfile = "3.0"
 thiserror = "1.0"
+tiff = "0.9.1"
 time = { version = "0.3.36", default-features = false, features = [
   "wasm-bindgen",
 ] }
@@ -307,7 +316,7 @@ url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
-walkers = "0.32"
+walkers = "0.34.0"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
@@ -338,16 +347,23 @@ wgpu = { version = "24.0", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-xshell = "0.2"
+xshell = "0.2.7"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
 
 # ---------------------------------------------------------------------------------
 [profile]
 
+## Dev
+
 # Our dev profile has some optimizations turned on, as well as debug assertions.
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
+# See <https://github.com/rerun-io/rerun/pull/9094> for a thorough explanation of why.
+# This does not affect cfg(debug_assertions).
+# Use the `debugging` profile (see below) if you need debug symbols.
+debug = false
+
 [profile.dev.package.re_video]
 opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
 
@@ -356,30 +372,38 @@ opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
 # egui has a feature where if you hold down all modifiers keys on your keyboard and hover any UI widget,
 # you will see the backtrace to that widget, and we don't want to break that feature in dev builds.
 
-[profile.dev.build-override]
-debug = true # enable debug symbols for build scripts when building in dev (codegen backtraces!)
-
 # Optimize all dependencies even in debug builds (does not affect workspace packages):
 [profile.dev.package."*"]
 opt-level = 2
 
+
+## Release
 
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 
-[profile.bench]
-debug = true
+## Bench
 
+[profile.bench]
+debug = false
+
+
+## Debugging
 
 # Set up a `debugging` profile that turns of optimization of the workspace and select packages.
 # Note that the profile name `debug` is reserved.
 [profile.debugging]
 inherits = "dev"
 opt-level = 0
+debug = true
+
 [profile.debugging.package.egui]
 opt-level = 0 # we often debug egui via Rerun
+
+[profile.debugging.build-override]
+debug = true # enable debug symbols for build scripts
 
 
 # ---------------------------------------------------------------------------------
@@ -397,8 +421,9 @@ semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
 unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unexpected_cfgs = { level = "deny", check-cfg = [
-  'cfg(TODO)', # NOLINT
-] } # allow `#[cfg(TODO)]` to compile (it will still fail CI)
+  'cfg(TODO)',                      # NOLINT
+  'cfg(disable_web_viewer_server)',
+] } # NOLINT allow `#[cfg(TODO)]` to compile (it will still fail CI)
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
 unused_lifetimes = "warn"
@@ -472,6 +497,7 @@ macro_use_imports = "warn"
 manual_assert = "warn"
 manual_clamp = "warn"
 manual_instant_elapsed = "warn"
+manual_is_power_of_two = "warn"
 manual_is_variant_and = "warn"
 manual_let_else = "warn"
 manual_ok_or = "warn"
@@ -495,10 +521,12 @@ needless_for_each = "warn"
 needless_pass_by_ref_mut = "warn"
 needless_pass_by_value = "warn"
 negative_feature_names = "warn"
+non_zero_suggestions = "warn"
 nonstandard_macro_braces = "warn"
 option_as_ref_cloned = "warn"
 option_option = "warn"
 path_buf_push_overwrite = "warn"
+pathbuf_init_then_push = "warn"
 ptr_as_ptr = "warn"
 ptr_cast_constness = "warn"
 pub_underscore_fields = "warn"
@@ -525,6 +553,7 @@ string_to_string = "warn"
 suspicious_command_arg_space = "warn"
 suspicious_xor_used_as_pow = "warn"
 todo = "warn"
+too_long_first_doc_paragraph = "warn"
 too_many_lines = "warn"
 trailing_empty_array = "warn"
 trait_duplication_in_bounds = "warn"
@@ -535,6 +564,7 @@ unimplemented = "warn"
 uninhabited_references = "warn"
 uninlined_format_args = "warn"
 unnecessary_box_returns = "warn"
+unnecessary_literal_bound = "warn"
 unnecessary_safety_doc = "warn"
 unnecessary_struct_initialization = "warn"
 unnecessary_wraps = "warn"
@@ -542,6 +572,7 @@ unnested_or_patterns = "warn"
 unused_peekable = "warn"
 unused_rounding = "warn"
 unused_self = "warn"
+unused_trait_names = "warn"
 unwrap_used = "warn"
 use_self = "warn"
 useless_transmute = "warn"
@@ -562,6 +593,7 @@ iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"
+ref_option = "allow"
 significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 
 [patch.crates-io]
@@ -573,13 +605,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-ecolor = { git = "https://github.com/emilk/egui.git", branch = "master" }
-eframe = { git = "https://github.com/emilk/egui.git", branch = "master" }
-egui = { git = "https://github.com/emilk/egui.git", branch = "master" }
-egui_extras = { git = "https://github.com/emilk/egui.git", branch = "master" }
-egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "master" }
-egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "master" }
-emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# ecolor = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# eframe = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# egui = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "master" }
+# emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -590,13 +622,15 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-20 - everything is id identified, allowing for instance reading out hidden items reliable
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
-#egui_tiles = { path = "../egui_tiles" }
+# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
+# egui_tiles = { path = "../egui_tiles" }
 
-egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
+
+# egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 

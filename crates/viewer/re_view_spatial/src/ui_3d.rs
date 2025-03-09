@@ -11,15 +11,15 @@ use re_renderer::{
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{GridSpacing, Visible},
+        components::GridSpacing,
     },
-    components::ViewCoordinates,
+    components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
-use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
+use re_ui::{icon_text, icons, ContextExt as _, Help, ModifiersText, MouseButtonText};
 use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
+    SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
     gpu_bridge, Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -386,36 +386,43 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_markdown(egui_ctx: &egui::Context) -> String {
-    // TODO(#6876): this line was removed to from the help text, because the corresponding feature no
-    // longer works. To be restored when it works again (or deleted forever).
-    /* - Reset the view again with {TRACKED_OBJECT_RESTORE_KEY}.*/
-
-    format!(
-        "# 3D view
-
-Display 3D content in the reference frame defined by the space origin.
-
-## Navigation controls
-
-- Click and drag the {rotate3d_button} to rotate.
-- Click and drag with the {drag_pan3d_button} to pan.
-- Drag with the {roll_mouse} (or the {roll_mouse_alt} + holding {roll_mouse_modifier}) to roll the view.
-- Scroll or pinch to zoom.
-- While hovering the 3D view, navigate with the `WASD` and `QE` keys.
-- {slow_down} slows down, {speed_up_3d_modifier} speeds up.
-- Double-click an object to focus the view on it.
-- Double-click on an empty space to reset the view.",
-        rotate3d_button = MouseButtonMarkdown(ROTATE3D_BUTTON),
-        drag_pan3d_button = MouseButtonMarkdown(DRAG_PAN3D_BUTTON),
-        roll_mouse = MouseButtonMarkdown(ROLL_MOUSE),
-        roll_mouse_alt = MouseButtonMarkdown(ROLL_MOUSE_ALT),
-        roll_mouse_modifier = ModifiersMarkdown(ROLL_MOUSE_MODIFIER, egui_ctx),
-        slow_down = ModifiersMarkdown(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
-        speed_up_3d_modifier = ModifiersMarkdown(SPEED_UP_3D_MODIFIER, egui_ctx),
-        // TODO(#6876): see above
-        /*TRACKED_OBJECT_RESTORE_KEY = KeyMarkdown(TRACKED_OBJECT_RESTORE_KEY),*/
-    )
+pub fn help(egui_ctx: &egui::Context) -> Help<'static> {
+    Help::new("3D view")
+        .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
+        .control(
+            "Pan",
+            icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+ drag"),
+        )
+        .control("Zoom", icon_text!(icons::SCROLL))
+        .control(
+            "Rotate",
+            icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+ drag"),
+        )
+        .control(
+            "Roll",
+            icon_text!(
+                MouseButtonText(ROLL_MOUSE_ALT),
+                "+",
+                ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
+            ),
+        )
+        .control("Navigate", icon_text!("WASD / QE"))
+        .control(
+            "Slow down / speed up",
+            icon_text!(
+                ModifiersText(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+                "/",
+                ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
+            ),
+        )
+        .control(
+            "Focus",
+            icon_text!("double", icons::LEFT_MOUSE_CLICK, "object"),
+        )
+        .control(
+            "Reset view",
+            icon_text!("double", icons::LEFT_MOUSE_CLICK, "background"),
+        )
 }
 
 impl SpatialView3D {
@@ -486,7 +493,7 @@ impl SpatialView3D {
         };
 
         // Various ui interactions draw additional lines.
-        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -511,7 +518,7 @@ impl SpatialView3D {
             state.bounding_boxes.current.extend(glam::Vec3::ZERO);
         }
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -680,7 +687,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx(), self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -725,7 +732,7 @@ impl SpatialView3D {
             grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &re_renderer::renderer::WorldGridConfiguration {
                 color: color.into(),
                 plane: plane.into(),

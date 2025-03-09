@@ -102,17 +102,25 @@ impl ComponentDescriptor {
         }
     }
 
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.component_name.sanity_check();
+    }
+
     /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
     ///
     /// This is the default `Display` implementation for [`ComponentDescriptor`].
     #[inline]
     pub fn full_name(&self) -> String {
+        self.sanity_check();
         self.to_string()
     }
 
     /// Returns the unqualified name, e.g. `Points3D:Position3D#positions`.
     #[inline]
     pub fn short_name(&self) -> String {
+        self.sanity_check();
         self.to_any_string(true)
     }
 }
@@ -135,6 +143,7 @@ impl ComponentDescriptor {
     #[inline]
     pub fn new(component_name: impl Into<ComponentName>) -> Self {
         let component_name = component_name.into();
+        component_name.sanity_check();
         Self {
             archetype_name: None,
             archetype_field_name: None,
@@ -197,7 +206,7 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
     fn from(field: arrow::datatypes::Field) -> Self {
         let md = field.metadata();
 
-        Self {
+        let descr = Self {
             archetype_name: md
                 .get(FIELD_METADATA_KEY_ARCHETYPE_NAME)
                 .cloned()
@@ -206,7 +215,9 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
                 .get(FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME)
                 .cloned()
                 .map(Into::into),
-            component_name: field.name().clone().into(),
-        }
+            component_name: field.name().to_string().into(),
+        };
+        descr.sanity_check();
+        descr
     }
 }

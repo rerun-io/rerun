@@ -19,10 +19,8 @@ workspace = true
 all-features = true
 
 [dependencies]
-re_data_source.workspace = true
 re_data_ui.workspace = true # Needed for `item_ui`.
 re_format.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = [

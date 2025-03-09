@@ -4,7 +4,7 @@
 using namespace rerun::demo;
 
 int main() {
-    // Create a new `RecordingStream` which sends data over TCP to the viewer process.
+    // Create a new `RecordingStream` which sends data over gRPC to the viewer process.
     const auto rec = rerun::RecordingStream("rerun_example_quick_start_spawn");
     rec.spawn().exit_on_failure();
 

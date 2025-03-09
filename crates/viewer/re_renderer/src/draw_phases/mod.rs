@@ -1,5 +1,5 @@
-// TODO(andreas): The concept of DrawPhase implementors is very much in progress!
-// Need to start to formalize this further and create implementors for all DrawPhases to build up our render graph.
+// TODO(andreas): The concept of DrawPhase implementers is very much in progress!
+// Need to start to formalize this further and create implementers for all DrawPhases to build up our render graph.
 
 mod outlines;
 pub use outlines::{OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor};

@@ -25,7 +25,7 @@ impl DataUi for ComponentName {
 
                 // Only show the first line of the docs:
                 if let Some(markdown) = ctx
-                    .reflection
+                    .reflection()
                     .components
                     .get(self)
                     .map(|info| info.docstring_md)
@@ -38,7 +38,8 @@ impl DataUi for ComponentName {
                 }
 
                 if let Some(url) = self.doc_url() {
-                    ui.re_hyperlink("Full documentation", url);
+                    // Always open in a new tab
+                    ui.re_hyperlink("Full documentation", url, true);
                 }
             });
         }

@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -25,7 +25,8 @@ pub struct RotationAxisAngle {
     ///
     /// This is not required to be normalized.
     /// However, if normalization of the rotation axis fails (typically due to a zero vector)
-    /// the rotation is treated as an invalid transform.
+    /// the rotation is treated as an invalid transform, unless the angle is zero in which case
+    /// it is treated as an identity.
     pub axis: crate::datatypes::Vec3D,
 
     /// How much to rotate around the axis.

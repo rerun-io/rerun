@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from typing import Optional
 
 from ..datatypes import Float32ArrayLike, Utf8Like
 from .api import Container, View
@@ -16,7 +17,7 @@ class Horizontal(Container):
         contents: Optional[Iterable[Container | View]] = None,
         column_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new horizontal container.
 
@@ -35,7 +36,11 @@ class Horizontal(Container):
 
         """
         super().__init__(
-            *args, contents=contents, kind=ContainerKind.Horizontal, column_shares=column_shares, name=name
+            *args,
+            contents=contents,
+            kind=ContainerKind.Horizontal,
+            column_shares=column_shares,
+            name=name,
         )
 
 
@@ -48,7 +53,7 @@ class Vertical(Container):
         contents: Optional[Iterable[Container | View]] = None,
         row_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new vertical container.
 
@@ -80,7 +85,7 @@ class Grid(Container):
         row_shares: Optional[Float32ArrayLike] = None,
         grid_columns: Optional[int] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new grid container.
 
@@ -123,7 +128,7 @@ class Tabs(Container):
         contents: Optional[Iterable[Container | View]] = None,
         active_tab: Optional[int | str] = None,
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a new tab container.
 

@@ -6,7 +6,7 @@ use re_log_types::EntityPathHash;
 use re_types::{
     archetypes::{InstancePoses3D, Transform3D},
     components::{ImagePlaneDistance, PinholeProjection},
-    Archetype, Component as _, ComponentNameSet,
+    Archetype as _, Component as _, ComponentNameSet,
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
@@ -174,7 +174,7 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
-        debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
+        debug_assert_transform_field_order(ctx.viewer_ctx.reflection());
 
         // Make sure transform cache is up to date.
         // TODO(andreas): This is a rather annoying sync point between different views.

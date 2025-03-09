@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pyarrow as pa
 import rerun_bindings as bindings
@@ -35,6 +36,9 @@ class IndicatorComponentBatch:
 
         """
         self.data = pa.nulls(1, type=pa.null())
+        assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
+            f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
+        )
         self._archetype_name = archetype_name
 
     def component_name(self) -> str:
@@ -116,8 +120,7 @@ def log(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -145,7 +148,7 @@ def log(
     else:
         raise TypeError(
             f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
-            f"but got {type(entity)} instead."
+            f"but got {type(entity)} instead.",
         )
 
     for ext in extra:
@@ -156,10 +159,10 @@ def log(
         else:
             raise TypeError(
                 f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
-                f"but got {type(entity)} instead."
+                f"but got {type(entity)} instead.",
             )
 
-    log_components(
+    _log_components(
         entity_path=entity_path,
         components=components,
         static=static,
@@ -167,17 +170,15 @@ def log(
     )
 
 
-@catch_and_log_exceptions()
-def log_components(
+def _log_components(
     entity_path: str | list[str],
-    components: Iterable[DescribedComponentBatch],
+    components: list[DescribedComponentBatch],
     *,
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,
 ) -> None:
     r"""
-    Log an entity from a collection of `ComponentBatchLike` objects.
+    Internal method to log an entity from a collection of `ComponentBatchLike` objects.
 
     See also: [`rerun.log`][].
 
@@ -204,24 +205,16 @@ def log_components(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
         defaults to the current active data recording, if there is one. See
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
-    strict:
-        If True, raise exceptions on non-loggable data.
-        If False, warn on non-loggable data.
-        if None, use the global default from `rerun.strict_mode()`
-
     """
 
     instanced: dict[ComponentDescriptor, pa.Array] = {}
-
-    components = list(components)
 
     descriptors = [comp.component_descriptor() for comp in components]
     arrow_arrays = [comp.as_arrow_array() for comp in components]
@@ -292,8 +285,7 @@ def log_file_from_path(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -347,8 +339,7 @@ def log_file_from_contents(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-        [`rerun.set_time_nanos`][] will also be included.
+        Additional timelines set by [`rerun.set_index`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,

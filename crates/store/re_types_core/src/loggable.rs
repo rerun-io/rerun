@@ -6,7 +6,7 @@ use re_byte_size::SizeBytes;
 
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
-#[allow(unused_imports)] // used in docstrings
+#[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
 
 // ---
@@ -75,6 +75,13 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     ) -> crate::DeserializationResult<Vec<Option<Self>>> {
         Self::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
     }
+
+    /// Verifies that the given Arrow array can be deserialized into a collection of [`Self`]s.
+    ///
+    /// Calls [`Self::from_arrow`] and returns an error if it fails.
+    fn verify_arrow_array(data: &dyn arrow::array::Array) -> crate::DeserializationResult<()> {
+        Self::from_arrow(data).map(|_| ())
+    }
 }
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
@@ -121,6 +128,7 @@ pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ComponentName;
 );
 
@@ -130,6 +138,7 @@ re_string_interner::declare_new_type!(
 impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: ComponentName) -> Self {
+        name.sanity_check();
         Cow::Owned(ComponentDescriptor::new(name))
     }
 }
@@ -140,16 +149,29 @@ impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
 impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: &ComponentName) -> Self {
+        name.sanity_check();
         Cow::Owned(ComponentDescriptor::new(*name))
     }
 }
 
 impl ComponentName {
+    /// Runs some asserts in debug mode to make sure the name is not weird.
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        let full_name = self.0.as_str();
+        debug_assert!(
+            !full_name.starts_with("rerun.components.rerun.components.") && !full_name.contains(':'),
+            "DEBUG ASSERT: Found component with full name {full_name:?}. Maybe some bad round-tripping?"
+        );
+    }
+
     /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.
     ///
     /// This is the default `Display` implementation for [`ComponentName`].
     #[inline]
     pub fn full_name(&self) -> &'static str {
+        self.sanity_check();
         self.0.as_str()
     }
 
@@ -163,6 +185,7 @@ impl ComponentName {
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
+        self.sanity_check();
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.components.") {
             short_name
@@ -238,6 +261,7 @@ impl re_byte_size::SizeBytes for ComponentName {
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
+    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct DatatypeName;
 );
 

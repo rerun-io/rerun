@@ -58,7 +58,7 @@ def ensure_opencv_version_ok() -> None:
         raise RuntimeError(
             """Opencv 4.6 contains a bug which will unpack some videos with the incorrect orientation.
                 See: https://github.com/opencv/opencv/issues/22088
-                Please upgrade or downgrade as appropriate."""
+                Please upgrade or downgrade as appropriate.""",
         )
 
 
@@ -81,7 +81,8 @@ def ensure_recording_downloaded(recording_name: str, dataset_dir: Path) -> Path:
     ensure_downloaded(f"{recording_url}/{VIDEO_FILENAME}", local_recording_dir / VIDEO_FILENAME)
     ensure_downloaded(f"{recording_url}/{GEOMETRY_FILENAME}", local_recording_dir / GEOMETRY_FILENAME)
     ensure_downloaded(
-        f"{DATASET_BASE_URL}/annotations/{recording_id}.pbdata", local_recording_dir / ANNOTATIONS_FILENAME
+        f"{DATASET_BASE_URL}/annotations/{recording_id}.pbdata",
+        local_recording_dir / ANNOTATIONS_FILENAME,
     )
 
     return local_recording_dir

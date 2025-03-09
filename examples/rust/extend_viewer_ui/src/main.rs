@@ -3,6 +3,7 @@
 use re_viewer::external::{
     arrow, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
+use re_viewer::AsyncRuntimeHandle;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -11,7 +12,8 @@ use re_viewer::external::{
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
 
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
@@ -21,13 +23,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for TCP connections from Rerun's logging SDKs.
+    // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_sdk_comms::serve(
-        "0.0.0.0",
-        re_sdk_comms::DEFAULT_SERVER_PORT,
-        Default::default(),
-    )?;
+    let rx = re_grpc_server::spawn_with_recv(
+        "0.0.0.0:9876".parse()?,
+        "75%".parse()?,
+        re_grpc_server::shutdown::never(),
+    );
 
     let mut native_options = re_viewer::native::eframe_options(None);
     native_options.viewport = native_options
@@ -52,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))
@@ -108,7 +111,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:
-    let timeline = re_log_types::Timeline::log_time();
+    let timeline = re_log_types::TimelineName::log_time();
 
     ui.separator();
 
@@ -128,7 +131,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
 fn entity_ui(
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
-    timeline: re_log_types::Timeline,
+    timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
@@ -148,7 +151,7 @@ fn entity_ui(
 fn component_ui(
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
-    timeline: re_log_types::Timeline,
+    timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
     component_name: re_types::ComponentName,
 ) {

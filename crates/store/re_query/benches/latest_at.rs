@@ -4,10 +4,10 @@
 use std::sync::Arc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
-use re_chunk::{Chunk, RowId};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber, LatestAtQuery};
+use re_chunk::{Chunk, RowId, TimelineName};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
 use re_query::clamped_zip_1x1;
 use re_query::{LatestAtResults, QueryCache};
@@ -268,7 +268,7 @@ struct SavePoint {
 }
 
 fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SavePoint> {
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_frame_nr = TimelineName::new("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
     let mut ret = Vec::with_capacity(NUM_POINTS as _);
@@ -301,7 +301,7 @@ struct SaveString {
 }
 
 fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SaveString> {
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_frame_nr = TimelineName::new("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);

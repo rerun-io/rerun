@@ -1,7 +1,7 @@
 use super::{wait_for_output, Channel, Example};
 use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::ParallelIterator;
+use rayon::prelude::IntoParallelIterator as _;
+use rayon::prelude::ParallelIterator as _;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::path::PathBuf;

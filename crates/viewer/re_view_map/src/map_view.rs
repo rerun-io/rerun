@@ -1,8 +1,8 @@
-use egui::{Context, NumExt as _, Rect, Response};
+use egui::{Context, Modifiers, NumExt as _, Rect, Response};
 use re_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
@@ -12,9 +12,9 @@ use re_types::{
         components::MapProvider,
         components::ZoomLevel,
     },
-    View, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
-use re_ui::list_item;
+use re_ui::{icon_text, icons, list_item, Help, ModifiersText};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -47,7 +47,7 @@ impl Default for MapViewState {
 
             // default to Rerun HQ whenever we have no data (either now or historically) to provide
             // a better location
-            last_center_position: walkers::Position::from_lat_lon(59.319224, 18.075514),
+            last_center_position: walkers::lat_lon(59.319224, 18.075514),
             last_gpu_picking_result: None,
         }
     }
@@ -102,17 +102,19 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Map view
-
-Displays geospatial primitives on a map.
-
-## Navigation controls
-
-- Pan by dragging.
-- Zoom with pinch gesture.
-- Double-click to reset the view."
-            .to_owned()
+    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Map view")
+            .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control(
+                "Zoom",
+                icon_text!(
+                    ModifiersText(Modifiers::COMMAND, egui_ctx),
+                    "+",
+                    icons::SCROLL
+                ),
+            )
+            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
@@ -301,16 +303,16 @@ Displays geospatial primitives on a map.
         //
 
         let mut view_builder =
-            create_view_builder(ctx.render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx.render_ctx(), ui.ctx(), map_rect, &query.highlights);
 
         geo_line_strings_visualizers.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
         )?;
         geo_points_visualizer.queue_draw_data(
-            ctx.render_ctx,
+            ctx.render_ctx(),
             &mut view_builder,
             &projector,
             &query.highlights,
@@ -318,7 +320,7 @@ Displays geospatial primitives on a map.
 
         handle_picking_and_ui_interactions(
             ctx,
-            ctx.render_ctx,
+            ctx.render_ctx(),
             ui.ctx(),
             &mut view_builder,
             query,
@@ -442,7 +444,7 @@ fn handle_picking_and_ui_interactions(
             ),
             picking_readback_identifier,
             (),
-            ctx.app_options.show_picking_debug_overlay,
+            ctx.app_options().show_picking_debug_overlay,
         )?;
     } else {
         // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
@@ -503,7 +505,7 @@ fn handle_ui_interactions(
 fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
     #[cfg(not(target_arch = "wasm32"))]
     let options = walkers::HttpOptions {
-        cache: _ctx.app_options.cache_subdirectory("map_view"),
+        cache: _ctx.app_options().cache_subdirectory("map_view"),
         ..Default::default()
     };
 
@@ -518,7 +520,7 @@ fn get_tile_manager(
     provider: MapProvider,
     egui_ctx: &Context,
 ) -> HttpTiles {
-    let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
+    let mapbox_access_token = ctx.app_options().mapbox_access_token().unwrap_or_default();
 
     let options = http_options(ctx);
 

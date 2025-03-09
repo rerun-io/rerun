@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike"]
 class Uuid(UuidExt):
     """**Datatype**: A 16-byte UUID."""
 
-    def __init__(self: Any, bytes: UuidLike):
+    def __init__(self: Any, bytes: UuidLike) -> None:
         """
         Create a new instance of the Uuid datatype.
 
@@ -46,9 +47,9 @@ class Uuid(UuidExt):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UuidExt in uuid_ext.py
-        return np.asarray(self.bytes, dtype=dtype)
+        return np.asarray(self.bytes, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

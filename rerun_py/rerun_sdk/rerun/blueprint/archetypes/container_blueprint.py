@@ -34,7 +34,7 @@ class ContainerBlueprint(Archetype):
         active_tab: datatypes.EntityPathLike | None = None,
         visible: datatypes.BoolLike | None = None,
         grid_columns: datatypes.UInt32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the ContainerBlueprint archetype.
 
@@ -257,10 +257,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: blueprint_components.VisibleBatch | None = field(
+    visible: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether this container is visible.
     #

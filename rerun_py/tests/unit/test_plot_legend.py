@@ -37,7 +37,7 @@ def test_scalar_axis() -> None:
             f"rr.PlotLegend(\n"
             f"    corner={corner!r}\n"  #
             f"    visible={visible!r}\n"
-            f")"
+            f")",
         )
         arch = rrb.PlotLegend(
             corner=corner,
@@ -46,6 +46,6 @@ def test_scalar_axis() -> None:
         print(f"{arch}\n")
 
         assert arch.corner == blueprint_components.Corner2DBatch._converter(
-            none_empty_or_value(corner, rrb.Corner2D.LeftTop)
+            none_empty_or_value(corner, rrb.Corner2D.LeftTop),
         )
-        assert arch.visible == blueprint_components.VisibleBatch._converter(none_empty_or_value(visible, True))
+        assert arch.visible == rr.components.VisibleBatch._converter(none_empty_or_value(visible, True))

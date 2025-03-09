@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["UInt16", "UInt16ArrayLike", "UInt16Batch", "UInt16Like"]
 class UInt16:
     """**Datatype**: A 16bit unsigned integer."""
 
-    def __init__(self: Any, value: UInt16Like):
+    def __init__(self: Any, value: UInt16Like) -> None:
         """Create a new instance of the UInt16 datatype."""
 
         # You can define your own __init__ function as a member of UInt16Ext in uint16_ext.py
@@ -31,9 +32,9 @@ class UInt16:
 
     value: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt16Ext in uint16_ext.py
-        return np.asarray(self.value, dtype=dtype)
+        return np.asarray(self.value, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.value)

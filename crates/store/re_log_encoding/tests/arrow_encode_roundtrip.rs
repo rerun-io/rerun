@@ -1,3 +1,5 @@
+use similar_asserts::assert_eq;
+
 use re_build_info::CrateVersion;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_encoding::{
@@ -30,8 +32,8 @@ fn encode_roundtrip() {
         .build()
         .unwrap();
 
-    let transport = chunk.to_transport().unwrap();
-    assert_eq!(Chunk::from_transport(&transport).unwrap(), chunk);
+    let record_batch = chunk.to_record_batch().unwrap();
+    assert_eq!(Chunk::from_record_batch(&record_batch).unwrap(), chunk);
 
     let arrow_msg = chunk.to_arrow_msg().unwrap();
     assert_eq!(Chunk::from_arrow_msg(&arrow_msg).unwrap(), chunk);
@@ -39,21 +41,15 @@ fn encode_roundtrip() {
     let store_id = StoreId::empty_recording();
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
-    for option in [
-        EncodingOptions::MSGPACK_UNCOMPRESSED,
-        EncodingOptions::MSGPACK_COMPRESSED,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-    ] {
-        let crate_version = CrateVersion::LOCAL;
-        let encoded =
-            encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-        let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
-        similar_asserts::assert_eq!(
-            strip_arrow_extensions_from_log_messages(&decoded),
-            strip_arrow_extensions_from_log_messages(&messages),
-            "Failed to roundtrip chunk with option {option:?}"
-        );
-    }
+    let option = EncodingOptions::PROTOBUF_COMPRESSED;
+    let crate_version = CrateVersion::LOCAL;
+    let encoded = encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
+    let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
+    similar_asserts::assert_eq!(
+        strip_arrow_extensions_from_log_messages(&decoded),
+        strip_arrow_extensions_from_log_messages(&messages),
+        "Failed to roundtrip chunk with option {option:?}"
+    );
 }
 
 // TODO(#3741): remove this once we are all in on arrow-rs

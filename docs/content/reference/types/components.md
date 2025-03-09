@@ -59,12 +59,12 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
-* [`RecordingUri`](components/recording_uri.md): A recording URI (Uniform Resource Identifier).
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
+* [`SeriesVisible`](components/series_visible.md): Like `Visible`, but for time series.
 * [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
@@ -83,4 +83,5 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
 

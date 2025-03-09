@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -36,7 +37,9 @@ class GraphNodes(Archetype):
     rr.log(
         "simple",
         rr.GraphNodes(
-            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+            node_ids=["a", "b", "c"],
+            positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
+            labels=["A", "B", "C"],
         ),
         rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
     )
@@ -62,7 +65,7 @@ class GraphNodes(Archetype):
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the GraphNodes archetype.
 
@@ -224,11 +227,34 @@ class GraphNodes(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "node_ids": node_ids,
+            "positions": positions,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "radii": radii,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     node_ids: components.GraphNodeBatch | None = field(

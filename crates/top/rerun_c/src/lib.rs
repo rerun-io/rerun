@@ -20,7 +20,7 @@ use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
-    external::nohash_hasher::IntMap,
+    external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
@@ -226,11 +226,14 @@ impl CSortingStatus {
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum CTimeType {
-    /// Normal wall time.
-    Time = 0,
-
     /// Used e.g. for frames in a film.
     Sequence = 1,
+
+    /// Nanoseconds.
+    Duration = 2,
+
+    /// Nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    Timestamp = 3,
 }
 
 /// See `rr_timeline` in the C header.
@@ -251,8 +254,9 @@ impl TryFrom<CTimeline> for Timeline {
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
         let name = timeline.name.as_str("timeline.name")?;
         let typ = match timeline.typ {
-            CTimeType::Time => TimeType::Time,
             CTimeType::Sequence => TimeType::Sequence,
+            // TODO(#8635): differentiate between duration and timestamp
+            CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
         };
         Ok(Self::new(name, typ))
     }
@@ -283,6 +287,7 @@ pub enum CErrorCode {
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
+    InvalidServerUrl = 0x0000_0001a,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamRuntimeFailure,
@@ -558,40 +563,36 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_connect_impl(
+fn rr_recording_stream_connect_grpc_impl(
     stream: CRecordingStream,
-    tcp_addr: CStringView,
+    url: CStringView,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let tcp_addr = tcp_addr.as_str("tcp_addr")?;
-    let tcp_addr = tcp_addr.parse().map_err(|err| {
-        CError::new(
-            CErrorCode::InvalidSocketAddress,
-            &format!("Failed to parse tcp address {tcp_addr:?}: {err}"),
-        )
-    })?;
-
+    let url = url.as_str("url")?;
     let flush_timeout = if flush_timeout_sec >= 0.0 {
         Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
     } else {
         None
     };
-    stream.connect_opts(tcp_addr, flush_timeout);
+
+    if let Err(err) = stream.connect_grpc_opts(url, flush_timeout) {
+        return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string()));
+    }
 
     Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_connect(
+pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
-    tcp_addr: CStringView,
+    url: CStringView,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
         err.write_error(error);
     }
 }
@@ -681,73 +682,32 @@ pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut C
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_sequence_impl(
+fn rr_recording_stream_set_index_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
-    sequence: i64,
+    time_type: CTimeType,
+    value: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, sequence);
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_sequence(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    sequence: i64,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
-        err.write_error(error);
+    let stream = recording_stream(stream)?;
+    match time_type {
+        CTimeType::Sequence => stream.set_time_sequence(timeline, value),
+        // TODO(#8635): do different things for Duration and Timestamp
+        CTimeType::Duration | CTimeType::Timestamp => stream.set_time_nanos(timeline, value),
     }
-}
-
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_seconds_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    seconds: f64,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_seconds(timeline, seconds);
     Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_seconds(
+pub extern "C" fn rr_recording_stream_set_index(
     stream: CRecordingStream,
     timeline_name: CStringView,
-    seconds: f64,
+    time_type: CTimeType,
+    value: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
-        err.write_error(error);
-    }
-}
-
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_time_nanos_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    nanos: i64,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_nanos(timeline, nanos);
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_set_time_nanos(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    nanos: i64,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
+    if let Err(err) = rr_recording_stream_set_index_impl(stream, timeline_name, time_type, value) {
         err.write_error(error);
     }
 }
@@ -959,7 +919,7 @@ fn rr_recording_stream_send_columns_impl(
     let stream = recording_stream(stream)?;
     let entity_path = entity_path.as_str("entity_path")?;
 
-    let time_columns: IntMap<Timeline, TimeColumn> = time_columns
+    let time_columns: IntMap<TimelineName, TimeColumn> = time_columns
         .iter()
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
@@ -973,7 +933,7 @@ fn rr_recording_stream_send_columns_impl(
             })?;
 
             Ok((
-                timeline,
+                *timeline.name(),
                 TimeColumn::new(
                     time_column.sorting_status.is_sorted(),
                     timeline,

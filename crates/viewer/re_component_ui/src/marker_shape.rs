@@ -74,7 +74,7 @@ pub(crate) fn paint_marker(
 ) {
     use egui_plot::PlotItem as _;
 
-    let points = egui_plot::Points::new([0.0, 0.0])
+    let points = egui_plot::Points::new("placeholder", [0.0, 0.0])
         .shape(marker)
         .color(color)
         .radius(rect.size().min_elem() / 2.0)

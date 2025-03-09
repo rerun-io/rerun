@@ -297,27 +297,18 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
-    // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-    // at least on some C++ implementations.
-    // If we'd want to support this in earnest we'd have to create out own string_view type.
-    //
-    // AND_GIVEN("a nullptr for the socket address") {
-    //     THEN("then the connect call returns a null argument error") {
-    //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
-    //     }
-    // }
-    AND_GIVEN("an invalid address for the socket address") {
-        THEN("then the save call fails") {
+void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStream& stream) {
+    AND_GIVEN("an invalid url") {
+        THEN("connect call fails") {
             CHECK(
-                stream.connect_tcp("definitely not valid!", 0.0f).code ==
-                rerun::ErrorCode::InvalidSocketAddress
+                stream.connect_grpc("definitely not valid!", 0.1f).code ==
+                rerun::ErrorCode::InvalidServerUrl
             );
         }
     }
-    AND_GIVEN("a valid socket address " << address) {
-        THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect_tcp(address, 0.0f).is_ok());
+    AND_GIVEN("a valid socket url " << url) {
+        THEN("connect call returns no error") {
+            CHECK(stream.connect_grpc(url, 0.1f).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -340,11 +331,11 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
     }
 }
 
-SCENARIO("RecordingStream can connect", TEST_TAG) {
-    const char* address = "127.0.0.1:9876";
+SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
+    const char* url = "rerun+http://127.0.0.1:9876/proxy";
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
-        test_logging_to_connection(address, stream);
+        test_logging_to_grpc_connection(url, stream);
     }
     WHEN("setting a global RecordingStream and then discarding it") {
         {
@@ -352,7 +343,7 @@ SCENARIO("RecordingStream can connect", TEST_TAG) {
             stream.set_global();
         }
         GIVEN("the current recording stream") {
-            test_logging_to_connection(address, rerun::RecordingStream::current());
+            test_logging_to_grpc_connection(url, rerun::RecordingStream::current());
         }
     }
 }
@@ -433,34 +424,48 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     rerun::RecordingStream stream("test");
 
-    SECTION("Setting time sequence does not log errors") {
-        check_logged_error([&] { stream.set_time_sequence("my sequence", 1); });
+    SECTION("set_index_sequence does not log errors") {
+        check_logged_error([&] { stream.set_index_sequence("sequence", 1); });
     }
-    SECTION("Setting time seconds does not log errors") {
-        check_logged_error([&] { stream.set_time_seconds("my sequence", 1.0); });
-    }
-    SECTION("Setting time nanos does not log errors") {
-        check_logged_error([&] { stream.set_time_nanos("my sequence", 1); });
-    }
-    SECTION("Setting time via chrono duration does not log errors") {
+
+    SECTION("set_index_duration does not log errors") {
         using namespace std::chrono_literals;
-        check_logged_error([&] { stream.set_time("duration", 1.0s); });
-        check_logged_error([&] { stream.set_time("duration", 1000ms); });
+        check_logged_error([&] { stream.set_index_duration("duration", 1.0s); });
+        check_logged_error([&] { stream.set_index_duration("duration", 1000ms); });
     }
-    SECTION("Setting time via chrono duration does not log errors") {
-        check_logged_error([&] { stream.set_time("timepoint", std::chrono::system_clock::now()); });
+    SECTION("set_index_duration_secs does not log errors") {
+        check_logged_error([&] { stream.set_index_duration_secs("duration", 1.0); });
     }
+    SECTION("set_index_duration_nanos does not log errors") {
+        check_logged_error([&] { stream.set_index_duration_nanos("duration", 1); });
+    }
+    SECTION("set_index_timestamp_seconds_since_epoch does not log errors") {
+        check_logged_error([&] {
+            stream.set_index_timestamp_seconds_since_epoch("capture_time", 1.0);
+        });
+    }
+
+    SECTION("set_index_timestamp_nanos_since_epoch does not log errors") {
+        check_logged_error([&] { stream.set_index_timestamp_nanos_since_epoch("capture_time", 1); }
+        );
+    }
+    SECTION("set_index_timestamp does not log errors") {
+        check_logged_error([&] {
+            stream.set_index_timestamp("timepoint", std::chrono::system_clock::now());
+        });
+    }
+
     SECTION("Resetting time does not log errors") {
         check_logged_error([&] { stream.reset_time(); });
     }
     SECTION("Can set time again after resetting the time") {
         check_logged_error([&] { stream.reset_time(); });
-        check_logged_error([&] { stream.set_time_seconds("duration", 1.0f); });
+        check_logged_error([&] { stream.set_index_duration_secs("duration", 1.0f); });
     }
 
     SECTION("Disabling timeline does not log errors") {
         check_logged_error([&] { stream.disable_timeline("doesn't exist"); });
-        check_logged_error([&] { stream.set_time_sequence("exists!", 123); });
+        check_logged_error([&] { stream.set_index_sequence("exists!", 123); });
         check_logged_error([&] { stream.disable_timeline("exists"); });
     }
 }

@@ -29,13 +29,21 @@ re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
+re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 
 # External
-tokio.workspace = true
-tokio-stream = { workspace = true, features = ["sync"] }
-tokio-util.workspace = true
+parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio.workspace = true
+tokio-stream = { workspace = true, features = ["sync"] }
+tokio-util.workspace = true
+
+[dev-dependencies]
+similar-asserts.workspace = true

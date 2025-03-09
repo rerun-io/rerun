@@ -1,26 +1,29 @@
 //! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
 //! table.
 
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef,
-        Int32DictionaryArray as ArrowInt32DictionaryArray, ListArray as ArrowListArray,
+        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
+        ListArray as ArrowListArray,
     },
+    buffer::NullBuffer as ArrowNullBuffer,
+    buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
+use re_chunk_store::LatestAtQuery;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
+use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::ComponentName;
-use re_ui::UiExt;
+use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
+use re_types_core::{ComponentName, DeserializationError, Loggable as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 #[derive(Error, Debug)]
-pub(crate) enum DisplayRecordBatchError {
+pub enum DisplayRecordBatchError {
     #[error("Bad column for timeline '{timeline}': {error}")]
     BadTimeColumn {
         timeline: String,
@@ -29,13 +32,16 @@ pub(crate) enum DisplayRecordBatchError {
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
     UnexpectedComponentColumnDataType(String, ArrowDataType),
+
+    #[error(transparent)]
+    DeserializationError(#[from] DeserializationError),
 }
 
 /// A single column of component data.
 ///
-/// Abstracts over the different possible arrow representation of component data.
+/// Abstracts over the different possible arrow representations of component data.
 #[derive(Debug)]
-pub(crate) enum ComponentData {
+pub enum ComponentData {
     Null,
     ListArray(ArrowListArray),
     DictionaryArray {
@@ -145,7 +151,7 @@ impl ComponentData {
                 data
             };
 
-            ctx.component_ui_registry.ui_raw(
+            ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
                 UiLayout::List,
@@ -164,10 +170,14 @@ impl ComponentData {
 
 /// A single column of data in a record batch.
 #[derive(Debug)]
-pub(crate) enum DisplayColumn {
+pub enum DisplayColumn {
+    RowId {
+        row_ids: Vec<Tuid>,
+    },
     Timeline {
         timeline: Timeline,
         time_data: ArrowScalarBuffer<i64>,
+        time_nulls: Option<ArrowNullBuffer>,
     },
     Component {
         entity_path: EntityPath,
@@ -178,27 +188,30 @@ pub(crate) enum DisplayColumn {
 
 impl DisplayColumn {
     fn try_new(
-        column_descriptor: &ColumnDescriptor,
+        column_descriptor: &ColumnDescriptorRef<'_>,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
-            ColumnDescriptor::Time(desc) => {
+            ColumnDescriptorRef::RowId(_desc) => Ok(Self::RowId {
+                row_ids: Tuid::from_arrow(column_data)?,
+            }),
+
+            ColumnDescriptorRef::Time(desc) => {
                 let timeline = desc.timeline();
 
-                let time_data = TimeColumn::read_array(column_data).map_err(|err| {
-                    DisplayRecordBatchError::BadTimeColumn {
+                let (time_data, time_nulls) = TimeColumn::read_nullable_array(column_data)
+                    .map_err(|err| DisplayRecordBatchError::BadTimeColumn {
                         timeline: timeline.name().as_str().to_owned(),
                         error: err,
-                    }
-                })?;
+                    })?;
 
                 Ok(Self::Timeline {
                     timeline,
                     time_data,
+                    time_nulls,
                 })
             }
-
-            ColumnDescriptor::Component(desc) => Ok(Self::Component {
+            ColumnDescriptorRef::Component(desc) => Ok(Self::Component {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
@@ -206,9 +219,9 @@ impl DisplayColumn {
         }
     }
 
-    pub(crate) fn instance_count(&self, row_index: usize) -> u64 {
+    pub fn instance_count(&self, row_index: usize) -> u64 {
         match self {
-            Self::Timeline { .. } => 1,
+            Self::RowId { .. } | Self::Timeline { .. } => 1,
             Self::Component { component_data, .. } => component_data.instance_count(row_index),
         }
     }
@@ -219,7 +232,7 @@ impl DisplayColumn {
     /// - Argument `instance_index` is the specific instance within the row to display. If `None`,
     ///   a summary of all instances is displayed. If the instance is out-of-bound (aka greater than
     ///   [`Self::instance_count`]), nothing is displayed.
-    pub(crate) fn data_ui(
+    pub fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -235,19 +248,36 @@ impl DisplayColumn {
         }
 
         match self {
+            Self::RowId { row_ids } => {
+                if instance_index.is_some() {
+                    // we only ever display the row id on the summary line
+                    return;
+                }
+
+                ui.label(row_ids[row_index].to_string());
+            }
             Self::Timeline {
                 timeline,
                 time_data,
+                time_nulls,
             } => {
                 if instance_index.is_some() {
                     // we only ever display the row id on the summary line
                     return;
                 }
 
-                if let Some(value) = time_data.get(row_index) {
+                let is_valid = time_nulls
+                    .as_ref()
+                    .map_or(true, |nulls| nulls.is_valid(row_index));
+
+                if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
                     match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
-                            ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                            ui.label(
+                                timeline
+                                    .typ()
+                                    .format(timestamp, ctx.app_options().time_zone),
+                            );
                         }
                         Err(err) => {
                             ui.error_with_details_on_hover(err.to_string());
@@ -257,6 +287,7 @@ impl DisplayColumn {
                     ui.label("-");
                 }
             }
+
             Self::Component {
                 entity_path,
                 component_name,
@@ -278,19 +309,19 @@ impl DisplayColumn {
     /// Try to decode the time from the given row index.
     ///
     /// Succeeds only if the column is a `Timeline` column.
-    pub(crate) fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
+    pub fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
         match self {
             Self::Timeline { time_data, .. } => {
                 let timestamp = time_data.get(row_index)?;
                 TimeInt::try_from(*timestamp).ok()
             }
-            Self::Component { .. } => None,
+            Self::RowId { .. } | Self::Component { .. } => None,
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct DisplayRecordBatch {
+pub struct DisplayRecordBatch {
     num_rows: usize,
     columns: Vec<DisplayColumn>,
 }
@@ -300,31 +331,31 @@ impl DisplayRecordBatch {
     ///
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
-    pub(crate) fn try_new(
-        row_data: &Vec<ArrowArrayRef>,
-        selected_columns: &[ColumnDescriptor],
+    pub fn try_new<'a>(
+        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
-        let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
+        let mut num_rows = None;
 
-        let columns: Result<Vec<_>, _> = selected_columns
-            .iter()
-            .zip(row_data)
+        let columns: Result<Vec<_>, _> = data
             .map(|(column_descriptor, column_data)| {
-                DisplayColumn::try_new(column_descriptor, column_data)
+                if num_rows.is_none() {
+                    num_rows = Some(column_data.len());
+                }
+                DisplayColumn::try_new(&column_descriptor, &column_data)
             })
             .collect();
 
         Ok(Self {
-            num_rows,
+            num_rows: num_rows.unwrap_or(0),
             columns: columns?,
         })
     }
 
-    pub(crate) fn num_rows(&self) -> usize {
+    pub fn num_rows(&self) -> usize {
         self.num_rows
     }
 
-    pub(crate) fn columns(&self) -> &[DisplayColumn] {
+    pub fn columns(&self) -> &[DisplayColumn] {
         &self.columns
     }
 }

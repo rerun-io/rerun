@@ -67,14 +67,16 @@ def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, 
 
 
 def test_bench_transforms_over_time_individual(
-    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray
+    rand_trans: npt.NDArray,
+    rand_quats: npt.NDArray,
+    rand_scales: npt.NDArray,
 ) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
     num_transforms = rand_trans.shape[0]
     for i in range(num_transforms):
-        rr.set_time_sequence("frame", i)
+        rr.set_index("frame", sequence=i)
         rr.log(
             "test_transform",
             rr.Transform3D(translation=rand_trans[i], rotation=rr.Quaternion(xyzw=rand_quats[i]), scale=rand_scales[i]),
@@ -82,7 +84,10 @@ def test_bench_transforms_over_time_individual(
 
 
 def test_bench_transforms_over_time_batched(
-    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray, num_transforms_per_batch: int
+    rand_trans: npt.NDArray,
+    rand_quats: npt.NDArray,
+    rand_scales: npt.NDArray,
+    num_transforms_per_batch: int,
 ) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
@@ -96,7 +101,7 @@ def test_bench_transforms_over_time_batched(
 
         rr.send_columns(
             "test_transform",
-            indexes=[rr.TimeSequenceColumn("frame", times)],
+            indexes=[rr.IndexColumn("frame", sequence=times)],
             columns=rr.Transform3D.columns(
                 translation=rand_trans[start:end],
                 quaternion=rand_quats[start:end],
@@ -124,7 +129,11 @@ def test_bench_transforms_over_time(benchmark: Any, num_transforms: int, num_tra
 
     if num_transforms_per_batch > 1:
         benchmark(
-            test_bench_transforms_over_time_batched, rand_trans, rand_quats, rand_scales, num_transforms_per_batch
+            test_bench_transforms_over_time_batched,
+            rand_trans,
+            rand_quats,
+            rand_scales,
+            num_transforms_per_batch,
         )
     else:
         benchmark(test_bench_transforms_over_time_individual, rand_trans, rand_quats, rand_scales)

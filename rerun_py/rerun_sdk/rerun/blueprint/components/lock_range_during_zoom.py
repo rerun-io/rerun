@@ -26,7 +26,6 @@ class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
     # You can define your own __init__ function as a member of LockRangeDuringZoomExt in lock_range_during_zoom_ext.py
 
     # Note: there are no fields here because LockRangeDuringZoom delegates to datatypes.Bool
-    pass
 
 
 class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):

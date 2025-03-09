@@ -1,43 +1,140 @@
 ---
-title: Send entire timeseries at once
+title: Send entire columns at once
 order: 0
 description: How to use the Rerun SDK to log big chunks of data in one call
 ---
 
+The [`log` API](../../getting-started/data-in/python.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
+If you already have data stored in something more *column-oriented*, it can be both a lot easier and more efficient to send it to Rerun in that form directly.
 
-Sometimes you want to send big chunks of data to Rerun efficiently. To do so, you can use `send_columns`.
+This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
 
-`send_columns` lets you efficiently log the state of an entity over time, logging multiple time and component columns in one call.
+> ⚠️ `send_columns` API bypasses the time context and [micro-batcher](../../reference/sdk/micro-batching.md) ⚠️
+>
+> In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
-In contrast to the `log` function, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
+To learn more about the concepts behind the columnar APIs, and the Rerun data model in general, [refer to this page](../../concepts/chunks.md).
 
-API docs of `send_columns`:
+
+## Reference
+
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
 * [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
 * [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 
-### Using `send_columns` for logging scalars
-snippet: archetypes/scalar_send_columns
+## Examples
 
 
-### Using `send_columns` for logging images
-snippet: archetypes/image_send_columns
+### Updating a scalar over time, in a single operation
+
+Consider this snippet, using the row-oriented `log` API:
+
+snippet: archetypes/scalar_row_updates
+
+which can be translated to the column-oriented `send_columns` API as such:
+
+snippet: archetypes/scalar_column_updates
+
+<picture data-inline-viewer="snippets/scalar_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png">
+</picture>
 
 
-### Using `send_columns` for logging points
+### Updating a point cloud over time, in a single operation
+
+Consider this snippet, using the row-oriented `log` API:
+
+snippet: archetypes/points3d_row_updates
+
+which can be translated to the column-oriented `send_columns` API as such:
+
+snippet: archetypes/points3d_column_updates
+
+<picture data-inline-viewer="snippets/points3d_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
+</picture>
+
 Each row in the component column can be a batch of data, e.g. a batch of positions.
 This lets you log the evolution of a point cloud over time efficiently.
 
-snippet: archetypes/points3d_send_columns.py
 
-### Using `send_columns` for logging custom components
+### Updating a point cloud over time, in a single operation
 
-An entire batch of a custom component can be logged at once using [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyBatchValue) along with `send_column`:
+Consider this snippet, using the row-oriented `log` API:
 
-snippet: howto/any_batch_value_send_columns
+snippet: archetypes/points3d_row_updates
 
-The [`rr.AnyValues`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyValues) class can also be used to log multiple components at a time.
-It does not support partitioning, so each component batch and the timeline must hold the same number of elements.
+which can be translated to the column-oriented `send_columns` API as such:
 
-snippet: howto/any_values_send_columns
+snippet: archetypes/points3d_column_updates
+
+<picture data-inline-viewer="snippets/points3d_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
+  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
+</picture>
+
+Each row in the component column can be a batch of data, e.g. a batch of positions.
+This lets you log the evolution of a point cloud over time efficiently.
+
+
+### Updating a transform over time, in a single operation
+
+Consider this snippet, using the row-oriented `log` API:
+
+snippet: archetypes/transform3d_row_updates
+
+which can be translated to the column-oriented `send_columns` API as such:
+
+snippet: archetypes/transform3d_column_updates
+
+<picture data-inline-viewer="snippets/transform3d_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png">
+</picture>
+
+
+### Updating an image over time, in a single operation
+
+Consider this snippet, using the row-oriented `log` API:
+
+snippet: archetypes/image_row_updates
+
+which can be translated to the column-oriented `send_columns` API as such:
+
+snippet: archetypes/image_column_updates
+
+<picture data-inline-viewer="snippets/image_column_updates">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
+</picture>
+
+
+### Updating custom user-defined values over time, in a single operation
+
+[User-defined data](./custom-data.md) can also benefit from the column-oriented APIs.
+
+Consider this snippet, using the row-oriented `log` API:
+
+snippet: howto/any_values_row_updates
+
+which can be translated to the column-oriented `send_columns` API as such:
+
+snippet: howto/any_values_column_updates

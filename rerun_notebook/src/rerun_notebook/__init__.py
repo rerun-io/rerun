@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import time
+from collections.abc import Mapping
 from typing import Any, Literal
 
 import anywidget
@@ -46,7 +47,7 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
     ESM_MOD = ASSET_ENV
-    if not (ASSET_ENV.startswith("http://") or ASSET_ENV.startswith("https://")):
+    if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
@@ -74,6 +75,7 @@ class Viewer(anywidget.AnyWidget):
         traitlets.Bool(),
         allow_none=True,
     ).tag(sync=True)
+    _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -81,16 +83,18 @@ class Viewer(anywidget.AnyWidget):
         width: int | None = None,
         height: int | None = None,
         url: str | None = None,
-        panel_states: dict[Panel, PanelState] | None = None,
-        **kwargs,
-    ):
+        panel_states: Mapping[Panel, PanelState] | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
 
         self._width = width
         self._height = height
         self._url = url
-        self._panel_states = panel_states
         self._data_queue = []
+
+        if panel_states:
+            self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
@@ -98,7 +102,7 @@ class Viewer(anywidget.AnyWidget):
 
         self.on_msg(handle_msg)
 
-    def _on_ready(self):
+    def _on_ready(self) -> None:
         self._ready = True
         for data in self._data_queue:
             self.send_rrd(data)
@@ -124,11 +128,23 @@ class Viewer(anywidget.AnyWidget):
                     logging.warning(
                         f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
 If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
-"""
+""",
                     )
                     return
                 poll(1)
                 time.sleep(0.1)
 
+    def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
+        for panel, state in panel_states.items():
+            if state == "default":
+                new_panel_states.pop(panel, None)
+            else:
+                new_panel_states[panel] = state
+        self._panel_states = new_panel_states
+
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
         self._time_ctrl = (timeline, time, play)
+
+    def set_active_recording(self, recording_id: str) -> None:
+        self._recording_id = recording_id

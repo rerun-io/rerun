@@ -4,12 +4,12 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, Component, ComponentName,
+    Archetype as _, Component as _, ComponentName,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
+use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt, ViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -87,7 +87,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
-        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx);
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );

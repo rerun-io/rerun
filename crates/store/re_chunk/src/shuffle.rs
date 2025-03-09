@@ -1,14 +1,10 @@
-use std::sync::Arc;
-
 use arrow::{
-    array::{
-        Array as ArrowArray, ListArray as ArrowListArray, StructArray as ArrowStructArray,
-        UInt64Array as ArrowUInt64Array,
-    },
+    array::{Array as ArrowArray, ListArray as ArrowListArray},
     buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
 };
 use itertools::Itertools as _;
-use re_log_types::Timeline;
+
+use re_log_types::TimelineName;
 
 use crate::{Chunk, TimeColumn};
 
@@ -52,7 +48,7 @@ impl Chunk {
     ///
     /// See also [`Self::is_timeline_sorted_uncached`].
     #[inline]
-    pub fn is_timeline_sorted(&self, timeline: &Timeline) -> bool {
+    pub fn is_timeline_sorted(&self, timeline: &TimelineName) -> bool {
         self.is_static()
             || self
                 .timelines
@@ -63,7 +59,7 @@ impl Chunk {
     /// For debugging purposes.
     #[doc(hidden)]
     #[inline]
-    pub fn is_timeline_sorted_uncached(&self, timeline: &Timeline) -> bool {
+    pub fn is_timeline_sorted_uncached(&self, timeline: &TimelineName) -> bool {
         self.is_static()
             || self
                 .timelines
@@ -87,7 +83,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = self.row_ids().collect_vec();
+            let row_ids = self.row_ids_slice();
             let mut swaps = (0..row_ids.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| row_ids[i]);
             swaps
@@ -116,7 +112,7 @@ impl Chunk {
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
-    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
+    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &TimelineName) -> Self {
         let mut chunk = self.clone();
 
         let Some(time_column) = chunk.timelines.get(timeline) else {
@@ -134,7 +130,7 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let row_ids = chunk.row_ids().collect_vec();
+            let row_ids = chunk.row_ids_slice();
             let times = time_column.times_raw().to_vec();
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| (times[i], row_ids[i]));
@@ -204,21 +200,13 @@ impl Chunk {
         {
             re_tracing::profile_scope!("row ids");
 
-            let (times, counters) = self.row_ids_raw();
-            let (times, counters) = (times.values(), counters.values());
+            let row_ids = self.row_ids_slice();
 
-            let mut sorted_times = times.to_vec();
-            let mut sorted_counters = counters.to_vec();
+            let mut sorted_row_ids = row_ids.to_vec();
             for (to, from) in swaps.iter().copied().enumerate() {
-                sorted_times[to] = times[from];
-                sorted_counters[to] = counters[from];
+                sorted_row_ids[to] = row_ids[from];
             }
-
-            let times = Arc::new(ArrowUInt64Array::from(sorted_times));
-            let counters = Arc::new(ArrowUInt64Array::from(sorted_counters));
-
-            self.row_ids =
-                ArrowStructArray::new(self.row_ids.fields().clone(), vec![times, counters], None);
+            self.row_ids = re_types_core::RowId::arrow_from_slice(&sorted_row_ids);
         }
 
         let Self {
@@ -276,7 +264,7 @@ impl Chunk {
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
-                let values = re_arrow_util::arrow_util::concat_arrays(&sorted_arrays).unwrap();
+                let values = re_arrow_util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
                     .nulls()
                     .map(|validity| swaps.iter().map(|&from| validity.is_valid(from)).collect());
@@ -501,28 +489,28 @@ mod tests {
 
             assert!(chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted());
             assert!(chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             assert!(!chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted());
             assert!(!chunk_unsorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             let chunk_sorted_timeline2 =
-                chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(&timeline2);
+                chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(timeline2.name());
 
             eprintln!("sorted:\n{chunk_sorted_timeline2}");
 
@@ -531,23 +519,23 @@ mod tests {
 
             assert!(!chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted());
             assert!(!chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline1)
+                .get(timeline1.name())
                 .unwrap()
                 .is_sorted_uncached());
 
             assert!(chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted());
             assert!(chunk_sorted_timeline2
                 .timelines()
-                .get(&timeline2)
+                .get(timeline2.name())
                 .unwrap()
                 .is_sorted_uncached());
 

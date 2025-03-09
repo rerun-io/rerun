@@ -4,7 +4,7 @@ use re_types::{
     components::{TensorData, ValueRange},
     Component as _,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
+use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, TensorStats, TensorStatsCache, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
@@ -84,7 +84,8 @@ impl VisualizerSystem for TensorSystem {
                     .unwrap_or_else(|| {
                         let tensor_stats = ctx
                             .viewer_ctx
-                            .cache
+                            .store_context
+                            .caches
                             .entry(|c: &mut TensorStatsCache| c.entry(tensor_row_id, tensor));
                         tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
                     });
@@ -146,7 +147,8 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
         {
             let tensor_stats = ctx
                 .viewer_ctx
-                .cache
+                .store_context
+                .caches
                 .entry(|c: &mut TensorStatsCache| c.entry(row_id, &tensor));
             tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
         } else {

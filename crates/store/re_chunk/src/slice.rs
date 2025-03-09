@@ -1,12 +1,11 @@
 use arrow::array::{
-    Array as ArrowArray, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    Array as _, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
     ListArray as ArrowListArray,
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_arrow_util::arrow_util;
-use re_log_types::Timeline;
+use re_log_types::TimelineName;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
@@ -33,23 +32,9 @@ impl Chunk {
             .and_then(|per_desc| per_desc.get(component_desc))?;
 
         if self.is_sorted() {
-            let row_id_128 = row_id.as_u128();
-            let row_id_time_ns = (row_id_128 >> 64) as u64;
-            let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
-
-            let (times, incs) = self.row_ids_raw();
-            let times = times.values();
-            let incs = incs.values();
-
-            let mut index = times.partition_point(|&time| time < row_id_time_ns);
-            while index < incs.len() && incs[index] < row_id_inc {
-                index += 1;
-            }
-
-            let found_it =
-                times.get(index) == Some(&row_id_time_ns) && incs.get(index) == Some(&row_id_inc);
-
-            (found_it && list_array.is_valid(index)).then(|| list_array.value(index))
+            let row_ids = self.row_ids_slice();
+            let index = row_ids.binary_search(&row_id).ok()?;
+            list_array.is_valid(index).then(|| list_array.value(index))
         } else {
             self.row_ids()
                 .find_position(|id| *id == row_id)
@@ -154,7 +139,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timeline_sliced(&self, timeline: Timeline) -> Self {
+    pub fn timeline_sliced(&self, timeline: TimelineName) -> Self {
         let Self {
             id,
             entity_path,
@@ -242,7 +227,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<Timeline>) -> Self {
+    pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<TimelineName>) -> Self {
         let Self {
             id,
             entity_path,
@@ -366,7 +351,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, &validity_filter),
+            row_ids: re_arrow_util::filter_array(row_ids, &validity_filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -374,7 +359,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::filter_array(list_array, &validity_filter);
+                    let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
                     let filtered = if component_desc.component_name == component_name_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
@@ -428,7 +413,7 @@ impl Chunk {
             entity_path,
             heap_size_bytes: _,
             is_sorted: _,
-            row_ids,
+            row_ids: _,
             timelines,
             components,
         } = self;
@@ -440,7 +425,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: arrow::array::StructBuilder::from_fields(row_ids.fields().clone(), 0).finish(),
+            row_ids: RowId::arrow_from_slice(&[]),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
@@ -502,7 +487,7 @@ impl Chunk {
     //
     // TODO(cmc): `Timeline` should really be `Index`.
     #[inline]
-    pub fn deduped_latest_on_index(&self, index: &Timeline) -> Self {
+    pub fn deduped_latest_on_index(&self, index: &TimelineName) -> Self {
         re_tracing::profile_function!();
 
         if self.is_empty() {
@@ -537,7 +522,7 @@ impl Chunk {
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
-            row_ids: arrow_util::take_array(
+            row_ids: re_arrow_util::take_array(
                 &self.row_ids,
                 &arrow::array::Int32Array::from(indices.clone()),
             ),
@@ -550,7 +535,7 @@ impl Chunk {
                 .components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::take_array(list_array, &indices);
+                    let filtered = re_arrow_util::take_array(list_array, &indices);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -613,7 +598,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, filter),
+            row_ids: re_arrow_util::filter_array(row_ids, filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -621,7 +606,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow_util::filter_array(list_array, filter);
+                    let filtered = re_arrow_util::filter_array(list_array, filter);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -693,7 +678,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::take_array(
+            row_ids: re_arrow_util::take_array(
                 row_ids,
                 &arrow::array::Int32Array::from(indices.clone()),
             ),
@@ -704,7 +689,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let taken = arrow_util::take_array(list_array, indices);
+                    let taken = re_arrow_util::take_array(list_array, indices);
                     (component_desc.clone(), taken)
                 })
                 .collect(),
@@ -841,9 +826,12 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow_util::filter_array(&arrow::array::Int64Array::new(times.clone(), None), filter)
-                .into_parts()
-                .1,
+            re_arrow_util::filter_array(
+                &arrow::array::Int64Array::new(times.clone(), None),
+                filter,
+            )
+            .into_parts()
+            .1,
         )
     }
 
@@ -859,7 +847,7 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        let new_times = arrow_util::take_array(
+        let new_times = re_arrow_util::take_array(
             &arrow::array::Int64Array::new(times.clone(), None),
             &arrow::array::Int32Array::from(indices.clone()),
         )
@@ -874,7 +862,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
+    use itertools::Itertools as _;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,
@@ -1101,7 +1089,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
@@ -1124,7 +1112,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(5, got.num_rows());
 
@@ -1232,7 +1220,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
@@ -1251,7 +1239,7 @@ mod tests {
         }
 
         {
-            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            let got = chunk.deduped_latest_on_index(&TimelineName::log_time());
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 

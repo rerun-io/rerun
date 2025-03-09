@@ -12,8 +12,7 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::blueprint::components::Corner2D>(Descriptor_corner)
                 .value_or_throw();
         archetype.visible =
-            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
-                .value_or_throw();
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
         return archetype;
     }
 

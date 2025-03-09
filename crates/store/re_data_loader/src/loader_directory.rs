@@ -1,4 +1,4 @@
-/// Recursively oads entire directories, using the appropriate [`crate::DataLoader`]:s for each
+/// Recursively loads entire directories, using the appropriate [`crate::DataLoader`]:s for each
 /// files within.
 //
 // TODO(cmc): There are a lot more things than can be done be done when it comes to the semantics
@@ -21,6 +21,11 @@ impl crate::DataLoader for DirectoryLoader {
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         if dirpath.is_file() {
+            return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
+        }
+
+        if crate::lerobot::is_lerobot_dataset(&dirpath) {
+            // LeRobot dataset is loaded by LeRobotDatasetLoader
             return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 

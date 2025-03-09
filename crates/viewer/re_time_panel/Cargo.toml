@@ -18,6 +18,14 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = []
+testing = [
+  "re_viewer_context/testing",
+  "re_viewport_blueprint/testing",
+  "smallvec/serde",
+]
+
 [dependencies]
 re_chunk_store.workspace = true
 re_context_menu.workspace = true
@@ -44,10 +52,13 @@ vec1.workspace = true
 
 [dev-dependencies]
 re_viewer_context = { workspace = true, features = ["testing"] }
+re_viewport_blueprint = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
 criterion.workspace = true
+insta = { workspace = true, features = ["redactions", "yaml"] }
 rand.workspace = true
+smallvec = { workspace = true, features = ["serde"] }
 
 [lib]
 bench = false

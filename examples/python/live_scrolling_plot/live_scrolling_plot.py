@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -31,8 +31,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    plot_paths = [f"plot_{i}" for i in range(0, args.num_plots)]
-    series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
+    plot_paths = [f"plot_{i}" for i in range(args.num_plots)]
+    series_paths = [f"series_{i}" for i in range(args.num_series_per_plot)]
 
     rr.script_setup(args, "rerun_example_live_scrolling_plot")
 
@@ -47,12 +47,12 @@ def main() -> None:
                             "time",
                             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-args.window_size),
                             end=rrb.TimeRangeBoundary.cursor_relative(),
-                        )
+                        ),
                     ],
                     plot_legend=rrb.PlotLegend(visible=False),
                 )
                 for plot_path in plot_paths
-            ]
+            ],
         ),
     )
 
@@ -73,7 +73,7 @@ def main() -> None:
         if sleep_for < -0.1:
             print(f"Warning: missed logging window by {-sleep_for:.2f} seconds")
 
-        rr.set_time_seconds("time", cur_time)
+        rr.set_index("time", datetime=cur_time)
 
         # Output each series based on its generator
         for plot_idx, plot_path in enumerate(plot_paths):

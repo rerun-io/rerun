@@ -389,6 +389,7 @@ namespace rerun {
                 }
 
                 case CollectionOwnership::VectorOwned: {
+                    // Ensure move constructor is called, so `storage.vector_owned` is in a valid state.
                     return std::move(storage.vector_owned);
                 }
 

@@ -1,18 +1,18 @@
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use arrow::array::ArrayRef;
 use egui::NumExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
-use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};
+use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -144,11 +144,15 @@ impl RowsDisplayData {
         row_indices: &Range<u64>,
         row_data: Vec<Vec<ArrayRef>>,
         selected_columns: &[ColumnDescriptor],
-        query_timeline: &Timeline,
+        query_timeline: &TimelineName,
     ) -> Result<Self, DisplayRecordBatchError> {
         let display_record_batches = row_data
             .into_iter()
-            .map(|data| DisplayRecordBatch::try_new(&data, selected_columns))
+            .map(|data| {
+                DisplayRecordBatch::try_new(
+                    selected_columns.iter().map(|desc| desc.into()).zip(data),
+                )
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut batch_ref_from_row = BTreeMap::new();
@@ -166,7 +170,7 @@ impl RowsDisplayData {
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
-                    &time_column_desc.timeline() == query_timeline
+                    time_column_desc.timeline_name() == *query_timeline
                 }
                 ColumnDescriptor::Component(_) => false,
             })
@@ -207,7 +211,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .query_handle
             .query()
             .filtered_index
-            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+            .unwrap_or_else(|| TimelineName::new(""));
 
         self.query_handle
             .seek_to_row(info.visible_rows.start as usize);
@@ -226,11 +230,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
-        if ui.is_sizing_pass() {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        } else {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-        }
+        ui.set_truncate_style();
 
         egui::Frame::new()
             .inner_margin(egui::Margin::symmetric(4, 0))
@@ -280,23 +280,22 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         .query_handle
                         .query()
                         .filtered_index
-                        .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+                        .unwrap_or_else(|| TimelineName::new(""));
 
                     // if this column can actually be hidden, then that's the corresponding action
-                    let hide_action =
-                        match column {
-                            ColumnDescriptor::Time(desc) => (desc.timeline() != filtered_index)
-                                .then(|| HideColumnAction::HideTimeColumn {
-                                    timeline_name: *desc.name(),
-                                }),
+                    let hide_action = match column {
+                        ColumnDescriptor::Time(desc) => (desc.timeline_name() != filtered_index)
+                            .then(|| HideColumnAction::HideTimeColumn {
+                                timeline_name: desc.timeline_name(),
+                            }),
 
-                            ColumnDescriptor::Component(desc) => {
-                                Some(HideColumnAction::HideComponentColumn {
-                                    entity_path: desc.entity_path.clone(),
-                                    component_name: desc.component_name,
-                                })
-                            }
-                        };
+                        ColumnDescriptor::Component(desc) => {
+                            Some(HideColumnAction::HideComponentColumn {
+                                entity_path: desc.entity_path.clone(),
+                                component_name: desc.component_name,
+                            })
+                        }
+                    };
 
                     let header_ui = |ui: &mut egui::Ui| {
                         let text = egui::RichText::new(column.short_name()).strong();
@@ -318,7 +317,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         match column {
                             ColumnDescriptor::Time(descr) => {
                                 if response.clicked() {
-                                    self.ctx.command_sender.send_system(
+                                    self.ctx.command_sender().send_system(
                                         re_viewer_context::SystemCommand::SetActiveTimeline {
                                             rec_id: self.ctx.recording_id().clone(),
                                             timeline: descr.timeline(),
@@ -407,14 +406,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .query_handle
             .query()
             .filtered_index
-            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
+            .unwrap_or_else(|| TimelineName::new(""));
         let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
-        if ui.is_sizing_pass() {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        } else {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-        }
+        ui.set_truncate_style();
 
         let instance_count = column.instance_count(batch_row_idx);
         let additional_lines = self.expanded_rows.additional_lines_for_row(cell.row_nr);

@@ -19,14 +19,14 @@ class RotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
     """
     **Component**: 3D rotation represented by a rotation around a given axis.
 
-    If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+    If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
+    angle is zero in which case it is treated as an identity.
     """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RotationAxisAngleExt in rotation_axis_angle_ext.py
 
     # Note: there are no fields here because RotationAxisAngle delegates to datatypes.RotationAxisAngle
-    pass
 
 
 class RotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):

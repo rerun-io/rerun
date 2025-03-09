@@ -1,4 +1,4 @@
-use arrow::array::{self, Array};
+use arrow::array::{self, Array as _};
 
 use crate::{
     archetypes,
@@ -52,6 +52,7 @@ impl Mesh3D {
     /// and that we have the same number of positions and normals (if any).
     ///
     /// Only use this when logging a whole new mesh. Not meaningful for field updates!
+    #[track_caller]
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 

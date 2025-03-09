@@ -37,11 +37,14 @@ pub fn image_preview_ui(
     image: &ImageInfo,
     colormap_with_range: Option<&ColormapWithRange>,
 ) -> Option<()> {
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+    let image_stats = ctx
+        .store_context
+        .caches
+        .entry(|c: &mut ImageStatsCache| c.entry(image));
     let annotations = crate::annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture = image_to_gpu(
-        ctx.render_ctx,
+        ctx.render_ctx(),
         &debug_name,
         image,
         &image_stats,
@@ -49,7 +52,7 @@ pub fn image_preview_ui(
         colormap_with_range,
     )
     .ok()?;
-    texture_preview_ui(ctx.render_ctx, ui, ui_layout, &debug_name, texture);
+    texture_preview_ui(ctx.render_ctx(), ui, ui_layout, &debug_name, texture);
     Some(())
 }
 

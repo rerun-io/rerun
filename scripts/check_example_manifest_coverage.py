@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import tomli
 
@@ -31,7 +31,7 @@ def gather_example_in_manifest() -> Iterable[str]:
         yield from manifest["ignored"]["examples"]
 
 
-def main():
+def main() -> None:
     listed_examples = set(gather_example_in_manifest())
 
     all_examples = list(gather_example_in_repo())

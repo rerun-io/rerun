@@ -3,19 +3,17 @@
 //! This crate contains data structures that are shared with most modules of the viewer.
 
 mod annotations;
-mod app_options;
+mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
 mod collapsed_id;
-mod command_sender;
 mod component_fallbacks;
-mod component_ui_registry;
 mod contents;
 mod drag_and_drop;
 mod file_dialog;
+mod global_context;
 mod image_info;
-mod item;
 mod maybe_mut_ref;
 mod query_context;
 mod query_range;
@@ -40,24 +38,23 @@ mod visitor_flow_control;
 
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
-    app_options::AppOptions,
+    async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
-    command_sender::{
-        command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
-    },
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
-    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
     file_dialog::santitize_file_name,
+    global_context::{
+        command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
+        ComponentUiTypes, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender,
+    },
     image_info::{ColormapWithRange, ImageInfo},
-    item::Item,
     maybe_mut_ref::MaybeMutRef,
     query_context::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
@@ -96,6 +93,9 @@ pub use re_ui::UiLayout; // Historical reasons
 pub mod external {
     pub use nohash_hasher;
     pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
+
+    #[cfg(feature = "testing")]
+    pub use egui_kittest;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Optional, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, Optional, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
@@ -10,8 +11,8 @@ from rerun.blueprint.components.container_kind import ContainerKind, ContainerKi
 from rerun.blueprint.components.grid_columns import GridColumns, GridColumnsBatch
 from rerun.blueprint.components.included_content import IncludedContentBatch
 from rerun.blueprint.components.row_share import RowShare, RowShareBatch
-from rerun.blueprint.components.visible import Visible, VisibleBatch
 from rerun.components.name import Name, NameBatch
+from rerun.components.visible import Visible, VisibleBatch
 from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike
 from rerun.datatypes.float32 import Float32ArrayLike
@@ -128,7 +129,7 @@ def test_container_blueprint() -> None:
         print(f"{arch}\n")
 
         assert arch.container_kind == ContainerKindBatch._converter(
-            none_empty_or_value(container_kind, ContainerKind.Tabs)
+            none_empty_or_value(container_kind, ContainerKind.Tabs),
         )
         assert arch.display_name == NameBatch._converter(none_empty_or_value(display_name, Name("my container")))
         assert arch.contents == IncludedContentBatch._converter(none_empty_or_value(contents, contents_arrays[-1]))
@@ -137,5 +138,5 @@ def test_container_blueprint() -> None:
         assert arch.active_tab == ActiveTabBatch._converter(none_empty_or_value(active_tab, active_tab_arrays[-1]))
         assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, visible_arrays[-1]))
         assert arch.grid_columns == GridColumnsBatch._converter(
-            none_empty_or_value(grid_columns, grid_columns_arrays[-1])
+            none_empty_or_value(grid_columns, grid_columns_arrays[-1]),
         )

@@ -1,22 +1,24 @@
 use arrow::array::ArrayRef;
-use re_chunk::RowId;
+use re_chunk::{RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
+use re_types::{
+    AsComponents, ComponentBatch, ComponentDescriptor, ComponentName, SerializedComponentBatch,
+};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
 #[inline]
-pub fn blueprint_timeline() -> Timeline {
-    Timeline::new_sequence("blueprint")
+pub fn blueprint_timeline() -> TimelineName {
+    TimelineName::new("blueprint")
 }
 
 /// The timepoint to use when writing an update to the blueprint.
 pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> TimePoint {
-    let timeline = blueprint_timeline();
+    let timeline = Timeline::new_sequence(blueprint_timeline());
 
     let max_time = blueprint
-        .time_histogram(&timeline)
+        .time_histogram(timeline.name())
         .and_then(|times| times.max_key())
         .unwrap_or(0)
         .saturating_add(1);
@@ -51,7 +53,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -63,10 +65,23 @@ impl ViewerContext<'_> {
         entity_path: &EntityPath,
         component_batch: &dyn ComponentBatch,
     ) {
+        match component_batch.try_serialized() {
+            Ok(serialized) => self.save_serialized_blueprint_component(entity_path, serialized),
+            Err(err) => {
+                re_log::error_once!("Failed to serialize component batch: {}", err);
+            }
+        }
+    }
+
+    pub fn save_serialized_blueprint_component(
+        &self,
+        entity_path: &EntityPath,
+        component_batch: SerializedComponentBatch,
+    ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_component_batches(RowId::new(), timepoint.clone(), [component_batch])
+            .with_serialized_batch(RowId::new(), timepoint.clone(), component_batch)
             .build()
         {
             Ok(chunk) => chunk,
@@ -76,7 +91,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -106,7 +121,7 @@ impl ViewerContext<'_> {
             }
         };
 
-        self.command_sender
+        self.command_sender()
             .send_system(SystemCommand::UpdateBlueprint(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
@@ -187,7 +202,7 @@ impl ViewerContext<'_> {
 
         match chunk {
             Ok(chunk) => self
-                .command_sender
+                .command_sender()
                 .send_system(SystemCommand::UpdateBlueprint(
                     blueprint.store_id().clone(),
                     vec![chunk],

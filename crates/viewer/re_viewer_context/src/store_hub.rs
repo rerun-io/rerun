@@ -1,8 +1,9 @@
-use ahash::{HashMap, HashMapExt, HashSet};
+use ahash::{HashMap, HashMapExt as _, HashSet};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
 
+use nohash_hasher::IntMap;
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -694,10 +695,8 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-                re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
-                    ws_server_url != uri
-                }
+                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
+                | re_smart_channel::SmartChannelSource::RedapGrpcStream { url } => url != uri,
                 _ => true,
             }
         });
@@ -716,7 +715,7 @@ impl StoreHub {
                     continue; // no change since last gc
                 }
 
-                let mut protected_time_ranges = ahash::HashMap::default();
+                let mut protected_time_ranges = IntMap::default();
                 if let Some(undo) = undo_state.get(blueprint_id) {
                     if let Some(time) = undo.oldest_undo_point() {
                         // Save everything that we could want to undo to:

@@ -58,7 +58,7 @@ const RERUN_BINARY: &str = "rerun";
 impl Default for SpawnOptions {
     fn default() -> Self {
         Self {
-            port: crate::default_server_addr().port(),
+            port: re_grpc_server::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
             executable_name: RERUN_BINARY.into(),
@@ -140,7 +140,7 @@ impl std::fmt::Debug for SpawnError {
     }
 }
 
-/// Spawns a new Rerun Viewer process ready to listen for TCP connections.
+/// Spawns a new Rerun Viewer process ready to listen for connections.
 ///
 /// If there is already a process listening on this port (Rerun or not), this function returns `Ok`
 /// WITHOUT spawning a `rerun` process (!).
@@ -148,7 +148,7 @@ impl std::fmt::Debug for SpawnError {
 /// Refer to [`SpawnOptions`]'s documentation for configuration options.
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
-/// to [`crate::RecordingStream::connect`] or use [`crate::RecordingStream::spawn`] directly.
+/// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
 #[allow(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     #[cfg(target_family = "unix")]

@@ -212,129 +212,265 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
+#[derive(Clone, Debug)]
+pub struct RecordBatchFormatOpts {
+    /// If `true`, the dataframe will be transposed on its diagonal axis.
+    ///
+    /// This is particularly useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
+    ///
+    /// Setting this to `true` will also disable all per-column metadata.
+    pub transposed: bool,
+
+    /// If specified, displays the dataframe with the given fixed width.
+    ///
+    /// Defaults to the terminal width if left unspecified.
+    pub width: Option<usize>,
+
+    /// If `true`, displays the dataframe's metadata too.
+    pub include_metadata: bool,
+}
+
+impl Default for RecordBatchFormatOpts {
+    fn default() -> Self {
+        Self {
+            transposed: false,
+            width: None,
+            include_metadata: true,
+        }
+    }
+}
+
 /// Nicely format this record batch in a way that fits the terminal.
 pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
     format_record_batch_with_width(batch, None)
 }
 
+/// Nicely format this record batch using the specified options.
+pub fn format_record_batch_opts(
+    batch: &arrow::array::RecordBatch,
+    opts: &RecordBatchFormatOpts,
+) -> Table {
+    format_dataframe_with_metadata(
+        &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
+        &batch.schema_ref().fields,
+        batch.columns(),
+        opts,
+    )
+}
+
 /// Nicely format this record batch, either with the given fixed width, or with the terminal width (`None`).
+///
+/// If `transposed` is `true`, the dataframe will be printed transposed on its diagonal axis.
+/// This is very useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
 pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
 ) -> Table {
-    format_dataframe(
+    format_dataframe_with_metadata(
         &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
         &batch.schema_ref().fields,
         batch.columns(),
-        width,
+        &RecordBatchFormatOpts {
+            transposed: false,
+            width,
+            include_metadata: true,
+        },
     )
 }
 
-fn format_dataframe(
+fn format_dataframe_with_metadata(
     metadata: &Metadata,
     fields: &Fields,
     columns: &[ArrayRef],
-    width: Option<usize>,
+    opts: &RecordBatchFormatOpts,
 ) -> Table {
+    let &RecordBatchFormatOpts {
+        transposed: _,
+        width,
+        include_metadata,
+    } = opts;
+
+    let (num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
+
+    if include_metadata && !metadata.is_empty() {
+        let mut outer_table = Table::new();
+        outer_table.load_preset(presets::UTF8_FULL);
+
+        if let Some(width) = width {
+            outer_table.set_width(width as _);
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+        } else {
+            outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        }
+
+        outer_table.add_row({
+            let mut row = Row::new();
+            row.add_cell(Cell::new(format!(
+                "METADATA:\n{}",
+                DisplayMetadata {
+                    prefix: "* ",
+                    metadata: metadata.clone()
+                }
+            )));
+            row
+        });
+
+        outer_table.add_row(vec![table.trim_fmt()]);
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        outer_table.set_constraints(
+            std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(num_columns),
+        );
+        outer_table
+    } else {
+        table
+    }
+}
+
+fn format_dataframe_without_metadata(
+    fields: &Fields,
+    columns: &[ArrayRef],
+    opts: &RecordBatchFormatOpts,
+) -> (usize, Table) {
     const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
 
-    let mut outer_table = Table::new();
-    outer_table.load_preset(presets::UTF8_FULL);
+    let &RecordBatchFormatOpts {
+        transposed,
+        width,
+        include_metadata: _,
+    } = opts;
 
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
 
     if let Some(width) = width {
-        outer_table.set_width(width as _);
-        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
         table.set_width(width as _);
         table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
     } else {
-        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
         table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
     }
-
-    outer_table.add_row({
-        let mut row = Row::new();
-        row.add_cell(Cell::new(format!(
-            "CHUNK METADATA:\n{}",
-            DisplayMetadata {
-                prefix: "* ",
-                metadata: metadata.clone()
-            }
-        )));
-        row
-    });
-
-    let header = fields.iter().map(|field| {
-        if field.metadata().is_empty() {
-            Cell::new(format!(
-                "{}\n---\ntype: \"{}\"", // NOLINT
-                trim_name(field.name()),
-                DisplayDatatype(field.data_type()),
-            ))
-        } else {
-            Cell::new(format!(
-                "{}\n---\ntype: \"{}\"\n{}", // NOLINT
-                trim_name(field.name()),
-                DisplayDatatype(field.data_type()),
-                DisplayMetadata {
-                    prefix: "",
-                    metadata: field.metadata().clone().into_iter().collect()
-                },
-            ))
-        }
-    });
-    table.set_header(header);
 
     let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array))
         .collect_vec();
-    let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
-    if formatters.is_empty() || num_rows == 0 {
-        return table;
-    }
+    let num_columns = if transposed {
+        // Turns:
+        // ```
+        // resource_id     manifest_url
+        // -----------     --------------
+        // resource_1      resource_1_url
+        // resource_2      resource_2_url
+        // resource_3      resource_3_url
+        // resource_4      resource_4_url
+        // ```
+        // into:
+        // ```
+        // resource_id       resource_1         resource_2         resource_3         resource_4
+        // manifest_url      resource_1_url     resource_2_url     resource_3_url     resource_4_url
+        // ```
 
-    for row in 0..num_rows {
-        let cells: Vec<_> = formatters
+        let mut headers = fields
             .iter()
-            .map(|formatter| match formatter(row) {
-                Ok(string) => {
-                    let chars: Vec<_> = string.chars().collect();
-                    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
-                        Cell::new(
-                            chars
-                                .into_iter()
-                                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
-                                .chain(['…'])
-                                .collect::<String>(),
-                        )
-                    } else {
-                        Cell::new(string)
+            .map(|field| Cell::new(trim_name(field.name())))
+            .collect_vec();
+        headers.reverse();
+
+        let mut columns = columns.to_vec();
+        columns.reverse();
+
+        for formatter in formatters {
+            let mut cells = headers.pop().into_iter().collect_vec();
+
+            let Some(col) = columns.pop() else {
+                break;
+            };
+
+            for i in 0..col.len() {
+                let cell = match formatter(i) {
+                    Ok(string) => {
+                        let chars: Vec<_> = string.chars().collect();
+                        if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+                            Cell::new(
+                                chars
+                                    .into_iter()
+                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                                    .chain(['…'])
+                                    .collect::<String>(),
+                            )
+                        } else {
+                            Cell::new(string)
+                        }
                     }
-                }
-                Err(err) => Cell::new(err),
-            })
-            .collect();
-        table.add_row(cells);
-    }
+                    Err(err) => Cell::new(err),
+                };
+                cells.push(cell);
+            }
+
+            table.add_row(cells);
+        }
+
+        columns.first().map_or(0, |list_array| list_array.len())
+    } else {
+        let header = fields.iter().map(|field| {
+            if field.metadata().is_empty() {
+                Cell::new(format!(
+                    "{}\n---\ntype: \"{}\"", // NOLINT
+                    trim_name(field.name()),
+                    DisplayDatatype(field.data_type()),
+                ))
+            } else {
+                Cell::new(format!(
+                    "{}\n---\ntype: \"{}\"\n{}", // NOLINT
+                    trim_name(field.name()),
+                    DisplayDatatype(field.data_type()),
+                    DisplayMetadata {
+                        prefix: "",
+                        metadata: field.metadata().clone().into_iter().collect()
+                    },
+                ))
+            }
+        });
+
+        table.set_header(header);
+
+        let num_rows = columns.first().map_or(0, |list_array| list_array.len());
+
+        for row in 0..num_rows {
+            let cells: Vec<_> = formatters
+                .iter()
+                .map(|formatter| match formatter(row) {
+                    Ok(string) => {
+                        let chars: Vec<_> = string.chars().collect();
+                        if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+                            Cell::new(
+                                chars
+                                    .into_iter()
+                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                                    .chain(['…'])
+                                    .collect::<String>(),
+                            )
+                        } else {
+                            Cell::new(string)
+                        }
+                    }
+                    Err(err) => Cell::new(err),
+                })
+                .collect();
+            table.add_row(cells);
+        }
+
+        columns.len()
+    };
 
     table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
     // NOTE: `Percentage` only works for terminals that report their sizes.
     if table.width().is_some() {
-        let percentage = comfy_table::Width::Percentage((100.0 / columns.len() as f32) as u16);
+        let percentage = comfy_table::Width::Percentage((100.0 / num_columns as f32) as u16);
         table.set_constraints(
             std::iter::repeat(comfy_table::ColumnConstraint::UpperBoundary(percentage))
-                .take(columns.len()),
+                .take(num_columns),
         );
     }
 
-    outer_table.add_row(vec![table.trim_fmt()]);
-    outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
-    outer_table.set_constraints(
-        std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(columns.len()),
-    );
-
-    outer_table
+    (num_columns, table)
 }

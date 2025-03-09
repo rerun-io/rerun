@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::Array as _;
 use arrow::array::ArrayRef as ArrowArrayRef;
 
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, TimelineName};
 use re_types_core::{Component, ComponentName};
 
 use crate::{Chunk, ChunkResult, RowId};
@@ -209,7 +209,7 @@ impl UnitChunkShared {
     ///
     /// Returns the single static index if the chunk is static.
     #[inline]
-    pub fn index(&self, timeline: &Timeline) -> Option<(TimeInt, RowId)> {
+    pub fn index(&self, timeline: &TimelineName) -> Option<(TimeInt, RowId)> {
         debug_assert!(self.num_rows() == 1);
         if self.is_static() {
             self.row_ids()

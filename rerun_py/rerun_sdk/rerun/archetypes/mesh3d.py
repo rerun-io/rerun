@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -62,7 +63,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     import rerun as rr
 
     rr.init("rerun_example_mesh3d_instancing", spawn=True)
-    rr.set_time_sequence("frame", 0)
+    rr.set_index("frame", sequence=0)
 
     rr.log(
         "shape",
@@ -78,8 +79,8 @@ class Mesh3D(Mesh3DExt, Archetype):
         rr.Boxes3D(half_sizes=[[5.0, 5.0, 5.0]]),
     )
 
-    for i in range(0, 100):
-        rr.set_time_sequence("frame", i)
+    for i in range(100):
+        rr.set_index("frame", sequence=i)
         rr.log(
             "shape",
             rr.InstancePoses3D(
@@ -275,11 +276,37 @@ class Mesh3D(Mesh3DExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "vertex_positions": vertex_positions,
+            "triangle_indices": triangle_indices,
+            "vertex_normals": vertex_normals,
+            "vertex_colors": vertex_colors,
+            "vertex_texcoords": vertex_texcoords,
+            "albedo_factor": albedo_factor,
+            "albedo_texture_buffer": albedo_texture_buffer,
+            "albedo_texture_format": albedo_texture_format,
+            "class_ids": class_ids,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     vertex_positions: components.Position3DBatch | None = field(

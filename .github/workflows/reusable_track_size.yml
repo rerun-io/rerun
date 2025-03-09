@@ -97,7 +97,7 @@ jobs:
           entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
           entries+=("JS:web_viewer/re_viewer.js:kiB")
 
-          if [ -n ${{ inputs.WITH_EXAMPLES }} = "true" ]; then
+          if [ ${{ inputs.WITH_EXAMPLES }} = "true" ]; then
             for file in example_data/*.rrd; do
               name=$(basename "$file")
               entries+=("$name:$file:MiB")
@@ -191,7 +191,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.39.0
+          pixi-version: v0.41.4
 
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'

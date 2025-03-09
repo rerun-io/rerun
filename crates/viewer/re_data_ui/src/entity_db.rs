@@ -1,4 +1,4 @@
-use re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
@@ -49,7 +49,7 @@ impl crate::DataUi for EntityDb {
 
                 if let Some(cloned_from) = cloned_from {
                     ui.grid_left_hand_label("Clone of");
-                    crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
+                    crate::item_ui::store_id_button_ui(ctx, ui, cloned_from, ui_layout);
                     ui.end_row();
                 }
 
@@ -76,7 +76,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
 
                 ui.grid_left_hand_label("Created");
-                ui.label(started.format(ctx.app_options.time_zone));
+                ui.label(started.format(ctx.app_options().time_zone));
                 ui.end_row();
             }
 
@@ -86,7 +86,7 @@ impl crate::DataUi for EntityDb {
                 {
                     let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
                     ui.grid_left_hand_label("Modified");
-                    ui.label(time.format(ctx.app_options.time_zone));
+                    ui.label(time.format(ctx.app_options().time_zone));
                     ui.end_row();
                 }
             }

@@ -60,7 +60,7 @@ impl ViewerAnalytics {
         &self,
         build_info: re_build_info::BuildInfo,
         adapter_backend: wgpu::Backend,
-        device_tier: re_renderer::config::DeviceTier,
+        device_tier: re_renderer::device_caps::DeviceCapabilityTier,
     ) {
         re_tracing::profile_function!();
 
@@ -95,7 +95,9 @@ impl ViewerAnalytics {
                 return;
             };
 
-            analytics.record(event::open_recording(&self.app_env, entity_db));
+            if let Some(event) = event::open_recording(&self.app_env, entity_db) {
+                analytics.record(event);
+            }
         }
 
         #[cfg(not(feature = "analytics"))]

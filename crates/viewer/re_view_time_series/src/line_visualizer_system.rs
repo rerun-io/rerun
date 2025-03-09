@@ -1,20 +1,21 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive};
+use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Component, Loggable,
+    Archetype as _, Component as _, Loggable as _,
 };
-use re_view::range_with_blueprint_resolved_data;
+use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    auto_color_egui, auto_color_for_entity_path, IdentifiedViewSystem, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
@@ -104,14 +105,20 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLineSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
+        true.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name, SeriesVisible]);
 
 impl SeriesLineSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let plot_mem =
-            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx, crate::plot_id(query.view_id));
+            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
@@ -170,22 +177,11 @@ impl SeriesLineSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
+        // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
         let fallback_color: Color = self.fallback_for(&query_ctx);
         let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
 
-        // All the default values for a `PlotPoint`, accounting for both overrides and default
-        // values.
-        let default_point = PlotPoint {
-            time: 0,
-            value: 0.0,
-            attrs: PlotPointAttrs {
-                color: fallback_color.into(),
-                radius_ui: 0.5 * *fallback_stroke_width.0,
-                kind: PlotSeriesKind::Continuous,
-            },
-        };
-
-        let mut points;
+        let mut points_per_series;
 
         let time_offset = ctx
             .view_state
@@ -215,6 +211,7 @@ impl SeriesLineSystem {
                     StrokeWidth::name(),
                     Name::name(),
                     AggregationPolicy::name(),
+                    SeriesVisible::name(),
                 ],
             );
 
@@ -227,20 +224,52 @@ impl SeriesLineSystem {
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     // That is just so we can satisfy the `range_zip` contract later on.
                     .map(|index| (index, ()))
             };
 
+            // Determine how many lines we have.
+            // TODO(andreas): We should determine this only once and cache the result.
+            // As data comes in we can validate that the number of series is consistent.
+            // Keep in mind clears here.
+            let num_series = all_scalar_chunks
+                .iter()
+                .find_map(|chunk| {
+                    chunk
+                        .iter_slices::<f64>(Scalar::name())
+                        .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
+                })
+                .unwrap_or(1);
+
+            // Determine per-series visibility flags.
+            let mut series_visibility_flags: Vec<bool> = results
+                .iter_as(*query.timeline(), SeriesVisible::name())
+                .slice::<bool>()
+                .next()
+                .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
+            series_visibility_flags.resize(num_series, true);
+
             // Allocate all points.
             {
                 re_tracing::profile_scope!("alloc");
 
-                points = all_scalar_chunks
+                // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+                let default_point = PlotPoint {
+                    time: 0,
+                    value: 0.0,
+                    attrs: PlotPointAttrs {
+                        color: fallback_color.into(),
+                        radius_ui: 0.5 * *fallback_stroke_width.0,
+                        kind: PlotSeriesKind::Continuous,
+                    },
+                };
+
+                let points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
                         debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
@@ -251,6 +280,7 @@ impl SeriesLineSystem {
                         }
                     })
                     .collect_vec();
+                points_per_series = vec![points; num_series];
             }
 
             // Fill in values.
@@ -258,23 +288,34 @@ impl SeriesLineSystem {
                 re_tracing::profile_scope!("fill values");
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                all_scalar_chunks
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
-                    .enumerate()
-                    .for_each(|(i, values)| {
-                        if !values.is_empty() {
-                            if values.len() > 1 {
-                                re_log::warn_once!(
-                                    "found a scalar batch in {entity_path:?} -- those have no effect"
-                                );
-                            }
 
-                            points[i].value = values[0];
-                        } else {
-                            points[i].attrs.kind = PlotSeriesKind::Clear;
-                        }
-                    });
+                if num_series == 1 {
+                    let points = &mut points_per_series[0];
+                    all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
+                        .enumerate()
+                        .for_each(|(i, values)| {
+                            if let Some(value) = values.first() {
+                                points[i].value = *value;
+                            } else {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            }
+                        });
+                } else {
+                    all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
+                        .enumerate()
+                        .for_each(|(i, values)| {
+                            for (points, value) in points_per_series.iter_mut().zip(values) {
+                                points[i].value = *value;
+                            }
+                            for points in points_per_series.iter_mut().skip(values.len()) {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            }
+                        });
+                }
             }
 
             // Fill in colors.
@@ -283,47 +324,77 @@ impl SeriesLineSystem {
 
                 debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
 
-                fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
-                    raw.first().map(|c| {
-                        let [a, b, g, r] = c.to_le_bytes();
-                        if a == 255 {
-                            // Common-case optimization
-                            re_renderer::Color32::from_rgb(r, g, b)
-                        } else {
-                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                        }
-                    })
+                fn map_raw_color(raw: &u32) -> re_renderer::Color32 {
+                    let [a, b, g, r] = raw.to_le_bytes();
+                    re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                 }
 
-                {
-                    let all_color_chunks = results.get_optional_chunks(&Color::name());
-                    if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
-                        re_tracing::profile_scope!("override/default fast path");
+                let all_color_chunks = results.get_optional_chunks(&Color::name());
+                if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
+                    re_tracing::profile_scope!("override/default fast path");
 
-                        let color = all_color_chunks[0]
-                            .iter_slices::<u32>(Color::name())
-                            .next()
-                            .and_then(map_raw_color);
-
-                        if let Some(color) = color {
-                            points.iter_mut().for_each(|p| p.attrs.color = color);
+                    if let Some(colors) =
+                        all_color_chunks[0].iter_slices::<u32>(Color::name()).next()
+                    {
+                        for (points, color) in points_per_series
+                            .iter_mut()
+                            .zip(clamped_or_nothing(colors, num_series))
+                        {
+                            let color = map_raw_color(color);
+                            for point in points {
+                                point.attrs.color = color;
+                            }
                         }
-                    } else {
-                        re_tracing::profile_scope!("standard path");
+                    }
+                } else if all_color_chunks.is_empty() {
+                    if num_series > 1 {
+                        re_tracing::profile_scope!("default color for multiple series");
 
-                        let all_colors = all_color_chunks.iter().flat_map(|chunk| {
-                            itertools::izip!(
-                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
-                                chunk.iter_slices::<u32>(Color::name())
-                            )
-                        });
+                        // Have to fill in additional default colors.
+                        // TODO(andreas): Could they somehow be provided by the fallback provider?
+                        // It's tricky since the fallback provider doesn't know how many colors to produce!
+                        for (i, points) in points_per_series.iter_mut().skip(1).enumerate() {
+                            // Normally we generate colors from entity names, but getting the display label needs extra processing,
+                            // and it's nice to not care about that here.
+                            let fallback_color = auto_color_egui(
+                                (re_log_types::hash::Hash64::hash((entity_path, i)).hash64()
+                                    % u16::MAX as u64) as u16,
+                            );
+                            for point in points {
+                                point.attrs.color = fallback_color;
+                            }
+                        }
+                    }
+                } else {
+                    re_tracing::profile_scope!("standard path");
 
-                        let all_frames =
-                            re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+                    let all_colors = all_color_chunks.iter().flat_map(|chunk| {
+                        itertools::izip!(
+                            chunk.iter_component_indices(query.timeline(), &Color::name()),
+                            chunk.iter_slices::<u32>(Color::name())
+                        )
+                    });
 
+                    let all_frames =
+                        re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+
+                    // Simplified path for single series.
+                    if num_series == 1 {
+                        let points = &mut points_per_series[0];
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
-                            if let Some(color) = colors.and_then(map_raw_color) {
-                                points[i].attrs.color = color;
+                            if let Some(color) = colors.and_then(|c| c.first()) {
+                                points[i].attrs.color = map_raw_color(color);
+                            }
+                        });
+                    } else {
+                        all_frames.for_each(|(i, (_index, _scalars, colors))| {
+                            if let Some(colors) = colors {
+                                for (points, color) in points_per_series
+                                    .iter_mut()
+                                    .zip(clamped_or_nothing(colors, num_series))
+                                {
+                                    points[i].attrs.color = map_raw_color(color);
+                                }
                             }
                         });
                     }
@@ -343,25 +414,26 @@ impl SeriesLineSystem {
                     {
                         re_tracing::profile_scope!("override/default fast path");
 
-                        let stroke_width = all_stroke_width_chunks[0]
+                        if let Some(stroke_widths) = all_stroke_width_chunks[0]
                             .iter_slices::<f32>(StrokeWidth::name())
                             .next()
-                            .and_then(|stroke_widths| stroke_widths.first().copied());
-
-                        if let Some(stroke_width) = stroke_width {
-                            points
+                        {
+                            for (points, stroke_width) in points_per_series
                                 .iter_mut()
-                                .for_each(|p| p.attrs.radius_ui = stroke_width * 0.5);
+                                .zip(clamped_or_nothing(stroke_widths, num_series))
+                            {
+                                for point in points {
+                                    point.attrs.radius_ui = stroke_width * 0.5;
+                                }
+                            }
                         }
                     } else {
                         re_tracing::profile_scope!("standard path");
 
                         let all_stroke_widths = all_stroke_width_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk.iter_component_indices(
-                                    &query.timeline(),
-                                    &StrokeWidth::name()
-                                ),
+                                chunk
+                                    .iter_component_indices(query.timeline(), &StrokeWidth::name()),
                                 chunk.iter_slices::<f32>(StrokeWidth::name())
                             )
                         });
@@ -370,24 +442,53 @@ impl SeriesLineSystem {
                             re_query::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
                                 .enumerate();
 
-                        all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
-                            if let Some(stroke_width) = stroke_widths
-                                .and_then(|stroke_widths| stroke_widths.first().copied())
-                            {
-                                points[i].attrs.radius_ui = stroke_width * 0.5;
-                            }
-                        });
+                        // Simplified path for single series.
+                        if num_series == 1 {
+                            let points = &mut points_per_series[0];
+                            all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
+                                if let Some(stroke_width) = stroke_widths
+                                    .and_then(|stroke_widths| stroke_widths.first().copied())
+                                {
+                                    points[i].attrs.radius_ui = stroke_width * 0.5;
+                                }
+                            });
+                        } else {
+                            all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
+                                if let Some(stroke_widths) = stroke_widths {
+                                    for (points, stroke_width) in points_per_series
+                                        .iter_mut()
+                                        .zip(clamped_or_nothing(stroke_widths, num_series))
+                                    {
+                                        points[i].attrs.radius_ui = stroke_width * 0.5;
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
             }
 
             // Extract the series name
-            let series_name = results
+            let mut series_names: Vec<String> = results
                 .get_optional_chunks(&Name::name())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
-                .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+                .and_then(|chunk| chunk.iter_slices::<String>(Name::name()).next())
+                .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
+                .unwrap_or_default();
+            if series_names.len() < num_series {
+                let fallback_name: String =
+                    TypedComponentFallbackProvider::<Name>::fallback_for(self, &query_ctx)
+                        .to_string();
+                if num_series == 1 {
+                    series_names.push(fallback_name);
+                } else {
+                    // Repeating a name never makes sense, so we fill up the remaining names with made up ones instead.
+                    series_names.extend(
+                        (series_names.len()..num_series).map(|i| format!("{fallback_name}/{i}")),
+                    );
+                }
+            }
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -405,11 +506,11 @@ impl SeriesLineSystem {
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
                         .timelines()
-                        .get(&query.timeline())
+                        .get(query.timeline())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
                         .timelines()
-                        .get(&query.timeline())
+                        .get(query.timeline())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
                     lhs_time_max <= rhs_time_min
                 });
@@ -421,12 +522,18 @@ impl SeriesLineSystem {
 
                 let cleared_indices = collect_recursive_clears(ctx, &query, entity_path);
                 let has_discontinuities = !cleared_indices.is_empty();
-                points.extend(cleared_indices.into_iter().map(|(data_time, _)| {
-                    let mut point = default_point.clone();
-                    point.time = data_time.as_i64();
-                    point.attrs.kind = PlotSeriesKind::Clear;
-                    point
-                }));
+
+                for points in &mut points_per_series {
+                    points.extend(cleared_indices.iter().map(|(data_time, _)| PlotPoint {
+                        time: data_time.as_i64(),
+                        value: 0.0,
+                        attrs: PlotPointAttrs {
+                            color: egui::Color32::TRANSPARENT,
+                            radius_ui: 0.0,
+                            kind: PlotSeriesKind::Clear,
+                        },
+                    }));
+                }
 
                 has_discontinuities
             };
@@ -435,19 +542,40 @@ impl SeriesLineSystem {
             // have to deal with overlapped chunks, or discontinuities introduced by query-time clears.
             if !all_chunks_sorted_and_not_overlapped || has_discontinuities {
                 re_tracing::profile_scope!("sort");
-                points.sort_by_key(|p| p.time);
+                for points in &mut points_per_series {
+                    points.sort_by_key(|p| p.time);
+                }
             }
 
-            points_to_series(
-                &data_result.entity_path,
-                time_per_pixel,
-                points,
-                ctx.recording_engine().store(),
-                view_query,
-                series_name.into(),
-                aggregator,
-                all_series,
-            );
+            debug_assert_eq!(points_per_series.len(), series_names.len());
+            for (instance, (points, label, visible)) in itertools::izip!(
+                points_per_series.into_iter(),
+                series_names.into_iter(),
+                series_visibility_flags.into_iter()
+            )
+            .enumerate()
+            {
+                let instance_path = if num_series == 1 {
+                    InstancePath::entity_all(data_result.entity_path.clone())
+                } else {
+                    InstancePath::instance(
+                        data_result.entity_path.clone(),
+                        (instance as u64).into(),
+                    )
+                };
+
+                points_to_series(
+                    instance_path,
+                    time_per_pixel,
+                    visible,
+                    points,
+                    ctx.recording_engine().store(),
+                    view_query,
+                    label,
+                    aggregator,
+                    all_series,
+                );
+            }
         }
     }
 }
@@ -478,7 +606,7 @@ fn collect_recursive_clears(
         for chunk in chunks {
             cleared_indices.extend(
                 itertools::izip!(
-                    chunk.iter_component_indices(&query.timeline(), &ClearIsRecursive::name()),
+                    chunk.iter_component_indices(query.timeline(), &ClearIsRecursive::name()),
                     chunk
                         .iter_component::<ClearIsRecursive>()
                         .map(|is_recursive| {

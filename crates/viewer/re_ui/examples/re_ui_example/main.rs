@@ -2,11 +2,13 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use re_ui::notifications;
+use egui::Modifiers;
+use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens,
-    UICommand, UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens, Help,
+    ModifiersText, UICommand, UICommandSender, UiExt as _,
 };
+use re_ui::{icon_text, icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -249,6 +251,7 @@ impl eframe::App for ExampleApp {
                 });
             });
 
+            //TODO(ab): this demo could be slightly more interesting.
             ui.scope(|ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
@@ -264,7 +267,13 @@ impl eframe::App for ExampleApp {
 
                 let filter = self.filter_state.filter();
                 for name in names {
-                    if let Some(widget_text) = filter.matches_formatted(ui.ctx(), name) {
+                    if let Some(mut hierarchy_ranges) = filter.match_path([name]) {
+                        let widget_text = format_matching_text(
+                            ui.ctx(),
+                            name,
+                            hierarchy_ranges.remove(0).into_iter().flatten(),
+                            None,
+                        );
                         ui.list_item_flat_noninteractive(list_item::LabelContent::new(widget_text));
                     }
                 }
@@ -470,6 +479,22 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
                 .on_hover_text("This is a tooltip");
+
+            ui.label("Help").on_hover_ui(|ui| {
+                Help::new("Help example")
+                    .docs_link("https://rerun.io/docs/reference/types/views/map_view")
+                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+                    .control(
+                        "Zoom",
+                        icon_text!(
+                            ModifiersText(Modifiers::COMMAND, ui.ctx()),
+                            "+",
+                            icons::SCROLL
+                        ),
+                    )
+                    .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+                    .ui(ui);
+            });
 
             ui.label(
                 egui::RichText::new("Welcome to the ReUi example")

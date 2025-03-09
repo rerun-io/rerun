@@ -5,16 +5,17 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any
 
 import requests
 from frontmatter import load_frontmatter
 from PIL import Image
 
-Frontmatter = Dict[str, Any]
+Frontmatter = dict[str, Any]
 
 
 class Example:
@@ -49,7 +50,7 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
 def update() -> None:
     with ThreadPoolExecutor() as ex:
 
-        def work(example: Example):
+        def work(example: Example) -> None:
             width, height = get_thumbnail_dimensions(example.fm["thumbnail"])
 
             if "thumbnail_dimensions" not in example.fm:
@@ -82,7 +83,7 @@ def check() -> None:
     bad = False
     with ThreadPoolExecutor() as ex:
 
-        def work(example: Example):
+        def work(example: Example) -> None:
             nonlocal bad
             if not example.fm.get("thumbnail_dimensions"):
                 print(f"{example.path} has no `thumbnail_dimensions`")

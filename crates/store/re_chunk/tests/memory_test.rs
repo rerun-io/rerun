@@ -62,8 +62,8 @@ use arrow::{
     buffer::OffsetBuffer as ArrowOffsetBuffer,
     datatypes::Field as ArrowField,
 };
-use itertools::Itertools;
-use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
+use itertools::Itertools as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::arrow_helpers::as_array_ref;
 
 // --- concat ---
@@ -90,7 +90,8 @@ fn concat_does_allocate() {
             .map(|a| &**a as &dyn ArrowArray)
             .collect_vec();
 
-        let concatenated = memory_use(|| arrow_util::concat_arrays(&unconcatenated_refs).unwrap());
+        let concatenated =
+            memory_use(|| re_arrow_util::concat_arrays(&unconcatenated_refs).unwrap());
 
         (unconcatenated, concatenated)
     });
@@ -120,7 +121,8 @@ fn concat_single_is_noop() {
         let unconcatenated =
             memory_use(|| as_array_ref(ArrowInt64Array::from((0..NUM_SCALARS).collect_vec())));
 
-        let concatenated = memory_use(|| arrow_util::concat_arrays(&[&*unconcatenated.0]).unwrap());
+        let concatenated =
+            memory_use(|| re_arrow_util::concat_arrays(&[&*unconcatenated.0]).unwrap());
 
         (unconcatenated, concatenated)
     });
@@ -178,7 +180,7 @@ fn filter_does_allocate() {
 
             let filter =
                 ArrowBooleanArray::from((0..unfiltered.0.len()).map(|i| i % 2 == 0).collect_vec());
-            let filtered = memory_use(|| arrow_util::filter_array(&unfiltered.0, &filter));
+            let filtered = memory_use(|| re_arrow_util::filter_array(&unfiltered.0, &filter));
 
             (unfiltered, filtered)
         });
@@ -238,7 +240,7 @@ fn filter_empty_or_full_is_noop() {
                     .take(unfiltered.0.len())
                     .collect_vec(),
             );
-            let filtered = memory_use(|| arrow_util::filter_array(&unfiltered.0, &filter));
+            let filtered = memory_use(|| re_arrow_util::filter_array(&unfiltered.0, &filter));
 
             (unfiltered, filtered)
         });
@@ -305,7 +307,7 @@ fn take_does_not_allocate() {
                     .filter(|i| i % 2 == 0)
                     .collect_vec(),
             );
-            let taken = memory_use(|| arrow_util::take_array(&untaken.0, &indices));
+            let taken = memory_use(|| re_arrow_util::take_array(&untaken.0, &indices));
 
             (untaken, taken)
         });
@@ -361,7 +363,7 @@ fn take_empty_or_full_is_noop() {
             });
 
             let indices = ArrowInt32Array::from((0..untaken.0.len() as i32).collect_vec());
-            let taken = memory_use(|| arrow_util::take_array(&untaken.0, &indices));
+            let taken = memory_use(|| re_arrow_util::take_array(&untaken.0, &indices));
 
             (untaken, taken)
         });

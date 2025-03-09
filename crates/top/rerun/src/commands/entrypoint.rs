@@ -1,9 +1,12 @@
-use clap::{CommandFactory, Subcommand};
-use itertools::Itertools;
+use std::net::IpAddr;
+
+use clap::{CommandFactory as _, Subcommand};
+use itertools::Itertools as _;
+use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
-use re_sdk::sink::LogSink;
+use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{commands::RrdCommands, CallSource};
@@ -12,8 +15,6 @@ use crate::{commands::RrdCommands, CallSource};
 use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "server")]
-use re_ws_comms::RerunServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
@@ -23,7 +24,7 @@ use crate::commands::AnalyticsCommands;
 const LONG_ABOUT: &str = r#"
 The Rerun command-line interface:
 * Spawn viewers to visualize Rerun recordings and other supported formats.
-* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Start a gRPC server to share recordings over the network, on native or web.
 * Inspect, edit and filter Rerun recordings.
 "#;
 
@@ -56,14 +57,14 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun TCP server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and serves the results over WebSockets:
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serves the results:
         rerun --serve-web
 
     Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
         rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
-        rerun ws://localhost:9877
+        rerun rerun+http://localhost:9877/proxy
 
     Listen for incoming TCP connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
@@ -85,7 +86,7 @@ struct Args {
 
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
-    bind: String,
+    bind: IpAddr,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -127,9 +128,9 @@ When persisted, the state will be stored at the following locations:
     )]
     persist_state: bool,
 
-    /// What TCP port do we listen to for SDKs to connect to.
+    /// What port do we listen to for SDKs to connect to over gRPC.
     #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    #[clap(long, default_value_t = re_grpc_server::DEFAULT_SERVER_PORT)]
     port: u16,
 
     /// Start with the puffin profiler running.
@@ -150,15 +151,19 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve: bool,
 
-    /// Serve the recordings over WebSocket to one or more Rerun Viewers.
+    /// This will host a web-viewer over HTTP, and a gRPC server.
     ///
-    /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
-    /// but you can also connect with the native binary.
-    ///
-    /// `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from
+    /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
     serve_web: bool,
+
+    /// Do not attempt to start a new server, instead try to connect to an existing one.
+    ///
+    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    #[clap(long)]
+    #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
+    connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
     ///
@@ -219,12 +224,6 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
     window_size: Option<String>,
-
-    /// What port do we listen to for incoming websocket connections from the viewer.
-    /// A port of 0 will pick a random port.
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = Default::default())]
-    ws_server_port: RerunServerPort,
 
     /// Override the default graphics backend and for a specific one instead.
     ///
@@ -571,6 +570,12 @@ where
         return Ok(0);
     }
 
+    // We don't want the runtime to run on the main thread, as we need that one for our UI.
+    // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
+    // and synchronize the result using some other means instead.
+    let tokio_runtime = Runtime::new()?;
+    let _tokio_guard = tokio_runtime.enter();
+
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
@@ -596,7 +601,13 @@ where
             }
         }
     } else {
-        run_impl(main_thread_token, build_info, call_source, args)
+        run_impl(
+            main_thread_token,
+            build_info,
+            call_source,
+            args,
+            tokio_runtime.handle(),
+        )
     };
 
     match res {
@@ -623,10 +634,11 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
+    _tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
-    let mut is_another_viewer_running = false;
+    let mut is_another_server_running = false;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -668,7 +680,17 @@ fn run_impl(
         }
     };
 
+    #[cfg(feature = "server")]
+    let server_addr = std::net::SocketAddr::new(args.bind, args.port);
+    #[cfg(feature = "server")]
+    let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
+    #[allow(unused_variables)]
+    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+
     // Where do we get the data from?
+    let mut catalog_endpoints: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
@@ -679,14 +701,16 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
-                // Special case! We are connecting a web-viewer to a web-socket address.
-                // Instead of piping, just host a web-viewer that connects to the web-socket directly:
+            if let DataSource::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) =
+                data_sources[0].clone()
+            {
+                // Special case! We are connecting a web-viewer to a gRPC address.
+                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
                 WebViewerConfig {
-                    bind_ip: args.bind,
+                    bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(rerun_server_ws_url),
+                    source_url: Some(endpoint),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -698,30 +722,66 @@ fn run_impl(
             }
         }
 
+        let command_sender = command_sender.clone();
+        let on_cmd = Box::new(move |cmd| {
+            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            match cmd {
+                re_data_source::DataSourceCommand::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            }
+        });
+
         let mut rxs = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(None))
+            .filter_map(
+                |data_source| match data_source.stream(on_cmd.clone(), None) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        catalog_endpoints.push(endpoint);
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                },
+            )
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
-        {
+        if let Some(url) = args.connect {
+            let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
+            };
+            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
+            rxs.push(rx);
+        } else {
             // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
-            let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-            if TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(1)).is_ok() {
+            if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
                 re_log::info!(
-                    %addr,
+                    %server_addr,
                     "A process is already listening at this address. Assuming it's a Rerun Viewer."
                 );
-                is_another_viewer_running = true;
-            } else {
-                let server_options = re_sdk_comms::ServerOptions {
-                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                    quiet: false,
-                };
-                let tcp_listener: Receiver<LogMsg> =
-                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-                rxs.push(tcp_listener);
+                is_another_server_running = true;
+
+            // NOTE: In case of serve-web, we don't want to turn the server into a receiver,
+            //       we want all receivers to push their data to the server.
+            //       For that we spawn the server a bit further down, after we've collected
+            //       all receivers into `rxs`.
+            } else if !args.serve && !args.serve_web {
+                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_memory_limit,
+                    re_grpc_server::shutdown::never(),
+                );
+                rxs.push(server);
             }
         }
 
@@ -731,12 +791,24 @@ fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
+        if !catalog_endpoints.is_empty() {
+            anyhow::bail!("`--test-receive` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
+        if !catalog_endpoints.is_empty() {
+            anyhow::bail!("`--save` does not support catalogs");
+        }
+
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve || args.serve_web {
+        if !catalog_endpoints.is_empty() {
+            anyhow::bail!("`--serve` does not support catalogs");
+        }
+
         #[cfg(not(feature = "server"))]
         {
             _ = (call_source, rxs);
@@ -750,11 +822,8 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
-        #[cfg(feature = "web_viewer")]
-        if args.url_or_paths.is_empty()
-            && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
-        {
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
+        if args.url_or_paths.is_empty() && (args.port == args.web_viewer_port.0) {
             anyhow::bail!(
                 "Trying to spawn a websocket server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",
@@ -762,52 +831,55 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
-            let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
-
-            // This is the server which the web viewer will talk to:
-            let _ws_server = re_ws_comms::RerunServer::new(
-                ReceiveSet::new(rxs),
-                &args.bind,
-                args.ws_server_port,
+            // Spawn a server which the Web Viewer can connect to.
+            // All `rxs` are consumed by the server.
+            re_grpc_server::spawn_from_rx_set(
+                server_addr,
                 server_memory_limit,
-            )?;
+                re_grpc_server::shutdown::never(),
+                ReceiveSet::new(rxs),
+            );
 
-            #[cfg(feature = "web_viewer")]
-            {
-                // We always host the web-viewer in case the users wants it,
-                // but we only open a browser automatically with the `--web-viewer` flag.
+            // We always host the web-viewer in case the users wants it,
+            // but we only open a browser automatically with the `--web-viewer` flag.
+            let open_browser = args.web_viewer;
 
-                let open_browser = args.web_viewer;
+            let url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
+                format!("rerun+http://localhost:{}/proxy", server_addr.port())
+            } else {
+                format!("rerun+http://{server_addr}/proxy")
+            };
 
-                // This is the server that serves the Wasm+HTML:
-                WebViewerConfig {
-                    bind_ip: args.bind,
-                    web_port: args.web_viewer_port,
-                    source_url: Some(_ws_server.server_url()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser,
-                }
-                .host_web_viewer()?
-                .block(); // dropping should stop the server
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
+            };
+
+            // This is the server that serves the Wasm+HTML:
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                source_url: Some(endpoint),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser,
             }
-
-            #[cfg(not(feature = "web_viewer"))]
-            {
-                // Returning from this function so soon would drop and therefore stop the server.
-                _ws_server.block();
-            }
-
-            return Ok(());
+            .host_web_viewer()?
+            .block();
         }
-    } else if is_another_viewer_running {
-        let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
-        re_log::info!(%addr, "Another viewer is already running, streaming data to it.");
 
-        let sink = re_sdk::sink::TcpSink::new(addr, re_sdk::default_flush_timeout());
+        Ok(())
+    } else if is_another_server_running {
+        // Another viewer is already running on the specified address
+        let endpoint: re_uri::ProxyEndpoint =
+            format!("rerun+http://{server_addr}/proxy").parse()?;
+        re_log::info!(%endpoint, "Another viewer is already running, streaming data to it.");
+
+        // This spawns its own single-threaded runtime on a separate thread,
+        // no need to `rt.enter()`:
+        let sink = re_sdk::sink::GrpcSink::new(endpoint, crate::default_flush_timeout());
 
         for rx in rxs {
             while rx.is_connected() {
@@ -817,6 +889,10 @@ fn run_impl(
                     }
                 }
             }
+        }
+
+        if !catalog_endpoints.is_empty() {
+            re_log::warn!("Catalogs can't be passed to already open viewers yet.");
         }
 
         // TODO(cmc): This is what I would have normally done, but this never terminates for some
@@ -835,29 +911,37 @@ fn run_impl(
         Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
-        return re_viewer::run_native_app(
-            _main_thread_token,
-            Box::new(move |cc| {
-                let mut app = re_viewer::App::new(
-                    _main_thread_token,
-                    _build_info,
-                    &call_source.app_env(),
-                    startup_options,
-                    cc,
-                );
-                for rx in rxs {
-                    app.add_receiver(rx);
-                }
-                app.set_profiler(profiler);
-                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                    app.set_examples_manifest_url(url);
-                }
-                Box::new(app)
-            }),
-            args.renderer.as_deref(),
-        )
-        .map_err(|err| err.into());
+        {
+            let tokio_runtime_handle = _tokio_runtime_handle.clone();
 
+            return re_viewer::run_native_app(
+                _main_thread_token,
+                Box::new(move |cc| {
+                    let mut app = re_viewer::App::with_commands(
+                        _main_thread_token,
+                        _build_info,
+                        &call_source.app_env(),
+                        startup_options,
+                        cc,
+                        re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        (command_sender, command_receiver),
+                    );
+                    for rx in rxs {
+                        app.add_receiver(rx);
+                    }
+                    app.set_profiler(profiler);
+                    if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                        app.set_examples_manifest_url(url);
+                    }
+                    for endpoint in catalog_endpoints {
+                        app.add_redap_server(endpoint);
+                    }
+                    Box::new(app)
+                }),
+                args.renderer.as_deref(),
+            )
+            .map_err(|err| err.into());
+        }
         #[cfg(not(feature = "native_viewer"))]
         {
             _ = (call_source, rxs);
@@ -984,14 +1068,6 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
         .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
 }
 
-#[cfg(feature = "server")]
-fn parse_max_latency(max_latency: Option<&String>) -> f32 {
-    max_latency.as_ref().map_or(f32::INFINITY, |time| {
-        re_format::parse_duration(time)
-            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
-    })
-}
-
 // --- io ---
 
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
@@ -1008,7 +1084,7 @@ fn stream_to_rrd_on_disk(
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
-    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
     let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(

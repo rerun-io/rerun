@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Component, ComponentName,
+    Component as _, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -55,7 +55,7 @@ impl DataUi for InstancePath {
                 ui,
                 format!(
                     "{self} has no components on timeline {:?}",
-                    query.timeline().name()
+                    query.timeline()
                 ),
             );
             return;
@@ -70,15 +70,13 @@ impl DataUi for InstancePath {
         let mut components = latest_at(db, query, entity_path, &components);
 
         if components.is_empty() {
+            let typ = db.timeline_type(&query.timeline());
             ui_layout.label(
                 ui,
                 format!(
                     "Nothing logged at {} = {}",
-                    query.timeline().name(),
-                    query
-                        .timeline()
-                        .typ()
-                        .format(query.at(), ctx.app_options.time_zone),
+                    query.timeline(),
+                    typ.format(query.at(), ctx.app_options().time_zone),
                 ),
             );
             return;
@@ -235,7 +233,7 @@ fn component_list_ui(
                                 db,
                             );
                         } else {
-                            ctx.component_ui_registry.ui(
+                            ctx.component_ui_registry().ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,
@@ -319,7 +317,10 @@ fn preview_if_image_ui(
         format: image_format.0,
         kind,
     };
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+    let image_stats = ctx
+        .store_context
+        .caches
+        .entry(|c: &mut ImageStatsCache| c.entry(&image));
 
     let colormap = component_map
         .get(&components::Colormap::name())
@@ -402,7 +403,7 @@ fn image_download_button_ui(
                         .map_or("image", |name| name.unescaped_str())
                         .to_owned()
                 );
-                ctx.command_sender.save_file_dialog(
+                ctx.command_sender().save_file_dialog(
                     re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save image".to_owned(),
@@ -445,6 +446,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             let fill = colors[component].linear_multiply(0.5);
 
             BarChart::new(
+                "bar_chart",
                 histogram
                     .into_iter()
                     .enumerate()

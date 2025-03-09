@@ -20,18 +20,19 @@ use arrow::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
-    Timeline, UnitChunkShared,
+    TimelineName, UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, Index, IndexValue, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector,
+    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
+use re_sorbet::SorbetColumnDescriptors;
 use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
 
 // ---
@@ -76,7 +77,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: Vec<ColumnDescriptor>,
+    view_contents: SorbetColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -171,10 +172,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let filtered_index = self
             .query
             .filtered_index
-            .unwrap_or_else(|| Timeline::new_sequence(""));
+            .unwrap_or_else(|| TimelineName::new(""));
 
         // 1. Compute the schema for the query.
-        let view_contents = store.schema_for_query(&self.query);
+        let view_contents_schema = store.schema_for_query(&self.query);
+        let view_contents = view_contents_schema.indices_and_components();
 
         // 2. Compute the schema of the selected contents.
         //
@@ -193,7 +195,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let arrow_schema = ArrowSchemaRef::from(ArrowSchema::new_with_metadata(
             selected_contents
                 .iter()
-                .map(|(_, descr)| descr.to_arrow_field())
+                .map(|(_, descr)| descr.to_arrow_field(re_sorbet::BatchType::Dataframe))
                 .collect::<ArrowFields>(),
             Default::default(),
         ));
@@ -234,6 +236,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     continue;
                 };
 
+                descr.sanity_check();
+
                 // NOTE: It would be tempting to concatenate all these individual clear chunks into one
                 // single big chunk, but that'd be a mistake: 1) it's costly to do so but more
                 // importantly 2) that would lead to likely very large chunk overlap, which is very bad
@@ -258,7 +262,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_arrow_util::arrow_util::new_list_array_of_empties(
+                                re_arrow_util::new_list_array_of_empties(
                                     &child_datatype,
                                     chunk.num_rows(),
                                 ),
@@ -333,10 +337,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .map(|(_view_idx, descr)| match descr {
                     ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
-                        let query = re_chunk::LatestAtQuery::new(
-                            Timeline::new_sequence(""),
-                            TimeInt::STATIC,
-                        );
+                        descr.sanity_check();
+
+                        let query =
+                            re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
                         let results = cache.latest_at(
                             &query,
@@ -350,8 +354,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .collect_vec()
         };
 
+        for (_, descr) in &selected_contents {
+            descr.sanity_check();
+        }
+
         QueryHandleState {
-            view_contents,
+            view_contents: view_contents_schema,
             selected_contents,
             selected_static_values,
             filtered_index,
@@ -383,12 +391,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
                             ColumnDescriptor::Component(_) => None,
                         })
-                        .find(|(_idx, view_descr)| *view_descr.name() == *selected_timeline)
+                        .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
                         .map_or_else(
                             || {
                                 (
                                     usize::MAX,
-                                    ColumnDescriptor::Time(TimeColumnDescriptor::new_null(
+                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
                                         *selected_timeline,
                                     )),
                                 )
@@ -402,6 +410,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         entity_path: selected_entity_path,
                         component_name: selected_component_name,
                     } = selected_column;
+
+                    debug_assert!(
+                        !selected_component_name.starts_with("rerun.components.rerun.components."),
+                        "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
+                    );
 
                     view_contents
                         .iter()
@@ -647,7 +660,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &[ColumnDescriptor] {
+    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -910,22 +923,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .timelines()
                     .get(&state.filtered_index)
                     .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
-                let cur_index_row_ids = cur_chunk.row_ids_raw();
-
-                // NOTE: "Deserializing" everything into a native vec is way too much for rustc to
-                // follow and doesn't get optimized at all -- we have to work with raw arrow data
-                // all the way, so this gets a bit complicated.
-                let cur_index_row_id_at = |at: usize| {
-                    let (times, incs) = cur_index_row_ids;
-
-                    let times = times.values();
-                    let incs = incs.values();
-
-                    let time = *times.get(at)?;
-                    let inc = *incs.get(at)?;
-
-                    Some(RowId::from_u128(((time as u128) << 64) | (inc as u128)))
-                };
+                let cur_index_row_ids = cur_chunk.row_ids_slice();
 
                 let (index_value, cur_row_id) = 'walk: loop {
                     let (Some(mut index_value), Some(mut cur_row_id)) = (
@@ -933,7 +931,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .get(cur_cursor_value as usize)
                             .copied()
                             .map(TimeInt::new_temporal),
-                        cur_index_row_id_at(cur_cursor_value as usize),
+                        cur_index_row_ids.get(cur_cursor_value as usize).copied(),
                     ) else {
                         continue 'overlaps;
                     };
@@ -947,7 +945,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 .get(cur_cursor_value as usize + 1)
                                 .copied()
                                 .map(TimeInt::new_temporal),
-                            cur_index_row_id_at(cur_cursor_value as usize + 1),
+                            cur_index_row_ids
+                                .get(cur_cursor_value as usize + 1)
+                                .copied(),
                         ) {
                             if next_index_value == *cur_index_value {
                                 index_value = next_index_value;
@@ -1032,7 +1032,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 for (view_idx, streaming_state) in null_streaming_states {
                     let Some(ColumnDescriptor::Component(descr)) =
-                        state.view_contents.get(view_idx)
+                        state.view_contents.get_index_or_component(view_idx)
                     else {
                         continue;
                     };
@@ -1054,8 +1054,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                     let results = cache.latest_at(
                         &query,
-                        &descr.entity_path,
-                        [ComponentDescriptor::from(descr)],
+                        &descr.entity_path.clone(),
+                        [ComponentDescriptor::from(descr.clone())],
                     );
 
                     *streaming_state = results
@@ -1083,7 +1083,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // * return the minimum value instead of the max
         // * return the exact value for each component (that would be a _lot_ of columns!)
         // * etc
-        let mut max_value_per_index: IntMap<Timeline, (TimeInt, ArrowScalarBuffer<i64>)> =
+        let mut max_value_per_index: IntMap<TimelineName, (TimeInt, ArrowScalarBuffer<i64>)> =
             IntMap::default();
         {
             view_streaming_state
@@ -1116,7 +1116,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 })
                 .for_each(|(timeline, (time, time_sliced))| {
                     max_value_per_index
-                        .entry(timeline)
+                        .entry(*timeline.name())
                         .and_modify(|(max_time, max_time_sliced)| {
                             if time > *max_time {
                                 *max_time = time;
@@ -1165,12 +1165,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => Some(re_types_core::ComponentDescriptor {
-                                    component_name: descr.component_name,
-                                    archetype_name: descr.archetype_name,
-                                    archetype_field_name: descr.archetype_field_name,
-                                }),
+                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
+                                ColumnDescriptor::Component(descr) => {
+                                    descr.component_name.sanity_check();
+                                    Some(re_types_core::ComponentDescriptor {
+                                        component_name: descr.component_name,
+                                        archetype_name: descr.archetype_name,
+                                        archetype_field_name: descr.archetype_field_name,
+                                    })
+                                },
                                 ColumnDescriptor::Time(_) => None,
                             })?;
                             unit.components().get_by_descriptor(&component_desc).cloned()
@@ -1196,12 +1199,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.get(&descr.timeline()).map_or_else(
+                ColumnDescriptor::Time(descr) => max_value_per_index
+                    .get(descr.timeline().name())
+                    .map_or_else(
                         || arrow::array::new_null_array(&column.arrow_datatype(), 1),
-                        |(_time, time_sliced)| descr.typ().make_arrow_array(time_sliced.clone()),
-                    )
-                }
+                        |(_time, time_sliced)| {
+                            descr.timeline().typ().make_arrow_array(time_sliced.clone())
+                        },
+                    ),
 
                 ColumnDescriptor::Component(_descr) => view_sliced_arrays
                     .get(*view_idx)
@@ -1294,7 +1299,9 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::compute::concat_batches;
-    use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TransportChunk};
+    use insta::assert_snapshot;
+
+    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
@@ -1312,10 +1319,15 @@ mod tests {
 
     use super::*;
 
-    macro_rules! assert_snapshot_fixed_width {
-        ($($arg:tt)*) => {
-            insta::_assert_snapshot_base!(transform=|v| std::format!("{v:200}"), $($arg)*)
-        };
+    /// Implement `Display` for `ArrowRecordBatch`
+    struct DisplayRB(ArrowRecordBatch);
+
+    impl std::fmt::Display for DisplayRB {
+        #[inline]
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let width = 200;
+            re_format_arrow::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
+        }
     }
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
@@ -1355,7 +1367,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // static
         {
@@ -1373,7 +1385,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // temporal
@@ -1395,7 +1407,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1410,7 +1422,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
@@ -1429,7 +1441,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1443,7 +1455,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_range: Some(ResolvedTimeRange::new(30, 60)),
@@ -1462,7 +1474,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1476,7 +1488,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
@@ -1501,7 +1513,7 @@ mod tests {
         )?;
         eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -1515,7 +1527,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // vanilla
         {
@@ -1543,7 +1555,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // sparse-filled
@@ -1573,7 +1585,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1588,7 +1600,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path: EntityPath = "this/that".into();
 
         // non-existing entity
@@ -1614,7 +1626,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // non-existing component
@@ -1640,7 +1652,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // MyPoint
@@ -1666,7 +1678,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // MyColor
@@ -1692,7 +1704,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1708,7 +1720,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // empty view
         {
@@ -1734,7 +1746,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         {
@@ -1771,7 +1783,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1787,7 +1799,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Timeline::new_sequence("frame_nr");
+        let filtered_index = TimelineName::new("frame_nr");
 
         // empty selection
         {
@@ -1809,7 +1821,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // only indices (+ duplication)
@@ -1817,15 +1829,9 @@ mod tests {
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: "ATimeColumnThatDoesntExist".into(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from("ATimeColumnThatDoesntExist")),
                 ]),
                 ..Default::default()
             };
@@ -1842,7 +1848,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // only components (+ duplication)
@@ -1882,7 +1888,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // static
@@ -1892,36 +1898,16 @@ mod tests {
                 selection: Some(vec![
                     // NOTE: This will force a crash if the selected indexes vs. view indexes are
                     // improperly handled.
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -1943,7 +1929,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -1959,7 +1945,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Timeline::new_sequence("frame_nr");
+        let filtered_index = TimelineName::new("frame_nr");
 
         // only components
         {
@@ -1974,15 +1960,9 @@ mod tests {
                     .collect(),
                 ),
                 selection: Some(vec![
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *filtered_index.name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_time().name(),
-                    }),
-                    ColumnSelector::Time(TimeColumnSelector {
-                        timeline: *Timeline::log_tick().name(),
-                    }),
+                    ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_time().name())),
+                    ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_tick().name())),
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -2012,7 +1992,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -2029,7 +2009,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // barebones
@@ -2052,7 +2032,7 @@ mod tests {
             )?;
             eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         // sparse-filled
@@ -2080,7 +2060,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
 
-            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
+            assert_snapshot!(DisplayRB(dataframe));
         }
 
         Ok(())
@@ -2095,7 +2075,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // basic
@@ -2281,7 +2261,7 @@ mod tests {
                 let fut = self.0.next_row_batch_async();
                 let fut = std::pin::pin!(fut);
 
-                use std::future::Future;
+                use std::future::Future as _;
                 fut.poll(cx)
             }
         }
@@ -2293,7 +2273,7 @@ mod tests {
 
         let engine_guard = query_engine.engine.write_arc();
 
-        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let filtered_index = Some(TimelineName::new("frame_nr"));
 
         // static
         let handle_static = tokio::spawn({
@@ -2318,10 +2298,7 @@ mod tests {
                 )?;
                 eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                assert_snapshot_fixed_width!(
-                    "async_barebones_static",
-                    TransportChunk::from(dataframe)
-                );
+                assert_snapshot!("async_barebones_static", DisplayRB(dataframe));
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2352,10 +2329,7 @@ mod tests {
                 )?;
                 eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                assert_snapshot_fixed_width!(
-                    "async_barebones_temporal",
-                    TransportChunk::from(dataframe)
-                );
+                assert_snapshot!("async_barebones_temporal", DisplayRB(dataframe));
 
                 Ok::<_, anyhow::Error>(())
             }

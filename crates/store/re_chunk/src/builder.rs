@@ -1,9 +1,8 @@
 use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::arrow_util;
-use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
@@ -18,7 +17,7 @@ pub struct ChunkBuilder {
     entity_path: EntityPath,
 
     row_ids: Vec<RowId>,
-    timelines: IntMap<Timeline, TimeColumnBuilder>,
+    timelines: IntMap<TimelineName, TimeColumnBuilder>,
     components: IntMap<ComponentDescriptor, Vec<Option<ArrayRef>>>,
 }
 
@@ -73,11 +72,11 @@ impl ChunkBuilder {
 
         self.row_ids.push(row_id);
 
-        for (timeline, time) in timepoint.into() {
+        for (timeline, cell) in timepoint.into() {
             self.timelines
                 .entry(timeline)
-                .or_insert_with(|| TimeColumn::builder(timeline))
-                .with_row(time);
+                .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline, cell.typ())))
+                .with_row(cell.value);
         }
 
         for (component_name, array) in components {
@@ -280,7 +279,7 @@ impl ChunkBuilder {
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
                         let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        arrow_util::arrays_to_list_array_opt(&arrays)
+                        re_arrow_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
             {
@@ -339,10 +338,10 @@ impl ChunkBuilder {
                             // If we know the datatype in advance, we're able to keep even fully sparse
                             // columns around.
                             if let Some(datatype) = datatypes.get(&component_desc) {
-                                arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
+                                re_arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
                                     .map(|list_array| (component_desc, list_array))
                             } else {
-                                arrow_util::arrays_to_list_array_opt(&arrays)
+                                re_arrow_util::arrays_to_list_array_opt(&arrays)
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })
@@ -388,11 +387,8 @@ impl TimeColumnBuilder {
 
     /// Add a row's worth of time data using the given timestamp.
     #[inline]
-    pub fn with_row(&mut self, time: TimeInt) -> &mut Self {
-        let Self { timeline: _, times } = self;
-
-        times.push(time.as_i64());
-
+    pub fn with_row(&mut self, time: NonMinI64) -> &mut Self {
+        self.times.push(time.into());
         self
     }
 

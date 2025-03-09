@@ -1,3 +1,5 @@
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
+use re_viewer::external::re_ui::Help;
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
@@ -12,8 +14,6 @@ use re_viewer::external::{
         ViewSystemRegistrator, ViewerContext,
     },
 };
-
-use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -80,8 +80,9 @@ impl ViewClass for ColorCoordinatesView {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "A demo view that shows colors as coordinates on a 2D plane.".to_owned()
+    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+        Help::new("Color coordinates view")
+            .markdown("A demo view that shows colors as coordinates on a 2D plane.")
     }
 
     /// Register all systems (contexts & parts) that the view needs.

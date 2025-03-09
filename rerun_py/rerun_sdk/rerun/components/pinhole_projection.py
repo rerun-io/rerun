@@ -23,7 +23,6 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     Image coordinates from camera view coordinates.
 
     Example:
-    -------
     ```text
     1496.1     0.0  980.5
        0.0  1496.1  744.5
@@ -36,7 +35,6 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
 
     # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
-    pass
 
 
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):

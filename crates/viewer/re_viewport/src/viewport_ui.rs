@@ -261,8 +261,8 @@ impl ViewportUi {
         }
 
         // drop incoming!
-        if ctx.egui_ctx.input(|i| i.pointer.any_released()) {
-            egui::DragAndDrop::clear_payload(ctx.egui_ctx);
+        if ctx.egui_ctx().input(|i| i.pointer.any_released()) {
+            egui::DragAndDrop::clear_payload(ctx.egui_ctx());
 
             view_blueprint
                 .contents
@@ -341,13 +341,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             return Default::default();
         }
 
-        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
-            ui.centered_and_justified(|ui| {
-                ui.weak("No time selected");
-            });
-            return Default::default();
-        };
-
         let (query, system_output) = self.executed_systems_per_view.remove(view_id).unwrap_or_else(|| {
             // The view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
@@ -384,11 +377,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 });
             }
 
-            let class = view_blueprint.class(self.ctx.view_class_registry);
-            execute_systems_for_view(ctx, view, latest_at, self.view_states.get_mut_or_create(*view_id, class))
+            let class = view_blueprint.class(self.ctx.view_class_registry());
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class))
         });
 
-        let class = view_blueprint.class(self.ctx.view_class_registry);
+        let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
         ui.scope(|ui| {
@@ -425,7 +418,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         } else {
             // All panes are views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("ViewId missing during egui_tiles");
-            self.ctx.egui_ctx.error_text("Internal error").into()
+            self.ctx.egui_ctx().error_text("Internal error").into()
         }
     }
 
@@ -497,14 +490,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             0.5,
         );
 
-        let frame = egui::Frame {
-            inner_margin: egui::Margin::same(0),
-            outer_margin: egui::Margin::same(0),
-            rounding: egui::Rounding::ZERO,
-            shadow: Default::default(),
-            fill: egui::Color32::TRANSPARENT,
-            stroke: egui::Stroke::NONE,
-        };
+        let frame = egui::Frame::NONE;
 
         frame.show(ui, |ui| {
             tab_widget.paint(ui);
@@ -559,7 +545,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             }
         }
 
-        let view_class = view_blueprint.class(self.ctx.view_class_registry);
+        let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
         let view_state = self.view_states.get_mut_or_create(view_id, view_class);
@@ -579,9 +565,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 );
             });
 
-        let help_markdown = view_class.help_markdown(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_ui(|ui| {
-            ui.markdown_ui(&help_markdown);
+            view_class.help(ui.ctx()).ui(ui);
         });
     }
 
@@ -677,14 +662,14 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer.tab_title_for_pane(view_id),
                         user_named: view.display_name.is_some(),
-                        icon: view.class(tab_viewer.ctx.view_class_registry).icon(),
+                        icon: view.class(tab_viewer.ctx.view_class_registry()).icon(),
                         item: Some(Item::View(*view_id)),
                     }
                 } else {
                     re_log::warn_once!("View {view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.egui_ctx.error_text("Unknown view").into(),
+                        label: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -708,7 +693,11 @@ impl TabWidget {
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
                         (
-                            tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
+                            tab_viewer
+                                .ctx
+                                .egui_ctx()
+                                .error_text("Internal error")
+                                .into(),
                             false,
                         )
                     };
@@ -734,7 +723,7 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer
                             .ctx
-                            .egui_ctx
+                            .egui_ctx()
                             .error_text("Unknown container")
                             .into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
@@ -747,7 +736,11 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
+                    label: tab_viewer
+                        .ctx
+                        .egui_ctx()
+                        .error_text("Internal error")
+                        .into(),
                     icon: &re_ui::icons::VIEW_UNKNOWN,
                     user_named: false,
                     item: None,

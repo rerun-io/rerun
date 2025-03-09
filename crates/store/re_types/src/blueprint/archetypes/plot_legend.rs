@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -48,7 +48,7 @@ impl PlotLegend {
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: "rerun.blueprint.components.Visible".into(),
+            component_name: "rerun.components.Visible".into(),
             archetype_field_name: Some("visible".into()),
         }
     }
@@ -194,7 +194,7 @@ impl PlotLegend {
                 Self::descriptor_corner(),
             )),
             visible: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::Visible::arrow_empty(),
+                crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
             )),
         }
@@ -216,10 +216,7 @@ impl PlotLegend {
     ///
     /// True by default.
     #[inline]
-    pub fn with_visible(
-        mut self,
-        visible: impl Into<crate::blueprint::components::Visible>,
-    ) -> Self {
+    pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
     }

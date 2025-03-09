@@ -12,7 +12,7 @@ use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, UiExt,
+    ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
@@ -399,7 +399,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         }
 
         if let Some(view) = viewport.view(view_id) {
-            let view_class = view.class(ctx.view_class_registry);
+            let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
             ui.section_collapsing_header("View properties")
@@ -625,7 +625,7 @@ fn view_button(
     let item = Item::View(view.id);
     let is_selected = ctx.selection().contains_item(&item);
     let view_name = view.display_name_or_default();
-    let class = view.class(ctx.view_class_registry);
+    let class = view.class(ctx.view_class_registry());
 
     let response = ui
         .selectable_label_with_icon(
@@ -719,7 +719,7 @@ fn view_top_level_properties(
 
     ui.list_item_flat_noninteractive(
         PropertyContent::new("View type")
-            .value_text(view.class(ctx.view_class_registry).display_name()),
+            .value_text(view.class(ctx.view_class_registry()).display_name()),
     )
     .on_hover_text("The type of this view");
 }
@@ -870,7 +870,7 @@ fn show_list_item_for_container_child(
                 Item::View(*view_id),
                 list_item::LabelContent::new(view_name.as_ref())
                     .label_style(contents_name_style(&view_name))
-                    .with_icon(view.class(ctx.view_class_registry).icon())
+                    .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
                             .small_icon_button(&icons::REMOVE)
@@ -943,7 +943,7 @@ fn visible_interactive_toggle_ui(
     query_result: &DataQueryResult,
     data_result: &DataResult,
 ) {
-    use re_types::blueprint::components::Visible;
+    use re_types::components::Visible;
     use re_types::Component as _;
 
     {

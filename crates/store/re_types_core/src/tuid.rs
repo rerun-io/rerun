@@ -1,29 +1,30 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayRef, StructArray, UInt64Array},
-    datatypes::{DataType, Field, Fields},
+    array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder},
+    datatypes::DataType,
 };
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_tuid::Tuid;
 
 use crate::{DeserializationError, Loggable};
 
 // ---
 
-// TODO(emilk): This is a bit ugly… but good enough for now?
-pub fn tuid_arrow_fields() -> Fields {
-    Fields::from(vec![
-        Field::new("time_ns", DataType::UInt64, false),
-        Field::new("inc", DataType::UInt64, false),
-    ])
+const BYTE_WIDTH: i32 = std::mem::size_of::<Tuid>() as i32;
+
+pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
+    #[allow(clippy::unwrap_used)] // Can't fail
+    <Tuid as Loggable>::to_arrow(tuids.iter())
+        .unwrap()
+        .as_fixed_size_binary()
+        .clone()
 }
 
 impl Loggable for Tuid {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        DataType::Struct(tuid_arrow_fields())
+        DataType::FixedSizeBinary(BYTE_WIDTH)
     }
 
     fn to_arrow_opt<'a>(
@@ -40,92 +41,37 @@ impl Loggable for Tuid {
 
     #[inline]
     fn to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
+        iter: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> crate::SerializationResult<ArrayRef>
     where
         Self: 'a,
     {
-        let (time_ns_values, inc_values): (Vec<_>, Vec<_>) = data
-            .into_iter()
-            .map(Into::into)
-            .map(|tuid| (tuid.nanoseconds_since_epoch(), tuid.inc()))
-            .unzip();
+        let iter = iter.into_iter();
 
-        let values: Vec<ArrayRef> = vec![
-            Arc::new(UInt64Array::from(time_ns_values)),
-            Arc::new(UInt64Array::from(inc_values)),
-        ];
-        let validity = None;
+        let mut builder = FixedSizeBinaryBuilder::with_capacity(iter.size_hint().0, BYTE_WIDTH);
+        for tuid in iter {
+            #[allow(clippy::unwrap_used)] // Can't fail because `BYTE_WIDTH` is correct.
+            builder.append_value(tuid.into().as_bytes()).unwrap();
+        }
 
-        Ok(Arc::new(StructArray::new(
-            Fields::from(vec![
-                Field::new("time_ns", DataType::UInt64, false),
-                Field::new("inc", DataType::UInt64, false),
-            ]),
-            values,
-            validity,
-        )))
+        Ok(Arc::new(builder.finish()))
     }
 
     fn from_arrow(array: &dyn ::arrow::array::Array) -> crate::DeserializationResult<Vec<Self>> {
-        let expected_datatype = Self::arrow_datatype();
-        let actual_datatype = array.data_type();
-        if actual_datatype != &expected_datatype {
+        let Some(array) = array.as_fixed_size_binary_opt() else {
             return Err(DeserializationError::datatype_mismatch(
-                expected_datatype,
-                actual_datatype.clone(),
+                Self::arrow_datatype(),
+                array.data_type().clone(),
             ));
-        }
+        };
 
-        // NOTE: Unwrap is safe everywhere below, datatype is checked above.
         // NOTE: We don't even look at the validity, our datatype says we don't care.
 
-        #[allow(clippy::unwrap_used)]
-        let array = array.downcast_array_ref::<StructArray>().unwrap();
+        let uuids: &[Self] = bytemuck::try_cast_slice(array.value_data()).map_err(|err| {
+            DeserializationError::ValidationError(format!("Bad length of Tuid array: {err}"))
+        })?;
 
-        // TODO(cmc): Can we rely on the fields ordering from the datatype? I would assume not
-        // since we generally cannot rely on anything when it comes to arrow…
-        // If we could, that would also impact our codegen deserialization path.
-        let (time_ns_index, inc_index) = {
-            let mut time_ns_index = None;
-            let mut inc_index = None;
-            for (i, field) in array.fields().iter().enumerate() {
-                if field.name() == "time_ns" {
-                    time_ns_index = Some(i);
-                } else if field.name() == "inc" {
-                    inc_index = Some(i);
-                }
-            }
-            #[allow(clippy::unwrap_used)]
-            (time_ns_index.unwrap(), inc_index.unwrap())
-        };
-
-        let get_buffer = |field_index: usize| {
-            #[allow(clippy::unwrap_used)]
-            array.columns()[field_index]
-                .downcast_array_ref::<UInt64Array>()
-                .unwrap()
-                .values()
-        };
-
-        let time_ns_buffer = get_buffer(time_ns_index);
-        let inc_buffer = get_buffer(inc_index);
-
-        if time_ns_buffer.len() != inc_buffer.len() {
-            return Err(DeserializationError::mismatched_struct_field_lengths(
-                "time_ns",
-                time_ns_buffer.len(),
-                "inc",
-                inc_buffer.len(),
-            ));
-        }
-
-        Ok(time_ns_buffer
-            .iter()
-            .copied()
-            .zip(inc_buffer.iter().copied())
-            .map(|(time_ns, inc)| Self::from_nanos_and_inc(time_ns, inc))
-            .collect())
+        Ok(uuids.to_vec())
     }
 }
 
@@ -149,7 +95,7 @@ macro_rules! delegate_arrow_tuid {
 
             #[inline]
             fn to_arrow_opt<'a>(
-                values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                _values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
             ) -> $crate::SerializationResult<arrow::array::ArrayRef>
             where
                 Self: 'a,

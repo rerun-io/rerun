@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Generic, Iterable, Iterator, Protocol, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -54,6 +55,14 @@ class ComponentDescriptor:
         archetype_name: str | None = None,
         archetype_field_name: str | None = None,
     ) -> None:
+        assert not component_name.startswith("rerun.components.rerun.components."), (
+            f"Bad component name: {component_name}'"
+        )
+        if archetype_name is not None:
+            assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
+                f"Bad archetype name '{archetype_name}'"
+            )
+
         self.archetype_name = archetype_name
         self.archetype_field_name = archetype_field_name
         self.component_name = component_name
@@ -90,7 +99,9 @@ class ComponentDescriptor:
         archetype_name = archetype_name if archetype_name is not None else self.archetype_name
         archetype_field_name = archetype_field_name if archetype_field_name is not None else self.archetype_field_name
         return ComponentDescriptor(
-            component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            component_name,
+            archetype_name=archetype_name,
+            archetype_field_name=archetype_field_name,
         )
 
     def or_with_overrides(self, *, archetype_name: str | None, archetype_field_name: str | None) -> ComponentDescriptor:
@@ -101,7 +112,9 @@ class ComponentDescriptor:
             self.archetype_field_name if self.archetype_field_name is not None else archetype_field_name
         )
         return ComponentDescriptor(
-            component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            component_name,
+            archetype_name=archetype_name,
+            archetype_field_name=archetype_field_name,
         )
 
 
@@ -113,7 +126,7 @@ class DescribedComponentBatch:
     and assign the right tags given the surrounding context.
     """
 
-    def __init__(self, batch: ComponentBatchLike, descriptor: ComponentDescriptor):
+    def __init__(self, batch: ComponentBatchLike, descriptor: ComponentDescriptor) -> None:
         self._batch = batch
         self._descriptor = descriptor
 
@@ -157,6 +170,7 @@ class DescribedComponentBatch:
         return ComponentColumn(self, lengths=lengths)
 
 
+@runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""
 
@@ -169,6 +183,7 @@ class ComponentBatchLike(Protocol):
         ...
 
 
+@runtime_checkable
 class AsComponents(Protocol):
     """Describes interface for interpreting an object as a bundle of Components."""
 
@@ -365,7 +380,7 @@ class ComponentColumn:
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
-    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None):
+    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None) -> None:
         """
         Construct a new component column.
 
@@ -390,17 +405,20 @@ class ComponentColumn:
         if "Indicator" in component_batch.component_descriptor().component_name:
             if lengths is None:
                 # Indicator component, no lengths -> zero-sized batches by default
-                self.lengths = np.zeros(len(component_batch.as_arrow_array()))
+                self.lengths = np.zeros(len(component_batch.as_arrow_array()), dtype=np.int32)
             else:
                 # Normal component, lengths specified -> respect outer length, but enforce zero-sized batches still
-                self.lengths = np.zeros(len(np.array(lengths)))
+                self.lengths = np.zeros(len(np.array(lengths)), dtype=np.int32)
         else:
             if lengths is None:
                 # Normal component, no lengths -> unit-sized batches by default
-                self.lengths = np.ones(len(component_batch.as_arrow_array()))
+                self.lengths = np.ones(len(component_batch.as_arrow_array()), dtype=np.int32)
             else:
                 # Normal component, lengths specified -> follow instructions
-                self.lengths = np.array(lengths)
+                lengths = np.array(lengths)
+                if lengths.ndim != 1:
+                    raise ValueError("Lengths must be a 1D array.")
+                self.lengths = lengths.flatten().astype(np.int32)
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
@@ -449,7 +467,7 @@ class ComponentColumnList(Iterable[ComponentColumn]):
     Useful to partition and log multiple columns at once.
     """
 
-    def __init__(self, columns: Iterable[ComponentColumn]):
+    def __init__(self, columns: Iterable[ComponentColumn]) -> None:
         self._columns = list(columns)
 
     def __iter__(self) -> Iterator[ComponentColumn]:
@@ -502,7 +520,10 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(self, descriptor)
 
     def with_descriptor_overrides(
-        self, *, archetype_name: str | None, archetype_field_name: str | None
+        self,
+        *,
+        archetype_name: str | None,
+        archetype_field_name: str | None,
     ) -> DescribedComponentBatch:
         """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
         descriptor = self.component_descriptor()
@@ -514,12 +535,17 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(
             self,
             ComponentDescriptor(
-                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+                component_name,
+                archetype_name=archetype_name,
+                archetype_field_name=archetype_field_name,
             ),
         )
 
     def or_with_descriptor_overrides(
-        self, *, archetype_name: str | None, archetype_field_name: str | None
+        self,
+        *,
+        archetype_name: str | None,
+        archetype_field_name: str | None,
     ) -> DescribedComponentBatch:
         """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
         descriptor = self.component_descriptor()
@@ -531,7 +557,9 @@ class ComponentBatchMixin(ComponentBatchLike):
         return DescribedComponentBatch(
             self,
             ComponentDescriptor(
-                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+                component_name,
+                archetype_name=archetype_name,
+                archetype_field_name=archetype_field_name,
             ),
         )
 
@@ -575,7 +603,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
@@ -591,7 +619,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined]
 
 
 @catch_and_log_exceptions(context="creating empty array")

@@ -13,7 +13,7 @@ use arrow::{
 };
 use pyo3::{
     exceptions::PyRuntimeError,
-    types::{PyAnyMethods, PyDict, PyDictMethods, PyString},
+    types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
     Bound, PyAny, PyResult,
 };
 
@@ -44,11 +44,13 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
     let component_name: Cow<'_, str> = component_name.extract()?;
 
-    Ok(ComponentDescriptor {
+    let descr = ComponentDescriptor {
         archetype_name: archetype_name.map(|s| s.as_ref().into()),
         archetype_field_name: archetype_field_name.map(|s| s.as_ref().into()),
         component_name: component_name.as_ref().into(),
-    })
+    };
+    descr.sanity_check();
+    Ok(descr)
 }
 
 /// Perform conversion between a pyarrow array to arrow types.
@@ -122,10 +124,10 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let timelines: IntMap<Timeline, TimeColumn> = timelines
+    let timelines: IntMap<TimelineName, TimeColumn> = timelines
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
-        .map(|(timeline, value)| (timeline, TimeColumn::new(None, timeline, value)))
+        .map(|(timeline, value)| (*timeline.name(), TimeColumn::new(None, timeline, value)))
         .collect();
 
     // Extract the component data

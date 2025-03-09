@@ -4,9 +4,9 @@
 using namespace rerun::demo;
 
 int main() {
-    // Create a new `RecordingStream` which sends data over TCP to the viewer process.
+    // Create a new `RecordingStream` which sends data over gRPC to the viewer process.
     const auto rec = rerun::RecordingStream("rerun_example_quick_start_connect");
-    rec.connect_tcp().exit_on_failure();
+    rec.connect_grpc().exit_on_failure();
 
     // Create some data using the `grid` utility function.
     std::vector<rerun::Position3D> points = grid3d<rerun::Position3D, float>(-10.f, 10.f, 10);

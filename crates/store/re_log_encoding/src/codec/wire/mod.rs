@@ -4,12 +4,12 @@ pub mod encoder;
 #[cfg(test)]
 mod tests {
     use crate::codec::{
-        wire::{decoder::Decode, encoder::Encode},
+        wire::{decoder::Decode as _, encoder::Encode as _},
         CodecError,
     };
     use re_chunk::{Chunk, RowId};
     use re_log_types::{example_components::MyPoint, Timeline};
-    use re_protos::{common::v0::EncoderVersion, remote_store::v0::DataframePart};
+    use re_protos::{common::v1alpha1::EncoderVersion, remote_store::v1alpha1::DataframePart};
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
@@ -56,13 +56,13 @@ mod tests {
 
         let encoded: DataframePart = expected_chunk
             .clone()
-            .to_transport()
+            .to_record_batch()
             .unwrap()
             .encode()
             .unwrap();
 
         let decoded = encoded.decode().unwrap();
-        let decoded_chunk = Chunk::from_record_batch(decoded).unwrap();
+        let decoded_chunk = Chunk::from_record_batch(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);
     }

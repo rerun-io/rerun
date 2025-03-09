@@ -14,13 +14,14 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
 ///
-/// If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+/// If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
+/// angle is zero in which case it is treated as an identity.
 #[derive(Clone, Debug, Default, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct PoseRotationAxisAngle(pub crate::datatypes::RotationAxisAngle);

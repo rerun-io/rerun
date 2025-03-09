@@ -578,7 +578,7 @@ impl std::fmt::Debug for LatestAtCache {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            cache_key,
+            cache_key: _,
             per_query_time,
             pending_invalidations: _,
         } = self;
@@ -587,8 +587,7 @@ impl std::fmt::Debug for LatestAtCache {
 
         for (query_time, unit) in per_query_time {
             strings.push(format!(
-                "query_time={} ({})",
-                cache_key.timeline.typ().format_utc(*query_time),
+                "query_time={query_time:?} ({})",
                 re_format::format_bytes(unit.total_size_bytes() as _)
             ));
         }
@@ -655,7 +654,7 @@ impl LatestAtCache {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
 
-        debug_assert_eq!(query.timeline(), self.cache_key.timeline);
+        debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 
         let Self {
             cache_key: _,

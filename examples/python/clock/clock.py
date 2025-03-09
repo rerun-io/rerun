@@ -42,7 +42,7 @@ def log_clock(steps: int) -> None:
     for step in range(steps):
         t_secs = step
 
-        rr.set_time_seconds("sim_time", t_secs)
+        rr.set_index("sim_time", timedelta=t_secs)
 
         scaled_s = (t_secs % 60) / 60.0
         point_s = np.array(rotate(math.tau * scaled_s, LENGTH_S))
@@ -65,7 +65,7 @@ def log_clock(steps: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="An example visualizing an analog clock is built with Rerun Arrow3D primitives."
+        description="An example visualizing an analog clock is built with Rerun Arrow3D primitives.",
     )
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     rr.script_add_args(parser)

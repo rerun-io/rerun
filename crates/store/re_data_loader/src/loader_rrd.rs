@@ -71,7 +71,7 @@ impl crate::DataLoader for RrdLoader {
                             );
                         }
                     })
-                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+                    .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
             }
 
             "rrd" => {
@@ -95,7 +95,7 @@ impl crate::DataLoader for RrdLoader {
                             );
                         }
                     })
-                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+                    .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
             }
             _ => unreachable!(),
         }
@@ -224,7 +224,7 @@ struct RetryableFileReader {
 impl RetryableFileReader {
     fn new(filepath: &std::path::Path) -> Result<Self, crate::DataLoaderError> {
         use anyhow::Context as _;
-        use notify::{RecursiveMode, Watcher};
+        use notify::{RecursiveMode, Watcher as _};
 
         let file = std::fs::File::open(filepath)
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
@@ -341,7 +341,7 @@ mod tests {
 
         let mut encoder = DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
-            re_log_encoding::EncodingOptions::MSGPACK_UNCOMPRESSED,
+            re_log_encoding::EncodingOptions::PROTOBUF_UNCOMPRESSED,
             rrd_file,
         )
         .unwrap();

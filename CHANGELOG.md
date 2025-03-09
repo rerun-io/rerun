@@ -1,6 +1,200 @@
 # Rerun changelog
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+<!-- Can't compare 0.21.1 with HEAD -->
+## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD)
+
+## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Bugfixes - 2025-02-20
+
+A small release addressing bugs and polishing rough edges.
+
+### 🛠️ Note on 0.20.0 release
+
+An issue with the 0.20.0 release led to incorrect artifacts being published, causing a few minor changes to be missing from those artifacts. The correct version has always been available on crates.io, PyPI, Conda, and other distribution channels, so no action is needed if you installed from these sources.
+
+### 🤖 Native loading for LeRobot datasets
+We're gradually rolling out support for native loading of LeRobot datasets. It’s not fully feature-complete yet, there are tons of variations in these datasets, so it’ll take a bit of time to cover all the edge cases. More improvements and features are planned for the 0.23 release, so expect things to get smoother and more robust soon.
+
+If you run into any issues, let us know! Your feedback helps us iron out bugs and improve the experience faster.
+
+https://github.com/user-attachments/assets/4b6d7e8c-02c6-43c9-be66-dcdbcf782cbd
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Don't use `np.float_` since it was removed in numpy 2.0 [#9037](https://github.com/rerun-io/rerun/pull/9037)
+
+#### 🪳 Bug fixes
+- Never drop blueprint data from the WS server's message buffer [#8977](https://github.com/rerun-io/rerun/pull/8977) (thanks [@DerpDays](https://github.com/DerpDays)!)
+- Fix bug leading to swizzled lerobot data in dataloader [#9000](https://github.com/rerun-io/rerun/pull/9000)
+- Fix Arrows2D draw order having no effect [#9054](https://github.com/rerun-io/rerun/pull/9054)
+- Fix non-final releases creating final-release git tags [#9085](https://github.com/rerun-io/rerun/pull/9085)
+
+#### 🌁 Viewer improvements
+- Infer entity paths from LeRobot dataset feature metadata [#8981](https://github.com/rerun-io/rerun/pull/8981)
+- Log task descriptions for each LeRobot dataset episode [#9028](https://github.com/rerun-io/rerun/pull/9028)
+- Load lerobot dataset on separate IO thread [#9027](https://github.com/rerun-io/rerun/pull/9027)
+
+#### 🧑‍🏫 Examples
+- Improve `image_column_updates` python example [#9065](https://github.com/rerun-io/rerun/pull/9065)
+
+#### 🖼 UI improvements
+- Fix link in text log view help text [#8963](https://github.com/rerun-io/rerun/pull/8963)
+
+
+## [0.22.0](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Entity filter & improved partial update API - 2025-02-06
+
+The new entity filtering:
+
+https://github.com/user-attachments/assets/75ae114b-a55c-452e-9003-d8f447854d2a
+
+The new notification panel:
+
+![notification-panel](https://github.com/user-attachments/assets/0fb651d7-256a-48d7-a78e-81776ec39ba8)
+
+Copy any view as screenshot with right-click (now works in web-viewer):
+
+![image](https://github.com/user-attachments/assets/bf36ee0b-2f64-473e-af48-dfd22c887b9c)
+
+New help texts for all our views:
+
+![image](https://github.com/user-attachments/assets/8b2546c7-c54f-4c25-8b82-fd9abdc6c31e)
+
+📖 Release blogpost: https://rerun.io/blog/graphs
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-22
+
+### ✨ Overview & highlights
+
+#### Viewer
+* 🔎 Added entity filtering/searching
+* 🔔 Recent notifications show now in a dedicated panel
+* 🖱️ Entity ranges can now be selected with shift + click
+* ❓ Improved panel help
+* 🖼️ Crisper UI rendering
+* 🧊 Faster 3D transforms
+
+#### APIs
+* 🔄 [Much easier partial updates of archetypes](https://rerun.io/docs/howto/logging/send-partial-updates)
+* 📊 [Greatly improved ease of use of `send_columns`](https://rerun.io/docs/howto/logging/send-columns)
+* ⏱️ Python notebooks & JS can now control the timeline and panel states (see last section of [this notebook](https://github.com/rerun-io/rerun/blob/0.22.0/examples/python/notebook/cube.ipynb))
+* 📝 Lots of [new snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) for demonstrating partial updates & custom data logging in Python/C++/Rust
+
+The API & related under-the-hood changes pave the way for better support for multiple archetypes on the same entity and components with generic types in future releases.
+Stay tuned!
+
+### ⚠️ Breaking changes
+Passing raw batches of components is no longer supported. Instead, use the partial update APIs (or in rare cases, explicitly serialize the components).
+
+Check the [🧳 Migration guide](https://rerun.io/docs/reference/migration/migration-0-22) for before/after snippets for all languages for this and other smaller breaking changes.
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Tensor shape and dimension names are now separate arrow fields [#8376](https://github.com/rerun-io/rerun/pull/8376)
+- Remove deprecated `DisconnectedSpace` archetype & component [#8545](https://github.com/rerun-io/rerun/pull/8545)
+- Add `any_values` and `extra_values` snippets for rust [#8718](https://github.com/rerun-io/rerun/pull/8718)
+- Implement gRPC log sink [#8709](https://github.com/rerun-io/rerun/pull/8709)
+- Implement gRPC log stream [#8730](https://github.com/rerun-io/rerun/pull/8730)
+
+#### 🌊 C++ API
+- Fix compilation for GCC 13.3 (missing `cstdint` include) [#8609](https://github.com/rerun-io/rerun/pull/8609) (thanks [@plumonito](https://github.com/plumonito)!)
+- Introduce eager serialization & update/clear APIs in the C++ SDK [#8727](https://github.com/rerun-io/rerun/pull/8727)
+- Make all C++ archetypes eager serialized & provide generated update/clear APIs [#8779](https://github.com/rerun-io/rerun/pull/8779)
+- C++ `columns` method for convenient `send_columns` call through archetypes [#8828](https://github.com/rerun-io/rerun/pull/8828)
+- Add `with_many_` variants for C++ archetype mono fields & port remaining snippets [#8836](https://github.com/rerun-io/rerun/pull/8836)
+- Require descriptors to be provided on all log calls in C++ (either explicitly or implicitly via archetype) [#8853](https://github.com/rerun-io/rerun/pull/8853)
+- Deprecate C++ `TimeColumn::from_sequence_points` in favor of `TimeColumn::from_sequence` [#8882](https://github.com/rerun-io/rerun/pull/8882)
+- `AsComponents::serialize` is now `AsComponents::as_batches` and returns `Collection<ComponentBatch>` [#8884](https://github.com/rerun-io/rerun/pull/8884)
+- Make it easy to log custom arrow data in C++ [#8880](https://github.com/rerun-io/rerun/pull/8880)
+- Rerun CMake dependency now automatically ensures C++17 or newer [#8898](https://github.com/rerun-io/rerun/pull/8898)
+
+#### 🐍 Python API
+- Autogenerated partial updates APIs for Python [#8671](https://github.com/rerun-io/rerun/pull/8671)
+- Remove unused `num_instances()` method [#8702](https://github.com/rerun-io/rerun/pull/8702)
+- Tagged columnar updates: Python [#8792](https://github.com/rerun-io/rerun/pull/8792)
+- Include a python API for routing time control commands to the notebook instance [#8809](https://github.com/rerun-io/rerun/pull/8809)
+- Python: remove legacy `send_columns` and update everything left [#8799](https://github.com/rerun-io/rerun/pull/8799)
+- Deprecate Python's `log_components` [#8892](https://github.com/rerun-io/rerun/pull/8892)
+
+#### 🦀 Rust API
+- Update MSRV to 1.81 [#8529](https://github.com/rerun-io/rerun/pull/8529)
+- Fix `RecordingStream::log` implicitly requiring `Sized` [#8587](https://github.com/rerun-io/rerun/pull/8587)
+- Add example for extending the viewer with custom callbacks [#8284](https://github.com/rerun-io/rerun/pull/8284)
+- `EntityPathFilter` variable substitutions are now delegated to (new) `ResolvedEntityPathFilter` [#8543](https://github.com/rerun-io/rerun/pull/8543)
+- Specify, test, and fix all broken `AsComponents`<>`ComponentBatch` interactions from blanket impls [#8591](https://github.com/rerun-io/rerun/pull/8591)
+- New types and traits for (co-existing!) eager serialization [#8642](https://github.com/rerun-io/rerun/pull/8642)
+- Autogenerate tagging-compliant descriptor methods for all archetypes [#8643](https://github.com/rerun-io/rerun/pull/8643)
+- Automatically generate partial update APIs for eager archetypes [#8647](https://github.com/rerun-io/rerun/pull/8647)
+- Tagged columnar updates: Rust [#8764](https://github.com/rerun-io/rerun/pull/8764)
+- Make  `Box`/`AssetVideo`/`ViewCoordinates`/`Asset3D` eager serialized in Rust [#8785](https://github.com/rerun-io/rerun/pull/8785)
+- Make `Pinhole` archetype in Rust eager serialized [#8789](https://github.com/rerun-io/rerun/pull/8789)
+- Make `Image` & `Mesh3D` archetypes in Rust eager serialized [#8793](https://github.com/rerun-io/rerun/pull/8793)
+- Make rust `Tensor` archetype eager serialized [#8801](https://github.com/rerun-io/rerun/pull/8801)
+- Rust: remove legacy `send_columns` and update everything left [#8804](https://github.com/rerun-io/rerun/pull/8804)
+- `ComponentBatch` doesn't implement `AsComponents` anymore [#8820](https://github.com/rerun-io/rerun/pull/8820)
+- Set default log level in `re_log` to `warn` [#8918](https://github.com/rerun-io/rerun/pull/8918)
+
+#### 🪳 Bug fixes
+- Fix WSL support, update troubleshooting guide [#8610](https://github.com/rerun-io/rerun/pull/8610)
+- Handle empty line strips in the viewer [#8653](https://github.com/rerun-io/rerun/pull/8653)
+- Fix clicking of links in markdown [#8794](https://github.com/rerun-io/rerun/pull/8794)
+- Fix CPU spike caused by hanging connection after socket closure (#8806) [#8810](https://github.com/rerun-io/rerun/pull/8810) (thanks [@goktug97](https://github.com/goktug97)!)
+- Make it possible to change the contents of a view multiple times per frame [#8854](https://github.com/rerun-io/rerun/pull/8854)
+- Fix playback issues with some h264 videos on native & Safari [#8850](https://github.com/rerun-io/rerun/pull/8850)
+- Fix handling null timestamps in the dataframe [#8897](https://github.com/rerun-io/rerun/pull/8897)
+
+#### 🌁 Viewer improvements
+- Remove all legacy Chunk iteration APIs [#8556](https://github.com/rerun-io/rerun/pull/8556)
+- Implement copy-screenshot-to-clipboard on Web [#8607](https://github.com/rerun-io/rerun/pull/8607)
+- Improve transform performance (by caching affine transforms resulting from transform components) [#8691](https://github.com/rerun-io/rerun/pull/8691)
+
+#### 🧑‍🏫 Examples
+- add prompt depth anything example [#8888](https://github.com/rerun-io/rerun/pull/8888) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 📚 Docs
+- Add new `Transform3D` partial updates snippet for all languages [#8690](https://github.com/rerun-io/rerun/pull/8690)
+- doc: Update `annotation-context.rs` to use correct API [#8708](https://github.com/rerun-io/rerun/pull/8708) (thanks [@OlivierLDff](https://github.com/OlivierLDff)!)
+
+#### 🖼 UI improvements
+- Show the `GraphNode` as a label by default [#8542](https://github.com/rerun-io/rerun/pull/8542)
+- Short circuit graph simulation if all nodes are fixed [#8549](https://github.com/rerun-io/rerun/pull/8549)
+- Panel with recent notifications [#8465](https://github.com/rerun-io/rerun/pull/8465)
+- Fix tooltips being dragged along in graph view [#8573](https://github.com/rerun-io/rerun/pull/8573)
+- Restore the time panel help button [#8599](https://github.com/rerun-io/rerun/pull/8599)
+- Filter entities in the UI (part 0): Make `CustomContent` more useful [#8645](https://github.com/rerun-io/rerun/pull/8645)
+- Filter entities in the UI (part 1): Introduce a filter widget [#8652](https://github.com/rerun-io/rerun/pull/8652)
+- Filter entities in the UI (part 2): Introduce entity filtering in the time panel [#8654](https://github.com/rerun-io/rerun/pull/8654)
+- Filter entities in the UI (part 3): Move action to a menu in the blueprint panel and keep default blueprint when using heuristics [#8672](https://github.com/rerun-io/rerun/pull/8672)
+- Filter entities in the UI (part 4): Add entity filtering in the blueprint tree [#8706](https://github.com/rerun-io/rerun/pull/8706)
+- Draw nodes above edges in graph view [#8738](https://github.com/rerun-io/rerun/pull/8738)
+- Filter entities in the UI (part 5): Add snapshot tests for the blueprint tree [#8728](https://github.com/rerun-io/rerun/pull/8728)
+- Filter entities in the UI (part 6): Refactor `re_blueprint_tree` and add more tests [#8795](https://github.com/rerun-io/rerun/pull/8795)
+- Improve performance for Blueprint & Streams Panel for many entities [#8808](https://github.com/rerun-io/rerun/pull/8808)
+- The empty/full entity icon now reflects presence of component on the current timeline [#8839](https://github.com/rerun-io/rerun/pull/8839)
+- Show start of large arrow values instead of just their size [#8861](https://github.com/rerun-io/rerun/pull/8861)
+- Implement range selection with shift-click in the blueprint tree [#8852](https://github.com/rerun-io/rerun/pull/8852)
+- Filter entities in the UI (part 7): Refactor and optimize `re_time_panel` and add more tests [#8863](https://github.com/rerun-io/rerun/pull/8863)
+- Clickable URLs in named components / `AnyValues` [#8864](https://github.com/rerun-io/rerun/pull/8864)
+- Implement range selection with shift-click in the time panel [#8870](https://github.com/rerun-io/rerun/pull/8870)
+- Improve look of bar charts slightly [#8875](https://github.com/rerun-io/rerun/pull/8875)
+- Improved help view [#8947](https://github.com/rerun-io/rerun/pull/8947)
+
+#### 🕸️ Web
+- Add JS timeline control and callback APIs [#8673](https://github.com/rerun-io/rerun/pull/8673)
+
+#### ✨ Other enhancement
+- Remove `Chunk::iter_component_arrays` [#8548](https://github.com/rerun-io/rerun/pull/8548)
+- Introduce new Chunk iteration APIs [#8553](https://github.com/rerun-io/rerun/pull/8553)
+
+#### 📈 Analytics
+- Add analytics for wgpu backend and whether the viewer runs in WSL [#8612](https://github.com/rerun-io/rerun/pull/8612)
+
+#### 📦 Dependencies
+- Update wgpu to 24.0.0 [#8743](https://github.com/rerun-io/rerun/pull/8743)
+
+#### 🤷‍ Other
+- Introduce snapshot unit tests for `re_component_ui` [#8546](https://github.com/rerun-io/rerun/pull/8546)
+
 
 ## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, 3D Grid & UI/UX improvements
 
@@ -178,12 +372,14 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Clean up pass over all superfluous hashing happening on the query path [#8207](https://github.com/rerun-io/rerun/pull/8207)
 - Improve performance of time panel [#8224](https://github.com/rerun-io/rerun/pull/8224)
 
+
 ## [0.20.3](https://github.com/rerun-io/rerun/compare/0.20.2...0.20.3) - Web viewer fix
 
 ### 🔎 Details
 
 #### 🪳 Bug fixes
 - Fix web viewer feature flags [#8295](https://github.com/rerun-io/rerun/pull/8295)
+
 
 ## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
 

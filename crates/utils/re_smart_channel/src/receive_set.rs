@@ -52,8 +52,9 @@ impl<T: Send> ReceiveSet<T> {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `uri`
-            SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-            SmartChannelSource::WsClient { ws_server_url } => ws_server_url != uri,
+            SmartChannelSource::RrdHttpStream { url, .. }
+            | SmartChannelSource::RedapGrpcStream { url }
+            | SmartChannelSource::MessageProxy { url } => url != uri,
             _ => true,
         });
     }
@@ -73,14 +74,6 @@ impl<T: Send> ReceiveSet<T> {
     /// This gets updated after calling one of the `recv` methods.
     pub fn is_connected(&self) -> bool {
         !self.is_empty()
-    }
-
-    /// Does this viewer accept inbound TCP connections?
-    pub fn accepts_tcp_connections(&self) -> bool {
-        re_tracing::profile_function!();
-        self.sources()
-            .iter()
-            .any(|s| matches!(**s, SmartChannelSource::TcpServer { .. }))
     }
 
     /// No connected receivers?

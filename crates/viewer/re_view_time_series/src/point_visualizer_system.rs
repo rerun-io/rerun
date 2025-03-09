@@ -2,15 +2,15 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes::{self, SeriesPoint},
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar},
+    components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
     external::arrow::datatypes::DataType as ArrowDatatype,
     Archetype as _, Component as _, Loggable as _,
 };
 use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    auto_color_for_entity_path, external::re_entity_db::InstancePath, IdentifiedViewSystem,
+    QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -104,14 +104,20 @@ impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name]);
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
+        true.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
 impl SeriesPointSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let plot_mem =
-            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx, crate::plot_id(query.view_id));
+            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
@@ -230,6 +236,7 @@ impl SeriesPointSystem {
                     MarkerSize::name(),
                     Name::name(),
                     Scalar::name(),
+                    SeriesVisible::name(),
                 ],
             );
 
@@ -242,10 +249,21 @@ impl SeriesPointSystem {
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|index| (index, ()))
             };
+
+            // TODO(#9020): support multiple series.
+            let num_series = 1;
+
+            // Determine per-series visibility flags.
+            let mut series_visibility_flags: Vec<bool> = results
+                .iter_as(*query.timeline(), SeriesVisible::name())
+                .slice::<bool>()
+                .next()
+                .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
+            series_visibility_flags.resize(num_series, true);
 
             // Allocate all points.
             {
@@ -254,7 +272,7 @@ impl SeriesPointSystem {
                 points = all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| {
-                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        chunk.iter_component_indices(query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
                         debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
@@ -330,7 +348,7 @@ impl SeriesPointSystem {
 
                         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                                chunk.iter_component_indices(query.timeline(), &Color::name()),
                                 chunk.iter_slices::<u32>(Color::name())
                             )
                         });
@@ -375,9 +393,8 @@ impl SeriesPointSystem {
 
                         let all_marker_sizes = all_marker_size_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
-                                chunk
-                                    .iter_component_indices(&query.timeline(), &MarkerSize::name()),
-                                chunk.iter_slices::<f32>(Color::name())
+                                chunk.iter_component_indices(query.timeline(), &MarkerSize::name()),
+                                chunk.iter_slices::<f32>(MarkerSize::name())
                             )
                         });
 
@@ -436,7 +453,7 @@ impl SeriesPointSystem {
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
                                     chunk.iter_component_indices(
-                                        &query.timeline(),
+                                        query.timeline(),
                                         &MarkerShape::name(),
                                     )
                                 });
@@ -472,8 +489,9 @@ impl SeriesPointSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
-                &data_result.entity_path,
+                InstancePath::entity_all(data_result.entity_path.clone()),
                 time_per_pixel,
+                series_visibility_flags[0],
                 points,
                 ctx.recording_engine().store(),
                 view_query,

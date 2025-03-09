@@ -23,9 +23,6 @@ else()
         FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL})
         FetchContent_MakeAvailable(rerun_sdk)
     endif()
-
-    # Rerun requires at least C++17, but it should be compatible with newer versions.
-    set_property(TARGET rerun-loader-cpp-file PROPERTY CXX_STANDARD 17)
 endif()
 
 # Link against rerun_sdk.

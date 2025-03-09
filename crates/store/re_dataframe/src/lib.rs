@@ -7,16 +7,14 @@ pub use self::engine::QueryEngine;
 pub use self::query::QueryHandle;
 
 #[doc(no_inline)]
-pub use self::external::re_chunk::TransportChunk;
-#[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ChunkStoreConfig, ChunkStoreHandle, ColumnSelector, ComponentColumnSelector, Index, IndexRange,
     IndexValue, QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{
-    EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter, ResolvedTimeRange,
-    StoreKind, TimeInt, Timeline,
+    EntityPath, EntityPathFilter, EntityPathSubs, IndexCell, ResolvedEntityPathFilter,
+    ResolvedTimeRange, StoreKind, TimeInt, Timeline, TimelineName,
 };
 #[doc(no_inline)]
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};

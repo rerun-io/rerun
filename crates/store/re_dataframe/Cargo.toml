@@ -34,13 +34,13 @@ re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
 anyhow.workspace = true
 arrow.workspace = true
-insta.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
@@ -49,6 +49,7 @@ rayon.workspace = true
 # Rerun dependencies:
 re_types.workspace = true
 # External dependencies:
+insta.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true

@@ -26,7 +26,7 @@ def blueprint() -> rrb.BlueprintLike:
         rrb.Horizontal(
             rrb.TextDocumentView(origin="readme"),
             rrb.Spatial3DView(name="TEST", origin="/", contents="$origin/box/points/**"),
-        )
+        ),
     )
 
 

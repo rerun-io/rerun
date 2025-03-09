@@ -1,6 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-// ---
 
 /// The description of a container.
 table ContainerBlueprint (
@@ -41,7 +40,7 @@ table ContainerBlueprint (
     /// Whether this container is visible.
     ///
     /// Defaults to true if not specified.
-    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
 
     /// How many columns this grid should have.
     ///

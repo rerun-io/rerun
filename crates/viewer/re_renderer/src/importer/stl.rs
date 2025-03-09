@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::smallvec;
 use tinystl::StlData;
 

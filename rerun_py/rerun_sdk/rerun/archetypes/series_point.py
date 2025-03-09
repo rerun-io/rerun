@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 from attrs import define, field
 
 from .. import components, datatypes
@@ -64,8 +65,8 @@ class SeriesPoint(Archetype):
     )
 
     # Log the data on a timeline called "step".
-    for t in range(0, int(tau * 2 * 10.0)):
-        rr.set_time_sequence("step", t)
+    for t in range(int(tau * 2 * 10.0)):
+        rr.set_index("step", sequence=t)
 
         rr.log("trig/sin", rr.Scalar(sin(float(t) / 10.0)))
         rr.log("trig/cos", rr.Scalar(cos(float(t) / 10.0)))
@@ -88,8 +89,9 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the SeriesPoint archetype.
 
@@ -103,6 +105,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -110,7 +118,9 @@ class SeriesPoint(Archetype):
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, marker=marker, name=name, marker_size=marker_size)
+            self.__attrs_init__(
+                color=color, marker=marker, name=name, visible_series=visible_series, marker_size=marker_size
+            )
             return
         self.__attrs_clear__()
 
@@ -120,6 +130,7 @@ class SeriesPoint(Archetype):
             color=None,
             marker=None,
             name=None,
+            visible_series=None,
             marker_size=None,
         )
 
@@ -138,6 +149,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
     ) -> SeriesPoint:
         """
@@ -155,6 +167,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -166,6 +184,7 @@ class SeriesPoint(Archetype):
                 "color": color,
                 "marker": marker,
                 "name": name,
+                "visible_series": visible_series,
                 "marker_size": marker_size,
             }
 
@@ -190,6 +209,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32ArrayLike | None = None,
         marker: components.MarkerShapeArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -210,6 +230,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -221,6 +247,7 @@ class SeriesPoint(Archetype):
                 color=color,
                 marker=marker,
                 name=name,
+                visible_series=visible_series,
                 marker_size=marker_size,
             )
 
@@ -228,11 +255,33 @@ class SeriesPoint(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-        columns = [batch.partition(lengths) for batch in batches]
+        kwargs = {
+            "color": color,
+            "marker": marker,
+            "name": name,
+            "visible_series": visible_series,
+            "marker_size": marker_size,
+        }
+        columns = []
 
-        indicator_column = cls.indicator().partition(np.zeros(len(lengths)))
+        for batch in batches:
+            arrow_array = batch.as_arrow_array()
 
+            # For primitive arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type):
+                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                shape = np.shape(param)  # type: ignore[arg-type]
+
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+                sizes = batch_length * np.ones(num_rows)
+            else:
+                # For non-primitive types, default to partitioning each element separately.
+                sizes = np.ones(len(arrow_array))
+
+            columns.append(batch.partition(sizes))
+
+        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
     color: components.ColorBatch | None = field(
@@ -261,6 +310,19 @@ class SeriesPoint(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    visible_series: components.SeriesVisibleBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
+    )
+    # Which point series are visible.
+    #
+    # If not set, all point series on this entity are visible.
+    # Unlike with the regular visibility property of the entire entity, any series that is hidden
+    # via this property will still be visible in the legend.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

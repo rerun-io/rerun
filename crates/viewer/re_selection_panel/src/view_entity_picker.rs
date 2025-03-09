@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_data_ui::item_ui;
@@ -181,7 +181,7 @@ fn add_entities_line_ui(
             &InstancePath::entity_all(entity_path.clone()),
             widget_text,
         );
-        if query_result.contains_entity(entity_path) {
+        if query_result.result_for_entity(entity_path).is_some() {
             response.highlight();
         }
     });

@@ -63,12 +63,12 @@ from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
 from .range1d import Range1D, Range1DBatch
-from .recording_uri import RecordingUri, RecordingUriBatch
 from .resolution import Resolution, ResolutionBatch
 from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
+from .series_visible import SeriesVisible, SeriesVisibleBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
@@ -92,6 +92,7 @@ from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
+from .visible import Visible, VisibleBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -206,8 +207,6 @@ __all__ = [
     "RadiusBatch",
     "Range1D",
     "Range1DBatch",
-    "RecordingUri",
-    "RecordingUriBatch",
     "Resolution",
     "ResolutionBatch",
     "RotationAxisAngle",
@@ -218,6 +217,8 @@ __all__ = [
     "ScalarBatch",
     "Scale3D",
     "Scale3DBatch",
+    "SeriesVisible",
+    "SeriesVisibleBatch",
     "ShowLabels",
     "ShowLabelsBatch",
     "StrokeWidth",
@@ -256,4 +257,6 @@ __all__ = [
     "VideoTimestampBatch",
     "ViewCoordinates",
     "ViewCoordinatesBatch",
+    "Visible",
+    "VisibleBatch",
 ]

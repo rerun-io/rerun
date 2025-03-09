@@ -1,9 +1,12 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
-use itertools::Itertools;
+use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
-use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
+use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentName, ComponentNameSet, UnorderedComponentNameSet};
@@ -24,19 +27,10 @@ use crate::RowId;
 impl ChunkStore {
     /// Retrieve all [`Timeline`]s in the store.
     #[inline]
-    pub fn all_timelines(&self) -> IntSet<Timeline> {
-        self.temporal_chunk_ids_per_entity
-            .values()
-            .flat_map(|per_timeline| per_timeline.keys().copied())
-            .collect()
-    }
-
-    /// Retrieve all [`Timeline`]s in the store.
-    #[inline]
-    pub fn all_timelines_sorted(&self) -> BTreeSet<Timeline> {
-        self.temporal_chunk_ids_per_entity
-            .values()
-            .flat_map(|per_timeline| per_timeline.keys().copied())
+    pub fn timelines(&self) -> BTreeMap<TimelineName, Timeline> {
+        self.time_type_registry
+            .iter()
+            .map(|(name, typ)| (*name, Timeline::new(*name, *typ)))
             .collect()
     }
 
@@ -108,7 +102,7 @@ impl ChunkStore {
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> Option<UnorderedComponentNameSet> {
         re_tracing::profile_function!();
@@ -157,7 +151,7 @@ impl ChunkStore {
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components_on_timeline_sorted(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
@@ -282,7 +276,7 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_component_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
@@ -350,7 +344,7 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_temporal_component_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
@@ -374,7 +368,7 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_data_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
@@ -440,7 +434,7 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_temporal_data_on_timeline(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
@@ -464,7 +458,7 @@ impl ChunkStore {
     #[inline]
     pub fn entity_min_time(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> Option<TimeInt> {
         let temporal_chunk_ids_per_timeline = self
@@ -492,7 +486,7 @@ impl ChunkStore {
     /// This ignores static data.
     pub fn entity_time_range(
         &self,
-        timeline: &Timeline,
+        timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> Option<ResolvedTimeRange> {
         re_tracing::profile_function!();
@@ -511,7 +505,7 @@ impl ChunkStore {
     /// all entities.
     ///
     /// This ignores static data.
-    pub fn time_range(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
+    pub fn time_range(&self, timeline: &TimelineName) -> Option<ResolvedTimeRange> {
         re_tracing::profile_function!();
 
         self.temporal_chunk_ids_per_entity
@@ -587,36 +581,82 @@ impl ChunkStore {
         chunks
     }
 
-    /// Returns the most-relevant _temporal_ chunk(s) for the given [`LatestAtQuery`].
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
     ///
-    /// The returned vector is guaranteed free of duplicates, by definition.
+    /// Optionally include static data.
     ///
     /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
     /// oblivious to the data therein.
     /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
     /// that a query has more than one relevant chunk.
     ///
+    /// The returned vector is free of duplicates.
+    ///
     /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
     /// determine what exact row contains the final result.
-    ///
-    /// **This ignores static data.**
     pub fn latest_at_relevant_chunks_for_all_components(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
+        include_static: bool,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let chunks = self
-            .temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(&query.timeline())
-            })
-            .and_then(|temporal_chunk_ids_per_time| {
-                self.latest_at(query, temporal_chunk_ids_per_time)
-            })
-            .unwrap_or_default();
+        let chunks = if include_static {
+            let empty = Default::default();
+            let static_chunks_per_component = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .unwrap_or(&empty);
+
+            // All static chunks for the given entity
+            let static_chunks = static_chunks_per_component
+                .values()
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .cloned();
+
+            // All temporal chunks for the given entity, filtered by components
+            // for which we already have static chunks.
+            let temporal_chunks = self
+                .temporal_chunk_ids_per_entity_per_component
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline_per_component| {
+                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                })
+                .map(|temporal_chunk_ids_per_component| {
+                    temporal_chunk_ids_per_component
+                        .iter()
+                        .filter(|(component_name, _)| {
+                            !static_chunks_per_component.contains_key(component_name)
+                        })
+                        .map(|(_, chunk_id_set)| chunk_id_set)
+                })
+                .into_iter()
+                .flatten()
+                .filter_map(|temporal_chunk_ids_per_time| {
+                    self.latest_at(query, temporal_chunk_ids_per_time)
+                })
+                .flatten();
+
+            static_chunks
+                .chain(temporal_chunks)
+                // Deduplicate before passing it along.
+                // Both temporal and static chunk "sets" here may have duplicates in them,
+                // so we de-duplicate them together to reduce the number of allocations.
+                .unique_by(|chunk| chunk.id())
+                .collect_vec()
+        } else {
+            // This cannot yield duplicates by definition.
+            self.temporal_chunk_ids_per_entity
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.get(&query.timeline())
+                })
+                .and_then(|temporal_chunk_ids_per_time| {
+                    self.latest_at(query, temporal_chunk_ids_per_time)
+                })
+                .unwrap_or_default()
+        };
 
         debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
 
@@ -713,7 +753,7 @@ impl ChunkStore {
                 self.temporal_chunk_ids_per_entity_per_component
                     .get(entity_path)
                     .and_then(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.get(&query.timeline())
+                        temporal_chunk_ids_per_timeline.get(query.timeline())
                     })
                     .and_then(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.get(&component_name)
@@ -727,7 +767,7 @@ impl ChunkStore {
             .filter(|chunk| {
                 chunk
                     .timelines()
-                    .get(&query.timeline())
+                    .get(query.timeline())
                     .is_some_and(|time_column| {
                         time_column
                             .time_range_per_component(chunk.components())
@@ -743,42 +783,91 @@ impl ChunkStore {
         chunks
     }
 
-    /// Returns the most-relevant _temporal_ chunk(s) for the given [`RangeQuery`].
-    ///
-    /// The returned vector is guaranteed free of duplicates, by definition.
+    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`].
     ///
     /// The criteria for returning a chunk is only that it may contain data that overlaps with
-    /// the queried range.
+    /// the queried range, or that it is static.
+    ///
+    /// The returned vector is free of duplicates.
     ///
     /// The caller should filter the returned chunks further (see [`Chunk::range`]) in order to
     /// determine how exactly each row of data fit with the rest.
-    ///
-    /// **This ignores static data.**
     pub fn range_relevant_chunks_for_all_components(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
+        include_static: bool,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let chunks = self
-            .range(
-                query,
-                self.temporal_chunk_ids_per_entity
-                    .get(entity_path)
-                    .and_then(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.get(&query.timeline())
-                    })
-                    .into_iter(),
+        let empty = Default::default();
+        let chunks = if include_static {
+            let static_chunks_per_component = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .unwrap_or(&empty);
+
+            // All static chunks for the given entity
+            let static_chunks = static_chunks_per_component
+                .values()
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .cloned();
+
+            // All temporal chunks for the given entity, filtered by components
+            // for which we already have static chunks.
+            let temporal_chunks = self
+                .range(
+                    query,
+                    self.temporal_chunk_ids_per_entity_per_component
+                        .get(entity_path)
+                        .and_then(|temporal_chunk_ids_per_timeline_per_component| {
+                            temporal_chunk_ids_per_timeline_per_component.get(query.timeline())
+                        })
+                        .map(|temporal_chunk_ids_per_component| {
+                            temporal_chunk_ids_per_component
+                                .iter()
+                                .filter(|(component_name, _)| {
+                                    !static_chunks_per_component.contains_key(component_name)
+                                })
+                                .map(|(_, chunk_id_set)| chunk_id_set)
+                        })
+                        .into_iter()
+                        .flatten(),
+                )
+                .into_iter();
+
+            Either::Left(
+                static_chunks
+                    .chain(temporal_chunks)
+                    // Deduplicate before passing it along.
+                    // Both temporal and static chunk "sets" here may have duplicates in them,
+                    // so we de-duplicate them together to reduce the number of allocations.
+                    .unique_by(|chunk| chunk.id()),
             )
+        } else {
+            // This cannot yield duplicates by definition.
+            Either::Right(
+                self.range(
+                    query,
+                    self.temporal_chunk_ids_per_entity
+                        .get(entity_path)
+                        .and_then(|temporal_chunk_ids_per_timeline| {
+                            temporal_chunk_ids_per_timeline.get(query.timeline())
+                        })
+                        .into_iter(),
+                ),
+            )
+        };
+
+        // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
+        // need to make sure that the resulting chunks' global time ranges intersect with the
+        // time range of the query itself.
+        let chunks = chunks
             .into_iter()
-            // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
-            // need to make sure that the resulting chunks' global time ranges intersect with the
-            // time range of the query itself.
             .filter(|chunk| {
                 chunk
                     .timelines()
-                    .get(&query.timeline())
+                    .get(query.timeline())
                     .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
             })
             .collect_vec();

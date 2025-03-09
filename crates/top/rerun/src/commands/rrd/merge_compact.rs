@@ -1,4 +1,4 @@
-use std::io::{IsTerminal, Write};
+use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;
@@ -163,7 +163,7 @@ fn merge_and_compact(
 
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
 
-    for res in rx {
+    for (_source, res) in rx {
         let mut is_success = true;
 
         match res {
@@ -215,7 +215,7 @@ fn merge_and_compact(
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
     // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = entity_dbs
         .values()
         .next()
