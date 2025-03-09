@@ -188,20 +188,11 @@ impl TryFrom<web_time::SystemTime> for Time {
     }
 }
 
-impl TryFrom<time::OffsetDateTime> for Time {
-    type Error = core::num::TryFromIntError;
-
-    fn try_from(datetime: time::OffsetDateTime) -> Result<Self, Self::Error> {
-        i64::try_from(datetime.unix_timestamp_nanos()).map(Self::from_ns_since_epoch)
-    }
-}
-
 // ---------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use time::macros::datetime;
 
     #[test]
     fn test_formatting_short_times() {
@@ -249,9 +240,13 @@ mod tests {
         );
     }
 
+    fn parse_datetime(s: &str) -> Time {
+        crate::Time::parse(s, TimestampFormat::Utc).unwrap().into()
+    }
+
     #[test]
     fn test_formatting_whole_second_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
+        let datetime = parse_datetime("2022-02-28 22:35:42Z");
         assert_eq!(
             &datetime.format(TimestampFormat::Utc),
             "2022-02-28 22:35:42Z"
@@ -260,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_formatting_whole_millisecond_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
+        let datetime = parse_datetime("2022-02-28 22:35:42.069Z");
         assert_eq!(
             &datetime.format(TimestampFormat::Utc),
             "2022-02-28 22:35:42.069Z"
@@ -269,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_formatting_many_digits_for_datetime() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
+        let datetime = parse_datetime("2022-02-28 22:35:42.0690427Z");
         assert_eq!(
             &datetime.format(TimestampFormat::Utc),
             "2022-02-28 22:35:42.069042Z"
@@ -311,13 +306,13 @@ mod tests {
             // Hour format.
             assert_eq!(
                 Time::parse("22:35:42", format),
-                Some(Time::try_from(datetime!(1970-01-01 22:35:42 UTC)).unwrap())
+                Some(parse_datetime("1970-01-01 22:35:42Z"))
             );
 
             // Hour format with fractional seconds.
             assert_eq!(
                 Time::parse("22:35:42.069", format),
-                Some(Time::try_from(datetime!(1970-01-01 22:35:42.069 UTC)).unwrap())
+                Some(parse_datetime("1970-01-01 22:35:42.069Z"))
             );
         }
 
@@ -326,25 +321,25 @@ mod tests {
         // Full date and time
         assert_eq!(
             Time::parse("1954-04-11 22:35:42", TimestampFormat::Utc),
-            Some(Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap())
+            Some(parse_datetime("1954-04-11 22:35:42Z"))
         );
         // Full date and time with milliseconds
         assert_eq!(
             Time::parse("1954-04-11 22:35:42.069", TimestampFormat::Utc),
-            Some(Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap())
+            Some(parse_datetime("1954-04-11 22:35:42.069Z"))
         );
-        // Timezone setting doesn't matter if UTC is enabled.
+        // Timezone setting doesn't matter ifZ is enabled.
         for format in all_formats {
             // Full date and time with Z suffix
             assert_eq!(
                 Time::parse("1954-04-11 22:35:42Z", format),
-                Some(Time::try_from(datetime!(1954-04-11 22:35:42 UTC)).unwrap())
+                Some(parse_datetime("1954-04-11 22:35:42Z"))
             );
 
             // Full date and time with milliseconds with Z suffix
             assert_eq!(
                 Time::parse("1954-04-11 22:35:42.069Z", format),
-                Some(Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap())
+                Some(parse_datetime("1954-04-11 22:35:42.069Z"))
             );
         }
 
