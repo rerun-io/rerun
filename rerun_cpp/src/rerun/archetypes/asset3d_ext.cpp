@@ -60,7 +60,7 @@ namespace rerun::archetypes {
         std::vector<uint8_t> data(static_cast<size_t>(length));
         file.read(reinterpret_cast<char*>(data.data()), length);
 
-        return Asset3D::from_bytes(
+        return Asset3D::from_file_contents(
             Collection<uint8_t>::take_ownership(std::move(data)),
             rerun::components::MediaType::guess_from_path(path)
         );

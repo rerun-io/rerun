@@ -120,7 +120,21 @@ namespace rerun::archetypes {
         ///
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
+        ///
+        /// \deprecated Use `from_file_contents` instead.
+        [[deprecated("Use `from_file_contents` instead")]]
         static Asset3D from_bytes(
+            rerun::Collection<uint8_t> bytes,
+            std::optional<rerun::components::MediaType> media_type = {}
+        ) {
+            return from_file_contents(bytes, media_type);
+        }
+
+        /// Creates a new `Asset3D` from the given `bytes`.
+        ///
+        /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
+        /// at render-time. If it can't, rendering will fail with an error.
+        static Asset3D from_file_contents(
             rerun::Collection<uint8_t> bytes,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
