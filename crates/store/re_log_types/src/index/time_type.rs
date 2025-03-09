@@ -60,9 +60,9 @@ impl TimeType {
             _ => {
                 match self {
                     Self::Time => {
-                        if s.chars().all(|c| c.is_ascii_digit()) {
+                        if let Some(int) = re_format::parse_i64(s) {
                             // If it's just numbers, interpret it as a raw time int.
-                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                            TimeInt::try_from(int).ok()
                         } else {
                             // Otherwise, try to make sense of the time string depending on the timezone setting.
                             TimeInt::try_from(Time::parse(s, time_zone_for_timestamps)?).ok()
