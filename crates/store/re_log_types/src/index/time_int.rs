@@ -180,6 +180,15 @@ impl TryFrom<Time> for TimeInt {
     }
 }
 
+impl TryFrom<TimeInt> for NonMinI64 {
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
+        Self::new(t.as_i64()).ok_or(TryFromIntError)
+    }
+}
+
 impl From<TimeInt> for Time {
     #[inline]
     fn from(int: TimeInt) -> Self {

@@ -110,6 +110,20 @@ impl From<std::time::Duration> for IndexCell {
     }
 }
 
+impl From<super::Duration> for IndexCell {
+    #[inline]
+    fn from(duration: super::Duration) -> Self {
+        Self::from_duration_nanos(duration.as_nanos())
+    }
+}
+
+impl From<super::Timestamp> for IndexCell {
+    #[inline]
+    fn from(timestamp: super::Timestamp) -> Self {
+        Self::from_timestamp_nanos_since_epoch(timestamp.ns_since_epoch())
+    }
+}
+
 // ------------------------------------------------------------------
 
 impl TryFrom<std::time::SystemTime> for IndexCell {

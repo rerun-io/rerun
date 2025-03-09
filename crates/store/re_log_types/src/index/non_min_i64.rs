@@ -208,6 +208,24 @@ impl<'de> serde::Deserialize<'de> for NonMinI64 {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to parse NonMinI64: {0}")]
+pub enum ParseNonMinI64Error {
+    Std(#[from] std::num::ParseIntError),
+
+    #[error("out-of-range")]
+    OutOfRange,
+}
+
+impl std::str::FromStr for NonMinI64 {
+    type Err = ParseNonMinI64Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let int = i64::from_str(s)?;
+        Self::new(int).ok_or(ParseNonMinI64Error::OutOfRange)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
