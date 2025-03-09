@@ -89,6 +89,18 @@ impl Time {
         r.ok_or_log_error().unwrap_or_default()
     }
 
+    /// RFC3339
+    pub fn format_iso(&self) -> String {
+        let nanos_since_epoch = self.nanos_since_epoch();
+
+        if self.is_absolute_date() {
+            super::Timestamp::from_ns_since_epoch(nanos_since_epoch).format_iso()
+        } else {
+            // Relative time
+            Duration::from_nanos(nanos_since_epoch).format_seconds()
+        }
+    }
+
     /// Human-readable formatting
     pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
