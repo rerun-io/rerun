@@ -38,7 +38,7 @@ impl Time {
     }
 
     /// If true, this time is likely relative to unix epoch.
-    pub fn is_absolute_date(&self) -> bool {
+    pub fn is_timestamp(&self) -> bool {
         let nanos_since_epoch = self.nanos_since_epoch();
         let years_since_epoch = nanos_since_epoch / 1_000_000_000 / 60 / 60 / 24 / 365;
 
@@ -48,19 +48,11 @@ impl Time {
     /// Returns the absolute datetime if applicable.
     pub fn to_datetime(self) -> Option<OffsetDateTime> {
         let ns_since_epoch = self.nanos_since_epoch();
-        if self.is_absolute_date() {
+        if self.is_timestamp() {
             OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
         } else {
             None
         }
-    }
-
-    pub fn is_exactly_midnight(&self) -> bool {
-        // This is correct despite leap seconds because
-        // during positive leap seconds, UTC actually has a discontinuity
-        // (the same integer is reused for two different times).
-        // See https://en.wikipedia.org/wiki/Unix_time#Leap_seconds
-        self.nanos_since_epoch() % (24 * 60 * 60 * 1_000_000_000) == 0
     }
 
     fn time_string(
@@ -94,7 +86,7 @@ impl Time {
     pub fn format_iso(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
-        if self.is_absolute_date() {
+        if self.is_timestamp() {
             super::Timestamp::from_ns_since_epoch(nanos_since_epoch).format_iso()
         } else {
             // Relative time
@@ -198,60 +190,16 @@ impl Time {
         None
     }
 
-    /// Useful when showing dates/times on a timeline
-    /// and you want it compact.
+    /// Useful when showing dates/times on a timeline and you want it compact.
     ///
     /// Shows dates when zoomed out, shows times when zoomed in,
     /// shows relative millisecond when really zoomed in.
     pub fn format_time_compact(&self, timestamp_format: TimestampFormat) -> String {
         let ns = self.nanos_since_epoch();
-        let relative_ns = ns % 1_000_000_000;
-        let is_whole_second = relative_ns == 0;
-        if is_whole_second {
-            if let Some(datetime) = self.to_datetime() {
-                let is_whole_minute = ns % 60_000_000_000 == 0;
-                let time_format = if self.is_exactly_midnight() {
-                    "[year]-[month]-[day]"
-                } else if is_whole_minute {
-                    match timestamp_format {
-                        TimestampFormat::UnixEpoch => "[unix_timestamp]",
-                        TimestampFormat::Utc | TimestampFormat::LocalTimezone => "[hour]:[minute]",
-                    }
-                } else {
-                    match timestamp_format {
-                        TimestampFormat::UnixEpoch => "[unix_timestamp]",
-                        TimestampFormat::Utc | TimestampFormat::LocalTimezone => {
-                            "[hour]:[minute]:[second]"
-                        }
-                    }
-                };
-                #[allow(clippy::unwrap_used)] // time_format is okay!
-                let parsed_format = time::format_description::parse(time_format).unwrap();
-
-                return Self::time_string(datetime, &parsed_format, timestamp_format);
-            }
-
-            crate::Duration::from_nanos(ns).to_string()
+        if self.is_timestamp() {
+            super::Timestamp::from_ns_since_epoch(ns).format_time_compact(timestamp_format)
         } else {
-            // We are in the sub-second resolution.
-            // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
-            // so instead we switch to showing the time as milliseconds since the last whole second:
-            let ms = relative_ns as f64 * 1e-6;
-            if relative_ns % 1_000_000 == 0 {
-                format!("{ms:+.0} ms")
-            } else if relative_ns % 100_000 == 0 {
-                format!("{ms:+.1} ms")
-            } else if relative_ns % 10_000 == 0 {
-                format!("{ms:+.2} ms")
-            } else if relative_ns % 1_000 == 0 {
-                format!("{ms:+.3} ms")
-            } else if relative_ns % 100 == 0 {
-                format!("{ms:+.4} ms")
-            } else if relative_ns % 10 == 0 {
-                format!("{ms:+.5} ms")
-            } else {
-                format!("{ms:+.6} ms")
-            }
+            crate::Duration::from_nanos(ns).format_subsecond_as_relative()
         }
     }
 

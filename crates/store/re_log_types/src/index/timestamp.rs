@@ -1,4 +1,6 @@
-use super::Duration;
+use jiff::tz::TimeZone;
+
+use super::{Duration, TimestampFormat};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -7,11 +9,11 @@ pub struct Timestamp(i64);
 impl Timestamp {
     #[inline]
     pub fn now() -> Self {
-        let nanos_since_epoch = web_time::SystemTime::UNIX_EPOCH
+        let ns_since_epoch = web_time::SystemTime::UNIX_EPOCH
             .elapsed()
             .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
-        Self(nanos_since_epoch)
+        Self(ns_since_epoch)
     }
 
     #[inline]
@@ -33,15 +35,26 @@ impl Timestamp {
     pub fn ns_since_epoch(self) -> i64 {
         self.0
     }
-
-    /// RFC3339
-    pub fn format_iso(self) -> String {
-        jiff::Timestamp::from(self).to_string()
-    }
 }
 
 // ------------------------------------------
 // Converters
+
+impl Timestamp {
+    pub fn to_jiff_zoned(self, timestamp_format: TimestampFormat) -> jiff::Zoned {
+        let jiff = jiff::Timestamp::from(self);
+        match timestamp_format {
+            TimestampFormat::UnixEpoch | TimestampFormat::Utc => jiff.to_zoned(TimeZone::UTC),
+            TimestampFormat::LocalTimezone => match TimeZone::try_system() {
+                Ok(tz) => jiff.to_zoned(tz),
+                Err(err) => {
+                    re_log::warn_once!("Failed to detect system time zone: {err}");
+                    jiff.to_zoned(TimeZone::UTC)
+                }
+            },
+        }
+    }
+}
 
 #[expect(clippy::fallible_impl_from)]
 impl From<Timestamp> for jiff::Timestamp {
@@ -91,6 +104,49 @@ impl std::fmt::Debug for Timestamp {
     }
 }
 
+impl Timestamp {
+    /// RFC3339
+    pub fn format_iso(self) -> String {
+        jiff::Timestamp::from(self).to_string()
+    }
+
+    /// Useful when showing dates/times on a timeline and you want it compact.
+    ///
+    /// Shows dates when zoomed out, shows times when zoomed in,
+    /// shows relative millisecond when really zoomed in.
+    pub fn format_time_compact(self, timestamp_format: TimestampFormat) -> String {
+        match timestamp_format {
+            TimestampFormat::UnixEpoch => {
+                let ns = self.ns_since_epoch();
+                let fractional_ns = ns % 1_000_000_000;
+                let is_whole_second = fractional_ns == 0;
+                if is_whole_second {
+                    re_format::format_int(ns / 1_000_000_000)
+                } else {
+                    // Show offset since last whole second:
+                    crate::Duration::from_nanos(fractional_ns).format_subsecond_as_relative()
+                }
+            }
+
+            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+                let zoned = self.to_jiff_zoned(timestamp_format);
+                if zoned.time() == jiff::civil::Time::MIN {
+                    // Exactly midnight - show only the date:
+                    zoned.strftime("%Y-%m-%d").to_string()
+                } else if zoned.subsec_nanosecond() != 0 {
+                    // Show offset since last whole second:
+                    crate::Duration::from_nanos(zoned.subsec_nanosecond() as _)
+                        .format_subsecond_as_relative()
+                } else if zoned.second() == 0 {
+                    zoned.strftime("%H:%M").to_string()
+                } else {
+                    zoned.strftime("%H:%M:%S").to_string()
+                }
+            }
+        }
+    }
+}
+
 // ------------------------------------------
 // Duration ops
 
@@ -135,7 +191,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_formatring_whole_second() {
+    fn test_formatting_whole_second() {
         let timestamp: Timestamp = "2022-01-01 00:00:03Z".parse().unwrap();
         assert_eq!(timestamp.ns_since_epoch(), 1_640_995_203_000_000_000);
         assert_eq!(timestamp.format_iso(), "2022-01-01T00:00:03Z");
@@ -146,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn test_formatring_subsecond() {
+    fn test_formatting_subsecond() {
         let timestamp: Timestamp = "2022-01-01 00:00:03.123456789Z".parse().unwrap();
         assert_eq!(timestamp.ns_since_epoch(), 1_640_995_203_123_456_789);
         assert_eq!(timestamp.format_iso(), "2022-01-01T00:00:03.123456789Z");
@@ -156,5 +212,20 @@ mod tests {
                 .unwrap(),
             timestamp
         );
+    }
+
+    #[test]
+    fn test_format_compact() {
+        for (input, expected) in [
+            ("2022-01-01T01:02:03.12345Z", "+123.45 ms"),
+            ("2022-01-01T01:02:03.123Z", "+123 ms"),
+            ("2022-01-01T01:02:03Z", "01:02:03"),
+            ("2022-01-01T01:02:00Z", "01:02"),
+            ("2022-01-01T00:00:00Z", "2022-01-01"),
+        ] {
+            let timestamp: Timestamp = input.parse().unwrap();
+            let formatted = timestamp.format_time_compact(TimestampFormat::Utc);
+            assert_eq!(formatted, expected);
+        }
     }
 }
