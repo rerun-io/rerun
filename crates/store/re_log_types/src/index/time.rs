@@ -1,9 +1,10 @@
 use anyhow::Result;
-use re_log::ResultExt as _;
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
-use super::{Duration, TimeZone, Timestamp};
+use re_log::ResultExt as _;
+
+use crate::{Duration, TimeZone, Timestamp};
 
 /// Either a [`Timestamp`] or a [`Duration`].
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]

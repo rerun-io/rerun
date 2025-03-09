@@ -162,7 +162,8 @@ impl TryFrom<web_time::SystemTime> for IndexCell {
 impl std::fmt::Display for IndexCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.typ {
-            TimeType::Sequence => write!(f, "#{}", self.value),
+            // NOTE: we avoid special characters here so we can put these formats in an URI
+            TimeType::Sequence => self.value.fmt(f),
             TimeType::Time => Time::from_ns_since_epoch(self.value.get())
                 .format(crate::TimeZone::Utc)
                 .fmt(f),
@@ -178,10 +179,7 @@ impl FromStr for IndexCell {
     type Err = InvalidIndexCell;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(s) = s.strip_prefix('#') {
-            let int = NonMinI64::from_str(s).map_err(|err| {
-                InvalidIndexCell(format!("Invalid sequence index: '#{s}': {err}"))
-            })?;
+        if let Ok(int) = NonMinI64::from_str(s) {
             Ok(Self::new(TimeType::Sequence, int))
         } else if let Ok(duration) = s.parse::<super::Duration>() {
             Ok(Self::from(duration))
@@ -202,7 +200,7 @@ mod tests {
     #[test]
     fn test_iso_format_and_parse() {
         assert_eq!(
-            "#1234".parse::<IndexCell>().unwrap(),
+            "1234".parse::<IndexCell>().unwrap(),
             IndexCell::from_sequence(1234)
         );
 
