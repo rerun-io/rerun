@@ -132,62 +132,15 @@ impl Time {
 
     /// Best effort parsing of a string into a [`Time`] from a human readable string.
     pub fn parse(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
+        #![expect(clippy::manual_map)]
+
         if let Ok(duration) = s.parse::<Duration>() {
-            return Some(Self::from_ns_since_epoch(duration.as_nanos()));
+            Some(Self::from_ns_since_epoch(duration.as_nanos()))
+        } else if let Some(timestamp) = Timestamp::parse_with_format(s, timestamp_format) {
+            Some(Self::from(timestamp))
+        } else {
+            None
         }
-
-        // Try parsing as an absolute time
-        fn parse_date_time(
-            s: &str,
-            format_str: &str,
-            timestamp_format: TimestampFormat,
-        ) -> Option<Time> {
-            let format = time::format_description::parse_borrowed::<2>(format_str)
-                .expect("Invalid format string");
-
-            // If the string ends with Z, this is a UTC timezone independent of the time zone we set earlier.
-            let (s, timestamp_format) = if let Some(s) = s.strip_suffix('Z') {
-                (s, TimestampFormat::Utc)
-            } else {
-                (s, timestamp_format)
-            };
-
-            let datetime = match timestamp_format {
-                TimestampFormat::UnixEpoch | TimestampFormat::Utc => {
-                    time::PrimitiveDateTime::parse(s, &format)
-                        .ok()?
-                        .assume_utc()
-                }
-
-                TimestampFormat::LocalTimezone => {
-                    if let Ok(local_offset) = UtcOffset::current_local_offset() {
-                        let datetime = time::PrimitiveDateTime::parse(s, &format).ok()?;
-                        datetime.assume_offset(local_offset)
-                    } else {
-                        return None;
-                    }
-                }
-            };
-
-            Some(Time::from_ns_since_epoch(
-                datetime.unix_timestamp_nanos() as i64
-            ))
-        }
-
-        // Try different format patterns
-        let date_time_formats = [
-            // Full date and time with milliseconds
-            "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond]",
-            // Full date and time
-            "[year]-[month]-[day] [hour]:[minute]:[second]",
-        ];
-        for format in date_time_formats {
-            if let Some(time) = parse_date_time(s, format, timestamp_format) {
-                return Some(time);
-            }
-        }
-
-        None
     }
 
     /// Useful when showing dates/times on a timeline and you want it compact.

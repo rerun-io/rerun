@@ -11,3 +11,21 @@ pub enum TimestampFormat {
     /// Show as seconds since unix epoch
     UnixEpoch,
 }
+
+impl TimestampFormat {
+    pub fn to_jiff_tz(self) -> jiff::tz::TimeZone {
+        use jiff::tz::TimeZone;
+
+        match self {
+            Self::UnixEpoch | Self::Utc => TimeZone::UTC,
+
+            Self::LocalTimezone => match TimeZone::try_system() {
+                Ok(tz) => tz,
+                Err(err) => {
+                    re_log::warn_once!("Failed to detect system/local time zone: {err}");
+                    TimeZone::UTC
+                }
+            },
+        }
+    }
+}

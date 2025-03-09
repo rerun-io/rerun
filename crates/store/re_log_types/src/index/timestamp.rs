@@ -1,4 +1,4 @@
-use jiff::tz::TimeZone;
+use std::str::FromStr as _;
 
 use super::{Duration, TimestampFormat};
 
@@ -38,32 +38,7 @@ impl Timestamp {
 }
 
 // ------------------------------------------
-// Converters
-
-impl Timestamp {
-    pub fn to_jiff_zoned(self, timestamp_format: TimestampFormat) -> jiff::Zoned {
-        let jiff = jiff::Timestamp::from(self);
-        match timestamp_format {
-            TimestampFormat::UnixEpoch | TimestampFormat::Utc => jiff.to_zoned(TimeZone::UTC),
-            TimestampFormat::LocalTimezone => match TimeZone::try_system() {
-                Ok(tz) => jiff.to_zoned(tz),
-                Err(err) => {
-                    re_log::warn_once!("Failed to detect system time zone: {err}");
-                    jiff.to_zoned(TimeZone::UTC)
-                }
-            },
-        }
-    }
-}
-
-#[expect(clippy::fallible_impl_from)]
-impl From<Timestamp> for jiff::Timestamp {
-    fn from(value: Timestamp) -> Self {
-        // Cannot fail - see docs for jiff::Timestamp::from_nanosecond
-        #[expect(clippy::unwrap_used)]
-        Self::from_nanosecond(value.ns_since_epoch() as i128).unwrap()
-    }
-}
+// System converters
 
 impl TryFrom<std::time::SystemTime> for Timestamp {
     type Error = std::time::SystemTimeError;
@@ -83,6 +58,36 @@ impl TryFrom<web_time::SystemTime> for Timestamp {
     fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
         time.duration_since(web_time::SystemTime::UNIX_EPOCH)
             .map(|duration_since_epoch| Self(duration_since_epoch.as_nanos() as _))
+    }
+}
+
+// ------------------------------------------
+// Joff converters
+
+impl Timestamp {
+    pub fn to_jiff_zoned(self, timestamp_format: TimestampFormat) -> jiff::Zoned {
+        jiff::Timestamp::from(self).to_zoned(timestamp_format.to_jiff_tz())
+    }
+}
+
+#[expect(clippy::fallible_impl_from)]
+impl From<Timestamp> for jiff::Timestamp {
+    fn from(value: Timestamp) -> Self {
+        // Cannot fail - see docs for jiff::Timestamp::from_nanosecond
+        #[expect(clippy::unwrap_used)]
+        Self::from_nanosecond(value.ns_since_epoch() as i128).unwrap()
+    }
+}
+
+impl From<jiff::Timestamp> for Timestamp {
+    fn from(value: jiff::Timestamp) -> Self {
+        Self(value.as_nanosecond() as i64)
+    }
+}
+
+impl From<jiff::Zoned> for Timestamp {
+    fn from(value: jiff::Zoned) -> Self {
+        value.timestamp().into()
     }
 }
 
@@ -145,6 +150,29 @@ impl Timestamp {
             }
         }
     }
+
+    /// Parse a timestamp,
+    ///
+    /// If it is missing a timezone specifier, the the given timezone is assumed.
+    pub fn parse_with_format(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
+        if let Ok(utc) = Self::from_str(s) {
+            // It has a `Z` suffix
+            Some(utc)
+        } else if let Ok(zoned) = jiff::Zoned::from_str(s) {
+            // It had a timezone suffix
+            Some(Self::from(zoned))
+        } else if let Ok(date_time) = jiff::civil::DateTime::from_str(s) {
+            date_time
+                .to_zoned(timestamp_format.to_jiff_tz())
+                .ok()
+                .map(|zoned| zoned.into())
+        } else if timestamp_format == TimestampFormat::UnixEpoch {
+            let ns = re_format::parse_i64(s)?;
+            Some(Self::from_ns_since_epoch(ns))
+        } else {
+            None
+        }
+    }
 }
 
 // ------------------------------------------
@@ -188,6 +216,8 @@ impl std::ops::Sub<Duration> for Timestamp {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr as _;
+
     use super::*;
 
     #[test]
@@ -227,5 +257,76 @@ mod tests {
             let formatted = timestamp.format_time_compact(TimestampFormat::Utc);
             assert_eq!(formatted, expected);
         }
+    }
+
+    #[test]
+    fn test_parsing_timestamp() {
+        fn parse(s: &str, format: TimestampFormat) -> Option<Timestamp> {
+            Timestamp::parse_with_format(s, format)
+        }
+
+        let all_formats = [
+            TimestampFormat::Utc,
+            TimestampFormat::LocalTimezone,
+            TimestampFormat::UnixEpoch,
+        ];
+
+        // Full dates.
+        // Fun fact: 1954-04-11 is by some considered the least eventful day in history!
+        // Full date and time
+        assert_eq!(
+            parse("1954-04-11 22:35:42", TimestampFormat::Utc),
+            Some(Timestamp::from_str("1954-04-11 22:35:42Z").unwrap())
+        );
+        // Full date and time with milliseconds
+        assert_eq!(
+            parse("1954-04-11 22:35:42.069", TimestampFormat::Utc),
+            Some(Timestamp::from_str("1954-04-11 22:35:42.069Z").unwrap())
+        );
+
+        // Timezone setting doesn't matter if UTC is enabled.
+        for format in all_formats {
+            // Full date and time with Z suffix
+            assert_eq!(
+                parse("1954-04-11T22:35:42Z", format),
+                Some(Timestamp::from_str("1954-04-11 22:35:42Z").unwrap()),
+                "Failed for format {format:?}"
+            );
+
+            // Full date and time with milliseconds with Z suffix
+            assert_eq!(
+                parse("1954-04-11 22:35:42.069Z", format),
+                Some(Timestamp::from_str("1954-04-11 22:35:42.069Z").unwrap())
+            );
+        }
+
+        // Current timezone.
+        // Full date and time.
+        if let Ok(tz) = jiff::tz::TimeZone::try_system() {
+            assert_eq!(
+                parse("1954-04-11 22:35:42", TimestampFormat::LocalTimezone),
+                Some(Timestamp::from(
+                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42")
+                        .unwrap()
+                        .to_zoned(tz.clone())
+                        .unwrap()
+                ))
+            );
+            // Full date and time with milliseconds
+            assert_eq!(
+                parse("1954-04-11 22:35:42.069", TimestampFormat::LocalTimezone),
+                Some(Timestamp::from(
+                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069")
+                        .unwrap()
+                        .to_zoned(tz)
+                        .unwrap()
+                ))
+            );
+        }
+
+        // Test invalid formats
+        assert_eq!(parse("invalid", TimestampFormat::Utc), None);
+        assert_eq!(parse("2022-13-28", TimestampFormat::Utc), None); // Invalid month
+        assert_eq!(parse("2022-02-29", TimestampFormat::Utc), None); // Invalid day (not leap year)
     }
 }
