@@ -1,8 +1,5 @@
 use anyhow::Result;
 use std::ops::RangeInclusive;
-use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
-
-use re_log::ResultExt as _;
 
 use crate::{Duration, Timestamp, TimestampFormat};
 
@@ -45,43 +42,6 @@ impl Time {
         20 <= years_since_epoch && years_since_epoch <= 150
     }
 
-    /// Returns the absolute datetime if applicable.
-    fn to_datetime(self) -> Option<OffsetDateTime> {
-        let ns_since_epoch = self.nanos_since_epoch();
-        if self.is_timestamp() {
-            OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
-        } else {
-            None
-        }
-    }
-
-    fn time_string(
-        datetime: OffsetDateTime,
-        parsed_format: &Vec<FormatItem<'_>>,
-        timestamp_format: TimestampFormat,
-    ) -> String {
-        let r = (|| -> Result<String, time::error::Format> {
-            match timestamp_format {
-                TimestampFormat::LocalTimezone => {
-                    if let Ok(local_offset) = UtcOffset::current_local_offset() {
-                        // Return in the local timezone.
-                        let local_datetime = datetime.to_offset(local_offset);
-                        local_datetime.format(&parsed_format)
-                    } else {
-                        // Fallback to UTC.
-                        // Skipping `err` description from logging because as of writing it doesn't add much, see
-                        // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
-                        re_log::warn_once!("Failed to access local timezone offset to UTC.");
-                        Ok(format!("{}Z", datetime.format(&parsed_format)?))
-                    }
-                }
-                TimestampFormat::Utc => Ok(format!("{}Z", datetime.format(&parsed_format)?)),
-                TimestampFormat::UnixEpoch => datetime.format(&parsed_format),
-            }
-        })();
-        r.ok_or_log_error().unwrap_or_default()
-    }
-
     /// RFC3339
     pub fn format_iso(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
@@ -95,35 +55,11 @@ impl Time {
     }
 
     /// Human-readable formatting
-    pub fn format(&self, timestamp_format: TimestampFormat) -> String {
+    pub fn format(self, timestamp_format: TimestampFormat) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
-        if let Some(datetime) = self.to_datetime() {
-            let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
-            let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
-            let prefix = match timestamp_format {
-                TimestampFormat::UnixEpoch => "[unix_timestamp]",
-                TimestampFormat::Utc | TimestampFormat::LocalTimezone => "[hour]:[minute]:[second]",
-            };
-
-            let time_format = if is_whole_second {
-                prefix.to_owned()
-            } else if is_whole_millisecond {
-                format!("{prefix}.[subsecond digits:3]")
-            } else {
-                format!("{prefix}.[subsecond digits:6]")
-            };
-
-            let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
-            let date_format = format!("[year]-[month]-[day] {time_format}");
-            #[allow(clippy::unwrap_used)] // date_format is okay!
-            let parsed_format = if date_is_today {
-                time::format_description::parse(&time_format).unwrap()
-            } else {
-                time::format_description::parse(&date_format).unwrap()
-            };
-
-            Self::time_string(datetime, &parsed_format, timestamp_format)
+        if self.is_timestamp() {
+            Timestamp::from(self).format(timestamp_format)
         } else {
             // Relative time
             Duration::from_nanos(nanos_since_epoch).format_seconds()
@@ -265,7 +201,7 @@ impl TryFrom<time::OffsetDateTime> for Time {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use time::macros::{datetime, time};
+    use time::macros::datetime;
 
     #[test]
     fn test_formatting_short_times() {
@@ -340,16 +276,6 @@ mod tests {
         ); // format function is not rounding
     }
 
-    /// Check that formatting today times doesn't display the date.
-    /// WARNING: this test could easily flake with current implementation
-    /// (checking day instead of hour-distance)
-    #[test]
-    fn test_formatting_today_omit_date() {
-        let today = OffsetDateTime::now_utc().replace_time(time!(22:35:42));
-        let datetime = Time::try_from(today).unwrap();
-        assert_eq!(&datetime.format(TimestampFormat::Utc), "22:35:42Z");
-    }
-
     #[test]
     fn test_parsing_time() {
         let all_formats = [
@@ -419,26 +345,6 @@ mod tests {
             assert_eq!(
                 Time::parse("1954-04-11 22:35:42.069Z", format),
                 Some(Time::try_from(datetime!(1954-04-11 22:35:42.069 UTC)).unwrap())
-            );
-        }
-
-        // Current timezone.
-        // Full date and time.
-        if let Ok(local_offset) = UtcOffset::current_local_offset() {
-            assert_eq!(
-                Time::parse("1954-04-11 22:35:42", TimestampFormat::LocalTimezone),
-                Some(
-                    Time::try_from(datetime!(1954-04-11 22:35:42).assume_offset(local_offset))
-                        .unwrap()
-                )
-            );
-            // Full date and time with milliseconds
-            assert_eq!(
-                Time::parse("1954-04-11 22:35:42.069", TimestampFormat::LocalTimezone),
-                Some(
-                    Time::try_from(datetime!(1954-04-11 22:35:42.069).assume_offset(local_offset))
-                        .unwrap()
-                )
             );
         }
 

@@ -115,6 +115,60 @@ impl Timestamp {
         jiff::Timestamp::from(self).to_string()
     }
 
+    /// Human-readable timestamp.
+    ///
+    /// Omits the date of same-day timestamps.
+    pub fn format(self, timestamp_format: TimestampFormat) -> String {
+        let format_fractional_ns = |ns: i32| {
+            let is_whole_sec = ns % 1_000_000_000 == 0;
+            let is_whole_ms = ns % 1_000_000 == 0;
+
+            if is_whole_sec {
+                String::new()
+            } else if is_whole_ms {
+                format!(".{:03}", ns / 1_000_000)
+            } else {
+                // NOTE: we currently ignore sub-microsecond
+                format!(".{:06}", ns / 1_000)
+            }
+        };
+
+        let timestamp = jiff::Timestamp::from(self);
+
+        match timestamp_format {
+            TimestampFormat::UnixEpoch => {
+                format!(
+                    "{}{}",
+                    timestamp.as_second(),
+                    format_fractional_ns(timestamp.subsec_nanosecond())
+                )
+            }
+
+            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+                let tz = timestamp_format.to_jiff_tz();
+                let zoned = timestamp.to_zoned(tz.clone());
+
+                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz).date();
+
+                let formatted = if is_today {
+                    zoned.strftime("%H:%M:%S").to_string()
+                } else {
+                    zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
+                };
+
+                let suffix = match timestamp_format {
+                    TimestampFormat::LocalTimezone => "",
+                    TimestampFormat::Utc | TimestampFormat::UnixEpoch => "Z",
+                };
+
+                format!(
+                    "{formatted}{}{suffix}",
+                    format_fractional_ns(zoned.subsec_nanosecond())
+                )
+            }
+        }
+    }
+
     /// Useful when showing dates/times on a timeline and you want it compact.
     ///
     /// Shows dates when zoomed out, shows times when zoomed in,
@@ -242,6 +296,48 @@ mod tests {
                 .unwrap(),
             timestamp
         );
+    }
+
+    #[test]
+    fn test_formatting_whole_second_for_datetime() {
+        let datetime = Timestamp::from_str("2022-02-28 22:35:42Z").unwrap();
+        assert_eq!(
+            &datetime.format(TimestampFormat::Utc),
+            "2022-02-28 22:35:42Z"
+        );
+    }
+
+    #[test]
+    fn test_formatting_whole_millisecond_for_datetime() {
+        let datetime = Timestamp::from_str("2022-02-28 22:35:42.069Z").unwrap();
+        assert_eq!(
+            &datetime.format(TimestampFormat::Utc),
+            "2022-02-28 22:35:42.069Z"
+        );
+    }
+
+    #[test]
+    fn test_formatting_many_digits_for_datetime() {
+        let datetime = Timestamp::from_str("2022-02-28 22:35:42.0690427Z").unwrap();
+        assert_eq!(
+            &datetime.format(TimestampFormat::Utc),
+            "2022-02-28 22:35:42.069042Z"
+        ); // format function is not rounding
+    }
+
+    /// Check that formatting today times doesn't display the date.
+    /// WARNING: this test could flake if run on midnight
+    #[test]
+    fn test_formatting_today_omit_date() {
+        let tz = jiff::tz::TimeZone::UTC;
+        let today = jiff::Timestamp::now()
+            .to_zoned(tz)
+            .with()
+            .time(jiff::civil::Time::new(22, 35, 42, 0).unwrap())
+            .build()
+            .unwrap();
+        let datetime = Timestamp::from(today);
+        assert_eq!(&datetime.format(TimestampFormat::Utc), "22:35:42Z");
     }
 
     #[test]
