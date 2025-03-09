@@ -44,6 +44,10 @@ namespace rerun::archetypes {
 #endif
 
     Result<Asset3D> Asset3D::from_file(const std::filesystem::path& path) {
+        return from_file_path(path);
+    }
+
+    Result<Asset3D> Asset3D::from_file_path(const std::filesystem::path& path) {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
             return Error(ErrorCode::FileOpenFailure, "Failed to open file: " + path.string());
