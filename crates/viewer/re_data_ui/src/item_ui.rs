@@ -748,11 +748,11 @@ pub fn entity_db_button_ui(
 
     let creation_time = entity_db
         .store_info()
-        .and_then(|info| {
-            info.started.format_time_custom(
-                "[hour]:[minute]:[second]",
-                ctx.app_options().timestamp_format,
-            )
+        .map(|info| {
+            re_log_types::Timestamp::from(info.started)
+                .to_jiff_zoned(ctx.app_options().timestamp_format)
+                .strftime("%H:%M:%S")
+                .to_string()
         })
         .unwrap_or("<unknown time>".to_owned());
 

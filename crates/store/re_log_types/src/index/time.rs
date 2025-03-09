@@ -46,7 +46,7 @@ impl Time {
     }
 
     /// Returns the absolute datetime if applicable.
-    pub fn to_datetime(self) -> Option<OffsetDateTime> {
+    fn to_datetime(self) -> Option<OffsetDateTime> {
         let ns_since_epoch = self.nanos_since_epoch();
         if self.is_timestamp() {
             OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
@@ -156,22 +156,6 @@ impl Time {
         }
     }
 
-    // Human-readable formatting with a custom time_format.
-    pub fn format_time_custom(
-        &self,
-        time_format: &str,
-        timestamp_format: TimestampFormat,
-    ) -> Option<String> {
-        let datetime = self.to_datetime()?;
-        let parsed_format = time::format_description::parse(time_format).ok()?;
-
-        Some(Self::time_string(
-            datetime,
-            &parsed_format,
-            timestamp_format,
-        ))
-    }
-
     #[inline]
     pub fn lerp(range: RangeInclusive<Self>, t: f32) -> Self {
         let (min, max) = (range.start().0, range.end().0);
@@ -186,10 +170,24 @@ impl From<Duration> for Time {
     }
 }
 
+impl From<Time> for Duration {
+    #[inline]
+    fn from(time: Time) -> Self {
+        Self::from_nanos(time.nanos_since_epoch())
+    }
+}
+
 impl From<Timestamp> for Time {
     #[inline]
     fn from(timestamp: Timestamp) -> Self {
         Self(timestamp.ns_since_epoch())
+    }
+}
+
+impl From<Time> for Timestamp {
+    #[inline]
+    fn from(time: Time) -> Self {
+        Self::from_ns_since_epoch(time.nanos_since_epoch())
     }
 }
 
@@ -350,53 +348,6 @@ mod tests {
         let today = OffsetDateTime::now_utc().replace_time(time!(22:35:42));
         let datetime = Time::try_from(today).unwrap();
         assert_eq!(&datetime.format(TimestampFormat::Utc), "22:35:42Z");
-    }
-
-    #[test]
-    fn test_custom_formatting() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
-        assert_eq!(
-            &datetime
-                .format_time_custom("[year]-[month]-[day]", TimestampFormat::Utc)
-                .unwrap(),
-            "2022-02-28Z"
-        );
-        assert_eq!(
-            &datetime
-                .format_time_custom("[hour]", TimestampFormat::Utc)
-                .unwrap(),
-            "22Z"
-        );
-        assert_eq!(
-            &datetime
-                .format_time_custom("[hour]:[minute]", TimestampFormat::Utc)
-                .unwrap(),
-            "22:35Z"
-        );
-        assert_eq!(
-            &datetime
-                .format_time_custom("[hour]:[minute]:[second]", TimestampFormat::Utc)
-                .unwrap(),
-            "22:35:42Z"
-        );
-        assert_eq!(
-            &datetime
-                .format_time_custom(
-                    "[hour]:[minute]:[second].[subsecond digits:3]",
-                    TimestampFormat::Utc
-                )
-                .unwrap(),
-            "22:35:42.069Z"
-        );
-        assert_eq!(
-            &datetime
-                .format_time_custom(
-                    "[hour]:[minute]:[second].[subsecond digits:6]",
-                    TimestampFormat::Utc
-                )
-                .unwrap(),
-            "22:35:42.069042Z"
-        );
     }
 
     #[test]
