@@ -481,7 +481,10 @@ impl ChunkStore {
         let timeline = timelines
             .get(&selector.timeline)
             .copied()
-            .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
+            .unwrap_or_else(|| {
+                re_log::warn_once!("Unknown timeline {selector:?}; assuming sequence timeline.");
+                Timeline::new_sequence(selector.timeline)
+            });
 
         IndexColumnDescriptor::from(timeline)
     }

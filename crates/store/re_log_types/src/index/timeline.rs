@@ -47,12 +47,11 @@ pub struct Timeline {
 }
 
 impl Timeline {
-    /// For absolute or relative time.
     #[inline]
-    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ,
         }
     }
 
@@ -65,12 +64,28 @@ impl Timeline {
         }
     }
 
+    /// For relative times (e.g. seconds since start).
     #[inline]
-    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
+    pub fn new_duration(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ,
+            typ: TimeType::Time,
         }
+    }
+
+    /// For absolute timestamps.
+    #[inline]
+    pub fn new_timestamp(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Time,
+        }
+    }
+
+    #[deprecated(note = "Use `Timeline::new_duration` or `new_timestamp` instead")]
+    #[inline]
+    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+        Self::new_duration(name)
     }
 
     #[inline]

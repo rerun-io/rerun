@@ -168,7 +168,7 @@ fn intra_timestamp_test() {
 }
 
 fn visible_timerange_data(test_context: &mut TestContext) {
-    let timeline = Timeline::new_temporal("timestamp");
+    let timeline = Timeline::new_duration("timestamp");
     {
         for i in 0..10 {
             let x = i as f32 * 10.0 + 5.0;

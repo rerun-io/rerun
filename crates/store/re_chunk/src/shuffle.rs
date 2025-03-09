@@ -323,7 +323,7 @@ mod tests {
     fn sort() -> anyhow::Result<()> {
         let entity_path: EntityPath = "a/b/c".into();
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_sequence("frame_nr");
 
         let points1 = vec![
@@ -418,7 +418,7 @@ mod tests {
     fn sort_time() -> anyhow::Result<()> {
         let entity_path: EntityPath = "a/b/c".into();
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_sequence("frame_nr");
 
         let chunk_id = ChunkId::new();

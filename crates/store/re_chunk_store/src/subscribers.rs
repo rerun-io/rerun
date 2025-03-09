@@ -376,7 +376,7 @@ mod tests {
         let view_handle = ChunkStore::register_subscriber(Box::new(view));
 
         let timeline_frame = Timeline::new_sequence("frame");
-        let timeline_other = Timeline::new_temporal("other");
+        let timeline_other = Timeline::new_duration("other");
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
         let chunk = Chunk::builder("entity_a".into())

@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(
             time_range,
             Some(TimeRange {
-                timeline: re_log_types::Timeline::new_temporal("timeline"),
+                timeline: re_log_types::Timeline::new_duration("timeline"),
                 range: re_log_types::ResolvedTimeRangeF::new(
                     re_log_types::TimeReal::from_seconds(10.0),
                     re_log_types::TimeReal::from_seconds(20.0)
@@ -446,7 +446,7 @@ mod tests {
             assert_eq!(
                 time_range,
                 Some(TimeRange {
-                    timeline: re_log_types::Timeline::new_temporal("timeline"),
+                    timeline: re_log_types::Timeline::new_duration("timeline"),
                     range: re_log_types::ResolvedTimeRangeF::new(
                         re_log_types::TimeReal::from_seconds(10.0),
                         re_log_types::TimeReal::from_seconds(20.0)

@@ -1031,7 +1031,7 @@ mod tests {
     fn simple() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
 
         let timepoint1 = TimePoint::default().with(timeline1, 42);
         let timepoint2 = TimePoint::default().with(timeline1, 43);
@@ -1140,7 +1140,7 @@ mod tests {
     fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
 
         let timepoint1 = TimePoint::default().with(timeline1, 42);
         let timepoint2 = TimePoint::default().with(timeline1, 43);
@@ -1323,7 +1323,7 @@ mod tests {
     fn different_entities() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
 
         let timepoint1 = TimePoint::default().with(timeline1, 42);
         let timepoint2 = TimePoint::default().with(timeline1, 43);
@@ -1426,7 +1426,7 @@ mod tests {
     fn different_timelines() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_sequence("frame_nr");
 
         let timepoint1 = TimePoint::default().with(timeline1, 42);
@@ -1539,7 +1539,7 @@ mod tests {
     fn different_datatypes() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline1 = Timeline::new_duration("log_time");
 
         let timepoint1 = TimePoint::default().with(timeline1, 42);
         let timepoint2 = TimePoint::default().with(timeline1, 43);
@@ -1646,8 +1646,8 @@ mod tests {
             ..ChunkBatcherConfig::NEVER
         })?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
-        let timeline2 = Timeline::new_temporal("frame_nr");
+        let timeline1 = Timeline::new_duration("log_time");
+        let timeline2 = Timeline::new_duration("frame_nr");
 
         let timepoint1 = TimePoint::default()
             .with(timeline2, 1000)
@@ -1750,8 +1750,8 @@ mod tests {
             ..ChunkBatcherConfig::NEVER
         })?;
 
-        let timeline1 = Timeline::new_temporal("log_time");
-        let timeline2 = Timeline::new_temporal("frame_nr");
+        let timeline1 = Timeline::new_duration("log_time");
+        let timeline2 = Timeline::new_duration("frame_nr");
 
         let timepoint1 = TimePoint::default()
             .with(timeline2, 1000)
