@@ -73,6 +73,27 @@ impl TimeDragValue {
         TimeInt::new_temporal(*self.range.end())
     }
 
+    pub fn drag_value_ui(
+        &self,
+        ui: &mut egui::Ui,
+        time_type: TimeType,
+        time: &mut TimeInt,
+        absolute: bool,
+        low_bound_override: Option<TimeInt>,
+        time_zone: TimeZone,
+    ) -> Response {
+        match time_type {
+            TimeType::Sequence => {
+                self.sequence_drag_value_ui(ui, time, absolute, low_bound_override)
+            }
+
+            TimeType::Time => {
+                self.temporal_drag_value_ui(ui, time, absolute, low_bound_override, time_zone)
+                    .0
+            }
+        }
+    }
+
     /// Show a sequence drag value widget.
     pub fn sequence_drag_value_ui(
         &self,

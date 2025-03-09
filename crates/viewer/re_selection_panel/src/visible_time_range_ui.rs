@@ -534,33 +534,24 @@ fn visible_history_boundary_ui(
             };
 
             let mut edit_value = (*value).into();
-            let response = match time_type {
-                TimeType::Time => Some(
+            let response =
                     time_drag_value
-                        .temporal_drag_value_ui(
+                        .drag_value_ui(
                             ui,
+                            time_type,
                             &mut edit_value,
                             false,
                             low_bound_override,
                             ctx.app_options().time_zone,
                         )
-                        .0
-                        .on_hover_text(
-                            "Time duration before/after the current time to use as time range \
-                                boundary",
-                        ),
-                ),
-                TimeType::Sequence => Some(
-                    time_drag_value
-                        .sequence_drag_value_ui(ui, &mut edit_value, false, low_bound_override)
-                        .on_hover_text(
-                            "Number of frames before/after the current time to use a time \
-                        range boundary",
-                        ),
-                ),
-            };
+
+                        .on_hover_text(match time_type {
+                            TimeType::Time => "Time duration before/after the current time to use as time range boundary",
+                            TimeType::Sequence => "Number of frames before/after the current time to use a time range boundary",
+                        })
+                    ;
             *value = edit_value.into();
-            response
+            Some(response)
         }
         TimeRangeBoundary::Absolute(value) => {
             // see note above
@@ -585,16 +576,14 @@ fn visible_history_boundary_ui(
                         base_time_resp.on_hover_text("Base time used to set time range boundaries");
                     }
 
-                    Some(drag_resp.on_hover_text("Absolute time to use as time range boundary"))
+                    drag_resp.on_hover_text("Absolute time to use as time range boundary")
                 }
-                TimeType::Sequence => Some(
-                    time_drag_value
-                        .sequence_drag_value_ui(ui, &mut edit_value, true, low_bound_override)
-                        .on_hover_text("Absolute frame number to use as time range boundary"),
-                ),
+                TimeType::Sequence => time_drag_value
+                    .sequence_drag_value_ui(ui, &mut edit_value, true, low_bound_override)
+                    .on_hover_text("Absolute frame number to use as time range boundary"),
             };
             *value = edit_value.into();
-            response
+            Some(response)
         }
         TimeRangeBoundary::Infinite => None,
     };

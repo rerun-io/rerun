@@ -542,17 +542,7 @@ fn time_boundary_ui(
         }
         response
     } else {
-        match timeline_typ {
-            TimeType::Time => {
-                time_drag_value
-                    .temporal_drag_value_ui(ui, time, true, low_bound_override, time_zone)
-                    .0
-            }
-
-            TimeType::Sequence => {
-                time_drag_value.sequence_drag_value_ui(ui, time, true, low_bound_override)
-            }
-        }
+        time_drag_value.drag_value_ui(ui, timeline_typ, time, true, low_bound_override, time_zone)
     }
 }
 
