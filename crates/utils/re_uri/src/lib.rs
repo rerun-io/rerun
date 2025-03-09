@@ -411,7 +411,10 @@ mod tests {
 
     #[test]
     fn test_recording_url_time_range_temporal() {
-        for url in ["rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20s"] {
+        for url in [
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@1.23s..72s",
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@1230ms..1m12s",
+        ] {
             let address: RedapUri = url.try_into().unwrap();
 
             let RedapUri::Recording(RecordingEndpoint {
@@ -432,8 +435,8 @@ mod tests {
                 Some(TimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
                     range: re_log_types::ResolvedTimeRangeF::new(
-                        re_log_types::TimeReal::from_seconds(10.0),
-                        re_log_types::TimeReal::from_seconds(20.0)
+                        re_log_types::TimeReal::from_seconds(1.23),
+                        re_log_types::TimeReal::from_seconds(72.0)
                     )
                 })
             );
