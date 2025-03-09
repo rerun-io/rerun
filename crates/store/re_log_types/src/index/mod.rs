@@ -11,6 +11,7 @@ mod time_real;
 mod time_type;
 mod time_zone;
 mod timeline;
+mod timestamp;
 
 pub use self::{
     duration::Duration,
@@ -24,4 +25,5 @@ pub use self::{
     time_type::TimeType,
     time_zone::TimeZone,
     timeline::{Timeline, TimelineName},
+    timestamp::Timestamp,
 };

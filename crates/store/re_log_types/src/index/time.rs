@@ -3,9 +3,9 @@ use re_log::ResultExt as _;
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
-use super::{Duration, TimeZone};
+use super::{Duration, TimeZone, Timestamp};
 
-/// A date-time represented as nanoseconds since unix epoch
+/// Either a [`Timestamp`] or a [`Duration`].
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Time(i64);
@@ -13,11 +13,7 @@ pub struct Time(i64);
 impl Time {
     #[inline]
     pub fn now() -> Self {
-        let nanos_since_epoch = web_time::SystemTime::UNIX_EPOCH
-            .elapsed()
-            .expect("Expected system clock to be set to after 1970")
-            .as_nanos() as _;
-        Self(nanos_since_epoch)
+        Timestamp::now().into()
     }
 
     #[inline]
@@ -262,6 +258,20 @@ impl Time {
     pub fn lerp(range: RangeInclusive<Self>, t: f32) -> Self {
         let (min, max) = (range.start().0, range.end().0);
         Self(min + ((max - min) as f64 * (t as f64)).round() as i64)
+    }
+}
+
+impl From<Duration> for Time {
+    #[inline]
+    fn from(duration: Duration) -> Self {
+        Self(duration.as_nanos())
+    }
+}
+
+impl From<Timestamp> for Time {
+    #[inline]
+    fn from(timestamp: Timestamp) -> Self {
+        Self(timestamp.ns_since_epoch())
     }
 }
 

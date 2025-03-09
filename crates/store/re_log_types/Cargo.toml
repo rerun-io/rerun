@@ -67,6 +67,7 @@ fixed = { workspace = true, default-features = false }
 # we keep it as a direct dependency to ensure it stays pinned to the right version
 half.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 natord.workspace = true
 nohash-hasher.workspace = true
 num-derive.workspace = true
