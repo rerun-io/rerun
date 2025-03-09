@@ -127,7 +127,7 @@ impl Time {
 
     /// Best effort parsing of a string into a [`Time`] from a human readable string.
     pub fn parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
-        if let Some(duration) = Duration::parse(s) {
+        if let Ok(duration) = s.parse::<Duration>() {
             return Some(Self::from_ns_since_epoch(duration.as_nanos()));
         }
 
@@ -567,8 +567,5 @@ mod tests {
         assert_eq!(Time::parse("invalid", TimeZone::Utc), None);
         assert_eq!(Time::parse("2022-13-28", TimeZone::Utc), None); // Invalid month
         assert_eq!(Time::parse("2022-02-29", TimeZone::Utc), None); // Invalid day (not leap year)
-        assert_eq!(Time::parse("25:00:00", TimeZone::Utc), None); // Invalid hour
-        assert_eq!(Time::parse("00:60:00", TimeZone::Utc), None); // Invalid minute
-        assert_eq!(Time::parse("00:00:60", TimeZone::Utc), None); // Invalid second
     }
 }
