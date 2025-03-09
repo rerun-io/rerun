@@ -36,6 +36,8 @@
 mod endpoints;
 mod error;
 
+use re_log_types::TimeZone;
+
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
@@ -51,22 +53,34 @@ impl TimeRange {
     const QUERY_KEY: &str = "time_range";
 }
 
-impl std::fmt::Display for TimeRange {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl TimeRange {
+    /// Human readable format.
+    pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let Self { timeline, range } = self;
-        write!(f, "{}@", timeline.name())?;
+
+        let name = timeline.name();
         match timeline.typ() {
             re_log_types::TimeType::Sequence => {
                 let min = range.min.floor().as_i64();
                 let max = range.max.ceil().as_i64();
-                write!(f, "{min}..{max}")
+                format!("{name}@{min}..{max}")
             }
             re_log_types::TimeType::Time => {
-                let min = range.min.as_secs_f64();
-                let max = range.max.as_secs_f64();
-                write!(f, "{min:.4}s..{max:.4}s")
+                use re_log_types::Time;
+                format!(
+                    "{name}@{}..{}",
+                    Time::from(range.min).format(time_zone_for_timestamps),
+                    Time::from(range.max).format(time_zone_for_timestamps),
+                )
             }
         }
+    }
+}
+
+impl std::fmt::Display for TimeRange {
+    /// Used for formatting time ranges in URLs
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.format(TimeZone::UnixEpoch).fmt(f)
     }
 }
 
