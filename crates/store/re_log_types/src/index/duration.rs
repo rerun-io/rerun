@@ -197,7 +197,7 @@ impl std::fmt::Display for Duration {
 impl From<Duration> for super::TimeInt {
     #[inline]
     fn from(duration: Duration) -> Self {
-        super::TimeInt::saturated_nonstatic_i64(duration.as_nanos())
+        Self::saturated_nonstatic_i64(duration.as_nanos())
     }
 }
 

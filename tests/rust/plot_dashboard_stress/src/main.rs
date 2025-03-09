@@ -152,7 +152,10 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                     let values = series_values.iter().skip(offset).take(temporal_batch_size);
                     rec.send_columns(
                         path,
-                        [rerun::TimeColumn::new_seconds("sim_time", seconds.copied())],
+                        [rerun::TimeColumn::new_duration_seconds(
+                            "sim_time",
+                            seconds.copied(),
+                        )],
                         rerun::Scalar::update_fields()
                             .with_many_scalar(values.copied())
                             .columns_of_unit_batches()?,
