@@ -154,38 +154,8 @@ impl Time {
 
     /// Best effort parsing of a string into a [`Time`] from a human readable string.
     pub fn parse(s: &str, time_zone_for_timestamps: TimeZone) -> Option<Self> {
-        // Try parsing as a simple relative time with unit suffix (e.g. "1.234s", "1.234ms")
-        let suffixes = [("s", 1e9), ("ms", 1e6), ("us", 1e3), ("ns", 1.0)];
-        for (suffix, to_ns) in suffixes {
-            if let Some(s) = s.strip_suffix(suffix) {
-                if let Ok(value) = s.parse::<f64>() {
-                    return Some(Self::from_ns_since_epoch((value * to_ns).round() as i64));
-                }
-            }
-        }
-
-        // Parse a relative time of day.
-        let time_formats = [
-            // Just time with milliseconds
-            "[hour]:[minute]:[second].[subsecond]",
-            // Just time
-            "[hour]:[minute]:[second]",
-        ];
-        for format in time_formats {
-            let format = time::format_description::parse_borrowed::<2>(format)
-                .expect("Invalid format string");
-
-            if let Ok(time) = time::Time::parse(s, &format).map(|t| {
-                let (h, m, s, ns) = t.as_hms_nano();
-                Self::from_ns_since_epoch(
-                    ns as i64
-                        + s as i64 * time::convert::Nanosecond::per(time::convert::Second) as i64
-                        + m as i64 * time::convert::Nanosecond::per(time::convert::Minute) as i64
-                        + h as i64 * time::convert::Nanosecond::per(time::convert::Hour) as i64,
-                )
-            }) {
-                return Some(time);
-            }
+        if let Some(duration) = Duration::parse(s) {
+            return Some(Self::from_ns_since_epoch(duration.as_nanos()));
         }
 
         // Try parsing as an absolute time
