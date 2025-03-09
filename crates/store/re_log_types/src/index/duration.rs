@@ -12,12 +12,12 @@ impl Duration {
     const SEC_PER_DAY: i64 = 24 * Self::SEC_PER_HOUR;
 
     #[inline]
-    pub fn from_nanos(nanos: i64) -> Self {
+    pub const fn from_nanos(nanos: i64) -> Self {
         Self(nanos)
     }
 
     #[inline]
-    pub fn from_millis(millis: i64) -> Self {
+    pub const fn from_millis(millis: i64) -> Self {
         Self(millis * Self::NANOS_PER_MILLI)
     }
 
@@ -79,6 +79,21 @@ impl Duration {
         }
 
         None
+    }
+
+    /// Format as seconds, approximately.
+    pub fn format_seconds(self) -> String {
+        let nanos = self.as_nanos();
+        let secs = nanos as f64 * 1e-9;
+
+        let is_whole_second = nanos % 1_000_000_000 == 0;
+
+        let secs = re_format::FloatFormatOptions::DEFAULT_f64
+            .with_always_sign(true)
+            .with_decimals(if is_whole_second { 0 } else { 3 })
+            .with_strip_trailing_zeros(false)
+            .format(secs);
+        format!("{secs}s")
     }
 
     pub fn exact_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

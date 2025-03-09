@@ -139,16 +139,7 @@ impl Time {
             Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
         } else {
             // Relative time
-            let secs = nanos_since_epoch as f64 * 1e-9;
-
-            let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
-
-            let secs = re_format::FloatFormatOptions::DEFAULT_f64
-                .with_always_sign(true)
-                .with_decimals(if is_whole_second { 0 } else { 3 })
-                .with_strip_trailing_zeros(false)
-                .format(secs);
-            format!("{secs}s")
+            Duration::from_nanos(nanos_since_epoch).format_seconds()
         }
     }
 
@@ -522,7 +513,7 @@ mod tests {
                 Some(Time::try_from(datetime!(1970-01-01 22:35:42 UTC)).unwrap())
             );
 
-            // Hout format with fractional seconds.
+            // Hour format with fractional seconds.
             assert_eq!(
                 Time::parse("22:35:42.069", time_zone),
                 Some(Time::try_from(datetime!(1970-01-01 22:35:42.069 UTC)).unwrap())
