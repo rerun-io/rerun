@@ -36,7 +36,7 @@
 mod endpoints;
 mod error;
 
-use re_log_types::TimeZone;
+use re_log_types::{IndexCell, TimeInt};
 
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
@@ -53,34 +53,16 @@ impl TimeRange {
     const QUERY_KEY: &str = "time_range";
 }
 
-impl TimeRange {
-    /// Human readable format.
-    pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
-        let Self { timeline, range } = self;
-
-        let name = timeline.name();
-        match timeline.typ() {
-            re_log_types::TimeType::Sequence => {
-                let min = range.min.floor().as_i64();
-                let max = range.max.ceil().as_i64();
-                format!("{name}@{min}..{max}")
-            }
-            re_log_types::TimeType::Time => {
-                use re_log_types::Time;
-                format!(
-                    "{name}@{}..{}",
-                    Time::from(range.min).format(time_zone_for_timestamps),
-                    Time::from(range.max).format(time_zone_for_timestamps),
-                )
-            }
-        }
-    }
-}
-
 impl std::fmt::Display for TimeRange {
     /// Used for formatting time ranges in URLs
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.format(TimeZone::UnixEpoch).fmt(f)
+        let Self { timeline, range } = self;
+
+        let min = IndexCell::new(timeline.typ(), range.min.floor());
+        let max = IndexCell::new(timeline.typ(), range.max.ceil());
+
+        let name = timeline.name();
+        write!(f, "{name}@{min}..{max}")
     }
 }
 
@@ -92,38 +74,19 @@ impl TryFrom<&str> for TimeRange {
 
         let (min, max) = range.split_once("..").ok_or(Error::InvalidTimeRange)?;
 
-        // NOTE: We have some well-known timeline names, but we're explicitly not using them here
-        //       as this URL should really not be constructed by a user, ever.
-        let (min, typ) = match min.strip_suffix('s') {
-            Some(min) => (min, re_log_types::TimeType::Time),
-            None => (min, re_log_types::TimeType::Sequence),
-        };
-        let (max, typ) = match (max.strip_suffix('s'), typ) {
-            // if `max` had no `s` suffix, but `min` does, then it's a temporal timeline:
-            (Some(max), re_log_types::TimeType::Sequence) => (max, re_log_types::TimeType::Time),
-            // otherwise it's just whatever we already had, with the suffix stripped:
-            (Some(max), typ) => (max, typ),
-            (None, typ) => (max, typ),
-        };
+        let min = min
+            .parse::<IndexCell>()
+            .map_err(|_ignored| Error::InvalidTimeRange)?;
+        let max = max
+            .parse::<IndexCell>()
+            .map_err(|_ignored| Error::InvalidTimeRange)?;
 
-        let min = min.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
-        let max = max.parse::<f64>().map_err(|_err| Error::InvalidTimeRange)?;
+        if min.typ() != max.typ() {
+            return Err(Error::InvalidTimeRange);
+        }
 
-        let timeline = re_log_types::Timeline::new(timeline, typ);
-
-        let (min, max) = match typ {
-            // in frame numbers
-            re_log_types::TimeType::Sequence => (
-                re_log_types::TimeReal::from(min),
-                re_log_types::TimeReal::from(max),
-            ),
-            // in seconds
-            re_log_types::TimeType::Time => (
-                re_log_types::TimeReal::from_seconds(min),
-                re_log_types::TimeReal::from_seconds(max),
-            ),
-        };
-        let range = re_log_types::ResolvedTimeRangeF::new(min, max);
+        let timeline = re_log_types::Timeline::new(timeline, min.typ());
+        let range = re_log_types::ResolvedTimeRangeF::new(TimeInt::from(min), TimeInt::from(max));
 
         Ok(Self { timeline, range })
     }
@@ -408,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_recording_url_time_range_sequence_to_address() {
-        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@100..200";
+        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@#100..#200";
         let address: RedapUri = url.try_into().unwrap();
 
         let RedapUri::Recording(RecordingEndpoint {
@@ -439,7 +402,7 @@ mod tests {
     #[test]
     fn test_recording_url_time_range_temporal_only_one_suffix_to_address() {
         for url in [
-            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10..20s",
+            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@#10..#20s",
             "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20",
         ] {
             let address: RedapUri = url.try_into().unwrap();
