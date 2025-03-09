@@ -153,7 +153,7 @@ impl Timestamp {
 
     /// Parse a timestamp,
     ///
-    /// If it is missing a timezone specifier, the the given timezone is assumed.
+    /// If it is missing a timezone specifier, the given timezone is assumed.
     pub fn parse_with_format(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
         if let Ok(utc) = Self::from_str(s) {
             // It has a `Z` suffix
