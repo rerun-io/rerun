@@ -1,6 +1,6 @@
 use egui::{NumExt as _, Ui};
 
-use re_log_types::TimeZone;
+use re_log_types::TimestampFormat;
 use re_ui::UiExt as _;
 use re_viewer_context::AppOptions;
 
@@ -79,13 +79,21 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     separator_with_some_space(ui);
 
     ui.strong("Timezone");
-    ui.re_radio_value(&mut app_options.time_zone, TimeZone::Utc, "UTC")
-        .on_hover_text("Display timestamps in UTC");
-    ui.re_radio_value(&mut app_options.time_zone, TimeZone::Local, "Local")
-        .on_hover_text("Display timestamps in the local timezone");
     ui.re_radio_value(
-        &mut app_options.time_zone,
-        TimeZone::UnixEpoch,
+        &mut app_options.timestamp_format,
+        TimestampFormat::Utc,
+        "UTC",
+    )
+    .on_hover_text("Display timestamps in UTC");
+    ui.re_radio_value(
+        &mut app_options.timestamp_format,
+        TimestampFormat::LocalTimezone,
+        "Local",
+    )
+    .on_hover_text("Display timestamps in the local timezone");
+    ui.re_radio_value(
+        &mut app_options.timestamp_format,
+        TimestampFormat::UnixEpoch,
         "Unix epoch",
     )
     .on_hover_text("Display timestamps in seconds since unix epoch");

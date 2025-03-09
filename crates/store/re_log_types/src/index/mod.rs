@@ -9,9 +9,9 @@ mod time_int;
 mod time_point;
 mod time_real;
 mod time_type;
-mod time_zone;
 mod timeline;
 mod timestamp;
+mod timestamp_format;
 
 pub use self::{
     duration::Duration,
@@ -23,7 +23,7 @@ pub use self::{
     time_point::TimePoint,
     time_real::TimeReal,
     time_type::TimeType,
-    time_zone::TimeZone,
     timeline::{Timeline, TimelineName},
     timestamp::Timestamp,
+    timestamp_format::TimestampFormat,
 };

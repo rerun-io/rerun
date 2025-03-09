@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
-use re_log_types::{TimeZone, Timeline};
+use re_log_types::{Timeline, TimestampFormat};
 use re_types::datatypes::TimeInt;
 use re_ui::{list_item, UiExt as _};
 
@@ -48,7 +48,7 @@ impl ChunkUi {
     }
 
     // Return `true` if the user wants to exit the chunk viewer.
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui, time_zone: TimeZone) -> bool {
+    pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
         let should_exit = self.chunk_info_ui(ui);
 
         //
@@ -137,7 +137,7 @@ impl ChunkUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     let time = TimeInt::from(time_column.times_raw()[row_index]);
-                    ui.label(time_column.timeline().typ().format(time, time_zone));
+                    ui.label(time_column.timeline().typ().format(time, timestamp_format));
                 });
             }
 

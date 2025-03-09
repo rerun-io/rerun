@@ -377,7 +377,7 @@ impl AppState {
             // nothing: this is already handled above
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
-                datastore_ui.ui(&ctx, ui, app_options.time_zone);
+                datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
             if !should_datastore_ui_remain_active {
                 *display_mode = DisplayMode::LocalRecordings;
             }

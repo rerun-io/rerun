@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response};
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeInt, TimeType, TimeZone};
+use re_log_types::{TimeInt, TimeType, TimestampFormat};
 
 /// Drag value widget for editing time values for both sequence and temporal timelines.
 ///
@@ -80,7 +80,7 @@ impl TimeDragValue {
         time: &mut TimeInt,
         absolute: bool,
         low_bound_override: Option<TimeInt>,
-        time_zone: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> Response {
         match time_type {
             TimeType::Sequence => {
@@ -88,8 +88,14 @@ impl TimeDragValue {
             }
 
             TimeType::Time => {
-                self.temporal_drag_value_ui(ui, time, absolute, low_bound_override, time_zone)
-                    .0
+                self.temporal_drag_value_ui(
+                    ui,
+                    time,
+                    absolute,
+                    low_bound_override,
+                    timestamp_format,
+                )
+                .0
             }
         }
     }
@@ -143,7 +149,7 @@ impl TimeDragValue {
         value: &mut TimeInt,
         absolute: bool,
         low_bound_override: Option<TimeInt>,
-        time_zone_for_timestamps: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> (Response, Option<Response>) {
         let mut time_range = if absolute {
             self.abs_range.clone()
@@ -175,8 +181,7 @@ impl TimeDragValue {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time
-                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
+                    TimeType::Time.format(TimeInt::new_temporal(base_time), timestamp_format)
                 ))
             })
         } else {

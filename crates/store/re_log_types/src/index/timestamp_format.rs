@@ -1,9 +1,9 @@
 /// How to display a [`crate::Timestamp`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TimeZone {
+pub enum TimestampFormat {
     /// Convert to local timezone and display as such.
-    Local,
+    LocalTimezone,
 
     /// Display as UTC.
     Utc,

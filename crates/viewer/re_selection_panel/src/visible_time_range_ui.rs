@@ -228,7 +228,7 @@ Notes:
                     }
                     QueryRange::LatestAt => {
                         let current_time =
-                            time_type.format(current_time, ctx.app_options().time_zone);
+                            time_type.format(current_time, ctx.app_options().timestamp_format);
                         ui.label(format!("Latest-at query at: {current_time}"))
                             .on_hover_text("Uses the latest known value for each component.");
                     }
@@ -324,7 +324,7 @@ fn show_visual_time_range(
     } else if resolved_range.start == TimeRangeBoundary::AT_CURSOR
         && resolved_range.end == TimeRangeBoundary::AT_CURSOR
     {
-        let current_time = time_type.format(current_time, ctx.app_options().time_zone);
+        let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
         match time_type {
             TimeType::Time => {
                 ui.label(format!("At current time: {current_time}"))
@@ -356,8 +356,8 @@ fn current_range_ui(
     time_range: &TimeRange,
 ) {
     let absolute_range = ResolvedTimeRange::from_relative_time_range(time_range, current_time);
-    let from_formatted = time_type.format(absolute_range.min(), ctx.app_options().time_zone);
-    let to_formatted = time_type.format(absolute_range.max(), ctx.app_options().time_zone);
+    let from_formatted = time_type.format(absolute_range.min(), ctx.app_options().timestamp_format);
+    let to_formatted = time_type.format(absolute_range.max(), ctx.app_options().timestamp_format);
 
     ui.label(format!("{from_formatted} to {to_formatted}"))
         .on_hover_text("Showing data in this range (inclusive).");
@@ -423,7 +423,7 @@ fn resolved_visible_history_boundary_ui(
             }
         }
         TimeRangeBoundary::Absolute(time) => {
-            label += &format!(" {}", time_type.format(*time, ctx.app_options().time_zone));
+            label += &format!(" {}", time_type.format(*time, ctx.app_options().timestamp_format));
         }
         TimeRangeBoundary::Infinite => {}
     }
@@ -542,7 +542,7 @@ fn visible_history_boundary_ui(
                             &mut edit_value,
                             false,
                             low_bound_override,
-                            ctx.app_options().time_zone,
+                            ctx.app_options().timestamp_format,
                         )
 
                         .on_hover_text(match time_type {
@@ -569,7 +569,7 @@ fn visible_history_boundary_ui(
                         &mut edit_value,
                         true,
                         low_bound_override,
-                        ctx.app_options().time_zone,
+                        ctx.app_options().timestamp_format,
                     );
 
                     if let Some(base_time_resp) = base_time_resp {

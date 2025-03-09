@@ -165,7 +165,7 @@ impl std::fmt::Display for IndexCell {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => self.value.fmt(f),
             TimeType::Time => Time::from_ns_since_epoch(self.value.get())
-                .format(crate::TimeZone::Utc)
+                .format(crate::TimestampFormat::Utc)
                 .fmt(f),
         }
     }

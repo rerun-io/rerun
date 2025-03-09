@@ -4,7 +4,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeInt, TimeZone};
+use re_log_types::{EntityPath, TimeInt, TimestampFormat};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
@@ -398,7 +398,7 @@ impl ViewClass for TimeSeriesView {
         }
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
-        let time_zone_for_timestamps = ctx.app_options().time_zone;
+        let timestamp_format = ctx.app_options().timestamp_format;
 
         let plot_id = crate::plot_id(query.view_id);
 
@@ -412,7 +412,7 @@ impl ViewClass for TimeSeriesView {
                 format_time(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
-                    time_zone_for_timestamps,
+                    timestamp_format,
                 )
             })
             .y_axis_formatter(move |mark, _| format_y_axis(mark))
@@ -420,7 +420,7 @@ impl ViewClass for TimeSeriesView {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
                     TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
-                    time_zone_for_timestamps,
+                    timestamp_format,
                 );
 
                 let y_value = re_format::format_f64(value.y);
@@ -737,12 +737,12 @@ fn add_series_to_plot(
     }
 }
 
-fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
+fn format_time(time_type: TimeType, time_int: i64, timestamp_format: TimestampFormat) -> String {
     if time_type == TimeType::Time {
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        time.format_time_compact(time_zone_for_timestamps)
+        time.format_time_compact(timestamp_format)
     } else {
-        time_type.format(TimeInt::new_temporal(time_int), time_zone_for_timestamps)
+        time_type.format(TimeInt::new_temporal(time_int), timestamp_format)
     }
 }
 

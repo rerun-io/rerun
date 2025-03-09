@@ -543,7 +543,7 @@ pub fn time_button(
 
     let typ = ctx.recording().timeline_type(timeline_name);
 
-    let response = ui.selectable_label(is_selected, typ.format(value, ctx.app_options().time_zone));
+    let response = ui.selectable_label(is_selected, typ.format(value, ctx.app_options().timestamp_format));
     if response.clicked() {
         let timeline = Timeline::new(*timeline_name, typ);
         ctx.rec_cfg
@@ -747,7 +747,7 @@ pub fn entity_db_button_ui(
         .store_info()
         .and_then(|info| {
             info.started
-                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().timestamp_format)
         })
         .unwrap_or("<unknown time>".to_owned());
 

@@ -79,7 +79,7 @@ impl ItemTitle {
             if let Some(info) = entity_db.store_info() {
                 let time = info
                     .started
-                    .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
+                    .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().timestamp_format)
                     .unwrap_or("<unknown time>".to_owned());
 
                 format!("{} - {}", info.application_id, time)
