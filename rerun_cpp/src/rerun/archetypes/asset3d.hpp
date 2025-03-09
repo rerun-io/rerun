@@ -48,7 +48,7 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
-    ///     rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
+    ///     rec.log("world/asset", rerun::Asset3D::from_file_path(path).value_or_throw());
     /// }
     /// ```
     struct Asset3D {
