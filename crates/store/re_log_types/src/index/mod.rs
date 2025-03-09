@@ -9,6 +9,7 @@ mod time_int;
 mod time_point;
 mod time_real;
 mod time_type;
+mod time_zone;
 mod timeline;
 
 pub use self::{
@@ -16,10 +17,11 @@ pub use self::{
     index_cell::IndexCell,
     non_min_i64::{NonMinI64, TryFromIntError},
     resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF},
-    time::{Time, TimeZone},
+    time::Time,
     time_int::TimeInt,
     time_point::TimePoint,
     time_real::TimeReal,
     time_type::TimeType,
+    time_zone::TimeZone,
     timeline::{Timeline, TimelineName},
 };
