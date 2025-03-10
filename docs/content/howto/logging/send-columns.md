@@ -63,6 +63,7 @@ snippet: archetypes/points3d_column_updates
   <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
 </picture>
 
+
 Each row in the component column can be a batch of data, e.g. a batch of positions.
 This lets you log the evolution of a point cloud over time efficiently.
 
@@ -76,12 +77,12 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/arrows3d_column_updates
 
-<picture data-inline-viewer="snippets/points3d_column_updates">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
-  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
+<picture data-inline-viewer="snippets/arrows3d_column_updates">
+  <img src="https://static.rerun.io/arrows3d_row_updates/a0b9c7257c7a3cdd3dcf685c1b13fca762cd41a2/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrows3d_row_updates/a0b9c7257c7a3cdd3dcf685c1b13fca762cd41a2/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrows3d_row_updates/a0b9c7257c7a3cdd3dcf685c1b13fca762cd41a2/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrows3d_row_updates/a0b9c7257c7a3cdd3dcf685c1b13fca762cd41a2/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrows3d_row_updates/a0b9c7257c7a3cdd3dcf685c1b13fca762cd41a2/1200w.png">
 </picture>
 
 Each row in the component column can be a batch of data, e.g. a batch of positions.
