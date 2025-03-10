@@ -76,9 +76,7 @@ class GraphView(View):
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,

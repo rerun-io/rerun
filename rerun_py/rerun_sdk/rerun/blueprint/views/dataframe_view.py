@@ -83,9 +83,7 @@ class DataframeView(View):
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
         query: blueprint_archetypes.DataframeQuery | None = None,

@@ -85,9 +85,7 @@ class TensorView(View):
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,

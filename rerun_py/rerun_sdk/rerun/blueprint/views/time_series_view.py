@@ -96,9 +96,7 @@ class TimeSeriesView(View):
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,

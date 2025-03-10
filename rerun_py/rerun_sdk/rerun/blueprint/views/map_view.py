@@ -69,9 +69,7 @@ class MapView(View):
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
         zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,

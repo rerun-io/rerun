@@ -47,9 +47,7 @@ class View:
         defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: dict[
             EntityPathLike,
-            AsComponents
-            | Iterable[DescribedComponentBatch]
-            | Iterable[AsComponents | Iterable[DescribedComponentBatch]],
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
     ) -> None:
@@ -157,16 +155,13 @@ class View:
             log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
             if isinstance(components, Iterable):
                 components_list = list(components)
-                if len(components_list) > 0 and not isinstance(components_list[0], DescribedComponentBatch):
-                    # Handle "iterable of `AsComponent`" or "iterable of iterables of `DescribedComponentBatch`" with multiple log calls
-                    for element in components_list:
-                        element = cast(AsComponents | Iterable[DescribedComponentBatch], element)
-                        stream.log(log_path, element)
-                else:
-                    described_components = cast(list[DescribedComponentBatch], components_list)
-                    stream.log(log_path, described_components)
-            else:
-                components = cast(AsComponents | Iterable[DescribedComponentBatch], components)
+                
+                for component in components_list:
+                    if isinstance(component, DescribedComponentBatch):
+                        stream.log(log_path, [component])
+                    else:
+                        stream.log(log_path, component)
+            else:  # has to be AsComponents
                 stream.log(log_path, components)
 
     def _ipython_display_(self) -> None:
