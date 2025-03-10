@@ -240,13 +240,29 @@ After:
 # …
 overrides={
     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
-        rrb.VisibleTimeRange(
-            timelines="stable_time",
-            starts=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
-            ends=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+            timeline="stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
         ),
-    ),
 }
 # …
 ```
-
+… or respectively for multiple timelines:
+```py
+# …
+overrides={
+    "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges([
+        rrb.VisibleTimeRange(
+            timeline="stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
+        ),
+        rrb.VisibleTimeRange(
+            timeline="index",
+            start=rrb.TimeRangeBoundary.absolute(seq=10),
+            end=rrb.TimeRangeBoundary.absolute(seq=100)
+        ),
+    ])
+}
+# …
+```
