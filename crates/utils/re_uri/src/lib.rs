@@ -87,7 +87,7 @@ impl TryFrom<&str> for TimeRange {
 
         if min.typ() != max.typ() {
             return Err(Error::InvalidTimeRange(
-                "min/max had differing types".to_owned(),
+                format!("min/max had differing types. Min was identified as {}, whereas max was identified as {}", min.typ(), max.typ()),
             ));
         }
 
