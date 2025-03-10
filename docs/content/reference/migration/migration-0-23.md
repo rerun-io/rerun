@@ -146,4 +146,8 @@ See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun
 
 Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
 
-Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+The following schemes are supported: `rerun+http://`, `rerun+https://` and `rerun://`, which is an alias for `rerun+https://`.
+These schemes are then converted on the fly to either `http://` or `https://`.
+Rerun uses gRPC-based protocols under the hood, which means that the paths (`/catalog`, `/recording/12345`, …) are mapped to gRPC services and methods on the fly.
