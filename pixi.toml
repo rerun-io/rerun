@@ -666,9 +666,10 @@ umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
 # External deps
+av = "14.2.0"
+datafusion = "==45.2.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
-datafusion = "==45.2.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 
