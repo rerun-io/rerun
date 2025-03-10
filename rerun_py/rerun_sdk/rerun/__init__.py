@@ -216,7 +216,7 @@ def init(
     You must call this function first in order to initialize a global recording.
     Without an active recording, all methods of the SDK will turn into no-ops.
 
-    For more advanced use cases, e.g. multiple recordings setups, see [`rerun.new_recording`][].
+    For more advanced use cases, e.g. multiple recordings setups, see [`rerun.RecordingStream`][].
 
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
@@ -302,12 +302,11 @@ def init(
         recording_id = str(recording_id)
 
     if init_logging:
-        new_recording(
+        RecordingStream(
             application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
-            spawn=False,
             default_enabled=default_enabled,
         )
 

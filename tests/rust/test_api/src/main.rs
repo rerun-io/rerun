@@ -27,7 +27,7 @@ use rerun::{
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{archetypes::Boxes3D, components::Color};
 
-    rec.set_time_seconds("sim_time", 0f64);
+    rec.set_duration_seconds("sim_time", 0f64);
     rec.log(
         "bbox_test/bbox",
         &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
@@ -41,7 +41,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_radii([0.005])
             .with_labels(["box/t0"]),
     )?;
-    rec.set_time_seconds("sim_time", 1f64);
+    rec.set_duration_seconds("sim_time", 1f64);
 
     rec.log(
         "bbox_test/bbox",
@@ -63,7 +63,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::archetypes::Boxes2D;
 
-    rec.set_time_seconds("sim_time", 1f64);
+    rec.set_duration_seconds("sim_time", 1f64);
     rec.log(
         "null_test/rect/0",
         &Boxes2D::from_mins_and_sizes([(5.0, 5.0)], [(4.0, 4.0)])
@@ -77,19 +77,19 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_labels(["Rect2"]),
     )?;
 
-    rec.set_time_seconds("sim_time", 2f64);
+    rec.set_duration_seconds("sim_time", 2f64);
     rec.log("null_test/rect/0", &Clear::flat())?;
 
-    rec.set_time_seconds("sim_time", 3f64);
+    rec.set_duration_seconds("sim_time", 3f64);
     rec.log("null_test/rect", &Clear::recursive())?;
 
-    rec.set_time_seconds("sim_time", 4f64);
+    rec.set_duration_seconds("sim_time", 4f64);
     rec.log(
         "null_test/rect/0",
         &Boxes2D::from_mins_and_sizes([(5.0, 5.0)], [(4.0, 4.0)]),
     )?;
 
-    rec.set_time_seconds("sim_time", 5f64);
+    rec.set_duration_seconds("sim_time", 5f64);
     rec.log(
         "null_test/rect/1",
         &Boxes2D::from_mins_and_sizes([(10.0, 5.0)], [(4.0, 4.0)]),
@@ -104,7 +104,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
         components::{Color, Position3D, Radius, Text},
     };
 
-    rec.set_time_seconds("sim_time", 1f64);
+    rec.set_duration_seconds("sim_time", 1f64);
 
     rec.log(
         "3d_points/single_point_unlabeled",
@@ -164,7 +164,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     };
 
     // Add an image
-    rec.set_time_seconds("sim_time", 1f64);
+    rec.set_duration_seconds("sim_time", 1f64);
     let img = Array::<u8, _>::from_elem((1024, 1024, 3, 1).f(), 128);
     rec.log(
         "rects_test/img",
@@ -179,7 +179,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
         .map(|c| Color::from_rgb(c[0], c[1], c[2]))
         .collect_vec();
 
-    rec.set_time_seconds("sim_time", 2f64);
+    rec.set_duration_seconds("sim_time", 2f64);
     rec.log(
         "rects_test/rects",
         &Boxes2D::from_mins_and_sizes(
@@ -190,7 +190,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     // Clear the rectangles by logging an empty set
-    rec.set_time_seconds("sim_time", 3f64);
+    rec.set_duration_seconds("sim_time", 3f64);
     rec.log("rects_test/rects", &Boxes2D::clear_fields())?;
 
     Ok(())
@@ -222,7 +222,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
     segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
 
-    rec.set_time_seconds("sim_time", 1f64);
+    rec.set_duration_seconds("sim_time", 1f64);
 
     rec.log(
         "seg_test/img",
@@ -260,7 +260,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
         "no rects, default colored points, a single point has a label",
     )?;
 
-    rec.set_time_seconds("sim_time", 2f64);
+    rec.set_duration_seconds("sim_time", 2f64);
 
     rec.log(
         "seg_test",
@@ -272,7 +272,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
             bottom right clusters have labels",
     )?;
 
-    rec.set_time_seconds("sim_time", 3f64);
+    rec.set_duration_seconds("sim_time", 3f64);
 
     // Log an updated segmentation map with specific colors
     rec.log(
@@ -285,7 +285,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
     log_info(rec, "points/rects with user specified colors")?;
 
-    rec.set_time_seconds("sim_time", 4f64);
+    rec.set_duration_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
     rec.log(
@@ -312,7 +312,7 @@ fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
-    rec.set_time_seconds("sim_time", 0f64);
+    rec.set_duration_seconds("sim_time", 0f64);
 
     rec.log(
         "logs",
@@ -352,7 +352,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     log_coordinate_space(rec, "transforms3d/sun/planet")?;
     log_coordinate_space(rec, "transforms3d/sun/planet/moon")?;
 
-    rec.set_time_seconds("sim_time", 0f64);
+    rec.set_duration_seconds("sim_time", 0f64);
 
     // All are in the center of their own space:
     fn log_point(
@@ -415,7 +415,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
 
-        rec.set_time_seconds("sim_time", time as f64);
+        rec.set_duration_seconds("sim_time", time as f64);
 
         rec.log(
             "transforms3d/sun/planet",

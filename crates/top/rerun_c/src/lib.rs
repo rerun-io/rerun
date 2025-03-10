@@ -23,8 +23,8 @@ use re_sdk::{
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
-    Timeline,
+    ComponentDescriptor, EntityPath, IndexCell, RecordingStream, RecordingStreamBuilder, StoreKind,
+    TimePoint, Timeline,
 };
 
 use component_type_registry::COMPONENT_TYPES;
@@ -689,11 +689,12 @@ fn rr_recording_stream_set_index_impl(
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
     let stream = recording_stream(stream)?;
-    match time_type {
-        CTimeType::Sequence => stream.set_time_sequence(timeline, value),
+    let time_type = match time_type {
+        CTimeType::Sequence => TimeType::Sequence,
         // TODO(#8635): do different things for Duration and Timestamp
-        CTimeType::Duration | CTimeType::Timestamp => stream.set_time_nanos(timeline, value),
-    }
+        CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+    };
+    stream.set_index(timeline, IndexCell::new(time_type, value));
     Ok(())
 }
 

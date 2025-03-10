@@ -1428,7 +1428,7 @@ impl PyRRDArchive {
 ///
 /// Parameters
 /// ----------
-/// path_to_rrd : str | os.PathLike
+/// path_to_rrd : str | os.PathLike[str]
 ///     The path to the file to load.
 ///
 /// Returns
@@ -1460,7 +1460,7 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 ///
 /// Parameters
 /// ----------
-/// path_to_rrd : str | os.PathLike
+/// path_to_rrd : str | os.PathLike[str]
 ///     The path to the file to load.
 ///
 /// Returns

@@ -17,6 +17,25 @@ We've added a explicit API for setting time, where you need to explicitly specif
 Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
 Now you need to be explicit.
 
+
+### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
+Use one of these instead:
+* `set_duration_seconds`
+* `set_timestamp_seconds_since_epoch`
+* `set_index` with `std::time::Duration`
+* `set_index` with `std::time::SystemTime`
+
+
+### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+We've deprecated the following functions, with the following replacements:
+* `set_time_sequence` -> `set_index_sequence`
+* `set_time` -> `set_index_duration` or `set_index_timestamp`
+* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
+* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+
+`TimeColumn` also has deprecated functions.
+
+
 ### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
 We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
 
@@ -90,14 +109,32 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
-### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
-We've deprecated the following functions, with the following replacements:
-* `set_time_sequence` -> `set_index_sequence`
-* `set_time` -> `set_index_duration` or `set_index_timestamp`
-* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
-* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
-`TimeColumn` also has deprecated functions.
+Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream?speculative-link) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
+
+<!-- NOLINT_START -->
+
+```python
+# before
+rec = rr. new_recording("rerun_example")
+
+# after
+rec = rr.RecordingStream("my_app_id")
+```
+
+If you used the `spawn=True` argument, you will now have to call the `spawn()` method explicitly:
+
+```python
+# before
+rec = rr. new_recording("my_app_id", spawn=True)
+
+# after
+rec = rr.RecordingStream("my_app_id")
+rec.spawn()
+```
+
+<!-- NOLINT_END -->
 
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, `rr.connect_tcp()`, and `rr.serve()`
 
