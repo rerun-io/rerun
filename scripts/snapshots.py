@@ -72,7 +72,7 @@ def blueprint(path: Path) -> rrb.Blueprint:
 
 
 def log_failed_snapshot_tests(original_path: Path, new_path: Path, diff_path: Path, args: argparse.Namespace) -> None:
-    recording = rr.new_recording(f"rerun_example_{original_path.stem}")
+    recording = rr.RecordingStream(f"rerun_example_{original_path.stem}")
 
     with recording:
         default_blueprint = blueprint(original_path)
