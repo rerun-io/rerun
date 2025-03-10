@@ -14,7 +14,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
 };
 use re_types_core::{
     ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
@@ -1240,9 +1240,21 @@ impl TimeColumn {
         self.timeline.typ().make_arrow_array(self.times.clone())
     }
 
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
         self.times.as_ref()
+    }
+
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
+    #[inline]
+    pub fn times_nonmin(&self) -> impl DoubleEndedIterator<Item = NonMinI64> + '_ {
+        self.times_raw()
+            .iter()
+            .copied()
+            .map(NonMinI64::saturating_from_i64)
     }
 
     #[inline]

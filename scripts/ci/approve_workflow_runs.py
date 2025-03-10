@@ -56,7 +56,7 @@ def main() -> None:
             continue
 
         print(f"found valid approval by {comment.user.login}")
-        for workflow_run in repo.get_workflow_runs(branch=pr.head.ref):
+        for workflow_run in repo.get_workflow_runs(branch=repo.get_branch(pr.head.ref)):
             if workflow_run.status == "action_required" or workflow_run.conclusion == "action_required":
                 approve(args.github_token, workflow_run)
 

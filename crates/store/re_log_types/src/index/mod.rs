@@ -1,6 +1,7 @@
 //! Related to indices, i.e. timelines.
 
 mod duration;
+mod index_cell;
 mod non_min_i64;
 mod resolved_time_range;
 mod time;
@@ -12,6 +13,7 @@ mod timeline;
 
 pub use self::{
     duration::Duration,
+    index_cell::IndexCell,
     non_min_i64::{NonMinI64, TryFromIntError},
     resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF},
     time::{Time, TimeZone},
