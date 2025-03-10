@@ -17,6 +17,25 @@ We've added a explicit API for setting time, where you need to explicitly specif
 Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
 Now you need to be explicit.
 
+
+### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
+Use one of these instead:
+* `set_duration_seconds`
+* `set_timestamp_seconds_since_epoch`
+* `set_index` with `std::time::Duration`
+* `set_index` with `std::time::SystemTime`
+
+
+### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+We've deprecated the following functions, with the following replacements:
+* `set_time_sequence` -> `set_index_sequence`
+* `set_time` -> `set_index_duration` or `set_index_timestamp`
+* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
+* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+
+`TimeColumn` also has deprecated functions.
+
+
 ### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
 We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
 
@@ -90,15 +109,6 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
-### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
-We've deprecated the following functions, with the following replacements:
-* `set_time_sequence` -> `set_index_sequence`
-* `set_time` -> `set_index_duration` or `set_index_timestamp`
-* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
-* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
-
-`TimeColumn` also has deprecated functions.
-
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, `rr.connect_tcp()`, and `rr.serve()`
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.
@@ -119,7 +129,11 @@ See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun
 
 Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
 
-Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+The following schemes are supported: `rerun+http://`, `rerun+https://` and `rerun://`, which is an alias for `rerun+https://`.
+These schemes are then converted on the fly to either `http://` or `https://`.
+Rerun uses gRPC-based protocols under the hood, which means that the paths (`/catalog`, `/recording/12345`, …) are mapped to gRPC services and methods on the fly.
 
 ## 🐍 Python: blueprint overrides & defaults are now archetype based
 
