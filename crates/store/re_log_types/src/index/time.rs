@@ -42,7 +42,7 @@ impl Time {
         20 <= years_since_epoch && years_since_epoch <= 150
     }
 
-    /// RFC3339
+    /// Formats the time as specified by ISO standard [`RFC3339`](https://www.rfc-editor.org/rfc/rfc3339.html).
     pub fn format_iso(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
