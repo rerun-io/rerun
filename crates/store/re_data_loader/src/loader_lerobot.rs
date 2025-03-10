@@ -57,7 +57,7 @@ impl DataLoader for LeRobotDatasetLoader {
         }
 
         if is_v1_lerobot_dataset(&filepath) {
-            re_log::warn!("LeRobot 'v1.x' dataset format is unsupported.");
+            re_log::error!("LeRobot 'v1.x' dataset format is unsupported.");
             return Ok(());
         }
 
@@ -67,7 +67,7 @@ impl DataLoader for LeRobotDatasetLoader {
         if !LEROBOT_DATASET_SUPPORTED_VERSIONS
             .contains(&dataset.metadata.info.codebase_version.as_str())
         {
-            re_log::warn!(
+            re_log::error!(
                 "LeRobot '{}' dataset format is unsupported.",
                 dataset.metadata.info.codebase_version
             );
