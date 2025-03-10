@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, Timeline};
-use re_types::blueprint::components::VisualizerOverrides;
+use re_log_types::{
+    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter,
+    ResolvedEntityPathRule, Timeline,
+};
+use re_types::blueprint::components::VisualizerOverride;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
@@ -496,15 +498,20 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 // Update visualizers from overrides.
                 if !node.data_result.visualizers.is_empty() {
                     // If the user has overridden the visualizers, update which visualizers are used.
-                    if let Some(viz_override) = blueprint
-                        .latest_at_component::<VisualizerOverrides>(
-                            &individual_override_path,
-                            blueprint_query,
-                        )
-                        .map(|(_index, value)| value)
-                    {
+                    let viz_override_query = blueprint.latest_at(
+                        blueprint_query,
+                        &individual_override_path,
+                        // TODO(andreas): Use tags from `VisualizerOverrides`.
+                        [VisualizerOverride::name()],
+                    );
+                    let viz_overrides = viz_override_query
+                        .get_required(&VisualizerOverride::name())
+                        .map(|viz_override| {
+                            viz_override.iter_slices::<String>(VisualizerOverride::name())
+                        });
+                    if let Ok(viz_overrides) = viz_overrides {
                         node.data_result.visualizers =
-                            viz_override.0.iter().map(Into::into).collect();
+                            viz_overrides.flatten().map(|s| s.as_str().into()).collect();
                     } else {
                         // Otherwise ask the `ViewClass` to choose.
                         node.data_result.visualizers = self

@@ -58,7 +58,7 @@ def blueprint(path: Path) -> rrb.Blueprint:
                         contents=["/original", "/new"],
                         name="Overlay (opacity)",
                         overrides={
-                            "/new": [rr.components.Opacity(0.5)],
+                            "/new": rr.Image.from_fields(opacity=0.5),
                         },
                     ),
                     name='NOTE: Select the "new" entity visualizer and play with the "Opacity" component',

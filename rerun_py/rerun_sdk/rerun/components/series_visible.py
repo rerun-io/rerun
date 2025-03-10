@@ -17,9 +17,9 @@ __all__ = ["SeriesVisible", "SeriesVisibleBatch"]
 
 class SeriesVisible(datatypes.Bool, ComponentMixin):
     """
-    **Component**: Like `Visible`, but for time series.
+    **Component**: Like [`components.Visible`][rerun.components.Visible], but for time series.
 
-    TODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.
+    TODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`][rerun.components.Visible] since it would conflict with the entity-wide visibility state.
     """
 
     _BATCH_TYPE = None
