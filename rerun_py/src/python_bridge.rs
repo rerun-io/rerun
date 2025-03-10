@@ -3,7 +3,6 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
-use std::path::PathBuf;
 use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
