@@ -457,6 +457,10 @@ impl EntityPathFilter {
 
 impl ResolvedEntityPathFilter {
     /// Turns the resolved filter back into an unresolved filter.
+    ///
+    /// Warning: Iterating over the rules in the unresolved filter will yield a different order
+    /// than the order of the rules in the resolved filter.
+    /// To preserve the order, use [`Self::iter_unresolved_expressions`] instead.
     pub fn unresolved(&self) -> EntityPathFilter {
         EntityPathFilter {
             rules: self
