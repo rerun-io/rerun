@@ -356,9 +356,6 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// True if the recording is one of the official Rerun examples.
-    pub is_official_example: bool,
-
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
@@ -718,7 +715,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            is_official_example: _,
             started: _,
             store_source,
             store_version,

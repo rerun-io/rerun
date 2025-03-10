@@ -136,7 +136,6 @@ pub struct StoreInfo {
     pub python_version: Option<String>,
 
     // Whether or not the data is coming from one of the Rerun example applications.
-    pub is_official_example: bool,
     pub app_id_starts_with_rerun_example: bool,
 }
 
@@ -277,7 +276,7 @@ impl Properties for OpenRecording {
                 rust_version,
                 llvm_version,
                 python_version,
-                is_official_example,
+
                 app_id_starts_with_rerun_example,
             } = store_info;
 
@@ -288,7 +287,6 @@ impl Properties for OpenRecording {
             event.insert_opt("rust_version", rust_version);
             event.insert_opt("llvm_version", llvm_version);
             event.insert_opt("python_version", python_version);
-            event.insert("is_official_example", is_official_example);
             event.insert(
                 "app_id_starts_with_rerun_example",
                 app_id_starts_with_rerun_example,

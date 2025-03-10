@@ -347,7 +347,6 @@ pub fn store_info_from_catalog_chunk(
         application_id: ApplicationId::from(app_id),
         store_id: store_id.clone(),
         cloned_from: None,
-        is_official_example: false,
         started: Time::from_ns_since_epoch(start_time),
         store_source: StoreSource::Unknown,
         store_version: None,
