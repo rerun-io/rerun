@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 import rerun_bindings as bindings
 
@@ -155,7 +155,7 @@ class View:
             log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
             if isinstance(components, Iterable):
                 components_list = list(components)
-                
+
                 for component in components_list:
                     if isinstance(component, DescribedComponentBatch):
                         stream.log(log_path, [component])
