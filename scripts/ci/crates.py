@@ -534,9 +534,10 @@ def get_latest_published_version(crate_name: str, skip_prerelease: bool = False)
         for version in versions:
             # no prerelease metadata
             if "-" not in version["num"]:
-                return version["num"]
+                return str(version["num"])
+        raise RuntimeError(f"no non-prerelease versions found for crate {crate_name}")
     else:
-        return versions[0]["num"]  # type: ignore [no-any-return]
+        return str(versions[0]["num"])
 
 
 class Target(Enum):

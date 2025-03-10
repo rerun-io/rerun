@@ -6,13 +6,7 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
 
-use re_byte_size::SizeBytes as _;
-use re_memory::MemoryLimit;
-use re_protos::{
-    common::v0::StoreKind as StoreKindProto,
-    log_msg::v0::LogMsg as LogMsgProto,
-    sdk_comms::v0::{message_proxy_server, ReadMessagesRequest, WriteMessagesResponse},
-};
+use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
@@ -23,6 +17,17 @@ use tokio_stream::StreamExt as _;
 use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 use tower_http::cors::CorsLayer;
+
+use re_byte_size::SizeBytes as _;
+use re_memory::MemoryLimit;
+use re_protos::{
+    common::v1alpha1::StoreKind as StoreKindProto,
+    log_msg::v1alpha1::LogMsg as LogMsgProto,
+    sdk_comms::v1alpha1::{
+        message_proxy_service_server, ReadMessagesRequest, ReadMessagesResponse,
+        WriteMessagesResponse,
+    },
+};
 
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
@@ -77,9 +82,11 @@ async fn serve_impl(
         let mut routes_builder = tonic::service::Routes::builder();
         routes_builder.add_service(
             // TODO(#8411): figure out the right size for this
-            re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(message_proxy)
-                .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
-                .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+            re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer::new(
+                message_proxy,
+            )
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
         );
         routes_builder.routes()
     };
@@ -370,14 +377,14 @@ impl EventLoop {
         let Some(inner) = &msg.msg else {
             re_log::error!(
                 "{}",
-                re_protos::missing_field!(re_protos::log_msg::v0::LogMsg, "msg")
+                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
             );
             return;
         };
 
         // We put store info, blueprint data, and blueprint activation commands
         // in a separate queue that does *not* get garbage collected.
-        use re_protos::log_msg::v0::log_msg::Msg;
+        use re_protos::log_msg::v1alpha1::log_msg::Msg;
         match inner {
             // Store info, blueprint activation commands
             Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
@@ -486,7 +493,7 @@ impl MessageProxy {
         self.event_tx.send(Event::Message(msg)).await.ok();
     }
 
-    async fn new_client_stream(&self) -> LogMsgStream {
+    async fn new_client_stream(&self) -> ReadMessagesStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error initializing new client: {err}");
@@ -500,36 +507,55 @@ impl MessageProxy {
             }
         };
 
-        let history = tokio_stream::iter(history.into_iter().map(Ok));
+        let history = tokio_stream::iter(
+            history
+                .into_iter()
+                .map(|log_msg| ReadMessagesResponse {
+                    log_msg: Some(log_msg),
+                })
+                .map(Ok),
+        );
         let channel = BroadcastStream::new(channel).map(|result| {
-            result.map_err(|err| {
-                re_log::error!("Error reading message from broadcast channel: {err}");
-                tonic::Status::internal("internal channel error")
-            })
+            result
+                .map(|log_msg| ReadMessagesResponse {
+                    log_msg: Some(log_msg),
+                })
+                .map_err(|err| {
+                    re_log::error!("Error reading message from broadcast channel: {err}");
+                    tonic::Status::internal("internal channel error")
+                })
         });
 
         Box::pin(history.chain(channel))
     }
 }
 
-type LogMsgStream = Pin<Box<dyn Stream<Item = tonic::Result<LogMsgProto>> + Send>>;
+type ReadMessagesStream = Pin<Box<dyn Stream<Item = tonic::Result<ReadMessagesResponse>> + Send>>;
 
 #[tonic::async_trait]
-impl message_proxy_server::MessageProxy for MessageProxy {
+impl message_proxy_service_server::MessageProxyService for MessageProxy {
     async fn write_messages(
         &self,
-        request: tonic::Request<tonic::Streaming<LogMsgProto>>,
+        request: tonic::Request<tonic::Streaming<WriteMessagesRequest>>,
     ) -> tonic::Result<tonic::Response<WriteMessagesResponse>> {
         let mut stream = request.into_inner();
         loop {
             match stream.message().await {
-                Ok(Some(msg)) => {
-                    self.push(msg).await;
+                Ok(Some(WriteMessagesRequest {
+                    log_msg: Some(log_msg),
+                })) => {
+                    self.push(log_msg).await;
                 }
+
+                Ok(Some(WriteMessagesRequest { log_msg: None })) => {
+                    re_log::warn!("missing log_msg in WriteMessagesRequest");
+                }
+
                 Ok(None) => {
                     // Connection was closed
                     break;
                 }
+
                 Err(err) => {
                     re_log::error!("Error while receiving messages: {err}");
                     break;
@@ -540,7 +566,7 @@ impl message_proxy_server::MessageProxy for MessageProxy {
         Ok(tonic::Response::new(WriteMessagesResponse {}))
     }
 
-    type ReadMessagesStream = LogMsgStream;
+    type ReadMessagesStream = ReadMessagesStream;
 
     async fn read_messages(
         &self,
@@ -561,8 +587,9 @@ mod tests {
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
-    use re_protos::sdk_comms::v0::{
-        message_proxy_client::MessageProxyClient, message_proxy_server::MessageProxyServer,
+    use re_protos::sdk_comms::v1alpha1::{
+        message_proxy_service_client::MessageProxyServiceClient,
+        message_proxy_service_server::MessageProxyServiceServer,
     };
     use similar_asserts::assert_eq;
     use std::net::SocketAddr;
@@ -609,7 +636,6 @@ mod tests {
                 application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                is_official_example: true,
                 started: Time::now(),
                 store_source: StoreSource::RustSdk {
                     rustc_version: String::new(),
@@ -660,7 +686,6 @@ mod tests {
                 application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                is_official_example: true,
                 started: Time::now(),
                 store_source: StoreSource::RustSdk {
                     rustc_version: String::new(),
@@ -705,7 +730,7 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
-                    .add_service(MessageProxyServer::new(super::MessageProxy::new(
+                    .add_service(MessageProxyServiceServer::new(super::MessageProxy::new(
                         memory_limit,
                     )))
                     .serve_with_incoming_shutdown(
@@ -720,8 +745,8 @@ mod tests {
         (completion, addr)
     }
 
-    async fn make_client(addr: SocketAddr) -> MessageProxyClient<Channel> {
-        MessageProxyClient::new(
+    async fn make_client(addr: SocketAddr) -> MessageProxyServiceClient<Channel> {
+        MessageProxyServiceClient::new(
             Endpoint::from_shared(format!("http://{addr}"))
                 .unwrap()
                 .connect()
@@ -731,12 +756,12 @@ mod tests {
     }
 
     async fn read_log_stream(
-        log_stream: &mut tonic::Response<tonic::Streaming<LogMsgProto>>,
+        log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
     ) -> Vec<LogMsg> {
         let mut stream_ref = log_stream
             .get_mut()
-            .map(|result| log_msg_from_proto(result.unwrap()).unwrap());
+            .map(|result| log_msg_from_proto(result.unwrap().log_msg.unwrap()).unwrap());
 
         let mut messages = Vec::new();
         for _ in 0..n {
@@ -760,7 +785,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();
@@ -793,7 +819,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();
@@ -831,7 +858,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();
@@ -870,7 +898,8 @@ mod tests {
                     messages
                         .clone()
                         .into_iter()
-                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
                 ))
                 .await
                 .unwrap();
@@ -903,7 +932,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();
@@ -917,7 +947,7 @@ mod tests {
             let timeout_result = timeout_stream.try_next().await;
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap()).unwrap());
+                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
                 }
 
                 // Stream closed | Timed out
@@ -946,7 +976,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();
@@ -960,7 +991,7 @@ mod tests {
             let timeout_result = timeout_stream.try_next().await;
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap()).unwrap());
+                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
                 }
 
                 // Stream closed | Timed out
@@ -991,7 +1022,8 @@ mod tests {
                 messages
                     .clone()
                     .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
             ))
             .await
             .unwrap();

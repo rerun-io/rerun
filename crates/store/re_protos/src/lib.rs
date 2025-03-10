@@ -12,46 +12,46 @@ pub mod external {
 }
 
 // This extra module is needed, because of how imports from different packages are resolved.
-// For example, `rerun.remote_store.v0.EncoderVersion` is resolved to `super::super::remote_store::v0::EncoderVersion`.
+// For example, `rerun.remote_store.v1alpha1.EncoderVersion` is resolved to `super::super::remote_store::v1alpha1::EncoderVersion`.
 // We need an extra module in the path to `common` to make that work.
-// Additionally, the `common` module itself has to exist with a `v0` module inside of it,
+// Additionally, the `common` module itself has to exist with a `v1alpha1` module inside of it,
 // which is the reason for the `common`, `log_msg`, `remote_store`, etc. modules below.
 
 // Note: Be careful with `#[path]` attributes: https://github.com/rust-lang/rust/issues/35016
-mod v0 {
+mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
     #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
 
-    #[path = "./rerun.common.v0.rs"]
-    pub mod rerun_common_v0;
+    #[path = "./rerun.common.v1alpha1.rs"]
+    pub mod rerun_common_v1alpha1;
 
-    #[path = "./rerun.log_msg.v0.rs"]
-    pub mod rerun_log_msg_v0;
+    #[path = "./rerun.log_msg.v1alpha1.rs"]
+    pub mod rerun_log_msg_v1alpha1;
 
-    #[path = "./rerun.remote_store.v0.rs"]
-    pub mod rerun_remote_store_v0;
+    #[path = "./rerun.remote_store.v1alpha1.rs"]
+    pub mod rerun_remote_store_v1alpha1;
 
-    #[path = "./rerun.sdk_comms.v0.rs"]
-    pub mod rerun_sdk_comms_v0;
+    #[path = "./rerun.sdk_comms.v1alpha1.rs"]
+    pub mod rerun_sdk_comms_v1alpha1;
 }
 
 pub mod common {
-    pub mod v0 {
-        pub use crate::v0::rerun_common_v0::*;
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_common_v1alpha1::*;
     }
 }
 
 pub mod log_msg {
-    pub mod v0 {
-        pub use crate::v0::rerun_log_msg_v0::*;
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
     }
 }
 
-/// Generated types for the remote store gRPC service API v0.
+/// Generated types for the remote store gRPC service API v1alpha1.
 pub mod remote_store {
 
-    pub mod v0 {
-        pub use crate::v0::rerun_remote_store_v0::*;
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_remote_store_v1alpha1::*;
 
         /// Recording catalog mandatory field names. All mandatory metadata fields are prefixed
         /// with "rerun_" to avoid conflicts with user-defined fields.
@@ -67,8 +67,8 @@ pub mod remote_store {
 }
 
 pub mod sdk_comms {
-    pub mod v0 {
-        pub use crate::v0::rerun_sdk_comms_v0::*;
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_sdk_comms_v1alpha1::*;
     }
 }
 
@@ -138,7 +138,7 @@ macro_rules! invalid_field {
 mod sizes {
     use re_byte_size::SizeBytes;
 
-    impl SizeBytes for crate::log_msg::v0::LogMsg {
+    impl SizeBytes for crate::log_msg::v1alpha1::LogMsg {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { msg } = self;
@@ -150,7 +150,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::log_msg::Msg {
+    impl SizeBytes for crate::log_msg::v1alpha1::log_msg::Msg {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             match self {
@@ -163,7 +163,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::SetStoreInfo {
+    impl SizeBytes for crate::log_msg::v1alpha1::SetStoreInfo {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { row_id, info } = self;
@@ -172,7 +172,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::common::v0::Tuid {
+    impl SizeBytes for crate::common::v1alpha1::Tuid {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { inc, time_ns } = self;
@@ -181,7 +181,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::StoreInfo {
+    impl SizeBytes for crate::log_msg::v1alpha1::StoreInfo {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self {
@@ -198,7 +198,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::common::v0::ApplicationId {
+    impl SizeBytes for crate::common::v1alpha1::ApplicationId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { id } = self;
@@ -207,7 +207,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::common::v0::StoreId {
+    impl SizeBytes for crate::common::v1alpha1::StoreId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { kind, id } = self;
@@ -216,7 +216,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::common::v0::Time {
+    impl SizeBytes for crate::common::v1alpha1::Time {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { nanos_since_epoch } = self;
@@ -225,7 +225,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::StoreSource {
+    impl SizeBytes for crate::log_msg::v1alpha1::StoreSource {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { kind, extra } = self;
@@ -234,7 +234,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::StoreSourceExtra {
+    impl SizeBytes for crate::log_msg::v1alpha1::StoreSourceExtra {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { payload } = self;
@@ -243,7 +243,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::StoreVersion {
+    impl SizeBytes for crate::log_msg::v1alpha1::StoreVersion {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { crate_version_bits } = self;
@@ -252,7 +252,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::ArrowMsg {
+    impl SizeBytes for crate::log_msg::v1alpha1::ArrowMsg {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self {
@@ -271,7 +271,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::log_msg::v0::BlueprintActivationCommand {
+    impl SizeBytes for crate::log_msg::v1alpha1::BlueprintActivationCommand {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self {

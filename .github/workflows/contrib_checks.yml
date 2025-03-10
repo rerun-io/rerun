@@ -94,6 +94,9 @@ jobs:
       - name: Codegen check
         run: pixi run codegen --force --check
 
+      - name: Codegen out-of-sync (protos)
+        run: pixi run codegen-protos-check
+
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so

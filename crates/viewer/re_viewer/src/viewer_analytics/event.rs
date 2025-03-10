@@ -61,19 +61,20 @@ pub fn open_recording(
             cloned_from: _,
         } = store_info;
 
-        let is_official_example = application_id.to_string().starts_with("rerun_example_");
+        let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
 
-        let application_id_preprocessed = if is_official_example {
-            Id::Official(application_id.0.clone())
-        } else {
-            Id::Hashed(Property::from(application_id.0.clone()).hashed())
-        };
-
-        let recording_id_preprocessed = if is_official_example {
-            Id::Official(store_id.to_string())
-        } else {
-            Id::Hashed(Property::from(store_id.to_string()).hashed())
-        };
+        let (application_id_preprocessed, recording_id_preprocessed) =
+            if app_id_starts_with_rerun_example {
+                (
+                    Id::Official(application_id.0.clone()),
+                    Id::Official(store_id.to_string()),
+                )
+            } else {
+                (
+                    Id::Hashed(Property::from(application_id.0.clone()).hashed()),
+                    Id::Hashed(Property::from(store_id.to_string()).hashed()),
+                )
+            };
 
         use re_log_types::StoreSource as S;
         let store_source_preprocessed = match &store_source {
@@ -122,8 +123,6 @@ pub fn open_recording(
             S::CSdk | S::Unknown | S::Viewer | S::Other(_) => {}
         }
 
-        let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
-
         StoreInfo {
             application_id: application_id_preprocessed,
             recording_id: recording_id_preprocessed,
@@ -132,7 +131,6 @@ pub fn open_recording(
             rust_version: rust_version_preprocessed,
             llvm_version: llvm_version_preprocessed,
             python_version: python_version_preprocessed,
-            is_official_example: app_id_starts_with_rerun_example,
             app_id_starts_with_rerun_example,
         }
     });

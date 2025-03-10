@@ -105,7 +105,6 @@ examples = [
   "glomap",
   "hloc_glomap",
   "instant_splat",
-  "signed_distance_fields",
   "raw_mesh",
 ]
 

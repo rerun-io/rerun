@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import multiprocessing
 import sys
+from typing import Any, NoReturn
 
 import requests
 from tqdm import tqdm
@@ -50,12 +51,12 @@ def get_github_token() -> str:
     sys.exit(1)
 
 
-def fetch_issue(issue_json: dict) -> dict:
+def fetch_issue(issue_json: dict[str, Any]) -> dict[str, Any] | NoReturn:
     url = issue_json["url"]
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}
     response = requests.get(url, headers=headers)
-    json = response.json()
+    json: dict[str, Any] = response.json()
     if response.status_code != 200:
         print(f"ERROR {url}: {response.status_code} - {json['message']}")
         sys.exit(1)

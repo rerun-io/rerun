@@ -15,7 +15,7 @@ import sys
 import textwrap
 from inspect import Parameter, Signature
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import parso
 from colorama import Fore, Style, init as colorama_init
@@ -23,7 +23,7 @@ from colorama import Fore, Style, init as colorama_init
 colorama_init()
 
 
-def print_colored_diff(runtime, stub) -> None:
+def print_colored_diff(runtime: str, stub: str) -> None:
     # Split the strings into lines
     runtime_lines = runtime.splitlines()
     stub_lines = stub.splitlines()
@@ -58,7 +58,10 @@ class APIDef:
         docstring = textwrap.indent(docstring, "    ")
         return f"{self.name}{self.signature}:\n{docstring}"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, APIDef):
+            return NotImplemented
+
         if self.name in ("__init__", "__iter__"):
             # Ignore the signature of __init__ and __new__ methods
             # TODO(#7779): Remove this special case once we have a better way to handle these methods
@@ -67,7 +70,7 @@ class APIDef:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
-TotalSignature = dict[str, APIDef | dict[str, APIDef | str]]
+TotalSignature = dict[str, Union[APIDef, dict[str, APIDef]]]
 
 
 def parse_function_signature(node: Any) -> APIDef:

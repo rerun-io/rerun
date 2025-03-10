@@ -124,7 +124,7 @@ class Viewer:
                 raise ValueError("No recording specified and no active recording found")
 
             bindings.set_callback_sink(
-                recording=RecordingStream.to_native(recording),
+                recording=recording.to_native(),
                 callback=self._flush_hook,
             )
 
@@ -163,7 +163,7 @@ class Viewer:
             raise ValueError("No recording specified and no active recording found")
 
         bindings.set_callback_sink(
-            recording=RecordingStream.to_native(recording),
+            recording=recording.to_native(),
             callback=self._flush_hook,
         )
 

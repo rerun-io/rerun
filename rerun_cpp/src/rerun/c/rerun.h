@@ -418,22 +418,6 @@ extern void rr_recording_stream_set_thread_local(
 /// Check whether the recording stream is enabled.
 extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
 
-/// Connect to a remote Rerun Viewer on the given ip:port.
-///
-/// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
-///
-/// flush_timeout_sec:
-/// The minimum time the SDK will wait during a flush before potentially
-/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-/// and can cause a call to `flush` to block indefinitely.
-///
-/// This function returns immediately and will only raise an error for argument parsing errors,
-/// not for connection errors as these happen asynchronously.
-RR_DEPRECATED("use rr_recording_stream_connect_grpc instead")
-extern void rr_recording_stream_connect(
-    rr_recording_stream stream, rr_string tcp_addr, float flush_timeout_sec, rr_error* error
-);
-
 /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
 ///
 /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.

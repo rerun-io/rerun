@@ -4,7 +4,7 @@ use re_viewer_context::{
     test_context::TestContext, Contents, ViewClassExt as _, ViewerContext, VisitorControlFlow,
 };
 
-use crate::ViewportBlueprint;
+use crate::{view_contents::DataQueryPropertyResolver, ViewportBlueprint};
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
@@ -100,9 +100,9 @@ impl TestContextExt for TestContext {
                                 &visualizable_entities,
                             );
 
-                            let resolver = view_blueprint.contents.build_resolver(
-                                ctx.view_class_registry(),
+                            let resolver = DataQueryPropertyResolver::new(
                                 view_blueprint,
+                                ctx.view_class_registry(),
                                 &maybe_visualizable_entities_per_visualizer,
                                 &visualizable_entities,
                                 &indicated_entities_per_visualizer,

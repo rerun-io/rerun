@@ -105,9 +105,9 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
 }
-pub use time::{Time, TimePoint, Timeline};
+pub use time::{IndexCell, Time, TimePoint, Timeline};
 
 pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
@@ -194,5 +194,25 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
             }
             default_enabled
         }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Creates a new [`re_log_types::StoreInfo`] which can be used with [`RecordingStream::new`].
+#[track_caller] // track_caller so that we can see if we are being called from an official example.
+pub fn new_store_info(
+    application_id: impl Into<re_log_types::ApplicationId>,
+) -> re_log_types::StoreInfo {
+    re_log_types::StoreInfo {
+        application_id: application_id.into(),
+        store_id: StoreId::random(StoreKind::Recording),
+        cloned_from: None,
+        started: re_log_types::Time::now(),
+        store_source: re_log_types::StoreSource::RustSdk {
+            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+        },
+        store_version: Some(re_build_info::CrateVersion::LOCAL),
     }
 }

@@ -67,6 +67,9 @@ jobs:
       - name: Codegen check
         run: pixi run codegen --force --check
 
+      - name: Codegen out-of-sync (protos)
+        run: pixi run codegen-protos-check
+
   # ---------------------------------------------------------------------------
 
   # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,

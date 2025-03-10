@@ -34,7 +34,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Callable
+from typing import Any, Callable
 
 from google.cloud import storage
 
@@ -107,7 +107,10 @@ FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+(\d+)\s+ns\/iter")
 
 
 def parse_bencher_line(data: str) -> Measurement:
-    name, ns_iter = FORMAT_BENCHER_RE.match(data).groups()
+    match = FORMAT_BENCHER_RE.match(data)
+    if match is None:
+        raise ValueError(f"invalid bencher line: {data}")
+    name, ns_iter = match.groups()
     return Measurement(name, float(ns_iter), "ns/iter")
 
 
@@ -222,7 +225,7 @@ def convert(base_unit: str, unit: str, value: float) -> float:
     return value / UNITS[unit] * UNITS[base_unit]
 
 
-def min_and_max(data: list[float]) -> (float, float):
+def min_and_max(data: list[float]) -> tuple[float, float]:
     min_value = float("inf")
     max_value = float("-inf")
     for value in data:
@@ -243,10 +246,11 @@ def render_html(title: str, benchmarks: Benchmarks) -> str:
         else:
             return f"{entry.commit[0:7]} {date}"
 
-    chartjs = {}
+    chartjs: dict[str, dict[str, Any] | None] = {}
     for name, benchmark in benchmarks.items():
         if len(benchmark) == 0:
             chartjs[name] = None
+            continue
         labels = [label(entry) for entry in benchmark]
         base_unit = benchmark[-1].unit
         data = [convert(base_unit, entry.unit, entry.value) for entry in benchmark]
@@ -306,6 +310,7 @@ class Output(Enum):
     GCS = "gcs"
     FILE = "file"
 
+    @staticmethod
     def parse(o: str) -> Output:
         if o == "-":
             return Output.STDOUT
