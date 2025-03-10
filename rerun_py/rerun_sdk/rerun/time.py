@@ -224,9 +224,9 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
     """
 
-    bindings.set_time_seconds(
+    bindings.set_time_timestamp_nanos_since_epoch(
         timeline,
-        seconds,
+        int(seconds * 1e9),
         recording=recording.to_native() if recording is not None else None,
     )
 
@@ -272,7 +272,7 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
 
     """
 
-    bindings.set_time_nanos(
+    bindings.set_time_timestamp_nanos_since_epoch(
         timeline,
         nanos,
         recording=recording.to_native() if recording is not None else None,

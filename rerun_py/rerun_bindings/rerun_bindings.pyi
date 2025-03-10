@@ -1027,14 +1027,14 @@ def set_time_sequence(
 ) -> None:
     """Set the current time for this thread as an integer sequence."""
 
-def set_time_seconds(
+def set_time_duration_nanos(
     timeline: str,
-    seconds: float,
+    nanos: int,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Set the current time for this thread in second."""
+    """Set the current duration for this thread in nanoseconds."""
 
-def set_time_nanos(
+def set_time_timestamp_nanos_since_epoch(
     timeline: str,
     nanos: int,
     recording: Optional[PyRecordingStream] = None,

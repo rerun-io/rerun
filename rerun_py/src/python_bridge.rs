@@ -1073,7 +1073,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     recording.set_index(timeline, IndexCell::from_sequence(sequence));
 }
 
-/// Set the current time for this thread in second.
+/// Set the current duration for this thread in nanoseconds.
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
 fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
