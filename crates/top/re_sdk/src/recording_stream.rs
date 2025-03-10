@@ -2140,6 +2140,7 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[deprecated(
+        since = "0.23.0",
         note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
     )]
     #[inline]
@@ -2164,6 +2165,7 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[deprecated(
+        since = "0.23.0",
         note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
     )]
     #[inline]
