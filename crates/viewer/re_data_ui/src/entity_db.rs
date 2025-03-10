@@ -41,7 +41,6 @@ impl crate::DataUi for EntityDb {
                     application_id,
                     store_id,
                     cloned_from,
-                    is_official_example: _,
                     started,
                     store_source,
                     store_version,
