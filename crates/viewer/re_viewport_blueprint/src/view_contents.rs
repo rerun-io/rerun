@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
-use re_types::blueprint::components::VisualizerOverride;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, Timeline};
+use re_log_types::{
+    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter,
+    ResolvedEntityPathRule, Timeline,
+};
+use re_types::blueprint::components::VisualizerOverride;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
