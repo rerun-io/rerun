@@ -847,12 +847,9 @@ class PyBinarySinkStorage:
     def flush(self) -> None:
         """Flush the binary sink manually."""
 
-# // init
-# m.add_function(wrap_pyfunction!(new_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(new_blueprint, m)?)?;
-# m.add_function(wrap_pyfunction!(shutdown, m)?)?;
-# m.add_function(wrap_pyfunction!(cleanup_if_forked_child, m)?)?;
-# m.add_function(wrap_pyfunction!(spawn, m)?)?;
+#
+# init
+#
 
 def new_recording(
     application_id: str,
@@ -889,19 +886,9 @@ def spawn(
 ) -> None:
     """Spawn a new viewer."""
 
-# // recordings
-# m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
-# m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
-# m.add_function(wrap_pyfunction!(get_data_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(get_global_data_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(set_global_data_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(get_thread_local_data_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(set_thread_local_data_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(get_blueprint_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(get_global_blueprint_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(set_global_blueprint_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(get_thread_local_blueprint_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(set_thread_local_blueprint_recording, m)?)?;
+#
+# recordings
+#
 
 def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
     """Get the current recording stream's application ID."""
@@ -957,19 +944,9 @@ def set_thread_local_blueprint_recording(
     Returns the previous one, if any.
     """
 
-# // sinks
-# m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
-# m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-# m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
-# m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
-# m.add_function(wrap_pyfunction!(save, m)?)?;
-# m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
-# m.add_function(wrap_pyfunction!(stdout, m)?)?;
-# m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
-# m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
-# m.add_function(wrap_pyfunction!(serve_web, m)?)?;
-# m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-# m.add_function(wrap_pyfunction!(flush, m)?)?;
+#
+# sinks
+#
 
 def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
     """Whether the recording stream enabled."""
@@ -1039,12 +1016,9 @@ def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
 def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
-# // time
-# m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
-# m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
-# m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
-# m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
-# m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+#
+# time
+#
 
 def set_time_sequence(
     timeline: str,
@@ -1076,12 +1050,9 @@ def disable_timeline(
 def reset_time(recording: Optional[PyRecordingStream] = None) -> None:
     """Clear all timeline information on this thread."""
 
-# // log any
-# m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-# m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
-# m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
-# m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
-# m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
+#
+# log any
+#
 
 def log_arrow_msg(
     entity_path: str,
@@ -1135,12 +1106,9 @@ def send_blueprint(
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
-# // misc
-# m.add_function(wrap_pyfunction!(version, m)?)?;
-# m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
-# m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
-# m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
-# m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
+#
+# misc
+#
 
 def version() -> str:
     """Return a verbose version string."""
