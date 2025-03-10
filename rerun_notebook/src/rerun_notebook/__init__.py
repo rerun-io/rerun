@@ -6,9 +6,9 @@ import os
 import pathlib
 import time
 from abc import ABC
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
-from collections.abc import Mapping
 
 import anywidget
 import jupyter_ui_poll
@@ -38,7 +38,9 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
+ASSET_ENV = os.environ.get(
+    "RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js"
+)
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
@@ -50,17 +52,20 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
 else:
     ESM_MOD = ASSET_ENV
     if not (ASSET_ENV.startswith(("http://", "https://"))):
-        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
+        raise ValueError(
+            f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}"
+        )
 
 
-class ViewerCallbacks(ABC):
-    def on_selection_change(self, selection: list[SelectionItem]):
+# TODO: is `ABC` necessary here? Or should every method actually be abstract?
+class ViewerCallbacks(ABC):  # noqa: B024
+    def on_selection_change(self, selection: list[SelectionItem]) -> None:  # noqa: B027
         pass
 
-    def on_timeline_change(self, timeline: str, time: float):
+    def on_timeline_change(self, timeline: str, time: float) -> None:  # noqa: B027
         pass
 
-    def on_time_update(self, time: float):
+    def on_time_update(self, time: float) -> None:  # noqa: B027
         pass
 
 
@@ -68,7 +73,7 @@ class ViewerCallbacks(ABC):
 class EntityPathSelection:
     @property
     def kind(self) -> Literal["entity_path"]:
-        return "entity_path"
+        return 0  # "entity_path"
 
     entity_path: str
 
@@ -150,7 +155,9 @@ class Viewer(anywidget.AnyWidget):
                 self._on_ready()
             elif not isinstance(content, str) and "event" in content:
                 if content["event"] == "selectionchange":
-                    selection = [_selection_item_from_json(item) for item in content["payload"]]
+                    selection = [
+                        _selection_item_from_json(item) for item in content["payload"]
+                    ]
                     for callback in self._callbacks:
                         callback.on_selection_change(selection)
                 elif content["event"] == "timelinechange":
@@ -197,8 +204,12 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                 poll(1)
                 time.sleep(0.1)
 
-    def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
-        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
+    def update_panel_states(
+        self, panel_states: Mapping[Panel, PanelState | Literal["default"]]
+    ) -> None:
+        new_panel_states = (
+            dict(self._panel_states.items()) if self._panel_states else {}
+        )
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)
