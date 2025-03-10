@@ -174,7 +174,10 @@ def main() -> None:
         sys.exit(0)
     else:
         print()
-        print(f"❌ {num_failures} checks / {len(results)} failed!")
+        print(f"❌ {num_failures} checks / {len(results)} failed:")
+        for result in results:
+            if not result.success:
+                print(f"  ❌ {result.command}")
         sys.exit(1)
 
 

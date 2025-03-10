@@ -126,7 +126,7 @@ check-env = "python scripts/check_env.py"
 codegen = "cargo --quiet run --package re_types_builder -- "
 
 # Run the codegen for protobuf types.
-codegen-protos = { cmd = "cargo --quiet run --package re_protos_builder && cargo fmt --all", depends-on = [
+codegen-protos = { cmd = "cargo --quiet run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
   # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
 ] }
 codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
@@ -627,7 +627,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.3.1" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
