@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Override the visualizers for an entity.
 ///
-/// This component is a stop-gap mechanism based on the current implementation details
+/// This archetype is a stop-gap mechanism based on the current implementation details
 /// of the visualizer system. It is not intended to be a long-term solution, but provides
 /// enough utility to be useful in the short term.
 ///
