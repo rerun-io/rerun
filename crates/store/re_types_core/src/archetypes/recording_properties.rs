@@ -14,41 +14,11 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch, SerializedComponentBatch};
+use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of properties associated with a recording.
-///
-/// ## Example
-///
-/// ### Simple directed graph
-/// ```ignore
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_graph_directed").spawn()?;
-///
-///     rec.log(
-///         "simple",
-///         &[
-///             &rerun::GraphNodes::new(["a", "b", "c"])
-///                 .with_positions([(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)])
-///                 .with_labels(["A", "B", "C"]) as &dyn rerun::AsComponents,
-///             &rerun::GraphEdges::new([("a", "b"), ("b", "c"), ("c", "a")]).with_directed_edges(),
-///         ],
-///     )?;
-///
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
-///   <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
-/// </picture>
-/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct RecordingProperties {
     /// When the recording started.
@@ -92,26 +62,31 @@ impl RecordingProperties {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_started()]);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [RecordingProperties::descriptor_name()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            RecordingProperties::descriptor_started(),
+            RecordingProperties::descriptor_name(),
+        ]
+    });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            RecordingProperties::descriptor_started(),
             RecordingProperties::descriptor_indicator(),
+            RecordingProperties::descriptor_started(),
             RecordingProperties::descriptor_name(),
         ]
     });
 
 impl RecordingProperties {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -194,11 +169,9 @@ impl crate::ArchetypeReflectionMarker for RecordingProperties {}
 impl RecordingProperties {
     /// Create a new `RecordingProperties`.
     #[inline]
-    pub fn new(
-        started: impl IntoIterator<Item = impl Into<crate::components::RecordingStartedTimestamp>>,
-    ) -> Self {
+    pub fn new(started: impl Into<crate::components::RecordingStartedTimestamp>) -> Self {
         Self {
-            started: try_serialize_field(Self::descriptor_started(), started),
+            started: try_serialize_field(Self::descriptor_started(), [started]),
             name: None,
         }
     }
@@ -279,6 +252,19 @@ impl RecordingProperties {
     #[inline]
     pub fn with_started(
         mut self,
+        started: impl Into<crate::components::RecordingStartedTimestamp>,
+    ) -> Self {
+        self.started = try_serialize_field(Self::descriptor_started(), [started]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::RecordingStartedTimestamp`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_started`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_started(
+        mut self,
         started: impl IntoIterator<Item = impl Into<crate::components::RecordingStartedTimestamp>>,
     ) -> Self {
         self.started = try_serialize_field(Self::descriptor_started(), started);
@@ -287,7 +273,17 @@ impl RecordingProperties {
 
     /// A user-chosen name for the recording.
     #[inline]
-    pub fn with_name(
+    pub fn with_name(mut self, name: impl Into<crate::components::RecordingName>) -> Self {
+        self.name = try_serialize_field(Self::descriptor_name(), [name]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::RecordingName`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_name`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_name(
         mut self,
         name: impl IntoIterator<Item = impl Into<crate::components::RecordingName>>,
     ) -> Self {

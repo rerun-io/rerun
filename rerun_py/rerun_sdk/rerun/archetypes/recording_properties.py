@@ -23,42 +23,9 @@ __all__ = ["RecordingProperties"]
 
 @define(str=False, repr=False, init=False)
 class RecordingProperties(Archetype):
-    """
-    **Archetype**: A list of properties associated with a recording.
+    """**Archetype**: A list of properties associated with a recording."""
 
-    Example
-    -------
-    ### Simple directed graph:
-    ```python
-    import rerun as rr
-
-    rr.init("rerun_example_graph_directed", spawn=True)
-
-    rr.log(
-        "simple",
-        rr.GraphNodes(
-            node_ids=["a", "b", "c"],
-            positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
-            labels=["A", "B", "C"],
-        ),
-        rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
-    )
-    ```
-    <center>
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
-      <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
-    </picture>
-    </center>
-
-    """
-
-    def __init__(
-        self: Any, started: datatypes.TimeIntArrayLike, *, name: datatypes.Utf8ArrayLike | None = None
-    ) -> None:
+    def __init__(self: Any, started: datatypes.TimeIntLike, *, name: datatypes.Utf8Like | None = None) -> None:
         """
         Create a new instance of the RecordingProperties archetype.
 
@@ -98,8 +65,8 @@ class RecordingProperties(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        started: datatypes.TimeIntArrayLike | None = None,
-        name: datatypes.Utf8ArrayLike | None = None,
+        started: datatypes.TimeIntLike | None = None,
+        name: datatypes.Utf8Like | None = None,
     ) -> RecordingProperties:
         """
         Update only some specific fields of a `RecordingProperties`.

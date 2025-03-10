@@ -1040,6 +1040,12 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
+def set_recording_name(
+    name: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the name of the recording."""
+
 def disable_timeline(
     timeline: str,
     recording: Optional[PyRecordingStream] = None,

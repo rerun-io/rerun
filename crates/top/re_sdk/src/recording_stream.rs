@@ -15,11 +15,13 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
-    Timeline, TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
+    IndexCell, LogMsg, RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+    TimeInt, TimePoint, Timeline, TimelineName,
 };
-use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
+use re_types_core::{
+    AsComponents, ComponentBatch as _, SerializationError, SerializedComponentColumn,
+};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -121,8 +123,8 @@ pub struct RecordingStreamBuilder {
 
     batcher_config: Option<ChunkBatcherConfig>,
 
-    // Optional recording properties.
-    recording_name: Option<String>,
+    // Optional user-defined recording properties.
+    properties: RecordingProperties,
 }
 
 impl RecordingStreamBuilder {
@@ -152,7 +154,7 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
 
-            recording_name: None,
+            properties: RecordingProperties::default(),
         }
     }
 
@@ -198,8 +200,15 @@ impl RecordingStreamBuilder {
 
     /// Sets an optional name for the recording.
     #[inline]
-    pub fn recording_name(mut self, recording_name: impl Into<String>) -> Self {
-        self.recording_name = Some(recording_name.into());
+    pub fn recording_name(mut self, name: impl Into<String>) -> Self {
+        self.properties.recording_name = Some(name.into());
+        self
+    }
+
+    /// Sets an optional name for the recording.
+    #[inline]
+    pub fn recording_started(mut self, time: impl Into<Time>) -> Self {
+        self.properties.recording_started = time.into();
         self
     }
 
@@ -616,7 +625,7 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
-            recording_name: recording_name,
+            properties,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
@@ -624,11 +633,6 @@ impl RecordingStreamBuilder {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
-
-        let properties = RecordingProperties {
-            recording_started: Time::now(),
-            recording_name: recording_name.map(Into::into),
-        };
 
         let store_info = StoreInfo {
             application_id,
@@ -1124,6 +1128,19 @@ impl RecordingStream {
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
+    }
+
+    /// Set the name of the recording.
+    ///
+    /// When provided, this name will show up in the viewer.
+    #[inline]
+    pub fn set_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
+        let component = re_types_core::components::RecordingName::from(name.into());
+        self.log_serialized_batches(
+            EntityPath::recording_properties(),
+            true,
+            component.serialized(),
+        )
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even

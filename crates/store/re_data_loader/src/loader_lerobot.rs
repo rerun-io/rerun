@@ -16,7 +16,7 @@ use re_chunk::{
 
 use re_log_types::{ApplicationId, RecordingProperties, StoreId};
 use re_types::archetypes::{
-    self, AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
+    AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
 };
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
@@ -105,7 +105,7 @@ fn load_and_stream(
             Ok(chunks) => {
                 let properties = RecordingProperties {
                     recording_started: re_log_types::Time::now(),
-                    recording_name: Some(format!("episode_{}", episode.0)),
+                    recording_name: Some(format!("Episode {}", episode.0)),
                 };
 
                 debug_assert!(TimePoint::default().is_static());

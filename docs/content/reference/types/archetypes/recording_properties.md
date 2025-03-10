@@ -7,9 +7,7 @@ A list of properties associated with a recording.
 
 ## Components
 
-**Required**: [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md)
-
-**Optional**: [`RecordingName`](../components/recording_name.md)
+**Optional**: [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md), [`RecordingName`](../components/recording_name.md)
 
 ## Shown in
 * [DataframeView](../views/dataframe_view.md)
@@ -19,29 +17,9 @@ A list of properties associated with a recording.
  * 🐍 [Python API docs for `RecordingProperties`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.RecordingProperties)
  * 🦀 [Rust API docs for `RecordingProperties`](https://docs.rs/rerun/latest/rerun/archetypes/struct.RecordingProperties.html)
 
-## Examples
+## Example
 
-### Simple undirected graph
+### Setting recording properties
 
-snippet: archetypes/graph_undirected
-
-<picture data-inline-viewer="snippets/graph_undirected">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png">
-  <img src="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/full.png">
-</picture>
-
-### Simple directed graph
-
-snippet: archetypes/graph_directed
-
-<picture data-inline-viewer="snippets/graph_directed">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
-  <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png">
-</picture>
+snippet: concepts/recording_properties
 

@@ -1841,7 +1841,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Started", component_name :
                     "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "name",
+                    is_required : false, }, ArchetypeFieldReflection { name : "name",
                     display_name : "Name", component_name :
                     "rerun.components.RecordingName".into(), docstring_md :
                     "A user-chosen name for the recording.", is_required : false, },

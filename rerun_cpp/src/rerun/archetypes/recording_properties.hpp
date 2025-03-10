@@ -18,30 +18,6 @@
 
 namespace rerun::archetypes {
     /// **Archetype**: A list of properties associated with a recording.
-    ///
-    /// ## Example
-    ///
-    /// ### Simple directed graph
-    /// ![image](https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png)
-    ///
-    /// ```cpp
-    /// #include <rerun.hpp>
-    ///
-    /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_graph_directed");
-    ///     rec.spawn().exit_on_failure();
-    ///
-    ///     rec.log(
-    ///         "simple",
-    ///         rerun::GraphNodes({"a", "b", "c"})
-    ///             .with_positions({{0.0, 100.0}, {-100.0, 0.0}, {100.0, 0.0}})
-    ///             .with_labels({"A", "B", "C"}),
-    ///         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
-    ///             // Graphs are undirected by default.
-    ///             .with_graph_type(rerun::components::GraphType::Directed)
-    ///     );
-    /// }
-    /// ```
     struct RecordingProperties {
         /// When the recording started.
         ///
@@ -78,9 +54,7 @@ namespace rerun::archetypes {
         RecordingProperties& operator=(const RecordingProperties& other) = default;
         RecordingProperties& operator=(RecordingProperties&& other) = default;
 
-        explicit RecordingProperties(
-            Collection<rerun::components::RecordingStartedTimestamp> _started
-        )
+        explicit RecordingProperties(rerun::components::RecordingStartedTimestamp _started)
             : started(ComponentBatch::from_loggable(std::move(_started), Descriptor_started)
                           .value_or_throw()) {}
 
@@ -96,6 +70,17 @@ namespace rerun::archetypes {
         ///
         /// Should be an absolute time, i.e. relative to Unix Epoch.
         RecordingProperties with_started(
+            const rerun::components::RecordingStartedTimestamp& _started
+        ) && {
+            started = ComponentBatch::from_loggable(_started, Descriptor_started).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `started` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_started` should
+        /// be used when logging a single row's worth of data.
+        RecordingProperties with_many_started(
             const Collection<rerun::components::RecordingStartedTimestamp>& _started
         ) && {
             started = ComponentBatch::from_loggable(_started, Descriptor_started).value_or_throw();
@@ -103,7 +88,16 @@ namespace rerun::archetypes {
         }
 
         /// A user-chosen name for the recording.
-        RecordingProperties with_name(const Collection<rerun::components::RecordingName>& _name
+        RecordingProperties with_name(const rerun::components::RecordingName& _name) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `name` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_name` should
+        /// be used when logging a single row's worth of data.
+        RecordingProperties with_many_name(const Collection<rerun::components::RecordingName>& _name
         ) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);

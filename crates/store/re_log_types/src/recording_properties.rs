@@ -13,6 +13,15 @@ pub struct RecordingProperties {
     pub recording_name: Option<String>,
 }
 
+impl Default for RecordingProperties {
+    fn default() -> Self {
+        Self {
+            recording_started: Time::now(),
+            recording_name: None,
+        }
+    }
+}
+
 impl From<RecordingProperties> for archetypes::RecordingProperties {
     fn from(value: RecordingProperties) -> Self {
         let started = components::RecordingStartedTimestamp::from(
