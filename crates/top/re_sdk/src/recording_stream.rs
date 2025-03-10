@@ -120,6 +120,9 @@ pub struct RecordingStreamBuilder {
     enabled: Option<bool>,
 
     batcher_config: Option<ChunkBatcherConfig>,
+
+    // Optional recording properties.
+    recording_name: Option<String>,
 }
 
 impl RecordingStreamBuilder {
@@ -148,6 +151,8 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
+
+            recording_name: None,
         }
     }
 
@@ -188,6 +193,13 @@ impl RecordingStreamBuilder {
             StoreKind::Recording,
             recording_id.into(),
         ));
+        self
+    }
+
+    /// Sets an optional name for the recording.
+    #[inline]
+    pub fn recording_name(mut self, recording_name: impl Into<String>) -> Self {
+        self.recording_name = Some(recording_name.into());
         self
     }
 
@@ -643,6 +655,7 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
+            recording_name: recording_name,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
@@ -653,7 +666,7 @@ impl RecordingStreamBuilder {
 
         let properties = RecordingProperties {
             recording_started: Time::now(),
-            recording_name: None,
+            recording_name: recording_name.map(Into::into),
         };
 
         let store_info = StoreInfo {
