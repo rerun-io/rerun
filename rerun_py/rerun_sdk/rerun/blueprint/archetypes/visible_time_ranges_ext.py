@@ -9,7 +9,7 @@ from ...error_utils import _send_warning_or_raise, catch_and_log_exceptions
 class VisibleTimeRangesExt:
     """Extension for [VisibleTimeRanges][rerun.blueprint.archetypes.VisibleTimeRanges]."""
 
-    def __init__(self: Any, ranges: datatypes.VisibleTimeRangeArrayLike | None = None) -> None:
+    def __init__(self: Any, ranges: datatypes.VisibleTimeRangeArrayLike) -> None:
         """
         Create a new instance of the VisibleTimeRanges archetype.
 
