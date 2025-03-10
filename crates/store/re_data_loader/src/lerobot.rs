@@ -35,7 +35,7 @@ pub fn is_v2_lerobot_dataset(path: impl AsRef<Path>) -> bool {
 
     // v2 `LeRobot` datasets store the metadata in a `meta` directory,
     // instead of the `meta_data` directory used in v1 datasets.
-    has_sub_directories(&["meta_data", "data"], path)
+    has_sub_directories(&["meta", "data"], path)
 }
 
 /// Check whether the provided path contains a v1 `LeRobot` dataset.
@@ -55,7 +55,11 @@ fn has_sub_directories(directories: &[&str], path: impl AsRef<Path>) -> bool {
     directories.iter().all(|subdir| {
         let subpath = path.as_ref().join(subdir);
 
+        // check that the sub directory exists and is not empty
         subpath.is_dir()
+            && subpath
+                .read_dir()
+                .is_ok_and(|mut contents| contents.next().is_some())
     })
 }
 
