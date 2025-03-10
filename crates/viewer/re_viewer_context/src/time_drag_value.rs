@@ -73,6 +73,7 @@ impl TimeDragValue {
         TimeInt::new_temporal(*self.range.end())
     }
 
+    /// Show a drag value widget, taking into account the time type.
     pub fn drag_value_ui(
         &self,
         ui: &mut egui::Ui,
@@ -101,7 +102,7 @@ impl TimeDragValue {
     }
 
     /// Show a sequence drag value widget.
-    pub fn sequence_drag_value_ui(
+    fn sequence_drag_value_ui(
         &self,
         ui: &mut egui::Ui,
         value: &mut TimeInt,
@@ -143,7 +144,7 @@ impl TimeDragValue {
     ///
     /// Returns a tuple of the [`egui::DragValue`]'s [`egui::Response`], and the base time label's
     /// [`egui::Response`], if any.
-    pub fn temporal_drag_value_ui(
+    fn temporal_drag_value_ui(
         &self,
         ui: &mut egui::Ui,
         value: &mut TimeInt,

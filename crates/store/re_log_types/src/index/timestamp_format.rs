@@ -13,7 +13,7 @@ pub enum TimestampFormat {
 }
 
 impl TimestampFormat {
-    pub fn to_jiff_tz(self) -> jiff::tz::TimeZone {
+    pub fn to_jiff_time_zone(self) -> jiff::tz::TimeZone {
         use jiff::tz::TimeZone;
 
         match self {

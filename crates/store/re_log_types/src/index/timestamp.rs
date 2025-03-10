@@ -62,11 +62,11 @@ impl TryFrom<web_time::SystemTime> for Timestamp {
 }
 
 // ------------------------------------------
-// Joff converters
+// `jiff` converters
 
 impl Timestamp {
     pub fn to_jiff_zoned(self, timestamp_format: TimestampFormat) -> jiff::Zoned {
-        jiff::Timestamp::from(self).to_zoned(timestamp_format.to_jiff_tz())
+        jiff::Timestamp::from(self).to_zoned(timestamp_format.to_jiff_time_zone())
     }
 }
 
@@ -110,7 +110,7 @@ impl std::fmt::Debug for Timestamp {
 }
 
 impl Timestamp {
-    /// RFC3339
+    /// Formats the time as specified by ISO standard [`RFC3339`](https://www.rfc-editor.org/rfc/rfc3339.html).
     pub fn format_iso(self) -> String {
         jiff::Timestamp::from(self).to_string()
     }
@@ -145,7 +145,7 @@ impl Timestamp {
             }
 
             TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
-                let tz = timestamp_format.to_jiff_tz();
+                let tz = timestamp_format.to_jiff_time_zone();
                 let zoned = timestamp.to_zoned(tz.clone());
 
                 let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz).date();
@@ -217,7 +217,7 @@ impl Timestamp {
             Some(Self::from(zoned))
         } else if let Ok(date_time) = jiff::civil::DateTime::from_str(s) {
             date_time
-                .to_zoned(timestamp_format.to_jiff_tz())
+                .to_zoned(timestamp_format.to_jiff_time_zone())
                 .ok()
                 .map(|zoned| zoned.into())
         } else if timestamp_format == TimestampFormat::UnixEpoch {

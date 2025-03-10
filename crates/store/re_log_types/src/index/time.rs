@@ -241,7 +241,7 @@ mod tests {
     }
 
     fn parse_datetime(s: &str) -> Time {
-        crate::Time::parse(s, TimestampFormat::Utc).unwrap().into()
+        crate::Time::parse(s, TimestampFormat::Utc).unwrap()
     }
 
     #[test]
