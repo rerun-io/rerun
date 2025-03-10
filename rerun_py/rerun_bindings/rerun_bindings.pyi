@@ -803,7 +803,7 @@ def connect(addr: str) -> StorageNodeClient:
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
-# TODO(#9187): this will be entirely replaced with `RecrodingStream` is itself written in Rust
+# TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust
 
 class PyRecordingStream:
     def is_forked_child(self) -> bool:
