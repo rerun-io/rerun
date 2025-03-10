@@ -28,7 +28,7 @@ class TensorScalarMapping(Archetype):
         mag_filter: components.MagnificationFilterLike | None = None,
         colormap: components.ColormapLike | None = None,
         gamma: datatypes.Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the TensorScalarMapping archetype.
 

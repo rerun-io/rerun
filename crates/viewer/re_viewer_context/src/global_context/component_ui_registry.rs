@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk::{RowId, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use re_log_types::Instance;
 use re_types::ComponentName;
 use re_ui::{UiExt as _, UiLayout};

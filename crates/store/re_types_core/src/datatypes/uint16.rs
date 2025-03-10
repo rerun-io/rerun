@@ -14,7 +14,7 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch, SerializedComponentBatch};
+use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 

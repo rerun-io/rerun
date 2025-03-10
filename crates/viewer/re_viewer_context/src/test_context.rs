@@ -76,8 +76,9 @@ pub struct TestContext {
     pub blueprint_store: EntityDb,
     pub view_class_registry: ViewClassRegistry,
 
-    // Mutex is needed, so we can swap the buffer from the `run` method.
+    // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
+    pub focused_item: Mutex<Option<crate::Item>>,
 
     // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
     pub recording_config: Arc<RecordingConfig>,
@@ -122,6 +123,7 @@ impl Default for TestContext {
             blueprint_store,
             view_class_registry: Default::default(),
             selection_state: Default::default(),
+            focused_item: Default::default(),
             recording_config: Arc::new(recording_config),
             view_states: Default::default(),
             blueprint_query,
@@ -320,6 +322,7 @@ impl TestContext {
         render_ctx.begin_frame();
 
         let mut selection_state = self.selection_state.lock();
+        let mut focused_item = self.focused_item.lock();
 
         let ctx = ViewerContext {
             global_context: GlobalContext {
@@ -339,7 +342,7 @@ impl TestContext {
             blueprint_cfg: &Default::default(),
             selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            focused_item: &None,
+            focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
@@ -357,6 +360,7 @@ impl TestContext {
         render_ctx.before_submit();
 
         selection_state.on_frame_start(|_| true, None);
+        *focused_item = None;
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
@@ -442,6 +446,10 @@ impl TestContext {
                     self.selection_state.lock().set_selection(item);
                 }
 
+                SystemCommand::SetFocus(item) => {
+                    *self.focused_item.lock() = Some(item);
+                }
+
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                     assert_eq!(rec_id, self.recording_store.store_id());
                     self.recording_config
@@ -451,8 +459,7 @@ impl TestContext {
                 }
 
                 // not implemented
-                SystemCommand::SetFocus(_)
-                | SystemCommand::ActivateApp(_)
+                SystemCommand::ActivateApp(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
@@ -466,7 +473,8 @@ impl TestContext {
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings => handled = false,
+                | SystemCommand::CloseAllRecordings
+                | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

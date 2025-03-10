@@ -1,4 +1,4 @@
-use ahash::{HashMap, HashMapExt, HashSet};
+use ahash::{HashMap, HashMapExt as _, HashSet};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
@@ -695,16 +695,8 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-                re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                    fn strip_prefix(s: &str) -> &str {
-                        s.strip_prefix("http")
-                            .or_else(|| s.strip_prefix("temp"))
-                            .unwrap_or(s)
-                    }
-
-                    strip_prefix(url) != strip_prefix(uri)
-                }
+                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
+                | re_smart_channel::SmartChannelSource::RedapGrpcStream { url } => url != uri,
                 _ => true,
             }
         });

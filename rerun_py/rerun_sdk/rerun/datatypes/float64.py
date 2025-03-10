@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -23,7 +24,7 @@ __all__ = ["Float64", "Float64ArrayLike", "Float64Batch", "Float64Like"]
 class Float64:
     """**Datatype**: A double-precision 64-bit IEEE 754 floating point number."""
 
-    def __init__(self: Any, value: Float64Like):
+    def __init__(self: Any, value: Float64Like) -> None:
         """Create a new instance of the Float64 datatype."""
 
         # You can define your own __init__ function as a member of Float64Ext in float64_ext.py
@@ -31,9 +32,9 @@ class Float64:
 
     value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Float64Ext in float64_ext.py
-        return np.asarray(self.value, dtype=dtype)
+        return np.asarray(self.value, dtype=dtype, copy=copy)
 
     def __float__(self) -> float:
         return float(self.value)

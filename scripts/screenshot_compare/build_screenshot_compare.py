@@ -24,11 +24,12 @@ import os
 import shutil
 import subprocess
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from jinja2 import Template
@@ -55,7 +56,11 @@ def measure_thumbnail(url: str) -> Any:
 
 
 def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | Path | None = None
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: int | None = None,
+    cwd: str | Path | None = None,
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
@@ -80,7 +85,7 @@ def copy_static_assets(examples: list[Example]) -> None:
 
     # copy examples
     for example in examples:
-        dst = os.path.join(BASE_PATH, f"examples/{example.name}")
+        dst = BASE_PATH / "examples" / example.name
         shutil.copytree(
             STATIC_ASSETS,
             dst,
@@ -160,7 +165,7 @@ def build_examples() -> None:
         "-p", "re_dev_tools", "--",
         "build-examples", "rrd", "example_data",
         # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
-        "--channel", "main"
+        "--channel", "main",
     ]
     run(cmd, cwd=RERUN_DIR)
 
@@ -170,7 +175,7 @@ def build_examples() -> None:
         "-p", "re_dev_tools", "--",
         "build-examples", "manifest", "example_data/examples_manifest.json",
         # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
-        "--channel", "main"
+        "--channel", "main",
     ]
     run(cmd, cwd=RERUN_DIR)
     # fmt: on
@@ -217,7 +222,7 @@ def render_examples(examples: list[Example]) -> None:
 
 
 class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
+    def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
 
@@ -229,7 +234,7 @@ def serve_files() -> None:
             server_address=("127.0.0.1", 8080),
             RequestHandlerClass=partial(
                 CORSRequestHandler,
-                directory=BASE_PATH,
+                directory=str(BASE_PATH),
             ),
         )
         server.serve_forever()
@@ -240,7 +245,7 @@ def serve_files() -> None:
         os.environ["RUST_LOG"] = "rerun=warn"
 
         rr.init("rerun_example_screenshot_compare")
-        rr.serve(open_browser=False)
+        rr.serve_web(open_browser=False)
 
     threading.Thread(target=serve, daemon=True).start()
 

@@ -1,17 +1,17 @@
 use std::sync::mpsc::Sender;
 use std::thread;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use arrow::array::{
     ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef};
+use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef as _};
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
 use re_log_types::{ApplicationId, StoreId};
@@ -160,7 +160,12 @@ fn prepare_episode_chunks(
     store_ids
 }
 
-fn load_episode(
+/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
+///
+/// This function processes an episode from the dataset by extracting the relevant data columns and
+/// converting them into appropriate Rerun data structures. It handles different types of data
+/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
+pub fn load_episode(
     dataset: &LeRobotDataset,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
@@ -259,8 +264,7 @@ fn log_episode_task(
             continue;
         };
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         let text = TextDocument::new(task.task.clone());
         chunk = chunk.with_archetype(row_id, timepoint, &text);
 
@@ -285,17 +289,14 @@ fn load_episode_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {
@@ -317,19 +318,16 @@ fn load_episode_depth_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
             .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {

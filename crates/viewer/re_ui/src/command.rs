@@ -42,6 +42,7 @@ pub enum UICommand {
     ToggleMemoryPanel,
     ToggleTopPanel,
     ToggleBlueprintPanel,
+    ExpandBlueprintPanel,
     ToggleSelectionPanel,
     ToggleTimePanel,
     ToggleChunkStoreBrowser,
@@ -85,6 +86,8 @@ pub enum UICommand {
 
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
+
+    CopyTimeRangeLink,
 
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
@@ -162,6 +165,7 @@ impl UICommand {
             Self::TogglePanelStateOverrides => ("Toggle panel state overrides", "Toggle panel state between app blueprint and overrides"),
             Self::ToggleTopPanel => ("Toggle top panel", "Toggle the top panel"),
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
+            Self::ExpandBlueprintPanel => ("Expand blueprint panel", "Expand the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
             Self::ToggleChunkStoreBrowser => ("Toggle chunk store browser", "Toggle the chunk store browser"),
@@ -250,6 +254,12 @@ impl UICommand {
                 "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
             ),
 
+
+            Self::CopyTimeRangeLink => (
+                "Copy link to selected time range",
+                "Copy a link to the part of the active recording within the loop selection bounds."
+            ),
+
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => (
                 "Restart with WebGL",
@@ -326,6 +336,7 @@ impl UICommand {
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
+            Self::ExpandBlueprintPanel => smallvec![],
             Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
             Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
@@ -371,6 +382,8 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => smallvec![],
+
+            Self::CopyTimeRangeLink => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],

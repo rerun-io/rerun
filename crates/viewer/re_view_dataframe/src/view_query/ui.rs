@@ -6,7 +6,7 @@ use re_log_types::{
 };
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
-use re_ui::{list_item, UiExt};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{TimeDragValue, ViewId, ViewSystemExecutionError, ViewerContext};
 
 use crate::view_query::Query;

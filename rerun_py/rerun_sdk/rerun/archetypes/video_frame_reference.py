@@ -54,7 +54,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        indexes=[rr.IndexColumn("video_time", timedelta=1e-9 * frame_timestamps_ns)],
         columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
     )
     ```
@@ -247,8 +247,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

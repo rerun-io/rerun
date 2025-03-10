@@ -32,7 +32,7 @@ class Transform3DExt:
         from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
         axis_length: Float32Like | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Transform3D archetype.
 
@@ -82,7 +82,7 @@ class Transform3DExt:
             if rotation is not None:
                 if quaternion is not None or rotation_axis_angle is not None:
                     raise ValueError(
-                        "`rotation` parameter can't be combined with `quaternion` or `rotation_axis_angle`."
+                        "`rotation` parameter can't be combined with `quaternion` or `rotation_axis_angle`.",
                     )
 
                 is_rotation_axis_angle = False
@@ -120,6 +120,7 @@ class Transform3DExt:
                         "`from_parent` is deprecated as an argument to `Transform3D`; prefer `relation=rerun.TransformRelation.ChildFromParent` instead"
                     ),
                     category=DeprecationWarning,
+                    stacklevel=2,
                 )
 
                 if relation is not None:

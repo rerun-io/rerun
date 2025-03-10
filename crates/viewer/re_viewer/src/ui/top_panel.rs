@@ -1,5 +1,5 @@
 use egui::NumExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
@@ -160,7 +160,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             match source.as_ref() {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RerunGrpcStream { .. }
+                | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
@@ -198,7 +198,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
-            | SmartChannelSource::RerunGrpcStream { .. }
+            | SmartChannelSource::RedapGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk => None,
@@ -222,7 +222,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             }
             re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
             re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
-            | re_smart_channel::SmartChannelSource::RerunGrpcStream { url }
+            | re_smart_channel::SmartChannelSource::RedapGrpcStream { url }
             | re_smart_channel::SmartChannelSource::MessageProxy { url } => {
                 format!("Waiting for data on {url}…")
             }

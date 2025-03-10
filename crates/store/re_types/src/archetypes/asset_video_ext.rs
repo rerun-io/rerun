@@ -46,7 +46,7 @@ impl AssetVideo {
     /// Panics if the serialized blob data doesn't have the right datatype.
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_ns(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
-        use re_types_core::Loggable;
+        use re_types_core::Loggable as _;
 
         re_tracing::profile_function!();
 

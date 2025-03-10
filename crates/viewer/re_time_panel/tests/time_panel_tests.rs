@@ -5,8 +5,8 @@ use egui::Vec2;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
-    build_frame_nr, example_components::MyPoint, external::re_types_core::Component, EntityPath,
-    TimeInt, TimePoint, TimeType, Timeline,
+    build_frame_nr, example_components::MyPoint, external::re_types_core::Component as _,
+    EntityPath, TimeInt, TimePoint, TimeType, Timeline,
 };
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
@@ -238,7 +238,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     test_context.log_entity(entity_path.into(), |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::from(std::collections::BTreeMap::default()),
+            TimePoint::default(),
             &Points2D::new([[0.0, 0.0]]),
         )
     });

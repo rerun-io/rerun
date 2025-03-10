@@ -1,5 +1,5 @@
 use re_types::{
-    archetypes::LineStrips2D, components, Archetype as _, AsComponents as _, ComponentBatch,
+    archetypes::LineStrips2D, components, Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

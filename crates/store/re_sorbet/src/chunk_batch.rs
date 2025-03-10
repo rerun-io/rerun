@@ -1,6 +1,7 @@
 use arrow::{
     array::{
-        ArrayRef as ArrowArrayRef, AsArray, FixedSizeBinaryArray, RecordBatch as ArrowRecordBatch,
+        ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray,
+        RecordBatch as ArrowRecordBatch,
     },
     datatypes::Fields as ArrowFields,
 };
@@ -85,6 +86,15 @@ impl ChunkBatch {
             self.schema.row_id_column(),
             self.columns()[0].as_fixed_size_binary(),
         )
+    }
+
+    /// Returns self but with all rows removed.
+    #[must_use]
+    pub fn drop_all_rows(self) -> Self {
+        Self {
+            schema: self.schema.clone(),
+            sorbet_batch: self.sorbet_batch.drop_all_rows(),
+        }
     }
 }
 

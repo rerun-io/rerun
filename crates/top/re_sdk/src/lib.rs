@@ -40,7 +40,7 @@ pub const DEFAULT_SERVER_PORT: u16 = 9876;
 ///
 /// This isn't used to _host_ the server, only to _connect_ to it.
 pub const DEFAULT_CONNECT_URL: &str =
-    const_format::concatcp!("http://127.0.0.1:{DEFAULT_SERVER_PORT}");
+    const_format::concatcp!("rerun+http://127.0.0.1:", DEFAULT_SERVER_PORT, "/proxy");
 
 /// The default address of a Rerun TCP server which an SDK connects to.
 #[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
@@ -105,9 +105,9 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
 }
-pub use time::{Time, TimePoint, Timeline};
+pub use time::{IndexCell, Time, TimePoint, Timeline};
 
 pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,

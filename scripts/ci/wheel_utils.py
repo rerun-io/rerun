@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def check_expected_wheels(wheels: list[str]) -> None:
-    missing = set(["windows", "macos_intel", "macos_arm", "linux"])
+    missing = {"windows", "macos_intel", "macos_arm", "linux"}
 
     for wheel in wheels:
         if "win_amd64" in wheel:

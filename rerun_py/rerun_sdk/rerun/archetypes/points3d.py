@@ -69,7 +69,7 @@ class Points3D(Points3DExt, Archetype):
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
     for i in range(5):
-        rr.set_time_seconds("time", 10 + i)
+        rr.set_index("time", timedelta=10 + i)
         rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
     ```
     <center>
@@ -109,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        indexes=[rr.TimeSecondsColumn("time", times)],
+        indexes=[rr.IndexColumn("time", timedelta=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),
@@ -132,21 +132,21 @@ class Points3D(Points3DExt, Archetype):
 
     rr.init("rerun_example_points3d_partial_updates", spawn=True)
 
-    positions = [[i, 0, 0] for i in range(0, 10)]
+    positions = [[i, 0, 0] for i in range(10)]
 
-    rr.set_time_sequence("frame", 0)
+    rr.set_index("frame", sequence=0)
     rr.log("points", rr.Points3D(positions))
 
-    for i in range(0, 10):
-        colors = [[20, 200, 20] if n < i else [200, 20, 20] for n in range(0, 10)]
-        radii = [0.6 if n < i else 0.2 for n in range(0, 10)]
+    for i in range(10):
+        colors = [[20, 200, 20] if n < i else [200, 20, 20] for n in range(10)]
+        radii = [0.6 if n < i else 0.2 for n in range(10)]
 
         # Update only the colors and radii, leaving everything else as-is.
-        rr.set_time_sequence("frame", i)
+        rr.set_index("frame", sequence=i)
         rr.log("points", rr.Points3D.from_fields(radii=radii, colors=colors))
 
     # Update the positions and radii, and clear everything else in the process.
-    rr.set_time_sequence("frame", 20)
+    rr.set_index("frame", sequence=20)
     rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
     ```
     <center>
@@ -349,8 +349,8 @@ class Points3D(Points3DExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

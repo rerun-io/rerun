@@ -37,14 +37,14 @@
 
 use std::fmt::{Display, Formatter};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_ui::{
     ColorToken, Hue,
     Scale::{S325, S375},
-    UiExt,
+    UiExt as _,
 };
 
 use crate::{Contents, Item, ItemCollection};

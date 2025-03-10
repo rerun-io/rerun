@@ -78,7 +78,7 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
         # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
         env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
         print(
-            f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+            f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}",
         )
 
     duration = time.time() - start_time
@@ -97,7 +97,8 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
 
 def main() -> None:
     # Ensure we can print unicode characters. Has been historically an issue on Windows CI.
-    sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
 
     checks = [
         ("base_checks", base_checks),
@@ -173,7 +174,10 @@ def main() -> None:
         sys.exit(0)
     else:
         print()
-        print(f"❌ {num_failures} checks / {len(results)} failed!")
+        print(f"❌ {num_failures} checks / {len(results)} failed:")
+        for result in results:
+            if not result.success:
+                print(f"  ❌ {result.command}")
         sys.exit(1)
 
 
@@ -196,37 +200,37 @@ def cargo_deny(results: list[Result]) -> None:
     # Installing is quite quick if it's already installed.
     results.append(run_cargo("install", "--locked cargo-deny@^0.17"))
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target aarch64-apple-darwin check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target aarch64-apple-darwin check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-gnu check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-gnu check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-msvc check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-msvc check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-unknown-linux-gnu check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-unknown-linux-gnu check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target wasm32-unknown-unknown check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target wasm32-unknown-unknown check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-apple-darwin check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-apple-darwin check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-gnu check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-gnu check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-msvc check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-msvc check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-gnu check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-gnu check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-musl check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-musl check"),
     )
     results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-redox check")
+        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-redox check"),
     )
 
 
@@ -237,11 +241,11 @@ def wasm(results: list[Result]) -> None:
             "clippy",
             "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
             clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
-        )
+        ),
     )
     # Check re_renderer examples for wasm32.
     results.append(
-        run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples")
+        run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"),
     )
 
 

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from rerun import bindings
 
-from .recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from .recording_stream import RecordingStream
 
 
 def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
@@ -28,11 +31,14 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
 
     """
 
-    return MemoryRecording(
-        bindings.memory_recording(
-            recording=recording.to_native() if recording is not None else None,
-        )
+    inner = bindings.memory_recording(
+        recording=recording.to_native() if recording is not None else None,
     )
+
+    if inner is None:
+        raise RuntimeError("No recording was provided or set as current.")
+
+    return MemoryRecording(inner)
 
 
 class MemoryRecording:

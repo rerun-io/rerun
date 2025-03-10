@@ -1,4 +1,4 @@
-use arrow::array::Array as ArrowArray;
+use arrow::array::Array as _;
 
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentName;
@@ -29,8 +29,10 @@ impl LatestAtQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub fn new(timeline: TimelineName, at: impl TryInto<TimeInt>) -> Self {
-        let at = at.try_into().unwrap_or(TimeInt::MIN);
-        Self { timeline, at }
+        Self {
+            timeline,
+            at: TimeInt::saturated_nonstatic(at),
+        }
     }
 
     #[inline]

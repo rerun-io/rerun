@@ -62,7 +62,9 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
+def build_and_upload(
+    bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str | None
+) -> None:
     # pypi / extra builds require a web build
     if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")
@@ -102,7 +104,11 @@ def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, targe
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build and upload wheels to GCS")
     parser.add_argument(
-        "--mode", default=BuildMode.PR, type=BuildMode, choices=list(BuildMode), help="What to build for"
+        "--mode",
+        default=BuildMode.PR,
+        type=BuildMode,
+        choices=list(BuildMode),
+        help="What to build for",
     )
     parser.add_argument("--dir", required=True, help="Upload the wheel to the given directory in GCS")
     parser.add_argument("--target", help="Target to build for")

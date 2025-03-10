@@ -104,19 +104,18 @@ def script_setup(
 
     rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
 
-    # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.stdout:
-        rec.stdout(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.stdout(default_blueprint=default_blueprint)
     elif args.serve:
-        rec.serve(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.serve_web(default_blueprint=default_blueprint)
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default URL.
-        rec.connect(args.url, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.connect_grpc(args.url, default_blueprint=default_blueprint)
     elif args.save is not None:
-        rec.save(args.save, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.save(args.save, default_blueprint=default_blueprint)
     elif not args.headless:
-        rec.spawn(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
+        rec.spawn(default_blueprint=default_blueprint)
 
     return rec
 

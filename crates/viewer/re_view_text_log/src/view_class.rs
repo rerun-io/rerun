@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimelineName};
-use re_types::View;
+use re_types::View as _;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, ViewClass, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewerContext,
 };
 
@@ -361,7 +361,7 @@ fn table_ui(
                         let row_time = entry
                             .timepoint
                             .get(timeline)
-                            .copied()
+                            .map(re_log_types::TimeInt::from)
                             .unwrap_or(re_log_types::TimeInt::STATIC);
                         item_ui::time_button(ctx, ui, timeline, row_time);
 

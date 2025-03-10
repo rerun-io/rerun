@@ -4,7 +4,9 @@ use std::time::Duration;
 
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v0::message_proxy_client::MessageProxyClient;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
+use re_uri::ProxyEndpoint;
 use tokio::runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
@@ -13,8 +15,6 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tonic::transport::Endpoint;
-
-use super::MessageProxyUrl;
 
 enum Cmd {
     LogMsg(LogMsg),
@@ -45,7 +45,7 @@ pub struct Client {
 
 impl Client {
     #[expect(clippy::needless_pass_by_value)]
-    pub fn new(url: MessageProxyUrl, options: Options) -> Self {
+    pub fn new(endpoint: ProxyEndpoint, options: Options) -> Self {
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
@@ -58,7 +58,7 @@ impl Client {
                     .build()
                     .expect("Failed to build tokio runtime")
                     .block_on(message_proxy_client(
-                        url.to_http(),
+                        endpoint,
                         cmd_rx,
                         shutdown_rx,
                         options.compression,
@@ -137,12 +137,12 @@ impl Drop for Client {
 }
 
 async fn message_proxy_client(
-    url: String,
+    endpoint: ProxyEndpoint,
     mut cmd_rx: UnboundedReceiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
 ) {
-    let endpoint = match Endpoint::from_shared(url) {
+    let endpoint = match Endpoint::from_shared(endpoint.origin.as_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
             re_log::error!("Invalid message proxy server endpoint: {err}");
@@ -167,7 +167,7 @@ async fn message_proxy_client(
             }
         }
     };
-    let mut client = MessageProxyClient::new(channel);
+    let mut client = MessageProxyServiceClient::new(channel);
 
     let stream = async_stream::stream! {
         loop {
@@ -181,6 +181,10 @@ async fn message_proxy_client(
                                     re_log::error!("Failed to encode message: {err}");
                                     break;
                                 }
+                            };
+
+                            let msg = WriteMessagesRequest {
+                                log_msg: Some(msg),
                             };
 
                             yield msg;

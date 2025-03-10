@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +28,7 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike"]
 class Blob(BlobExt):
     """**Datatype**: A binary blob of data."""
 
-    def __init__(self: Any, data: BlobLike):
+    def __init__(self: Any, data: BlobLike) -> None:
         """Create a new instance of the Blob datatype."""
 
         # You can define your own __init__ function as a member of BlobExt in blob_ext.py
@@ -35,9 +36,9 @@ class Blob(BlobExt):
 
     data: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of BlobExt in blob_ext.py
-        return np.asarray(self.data, dtype=dtype)
+        return np.asarray(self.data, dtype=dtype, copy=copy)
 
 
 if TYPE_CHECKING:

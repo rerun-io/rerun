@@ -44,7 +44,7 @@ class AffixFuzzer4(Archetype):
         fuzz2116: components.AffixFuzzer16ArrayLike | None = None,
         fuzz2117: components.AffixFuzzer17ArrayLike | None = None,
         fuzz2118: components.AffixFuzzer18ArrayLike | None = None,
-    ):
+    ) -> None:
         """Create a new instance of the AffixFuzzer4 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
@@ -254,8 +254,8 @@ class AffixFuzzer4(Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

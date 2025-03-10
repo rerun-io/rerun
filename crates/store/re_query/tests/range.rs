@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
@@ -16,7 +16,7 @@ use re_log_types::{
     EntityPath, TimePoint,
 };
 use re_query::QueryCache;
-use re_types::Archetype;
+use re_types::Archetype as _;
 use re_types_core::Component as _;
 
 // ---
@@ -383,15 +383,15 @@ fn invalidation() {
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
             .get(query.timeline())
-            .copied()
+            .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
             .get(query.timeline())
-            .copied()
+            .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
         let future_timestamp = future_data_timepoint
             .get(query.timeline())
-            .copied()
+            .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
 
         let store = ChunkStore::new_handle(

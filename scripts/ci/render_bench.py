@@ -28,12 +28,13 @@ import json
 import os
 import re
 import textwrap
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Callable, Dict, Generator, List
+from typing import Any, Callable
 
 from google.cloud import storage
 
@@ -99,14 +100,17 @@ class BenchmarkEntry:
         )
 
 
-Benchmarks = Dict[str, List[BenchmarkEntry]]
+Benchmarks = dict[str, list[BenchmarkEntry]]
 
 
 FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+(\d+)\s+ns\/iter")
 
 
 def parse_bencher_line(data: str) -> Measurement:
-    name, ns_iter = FORMAT_BENCHER_RE.match(data).groups()
+    match = FORMAT_BENCHER_RE.match(data)
+    if match is None:
+        raise ValueError(f"invalid bencher line: {data}")
+    name, ns_iter = match.groups()
     return Measurement(name, float(ns_iter), "ns/iter")
 
 
@@ -125,7 +129,7 @@ def parse_sizes_json(data: str) -> list[Measurement]:
     ]
 
 
-Blobs = Dict[str, storage.Blob]
+Blobs = dict[str, storage.Blob]
 
 
 def fetch_blobs(gcs: storage.Client, bucket: str, path_prefix: str) -> Blobs:
@@ -221,7 +225,7 @@ def convert(base_unit: str, unit: str, value: float) -> float:
     return value / UNITS[unit] * UNITS[base_unit]
 
 
-def min_and_max(data: list[float]) -> (float, float):
+def min_and_max(data: list[float]) -> tuple[float, float]:
     min_value = float("inf")
     max_value = float("-inf")
     for value in data:
@@ -242,10 +246,11 @@ def render_html(title: str, benchmarks: Benchmarks) -> str:
         else:
             return f"{entry.commit[0:7]} {date}"
 
-    chartjs = {}
+    chartjs: dict[str, dict[str, Any] | None] = {}
     for name, benchmark in benchmarks.items():
         if len(benchmark) == 0:
             chartjs[name] = None
+            continue
         labels = [label(entry) for entry in benchmark]
         base_unit = benchmark[-1].unit
         data = [convert(base_unit, entry.unit, entry.value) for entry in benchmark]
@@ -297,7 +302,7 @@ def date_type(v: str) -> datetime:
     try:
         return datetime.strptime(v, DATE_FORMAT)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Date must be in {DATE_FORMAT} format")
+        raise argparse.ArgumentTypeError(f"Date must be in {DATE_FORMAT} format") from None
 
 
 class Output(Enum):
@@ -305,6 +310,7 @@ class Output(Enum):
     GCS = "gcs"
     FILE = "file"
 
+    @staticmethod
     def parse(o: str) -> Output:
         if o == "-":
             return Output.STDOUT
@@ -322,12 +328,12 @@ class GcsPath:
 def parse_gcs_path(path: str) -> GcsPath:
     if not path.startswith("gs://"):
         raise ValueError(f"invalid gcs path: {path}")
-    path = path.lstrip("gs://")
+    path = path.removeprefix("gs://")
     try:
         bucket, blob = path.split("/", 1)
         return GcsPath(bucket, blob.rstrip("/"))
     except ValueError:
-        raise ValueError(f"invalid gcs path: {path}")
+        raise ValueError(f"invalid gcs path: {path}") from None
 
 
 def main() -> None:
@@ -353,7 +359,7 @@ def main() -> None:
           - '-' for stdout
           - 'gs://' prefix for GCS
           - local path
-        """
+        """,
         ),
     )
 

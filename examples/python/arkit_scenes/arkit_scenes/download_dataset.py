@@ -168,7 +168,7 @@ def laser_scanner_point_clouds_for_visit_id(visit_id: int, download_dir: Path) -
         ):
             print(
                 f"Error downloading point cloud for visit_id {visit_id} at location "
-                f"{point_cloud_to_visit_id_mapping_url}"
+                f"{point_cloud_to_visit_id_mapping_url}",
             )
             return []
 

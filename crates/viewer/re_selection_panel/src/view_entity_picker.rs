@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use smallvec::SmallVec;
 

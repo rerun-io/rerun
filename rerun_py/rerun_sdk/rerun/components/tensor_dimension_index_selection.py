@@ -22,7 +22,6 @@ class TensorDimensionIndexSelection(datatypes.TensorDimensionIndexSelection, Com
     # You can define your own __init__ function as a member of TensorDimensionIndexSelectionExt in tensor_dimension_index_selection_ext.py
 
     # Note: there are no fields here because TensorDimensionIndexSelection delegates to datatypes.TensorDimensionIndexSelection
-    pass
 
 
 class TensorDimensionIndexSelectionBatch(datatypes.TensorDimensionIndexSelectionBatch, ComponentBatchMixin):

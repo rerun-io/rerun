@@ -1,10 +1,10 @@
 use ahash::HashMap;
 
 use re_viewer_context::{
-    test_context::TestContext, Contents, ViewClassExt, ViewerContext, VisitorControlFlow,
+    test_context::TestContext, Contents, ViewClassExt as _, ViewerContext, VisitorControlFlow,
 };
 
-use crate::ViewportBlueprint;
+use crate::{view_contents::DataQueryPropertyResolver, ViewportBlueprint};
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
@@ -27,6 +27,8 @@ impl TestContextExt for TestContext {
     /// on the current content of the recording store.
     ///
     /// Important pre-requisite:
+    /// - The current timeline must already be set to the timeline of interest, because some
+    ///   updates are timeline-dependant (in particular those related to visible time rane).
     /// - The view classes used by view must be already registered (see
     ///   [`TestContext::register_view_class`]).
     /// - The data store must be already populated for the views to have any content (see, e.g.,
@@ -98,9 +100,9 @@ impl TestContextExt for TestContext {
                                 &visualizable_entities,
                             );
 
-                            let resolver = view_blueprint.contents.build_resolver(
-                                ctx.view_class_registry(),
+                            let resolver = DataQueryPropertyResolver::new(
                                 view_blueprint,
+                                ctx.view_class_registry(),
                                 &maybe_visualizable_entities_per_visualizer,
                                 &visualizable_entities,
                                 &indicated_entities_per_visualizer,

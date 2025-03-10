@@ -29,6 +29,7 @@ import argparse
 import json
 import os
 from collections import defaultdict
+from typing import Any
 
 import requests
 
@@ -117,7 +118,7 @@ for event in ["crash-panic", "crash-signal"]:
 
 ## Deduplicate results and massage output
 
-backtraces = defaultdict(list)
+backtraces: dict[str, list[Any]] = defaultdict(list)
 
 for res in results:
     res["properties"]["timestamp"] = res["timestamp"]
@@ -127,29 +128,29 @@ for res in results:
     backtraces[backtrace].append(res.pop("properties"))
 
 
-def count_uniques(backtrace):
-    return len({prop["user_id"] for prop in backtrace[1]})
+def count_uniques(backtrace_item: tuple[str, list[Any]]) -> int:
+    return len({prop["user_id"] for prop in backtrace_item[1]})
 
 
-backtraces = list(backtraces.items())
-backtraces.sort(key=count_uniques, reverse=True)
+backtrace_list = list(backtraces.items())
+backtrace_list.sort(key=count_uniques, reverse=True)
 
 ## Generate reports
 
-for backtrace, props in backtraces:
+for backtrace, props in backtrace_list:
     n = count_uniques((backtrace, props))
     event = "panic" if props[0]["event"] == "crash-panic" else "signal"
     file_line = props[0].get("file_line")
     signal = props[0].get("signal")
     title = file_line if file_line is not None else signal
 
-    timestamps = sorted(list({prop["timestamp"] for prop in props}))
+    timestamps = sorted({prop["timestamp"] for prop in props})
     first_occurrence = timestamps[0]
     last_occurrence = timestamps[-1]
 
-    targets = sorted(list({prop["target"] for prop in props}))
-    rust_versions = sorted(list({prop["rust_version"] for prop in props}))
-    rerun_versions = sorted(list({prop["rerun_version"] for prop in props}))
+    targets = sorted({prop["target"] for prop in props})
+    rust_versions = sorted({prop["rust_version"] for prop in props})
+    rerun_versions = sorted({prop["rerun_version"] for prop in props})
 
     print(
         f"## {n} distinct user(s) affected by {event} crash @ `{title}`\n"
@@ -164,5 +165,5 @@ for backtrace, props in backtraces:
         "```\n"
         f"   {backtrace.decode('utf-8')}\n"
         "```\n"
-        "-------------------------------------------------------------------------------\n"
+        "-------------------------------------------------------------------------------\n",
     )

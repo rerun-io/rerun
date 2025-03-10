@@ -1,12 +1,12 @@
 use std::net::IpAddr;
 
-use clap::{CommandFactory, Subcommand};
-use itertools::Itertools;
+use clap::{CommandFactory as _, Subcommand};
+use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
-use re_sdk::sink::LogSink;
+use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{commands::RrdCommands, CallSource};
@@ -64,7 +64,7 @@ Examples:
         rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
-        rerun ws://localhost:9877
+        rerun rerun+http://localhost:9877/proxy
 
     Listen for incoming TCP connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
@@ -686,6 +686,9 @@ fn run_impl(
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
+    #[allow(unused_variables)]
+    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+
     // Where do we get the data from?
     let mut catalog_endpoints: Vec<_> = Vec::new();
     let rxs: Vec<Receiver<LogMsg>> = {
@@ -698,14 +701,16 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::MessageProxy { url } = data_sources[0].clone() {
+            if let DataSource::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) =
+                data_sources[0].clone()
+            {
                 // Special case! We are connecting a web-viewer to a gRPC address.
                 // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(url),
+                    source_url: Some(endpoint),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -717,23 +722,44 @@ fn run_impl(
             }
         }
 
-        // We may need to spawn tasks from this point on:
+        let command_sender = command_sender.clone();
+        let on_cmd = Box::new(move |cmd| {
+            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            match cmd {
+                re_data_source::DataSourceCommand::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    rec_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            }
+        });
+
         let mut rxs = data_sources
             .into_iter()
-            .filter_map(|data_source| match data_source.stream(None) {
-                Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
-                Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                    catalog_endpoints.push(endpoint);
-                    None
-                }
-                Err(err) => Some(Err(err)),
-            })
+            .filter_map(
+                |data_source| match data_source.stream(on_cmd.clone(), None) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                        catalog_endpoints.push(endpoint);
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                },
+            )
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
         if let Some(url) = args.connect {
-            let url = url.unwrap_or_else(|| format!("http://{server_addr}"));
-            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(&url, None)?;
+            let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
+            };
+            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
             rxs.push(rx);
         } else {
             // Check if there is already a viewer running and if so, send the data to it.
@@ -821,16 +847,21 @@ fn run_impl(
             let open_browser = args.web_viewer;
 
             let url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
-                format!("temp://localhost:{}", server_addr.port())
+                format!("rerun+http://localhost:{}/proxy", server_addr.port())
             } else {
-                format!("temp://{server_addr}")
+                format!("rerun+http://{server_addr}/proxy")
+            };
+
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                anyhow::bail!("expected `/proxy` endpoint");
             };
 
             // This is the server that serves the Wasm+HTML:
             WebViewerConfig {
                 bind_ip: args.bind.to_string(),
                 web_port: args.web_viewer_port,
-                source_url: Some(url),
+                source_url: Some(endpoint),
                 force_wgpu_backend: args.renderer,
                 video_decoder: args.video_decoder,
                 open_browser,
@@ -842,14 +873,13 @@ fn run_impl(
         Ok(())
     } else if is_another_server_running {
         // Another viewer is already running on the specified address
-        let url = format!("http://{server_addr}")
-            .parse()
-            .expect("should always be valid");
-        re_log::info!(%url, "Another viewer is already running, streaming data to it.");
+        let endpoint: re_uri::ProxyEndpoint =
+            format!("rerun+http://{server_addr}/proxy").parse()?;
+        re_log::info!(%endpoint, "Another viewer is already running, streaming data to it.");
 
         // This spawns its own single-threaded runtime on a separate thread,
         // no need to `rt.enter()`:
-        let sink = re_sdk::sink::GrpcSink::new(url, crate::default_flush_timeout());
+        let sink = re_sdk::sink::GrpcSink::new(endpoint, crate::default_flush_timeout());
 
         for rx in rxs {
             while rx.is_connected() {
@@ -887,13 +917,14 @@ fn run_impl(
             return re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
-                    let mut app = re_viewer::App::new(
+                    let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
                         &call_source.app_env(),
                         startup_options,
                         cc,
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        (command_sender, command_receiver),
                     );
                     for rx in rxs {
                         app.add_receiver(rx);

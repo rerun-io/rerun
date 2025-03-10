@@ -66,6 +66,9 @@ class Example:
     def __repr__(self) -> str:
         return f"Example(subdir={self.subdir}, name={self.name})"
 
+    def __str__(self) -> str:
+        return f"{self.subdir}/{self.name}"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
@@ -101,7 +104,7 @@ def main() -> None:
         pass  # No need to build the C++ SDK
     elif args.no_cpp_build:
         print(
-            "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!"
+            "Skipping cmake configure & build for rerun_c & rerun_prebuilt_cpp - assuming it is already built and up-to-date!",
         )
     else:
         build_cpp_snippets()
@@ -151,6 +154,7 @@ def main() -> None:
             job.get()
 
     print("----------------------------------------------------------")
+    print(f"Active languages: {active_languages}")
     print(f"Comparing {len(examples)} examples…")
 
     for example in examples:
@@ -162,17 +166,28 @@ def main() -> None:
         example_opt_out_compare = example.opt_out_compare()
 
         if "rust" in example_opt_out_entirely:
-            continue  # No baseline to compare against
+            print("SKIPPED: Missing Rust baseline to compare against")
+            continue
 
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
 
-        if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
-            run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+        if "cpp" in active_languages:
+            if "cpp" in example_opt_out_entirely:
+                print("Skipping cpp completely")
+            elif "cpp" in example_opt_out_compare:
+                print("Skipping cpp compare")
+            else:
+                run_comparison(cpp_output_path, rust_output_path, args.full_dump)
 
-        if "py" in active_languages and "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
-            run_comparison(python_output_path, rust_output_path, args.full_dump)
+        if "py" in active_languages:
+            if "py" in example_opt_out_entirely:
+                print("Skipping py completely")
+            elif "py" in example_opt_out_compare:
+                print("Skipping py compare")
+            else:
+                run_comparison(python_output_path, rust_output_path, args.full_dump)
 
     print()
     print("----------------------------------------------------------")
@@ -190,10 +205,10 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
         rust_output_path = run_prebuilt_rust(example, args.release, args.target, args.target_dir)
         check_non_empty_rrd(rust_output_path)
     else:
-        assert False, f"Unknown language: {language}"
+        raise AssertionError(f"Unknown language: {language}")
 
 
-def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None):
+def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None) -> None:
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
@@ -212,7 +227,7 @@ def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | 
     print("")
 
 
-def build_python_sdk(build_env: dict[str, str]):
+def build_python_sdk(build_env: dict[str, str]) -> None:
     print("----------------------------------------------------------")
     print("Building rerun-sdk for Python…")
     start_time = time.time()
@@ -222,7 +237,7 @@ def build_python_sdk(build_env: dict[str, str]):
     print("")
 
 
-def build_cpp_snippets():
+def build_cpp_snippets() -> None:
     print("----------------------------------------------------------")
     print("Build rerun_c & rerun_prebuilt_cpp…")
     start_time = time.time()
@@ -286,7 +301,7 @@ def check_non_empty_rrd(path: str) -> None:
     from pathlib import Path
 
     assert Path(path).stat().st_size > 0
-    print(f"Confirmed output written to {Path(path).absolute()}")
+    # print(f"Confirmed output written to {Path(path).absolute()}")
 
 
 if __name__ == "__main__":

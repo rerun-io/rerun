@@ -20,7 +20,7 @@ class Points2DExt:
         draw_order: datatypes.Float32ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the Points2D archetype.
 

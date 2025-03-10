@@ -14,7 +14,7 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, SerializedComponentBatch};
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -65,7 +65,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let radii = [0.05, 0.01, 0.2, 0.1, 0.3];
 ///
 ///     for (time, positions, color, radius) in itertools::izip!(10..15, positions, colors, radii) {
-///         rec.set_time_seconds("time", time);
+///         rec.set_duration_seconds("time", time);
 ///
 ///         let point_cloud = rerun::Points3D::new(positions)
 ///             .with_colors([color])

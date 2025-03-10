@@ -44,10 +44,10 @@ def test_component_column_selector_fail() -> None:
 def test_component_column_selector_batch() -> None:
     a = blueprint_components.ComponentColumnSelectorBatch(["/entity/path:ComponentName"])
     b = blueprint_components.ComponentColumnSelectorBatch(
-        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName")
+        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName"),
     )
     c = blueprint_components.ComponentColumnSelectorBatch([
-        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName")
+        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName"),
     ])
 
     assert a == b
@@ -79,7 +79,7 @@ def test_selected_columns_batch() -> None:
             "/entity/path:ComponentName",
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
-        ]
+        ],
     ])
     b = blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
@@ -87,7 +87,7 @@ def test_selected_columns_batch() -> None:
             "/entity/path:ComponentName",
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
-        ])
+        ]),
     )
 
     assert a == b
@@ -136,13 +136,13 @@ def test_dataframe_query_property() -> None:
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
-        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
+        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10)),
     )
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
             active=True,
             column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
-        )
+        ),
     )
 
     assert query.apply_latest_at == blueprint_components.ApplyLatestAtBatch(blueprint_components.ApplyLatestAt(True))
@@ -151,7 +151,7 @@ def test_dataframe_query_property() -> None:
         blueprint_components.SelectedColumns([
             datatypes.Utf8("t"),
             blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
-        ])
+        ]),
     )
 
 
@@ -160,7 +160,8 @@ def test_dataframe_query_property_explicit() -> None:
         timeline=blueprint_components.TimelineName("frame"),
         filter_by_range=blueprint_components.FilterByRange(start=TimeInt(seq=1), end=TimeInt(seq=10)),
         filter_is_not_null=blueprint_components.ComponentColumnSelector(
-            entity_path="/entity/path", component="ComponentName"
+            entity_path="/entity/path",
+            component="ComponentName",
         ),
         select=[
             datatypes.Utf8("frame"),
@@ -170,18 +171,18 @@ def test_dataframe_query_property_explicit() -> None:
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
-        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
+        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10)),
     )
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
             active=True,
             column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
-        )
+        ),
     )
 
     assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector(entity_path="/world/robot", component="Position3D"),
-        ])
+        ]),
     )

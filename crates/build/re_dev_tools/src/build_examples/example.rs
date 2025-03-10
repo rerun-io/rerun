@@ -6,7 +6,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use anyhow::Context;
+use anyhow::Context as _;
 
 pub struct Example {
     /// Name of the folder it's stored in.

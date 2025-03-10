@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
     blueprint::components::VisibleTimeRange,
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    Archetype,
+    Archetype as _,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{QueryRange, TimeDragValue, ViewClass, ViewState, ViewerContext};
@@ -44,12 +44,10 @@ pub fn visible_time_range_ui_for_data_result(
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
 ) {
-    // TODO(#8557): Almost certainly this is wrong and should be regular override path.
-    let override_path = data_result.recursive_override_path();
     let query_range = data_result.property_overrides.query_range.clone();
 
     let is_view = false;
-    visible_time_range_ui(ctx, ui, query_range, override_path, is_view);
+    visible_time_range_ui(ctx, ui, query_range, data_result.override_path(), is_view);
 }
 
 /// Draws ui for a visible time range from a given override path and a resulting query range.

@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::IsTerminal;
+use std::io::IsTerminal as _;
 use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
 use std::time::Duration;
@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -90,7 +90,11 @@ pub enum RecordingStreamError {
 
     /// Invalid gRPC server address.
     #[error(transparent)]
-    InvalidGrpcUrl(#[from] re_grpc_client::message_proxy::read::InvalidMessageProxyUrl),
+    UriError(#[from] re_uri::Error),
+
+    /// Invalid endpoint
+    #[error("not a `/proxy` endpoint")]
+    NotAProxyEndpoint,
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -305,86 +309,7 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.20.0", note = "use connect_grpc() instead")]
-    pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc()
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_tcp()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc()
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.20.0", note = "use connect_tcp_opts() instead")]
-    pub fn connect_opts(
-        self,
-        addr: std::net::SocketAddr,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
-        let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect_tcp_opts(
-        self,
-        addr: std::net::SocketAddr,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// remote Rerun instance.
-    ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    /// See also [`Self::connect_grpc_opts`] if you wish to configure the connection.
     ///
     /// ## Example
     ///
@@ -394,7 +319,10 @@ impl RecordingStreamBuilder {
     /// ```
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc_opts(
-            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            format!(
+                "rerun+http://127.0.0.1:{}/proxy",
+                re_grpc_server::DEFAULT_SERVER_PORT
+            ),
             crate::default_flush_timeout(),
         )
     }
@@ -410,7 +338,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_grpc_opts("http://127.0.0.1:9876", re_sdk::default_flush_timeout())?;
+    ///     .connect_grpc_opts("rerun+http://127.0.0.1:9876/proxy", re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc_opts(
@@ -420,13 +348,16 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
+            let url: String = url.into();
+            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
+            else {
+                return Err(RecordingStreamError::NotAProxyEndpoint);
+            };
+
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::GrpcSink::new(
-                    url.into().parse()?,
-                    flush_timeout,
-                )),
+                Box::new(crate::log_sink::GrpcSink::new(endpoint, flush_timeout)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -547,7 +478,7 @@ impl RecordingStreamBuilder {
             return Ok(RecordingStream::disabled());
         }
 
-        let url = format!("http://{}", opts.connect_addr());
+        let url = format!("rerun+http://{}/proxy", opts.connect_addr());
 
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
@@ -731,7 +662,7 @@ impl RecordingStreamBuilder {
 ///
 /// The underlying [`LogSink`] of a [`RecordingStream`] can be changed at any point during its
 /// lifetime by calling [`RecordingStream::set_sink`] or one of the higher level helpers
-/// ([`RecordingStream::connect`], [`RecordingStream::memory`],
+/// ([`RecordingStream::connect_grpc`], [`RecordingStream::memory`],
 /// [`RecordingStream::save`], [`RecordingStream::disconnect`]).
 ///
 /// See [`RecordingStream::set_sink`] for more information.
@@ -1287,7 +1218,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
+                    now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                     now
                 })
@@ -1527,11 +1458,11 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
+                now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
-                for (timeline, time) in now {
-                    row.timepoint.insert(timeline, time);
+                for (timeline, cell) in now {
+                    row.timepoint.insert_index(timeline, cell);
                 }
             }
 
@@ -1730,45 +1661,20 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
-    ///
-    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect(&self) {
-        self.connect_grpc().expect("failed to connect via gRPC");
-    }
-
-    /// Swaps the underlying sink for a sink pre-configured to use the specified address.
-    ///
-    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
-    /// terms of data durability and ordering.
-    /// See [`Self::set_sink`] for more information.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    #[deprecated(since = "0.22.0", note = "use connect_grpc() instead")]
-    pub fn connect_opts(&self, addr: std::net::SocketAddr, flush_timeout: Option<Duration>) {
-        let _ = flush_timeout;
-        self.connect_grpc_opts(format!("http://{addr}"), flush_timeout)
-            .expect("failed to connect via gRPC");
-    }
-
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
     /// the specified address.
     ///
-    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    /// See also [`Self::connect_grpc_opts`] if you wish to configure the connection.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
         self.connect_grpc_opts(
-            format!("http://127.0.0.1:{}", re_grpc_server::DEFAULT_SERVER_PORT),
+            format!(
+                "rerun+http://127.0.0.1:{}/proxy",
+                re_grpc_server::DEFAULT_SERVER_PORT
+            ),
             crate::default_flush_timeout(),
         )
     }
@@ -1793,7 +1699,12 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let sink = crate::log_sink::GrpcSink::new(url.into().parse()?, flush_timeout);
+        let url: String = url.into();
+        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
+            return Err(RecordingStreamError::NotAProxyEndpoint);
+        };
+
+        let sink = crate::log_sink::GrpcSink::new(endpoint, flush_timeout);
 
         self.set_sink(Box::new(sink));
         Ok(())
@@ -1849,7 +1760,10 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(format!("http://{}", opts.connect_addr()), flush_timeout)?;
+        self.connect_grpc_opts(
+            format!("rerun+http://{}/proxy", opts.connect_addr()),
+            flush_timeout,
+        )?;
 
         Ok(())
     }
@@ -2051,11 +1965,11 @@ impl ThreadInfo {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
-        Self::with(|ti| ti.set_time(rid, timeline, time_int));
+    fn set_thread_time(rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
+        Self::with(|ti| ti.set_time(rid, timeline, cell));
     }
 
-    fn unset_thread_time(rid: &StoreId, timeline: Timeline) {
+    fn unset_thread_time(rid: &StoreId, timeline: &TimelineName) {
         Self::with(|ti| ti.unset_time(rid, timeline));
     }
 
@@ -2079,23 +1993,20 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(
-            Timeline::log_time(),
-            Time::now().try_into().unwrap_or(TimeInt::MIN),
-        );
+        timepoint.insert_index(TimelineName::log_time(), IndexCell::timestamp_now());
         timepoint
     }
 
-    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
+    fn set_time(&mut self, rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
         self.timepoints
             .entry(rid.clone())
             .or_default()
-            .insert(timeline, time_int);
+            .insert_index(timeline, cell);
     }
 
-    fn unset_time(&mut self, rid: &StoreId, timeline: Timeline) {
+    fn unset_time(&mut self, rid: &StoreId, timeline: &TimelineName) {
         if let Some(timepoint) = self.timepoints.get_mut(rid) {
-            timepoint.remove(&timeline);
+            timepoint.remove(timeline);
         }
     }
 
@@ -2126,9 +2037,8 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
@@ -2140,11 +2050,51 @@ impl RecordingStream {
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
+            re_log::warn_once!("Recording disabled - call to set_timepoint() ignored");
+        }
+    }
+
+    /// Set the current value of one of the timelines.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// Example:
+    /// ```no_run
+    /// # mod rerun { pub use re_sdk::*; }
+    /// # let rec: rerun::RecordingStream = unimplemented!();
+    /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
+    /// rec.set_index("duration", std::time::Duration::from_millis(123));
+    /// rec.set_index("capture_time", std::time::SystemTime::now());
+    /// ```
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    pub fn set_index(&self, timeline: impl Into<TimelineName>, value: impl TryInto<IndexCell>) {
+        let f = move |inner: &RecordingStreamInner| {
+            let timeline = timeline.into();
+            if let Ok(value) = value.try_into() {
+                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, value);
+            } else {
+                re_log::warn_once!(
+                    "set_index({timeline}): Failed to convert the given value to an IndexCell"
+                );
+            }
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_index() ignored");
         }
     }
 
     /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
@@ -2160,30 +2110,30 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    #[inline]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let sequence = sequence.into();
-            let sequence = if let Ok(seq) = TimeInt::try_from(sequence) {
-                seq
-            } else {
-                re_log::error!(
-                    illegal_value = sequence,
-                    new_value = TimeInt::MIN.as_i64(),
-                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
-                );
-                TimeInt::MIN
-            };
+        self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
+    }
 
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Sequence),
-                sequence,
-            );
-        };
+    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`.
+    #[inline]
+    pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
+        self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
+    }
 
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
-        }
+    /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    ///
+    /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    #[inline]
+    pub fn set_timestamp_seconds_since_epoch(
+        &self,
+        timeline: impl Into<TimelineName>,
+        secs: impl Into<f64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_seconds_since_epoch(secs.into()),
+        );
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -2202,31 +2152,12 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    #[deprecated(
+        note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
+    )]
+    #[inline]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let seconds = seconds.into();
-            let time = Time::from_seconds_since_epoch(seconds);
-            let time = if let Ok(time) = TimeInt::try_from(time) {
-                time
-            } else {
-                re_log::error!(
-                    illegal_value = seconds,
-                    new_value = TimeInt::MIN.as_i64(),
-                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
-                );
-                TimeInt::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Time),
-                time,
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
-        }
+        self.set_duration_seconds(timeline, seconds);
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -2245,31 +2176,19 @@ impl RecordingStream {
     /// - [`Self::set_time_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let ns = ns.into();
-            let time = Time::from_ns_since_epoch(ns);
-            let time = if let Ok(time) = TimeInt::try_from(time) {
-                time
-            } else {
-                re_log::error!(
-                    illegal_value = ns,
-                    new_value = TimeInt::MIN.as_i64(),
-                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
-                );
-                TimeInt::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                Timeline::new(timeline, TimeType::Time),
-                time,
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
-        }
+    #[deprecated(
+        note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
+    )]
+    #[inline]
+    pub fn set_time_nanos(
+        &self,
+        timeline: impl Into<TimelineName>,
+        nanos_since_epoch: impl Into<i64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
+        );
     }
 
     /// Clears out the current time of the recording for the specified timeline, for the
@@ -2286,9 +2205,7 @@ impl RecordingStream {
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
-            // TODO(#9084): no need to clear two timelines
-            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_sequence(timeline));
-            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_temporal(timeline));
+            ThreadInfo::unset_thread_time(&inner.info.store_id, &timeline);
         };
 
         if self.with(f).is_none() {

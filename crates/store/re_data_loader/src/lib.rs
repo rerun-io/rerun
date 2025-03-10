@@ -15,11 +15,11 @@ mod loader_directory;
 mod loader_rrd;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod lerobot;
+pub mod lerobot;
 
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
-mod loader_lerobot;
+pub mod loader_lerobot;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
@@ -144,18 +144,19 @@ impl DataLoaderSettings {
                 args.push("--static".to_owned());
             }
 
-            for (timeline, time) in timepoint.iter() {
-                match timeline.typ() {
+            for (timeline, cell) in timepoint.iter() {
+                // TODO(#8635): update this
+                match cell.typ() {
                     re_log_types::TimeType::Time => {
                         args.extend([
                             "--time".to_owned(),
-                            format!("{}={}", timeline.name(), time.as_i64()),
+                            format!("{}={}", timeline, cell.as_i64()),
                         ]);
                     }
                     re_log_types::TimeType::Sequence => {
                         args.extend([
                             "--sequence".to_owned(),
-                            format!("{}={}", timeline.name(), time.as_i64()),
+                            format!("{}={}", timeline, cell.as_i64()),
                         ]);
                     }
                 }

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use egui::NumExt;
+use egui::NumExt as _;
 
 use re_ui::{list_item, DesignTokens};
 

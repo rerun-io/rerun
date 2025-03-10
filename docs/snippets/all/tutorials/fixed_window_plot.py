@@ -19,7 +19,7 @@ rr.send_blueprint(
             start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
             end=rrb.TimeRangeBoundary.cursor_relative(),
         ),
-    )
+    ),
 )
 
 cur_time = time.time()
@@ -33,6 +33,6 @@ while True:
 
     value += np.random.normal()
 
-    rr.set_time_seconds("time", cur_time)
+    rr.set_index("time", datetime=cur_time)
 
     rr.log("random_walk", rr.Scalar(value))

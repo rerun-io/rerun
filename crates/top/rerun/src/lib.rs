@@ -39,7 +39,7 @@
 //! Install it with `cargo install rerun-cli --locked`.
 //!
 //! Running just `rerun` will start the viewer, waiting for the logging library to connect
-//! using [`RecordingStreamBuilder::connect`] (see below).
+//! using [`RecordingStreamBuilder::connect_grpc`] (see below).
 //!
 //! You can run `rerun --help` for more info.
 //!

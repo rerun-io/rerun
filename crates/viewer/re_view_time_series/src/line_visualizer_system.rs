@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
@@ -8,7 +8,7 @@ use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Component, Loggable,
+    Archetype as _, Component as _, Loggable as _,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;

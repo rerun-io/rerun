@@ -72,15 +72,15 @@ class Image(ImageExt, Archetype):
     rr.init("rerun_example_image_formats", spawn=True)
 
     # Simple gradient image, logged in different formats.
-    image = np.array([[[x, min(255, x + y), y] for x in range(0, 256)] for y in range(0, 256)], dtype=np.uint8)
+    image = np.array([[[x, min(255, x + y), y] for x in range(256)] for y in range(256)], dtype=np.uint8)
     rr.log("image_rgb", rr.Image(image))
     rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
     rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
 
     # New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
-    y = bytes([128 for y in range(0, 256) for x in range(0, 256)])
-    u = bytes([x * 2 for y in range(0, 256) for x in range(0, 128)])  # Half horizontal resolution for chroma.
-    v = bytes([y for y in range(0, 256) for x in range(0, 128)])
+    y = bytes([128 for y in range(256) for x in range(256)])
+    u = bytes([x * 2 for y in range(256) for x in range(128)])  # Half horizontal resolution for chroma.
+    v = bytes([y for y in range(256) for x in range(128)])
     rr.log("image_yuv422", rr.Image(bytes=y + u + v, width=256, height=256, pixel_format=rr.PixelFormat.Y_U_V16_FullRange))
     ```
     <center>
@@ -226,8 +226,8 @@ class Image(ImageExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

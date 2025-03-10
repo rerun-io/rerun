@@ -110,7 +110,7 @@ class LineStrips2D(Archetype):
         show_labels: datatypes.BoolLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
+    ) -> None:
         """
         Create a new instance of the LineStrips2D archetype.
 
@@ -324,8 +324,8 @@ class LineStrips2D(Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1
-                num_rows = shape[0] if len(shape) >= 1 else 1
+                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

@@ -168,10 +168,9 @@ impl RerunArgs {
         match &self.connect {
             Some(Some(url)) => return Ok(RerunBehavior::Connect(url.clone())),
             Some(None) => {
-                return Ok(RerunBehavior::Connect(format!(
-                    "http://127.0.0.1:{}",
-                    re_grpc_server::DEFAULT_SERVER_PORT,
-                )))
+                return Ok(RerunBehavior::Connect(
+                    re_sdk::DEFAULT_CONNECT_URL.to_owned(),
+                ))
             }
             None => {}
         }

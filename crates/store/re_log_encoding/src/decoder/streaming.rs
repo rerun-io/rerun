@@ -1,10 +1,10 @@
 use std::pin::Pin;
 
-use bytes::{Buf, BytesMut};
+use bytes::{Buf as _, BytesMut};
 use re_build_info::CrateVersion;
 use re_log::external::log::warn;
 use re_log_types::LogMsg;
-use tokio::io::{AsyncBufRead, AsyncReadExt};
+use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     EncodingOptions, VersionPolicy,
 };
 
-use super::{read_options, DecodeError, FileHeader};
+use super::{options_from_bytes, DecodeError, FileHeader};
 
 /// A decoded [`LogMsg`] with extra contextual information.
 ///
@@ -74,7 +74,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, options) = read_options(version_policy, &data)?;
+        let (version, options) = options_from_bytes(version_policy, &data)?;
 
         Ok(Self {
             version,
@@ -84,6 +84,17 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
         })
+    }
+
+    pub fn new_with_options(version: CrateVersion, options: EncodingOptions, reader: R) -> Self {
+        Self {
+            version,
+            options,
+            reader,
+            unprocessed_bytes: BytesMut::new(),
+            expect_more_data: false,
+            num_bytes_read: FileHeader::SIZE as _,
+        }
     }
 
     /// Returns true if `data` can be successfully decoded into a `FileHeader`.
@@ -148,7 +159,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 let data = &unprocessed_bytes[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match read_options(VersionPolicy::Warn, data) {
+                match options_from_bytes(VersionPolicy::Warn, data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.options = options;
@@ -209,7 +220,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     continue;
                 }
 
-                re_log::debug!("Reached end of stream, iterator complete");
+                re_log::trace!("Reached end of stream, iterator complete");
                 return std::task::Poll::Ready(None);
             };
 
@@ -239,7 +250,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
     use re_build_info::CrateVersion;
-    use tokio_stream::StreamExt;
+    use tokio_stream::StreamExt as _;
 
     use crate::{
         decoder::{

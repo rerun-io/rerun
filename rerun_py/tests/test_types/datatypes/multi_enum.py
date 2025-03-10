@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -20,7 +21,7 @@ __all__ = ["MultiEnum", "MultiEnumArrayLike", "MultiEnumBatch", "MultiEnumLike"]
 
 @define(init=False)
 class MultiEnum:
-    def __init__(self: Any, value1: datatypes.EnumTestLike, value2: datatypes.ValuedEnumLike | None = None):
+    def __init__(self: Any, value1: datatypes.EnumTestLike, value2: datatypes.ValuedEnumLike | None = None) -> None:
         """
         Create a new instance of the MultiEnum datatype.
 

@@ -7,6 +7,8 @@ import uuid
 import pyarrow as pa
 import pytest
 import rerun as rr
+from rerun_bindings.rerun_bindings import Schema
+from rerun_bindings.types import AnyColumn, ComponentLike, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
 RECORDING_ID = uuid.uuid4()
@@ -16,10 +18,10 @@ def test_load_recording() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rrd = tmpdir + "/tmp.rrd"
 
-        with rr.new_recording("rerun_example_test_recording") as rec:
-            rr.save(rrd, recording=rec)
-            rr.set_time_sequence("my_index", 1, recording=rec)
-            rr.log("log", rr.TextLog("Hello"), recording=rec)
+        with rr.RecordingStream("rerun_example_test_recording") as rec:
+            rec.save(rrd)
+            rec.set_index("my_index", sequence=1)
+            rec.log("log", rr.TextLog("Hello"))
 
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
@@ -49,13 +51,13 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.new_recording(APP_ID, recording_id=RECORDING_ID) as rec:
-                rr.save(rrd, recording=rec)
-                rr.set_time_sequence("my_index", 1, recording=rec)
-                rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]), recording=rec)
-                rr.set_time_sequence("my_index", 7, recording=rec)
-                rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]), recording=rec)
-                rr.log("static_text", rr.TextLog("Hello"), static=True, recording=rec)
+            with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+                rec.save(rrd)
+                rec.set_index("my_index", sequence=1)
+                rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
+                rec.set_index("my_index", sequence=7)
+                rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+                rec.log("static_text", rr.TextLog("Hello"), static=True)
 
             self.recording = rr.dataframe.load_recording(rrd)
 
@@ -95,7 +97,7 @@ class TestDataframe:
         assert self.recording.recording_id() == str(RECORDING_ID)
 
     def test_schema_recording(self) -> None:
-        schema = self.recording.schema()
+        schema: Schema = self.recording.schema()
 
         # log_tick, log_time, my_index
         assert len(schema.index_columns()) == 3
@@ -178,7 +180,7 @@ class TestDataframe:
         assert table.num_rows == 1
 
     def test_content_filters(self) -> None:
-        filter_expressions = [
+        filter_expressions: list[ViewContentsLike] = [
             "+/** -/static_text",
             """
             +/**
@@ -198,25 +200,24 @@ class TestDataframe:
 
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
-        index_col_selectors = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
+        index_col_selectors: list[AnyColumn] = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
-        obj_selectors = [
-            rr.dataframe.ComponentColumnSelector("points", selector)
-            for selector in [
-                rr.components.Position3D,
-                "rerun.components.Position3D",
-                "Position3D",
-                "position3D",
-            ]
+        selectors: list[ComponentLike] = [
+            rr.components.Position3D,
+            "rerun.components.Position3D",
+            "Position3D",
+            "position3D",
         ]
-        str_selectors = [
+
+        all_selectors: list[AnyColumn] = [
+            *[rr.dataframe.ComponentColumnSelector("points", selector) for selector in selectors],
             "/points:rerun.components.Position3D",
             "/points:Position3D",
             "/points:position3d",
         ]
 
         for index_selector in index_col_selectors:
-            for col_selector in obj_selectors + str_selectors:
+            for col_selector in all_selectors:
                 batches = view.select(index_selector, col_selector)
 
                 table = pa.Table.from_batches(batches, batches.schema)
@@ -314,7 +315,7 @@ class TestDataframe:
             pa.array(
                 [0, 5, 9],
                 type=pa.int64(),
-            )
+            ),
         ])
 
         assert table.column("my_index").equals(expected_index)
@@ -350,7 +351,7 @@ class TestDataframe:
         assert table.column("/points:Position3D")[0].values.equals(self.expected_pos1)
 
     def test_view_syntax(self) -> None:
-        good_content_expressions = [
+        good_content_expressions: list[ViewContentsLike] = [
             {"points": rr.components.Position3D},
             {"points": [rr.components.Position3D]},
             {"points": "rerun.components.Position3D"},
@@ -368,7 +369,7 @@ class TestDataframe:
             assert table.num_columns == 4
             assert table.num_rows == 2
 
-        bad_content_expressions = [
+        bad_content_expressions: list[ViewContentsLike] = [
             {"points": rr.components.Position2D},
             {"point": [rr.components.Position3D]},
         ]
@@ -388,8 +389,8 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.new_recording("rerun_example_test_recording") as rec:
-                rr.save(rrd, recording=rec)
+            with rr.RecordingStream("rerun_example_test_recording") as rec:
+                rec.save(rrd)
                 rr.dataframe.send_dataframe(df, rec=rec)
 
             round_trip_recording = rr.dataframe.load_recording(rrd)

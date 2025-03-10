@@ -47,7 +47,11 @@ def download_with_progress(url: str, dest: Path) -> None:
     total_size = int(resp.headers.get("content-length", 0))
     with open(dest, "wb") as dest_file:
         with tqdm(
-            desc="Downloading model", total=total_size, unit="iB", unit_scale=True, unit_divisor=1024
+            desc="Downloading model",
+            total=total_size,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as progress:
             for data in resp.iter_content(chunk_size):
                 dest_file.write(data)
@@ -102,7 +106,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: cv2.typin
     # TODO(jleibs): we could instead draw each mask as a separate image layer, but the current layer-stacking
     # does not produce great results.
     masks_with_ids = list(enumerate(masks, start=1))
-    masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)  # type: ignore[no-any-return]
+    masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)
 
     # Layer all of the masks together, using the id as class-id in the segmentation
     segmentation_img = np.zeros((image.shape[0], image.shape[1]))
@@ -198,11 +202,11 @@ def main() -> None:
     if len(args.images) == 0:
         logging.info("No image provided. Using default.")
         args.images = [
-            "https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/truck.jpg"
+            "https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/truck.jpg",
         ]
 
     for n, image_uri in enumerate(args.images):
-        rr.set_time_sequence("image", n)
+        rr.set_index("image", sequence=n)
         image = load_image(image_uri)
         run_segmentation(mask_generator, image)
 

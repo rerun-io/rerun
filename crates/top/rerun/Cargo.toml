@@ -98,6 +98,7 @@ run = [
   "dep:re_data_source",
   "re_log_encoding/encoder",
   "re_log_encoding/decoder",
+  "dep:re_viewer_context",
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
@@ -134,6 +135,7 @@ re_memory.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
+re_uri.workspace = true
 re_video.workspace = true
 
 anyhow.workspace = true
@@ -152,6 +154,7 @@ re_grpc_server = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
+re_viewer_context = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 env_logger = { workspace = true, optional = true }

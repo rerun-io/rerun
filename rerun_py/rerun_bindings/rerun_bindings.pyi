@@ -1,6 +1,7 @@
 import os
+from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Iterator, Optional, Sequence, Union
+from typing import Any, Callable, Optional
 
 import pyarrow as pa
 
@@ -27,18 +28,17 @@ class IndexColumnDescriptor:
     column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
     """
 
+    @property
     def name(self) -> str:
         """
         The name of the index.
 
         This property is read-only.
         """
-        ...
 
     @property
     def is_static(self) -> bool:
         """Part of generic ColumnDescriptor interface: always False for Index."""
-        ...
 
 class IndexColumnSelector:
     """
@@ -48,7 +48,7 @@ class IndexColumnSelector:
     generally correspond to Rerun timelines.
     """
 
-    def __init__(self, index: str):
+    def __init__(self, index: str) -> None:
         """
         Create a new `IndexColumnSelector`.
 
@@ -59,14 +59,13 @@ class IndexColumnSelector:
 
         """
 
-        ...
+    @property
     def name(self) -> str:
         """
         The name of the index.
 
         This property is read-only.
         """
-        ...
 
 class ComponentColumnDescriptor:
     """
@@ -86,7 +85,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
     @property
     def component_name(self) -> str:
@@ -95,7 +93,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
     @property
     def is_static(self) -> bool:
@@ -104,7 +101,6 @@ class ComponentColumnDescriptor:
 
         This property is read-only.
         """
-        ...
 
 class ComponentColumnSelector:
     """
@@ -113,7 +109,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike):
+    def __init__(self, entity_path: str, component: ComponentLike) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -125,7 +121,6 @@ class ComponentColumnSelector:
             The component to select
 
         """
-        ...
     @property
     def entity_path(self) -> str:
         """
@@ -133,7 +128,6 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-        ...
 
     @property
     def component_name(self) -> str:
@@ -142,16 +136,14 @@ class ComponentColumnSelector:
 
         This property is read-only.
         """
-        ...
 
-class VectorDistanceMetric(Enum):
+class VectorDistanceMetric(Enum):  # type: ignore[misc]
     """Which distance metric for use for vector index."""
 
     L2: VectorDistanceMetric
     COSINE: VectorDistanceMetric
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
-    ...
 
 class Schema:
     """
@@ -161,17 +153,14 @@ class Schema:
     [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
     """
 
-    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]:
+    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
         """Iterate over all the column descriptors in the schema."""
-        ...
 
     def index_columns(self) -> list[IndexColumnDescriptor]:
         """Return a list of all the index columns in the schema."""
-        ...
 
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
-        ...
 
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
         """
@@ -190,7 +179,6 @@ class Schema:
             The column descriptor, if it exists.
 
         """
-        ...
 
 class RecordingView:
     """
@@ -218,7 +206,6 @@ class RecordingView:
         This schema will only contain the columns that are included in the view via
         the view contents.
         """
-        ...
 
     def filter_range_sequence(self, start: int, end: int) -> RecordingView:
         """
@@ -243,7 +230,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_range_seconds(self, start: float, end: float) -> RecordingView:
         """
@@ -268,7 +254,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_range_nanos(self, start: int, end: int) -> RecordingView:
         """
@@ -293,7 +278,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
@@ -319,7 +303,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def filter_is_not_null(self, column: AnyComponentColumn) -> RecordingView:
         """
@@ -341,7 +324,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
@@ -368,7 +350,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def fill_latest_at(self) -> RecordingView:
         """
@@ -382,7 +363,6 @@ class RecordingView:
             The original view will not be modified.
 
         """
-        ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
@@ -416,7 +396,6 @@ class RecordingView:
 
         """
 
-        ...
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
@@ -444,7 +423,6 @@ class RecordingView:
             A reader that can be used to read out the selected data.
 
         """
-        ...
 
 class Recording:
     """
@@ -462,7 +440,6 @@ class Recording:
 
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
-        ...
 
     def view(
         self,
@@ -529,15 +506,12 @@ class Recording:
         ```
 
         """
-        ...
 
     def recording_id(self) -> str:
         """The recording ID of the recording."""
-        ...
 
     def application_id(self) -> str:
         """The application ID of the recording."""
-        ...
 
 class RRDArchive:
     """
@@ -548,12 +522,10 @@ class RRDArchive:
 
     def num_recordings(self) -> int:
         """The number of recordings in the archive."""
-        ...
     def all_recordings(self) -> list[Recording]:
         """All the recordings in the archive."""
-        ...
 
-def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
+def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
     """
     Load a single recording from an RRD file.
 
@@ -561,7 +533,7 @@ def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike
+    path_to_rrd : str | os.PathLike[str]
         The path to the file to load.
 
     Returns
@@ -570,15 +542,14 @@ def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
         The loaded recording.
 
     """
-    ...
 
-def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
+def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
     Load a rerun archive from an RRD file.
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike
+    path_to_rrd : str | os.PathLike[str]
         The path to the file to load.
 
     Returns
@@ -587,7 +558,6 @@ def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
         The loaded archive.
 
     """
-    ...
 
 class StorageNodeClient:
     """
@@ -597,7 +567,9 @@ class StorageNodeClient:
     """
 
     def query_catalog(
-        self, columns: Optional[list[str]] = None, recording_ids: Optional[list[str]] = None
+        self,
+        columns: Optional[list[str]] = None,
+        recording_ids: Optional[list[str]] = None,
     ) -> pa.RecordBatchReader:
         """
         Get the metadata for recordings in the storage node.
@@ -610,7 +582,6 @@ class StorageNodeClient:
             Fetch metadata of only specific recordings. If `None`, fetch for all.
 
         """
-        ...
 
     def get_recording_schema(self, id: str) -> Schema:
         """
@@ -627,7 +598,6 @@ class StorageNodeClient:
             The schema of the recording.
 
         """
-        ...
 
     def register(self, entry: str, storage_url: str, metadata: Optional[TableLike] = None) -> str:
         """
@@ -644,7 +614,6 @@ class StorageNodeClient:
             This Table must contain only a single row.
 
         """
-        ...
 
     def update_catalog(self, metadata: TableLike) -> None:
         """
@@ -659,7 +628,6 @@ class StorageNodeClient:
             A pyarrow Table or RecordBatch containing the metadata to update.
 
         """
-        ...
 
     def open_recording(self, id: str) -> Recording:
         """
@@ -679,7 +647,6 @@ class StorageNodeClient:
             The opened recording.
 
         """
-        ...
 
     def download_recording(self, id: str) -> Recording:
         """
@@ -698,7 +665,6 @@ class StorageNodeClient:
             The opened recording.
 
         """
-        ...
 
     def create_vector_index(
         self,
@@ -728,7 +694,6 @@ class StorageNodeClient:
             The distance metric to use for the index.
 
         """
-        ...
 
     def create_fts_index(
         self,
@@ -755,7 +720,6 @@ class StorageNodeClient:
             The base tokenizer to use.
 
         """
-        ...
 
     def search_vector_index(
         self,
@@ -784,7 +748,6 @@ class StorageNodeClient:
             The results of the query.
 
         """
-        ...
 
     def search_fts_index(
         self,
@@ -813,13 +776,19 @@ class StorageNodeClient:
             The results of the query.
 
         """
-        ...
 
 def connect(addr: str) -> StorageNodeClient:
     """
     Load a rerun archive from an RRD file.
 
     Required-feature: `remote`
+
+    Rerun uses it's own custom URI scheme. The following are valid
+    addresses:
+
+    * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
+    * `rerun+http://localhost:51234` Falls back to using HTTP only.
+    * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
 
     Parameters
     ----------
@@ -832,4 +801,341 @@ def connect(addr: str) -> StorageNodeClient:
         The connected client.
 
     """
-    ...
+
+# AI generated stubs for `PyRecordingStream` related class and functions
+# TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust
+
+class PyRecordingStream:
+    def is_forked_child(self) -> bool:
+        """
+        Determine if this stream is operating in the context of a forked child process.
+
+        This means the stream was created in the parent process. It now exists in the child
+        process by way of fork, but it is effectively a zombie since its batcher and sink
+        threads would not have been copied.
+
+        Calling operations such as flush or set_sink will result in an error.
+        """
+
+class PyMemorySinkStorage:
+    def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
+        """
+        Concatenate the contents of the [`MemorySinkStorage`] as bytes.
+
+        Note: This will do a blocking flush before returning!
+        """
+    def num_msgs(self) -> int:
+        """
+        Count the number of pending messages in the [`MemorySinkStorage`].
+
+        This will do a blocking flush before returning!
+        """
+    def drain_as_bytes(self) -> bytes:
+        """
+        Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
+
+        This will do a blocking flush before returning!
+        """
+
+class PyBinarySinkStorage:
+    def read(self, *, flush: bool = True) -> bytes:
+        """
+        Read the bytes from the binary sink.
+
+        If `flush` is `true`, the sink will be flushed before reading.
+        """
+    def flush(self) -> None:
+        """Flush the binary sink manually."""
+
+#
+# init
+#
+
+def new_recording(
+    application_id: str,
+    recording_id: Optional[str] = None,
+    make_default: bool = True,
+    make_thread_default: bool = True,
+    application_path: Optional[str | os.PathLike[str]] = None,
+    default_enabled: bool = True,
+) -> PyRecordingStream:
+    """Create a new recording stream."""
+
+def new_blueprint(
+    application_id: str,
+    make_default: bool = True,
+    make_thread_default: bool = True,
+    default_enabled: bool = True,
+) -> PyRecordingStream:
+    """Create a new blueprint stream."""
+
+def shutdown() -> None:
+    """Shutdown the Rerun SDK."""
+
+def cleanup_if_forked_child() -> None:
+    """Cleans up internal state if this is the child of a forked process."""
+
+def spawn(
+    port: int = 9876,
+    memory_limit: str = ...,
+    hide_welcome_screen: bool = False,
+    executable_name: str = ...,
+    executable_path: Optional[str] = None,
+    extra_args: list[str] = ...,
+    extra_env: list[tuple[str, str]] = ...,
+) -> None:
+    """Spawn a new viewer."""
+
+#
+# recordings
+#
+
+def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+    """Get the current recording stream's application ID."""
+
+def get_recording_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+    """Get the current recording stream's recording ID."""
+
+def get_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
+
+def get_global_data_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the global scope, if any."""
+
+def set_global_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the global scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_thread_local_data_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active data recording in the thread-local scope, if any."""
+
+def set_thread_local_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the thread-local scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_blueprint_recording(overrides: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
+
+def get_global_blueprint_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the global scope, if any."""
+
+def set_global_blueprint_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the global scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+def get_thread_local_blueprint_recording() -> Optional[PyRecordingStream]:
+    """Returns the currently active blueprint recording in the thread-local scope, if any."""
+
+def set_thread_local_blueprint_recording(
+    recording: Optional[PyRecordingStream] = None,
+) -> Optional[PyRecordingStream]:
+    """
+    Replaces the currently active recording in the thread-local scope with the specified one.
+
+    Returns the previous one, if any.
+    """
+
+#
+# sinks
+#
+
+def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
+    """Whether the recording stream enabled."""
+
+def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
+    """Create a new binary stream sink, and return the associated binary stream."""
+
+def connect_grpc(
+    url: Optional[str],
+    flush_timeout_sec: Optional[float] = ...,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL."""
+
+def connect_grpc_blueprint(
+    url: Optional[str],
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: PyRecordingStream,
+) -> None:
+    """Special binding for directly sending a blueprint stream to a connection."""
+
+def save(
+    path: str,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Save the recording stream to a file."""
+
+def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
+    """Special binding for directly savings a blueprint stream to a file."""
+
+def stdout(
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Save to stdout."""
+
+def memory_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyMemorySinkStorage]:
+    """Create an in-memory rrd file."""
+
+def set_callback_sink(
+    callback: Callable[[bytes], Any],
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set callback sink."""
+
+def serve_web(
+    open_browser: bool,
+    web_port: Optional[int],
+    grpc_port: Optional[int],
+    server_memory_limit: str,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Serve a web-viewer."""
+
+def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
+    """
+    Disconnect from remote server (if any).
+
+    Subsequent log messages will be buffered and either sent on the next call to `connect`,
+    or shown with `show`.
+    """
+
+def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:
+    """Block until outstanding data has been flushed to the sink."""
+
+#
+# time
+#
+
+def set_time_sequence(
+    timeline: str,
+    sequence: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the current time for this thread as an integer sequence."""
+
+def set_time_duration_nanos(
+    timeline: str,
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the current duration for this thread in nanoseconds."""
+
+def set_time_timestamp_nanos_since_epoch(
+    timeline: str,
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the current time for this thread in nanoseconds."""
+
+def disable_timeline(
+    timeline: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Clear time information for the specified timeline on this thread."""
+
+def reset_time(recording: Optional[PyRecordingStream] = None) -> None:
+    """Clear all timeline information on this thread."""
+
+#
+# log any
+#
+
+def log_arrow_msg(
+    entity_path: str,
+    components: dict[Any, Any],
+    static_: bool,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Log an arrow message."""
+
+def send_arrow_chunk(
+    entity_path: str,
+    timelines: dict[Any, Any],
+    components: dict[Any, Any],
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """
+    Directly send an arrow chunk to the recording stream.
+
+    Params
+    ------
+    entity_path: `str`
+        The entity path to log the chunk to.
+    timelines: `Dict[str, arrow::Int64Array]`
+        A dictionary mapping timeline names to their values.
+    components: `Dict[str, arrow::ListArray]`
+        A dictionary mapping component names to their values.
+    """
+
+def log_file_from_path(
+    file_path: str | os.PathLike[str],
+    entity_path_prefix: Optional[str] = None,
+    static_: bool = False,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Log a file by path."""
+
+def log_file_from_contents(
+    file_path: str | os.PathLike[str],
+    file_contents: bytes,
+    entity_path_prefix: Optional[str] = None,
+    static_: bool = False,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Log a file by contents."""
+
+def send_blueprint(
+    blueprint: PyMemorySinkStorage,
+    make_active: bool = False,
+    make_default: bool = True,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Send a blueprint to the given recording stream."""
+
+#
+# misc
+#
+
+def version() -> str:
+    """Return a verbose version string."""
+
+def get_app_url() -> str:
+    """
+    Get an url to an instance of the web-viewer.
+
+    This may point to app.rerun.io or localhost depending on
+    whether [`start_web_viewer_server()`] was called.
+    """
+
+def start_web_viewer_server(port: int) -> None:
+    """Start a web server to host the run web-assets."""
+
+def escape_entity_path_part(part: str) -> str:
+    """Escape an entity path."""
+
+def new_entity_path(parts: list[str]) -> str:
+    """Create an entity path."""
+
+def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
+    """
+    Reads the timestamps of all frames in a video asset.
+
+    Implementation note:
+    On the Python side we start out with a pyarrow array of bytes. Converting it to
+    Python `bytes` can be done with `to_pybytes` but this requires copying the data.
+    So instead, we pass the arrow array directly.
+    """

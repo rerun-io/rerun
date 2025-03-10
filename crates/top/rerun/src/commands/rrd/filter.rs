@@ -1,4 +1,4 @@
-use std::{collections::HashSet, io::IsTerminal};
+use std::{collections::HashSet, io::IsTerminal as _};
 
 use anyhow::Context as _;
 use arrow::{
@@ -104,7 +104,7 @@ impl FilterCommand {
                 Ok(size_bytes)
             });
 
-        for res in rx_decoder {
+        for (_source, res) in rx_decoder {
             let mut is_success = true;
 
             match res {
