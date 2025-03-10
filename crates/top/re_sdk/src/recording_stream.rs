@@ -2110,11 +2110,13 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    #[inline]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
     }
 
     /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`.
+    #[inline]
     pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
         self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
     }
@@ -2122,6 +2124,7 @@ impl RecordingStream {
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
     ///
     /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    #[inline]
     pub fn set_timestamp_seconds_since_epoch(
         &self,
         timeline: impl Into<TimelineName>,
@@ -2152,6 +2155,7 @@ impl RecordingStream {
     #[deprecated(
         note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
     )]
+    #[inline]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         self.set_duration_seconds(timeline, seconds);
     }
@@ -2175,6 +2179,7 @@ impl RecordingStream {
     #[deprecated(
         note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
     )]
+    #[inline]
     pub fn set_time_nanos(
         &self,
         timeline: impl Into<TimelineName>,
