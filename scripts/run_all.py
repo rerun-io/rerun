@@ -53,7 +53,7 @@ SKIP_LIST = [
     "examples/python/external_data_loader",
 ]
 
-MAC_SKIP_LIST = []
+MAC_SKIP_LIST: list[str] = []
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
