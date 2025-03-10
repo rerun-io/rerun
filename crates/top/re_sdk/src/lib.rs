@@ -208,7 +208,6 @@ pub fn new_store_info(
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
         cloned_from: None,
-        started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
