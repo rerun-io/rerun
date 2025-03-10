@@ -28,10 +28,10 @@ impl From<RecordingProperties> for archetypes::RecordingProperties {
             value.recording_started.nanos_since_epoch(),
         );
 
-        let s = Self::new([started]);
+        let s = Self::new(started);
 
         if let Some(name) = value.recording_name {
-            s.with_name([name])
+            s.with_name(name)
         } else {
             s
         }

@@ -73,9 +73,17 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
 
-                ui.grid_left_hand_label("Created");
-                ui.label(db.recording_started().map_or("<unknown>".to_owned(), |started| started.format(ctx.app_options().time_zone)));
-                ui.end_row();
+                if let Some(name) = db.recording_name() {
+                     ui.grid_left_hand_label("Name");
+                     ui.label(name.to_string());
+                     ui.end_row();
+                }
+
+                if let Some(started) = db.recording_started() {
+                    ui.grid_left_hand_label("Created");
+                    ui.label(started.format(ctx.app_options().time_zone));
+                    ui.end_row();
+                }
             }
 
             if let Some(latest_row_id) = self.latest_row_id() {
@@ -165,13 +173,7 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
-                EntityPath::recording_properties().data_ui(
-                    ctx,
-                    ui,
-                    ui_layout,
-                    &LatestAtQuery::latest("log_time".into()),
-                    db,
-                );
+                // TODO(#9188): Create a dedicated UI for the recording properties.
                 if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
                     ui.label("This is the active recording");
