@@ -138,7 +138,7 @@ def run(args: Namespace) -> None:
                                 rrb.visualizers.Points2D,
                             ]),
                             rr.Arrows2D.from_fields(
-                                positions=[0.0, 0.0], colors=[255, 255, 255], radii=0.1, labels="Cerberus"
+                                origins=[0.0, 0.0], colors=[255, 255, 255], radii=0.1, labels="Cerberus"
                             ),
                         ],
                     },
