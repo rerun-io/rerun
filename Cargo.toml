@@ -211,6 +211,7 @@ indicatif = "0.17.7" # Progress bar
 infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
+jiff = "0.2.3"
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
 libc = "0.2"
@@ -291,6 +292,7 @@ tempfile = "3.0"
 thiserror = "1.0"
 tiff = "0.9.1"
 time = { version = "0.3.36", default-features = false, features = [
+  # TODO(emilk): stop using `time`, and replace all uses with `jiff`
   "wasm-bindgen",
 ] }
 tiny_http = { version = "0.12", default-features = false }

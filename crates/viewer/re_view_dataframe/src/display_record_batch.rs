@@ -276,7 +276,7 @@ impl DisplayColumn {
                             ui.label(
                                 timeline
                                     .typ()
-                                    .format(timestamp, ctx.app_options().time_zone),
+                                    .format(timestamp, ctx.app_options().timestamp_format),
                             );
                         }
                         Err(err) => {
