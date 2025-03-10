@@ -845,19 +845,12 @@ impl RecordingStreamInner {
                 })?
         };
 
-        let properties_archetype: re_types_core::archetypes::RecordingProperties =
-            properties.clone().into();
-
         // We pre-populate the batcher with a chunk the contains the recording
         // properties, so that these get automatically sent to the sink.
 
         re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-        let initial_chunk = Chunk::builder(EntityPath::recording_properties())
-            .with_archetype(RowId::new(), TimePoint::default(), &properties_archetype)
-            .build()?;
-
-        batcher.push_chunk(initial_chunk);
+        batcher.push_chunk(Chunk::properties(properties.clone())?);
 
         Ok(Self {
             info,

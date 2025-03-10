@@ -103,18 +103,14 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties: archetypes::RecordingProperties = RecordingProperties {
+                let properties = RecordingProperties {
                     recording_started: re_log_types::Time::now(),
                     recording_name: Some(format!("episode_{}", episode.0)),
-                }
-                .into();
+                };
 
                 debug_assert!(TimePoint::default().is_static());
 
-                let Ok(initial_chunk) = Chunk::builder(EntityPath::recording_properties())
-                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
-                    .build()
-                else {
+                let Ok(initial_chunk) = Chunk::properties(properties) else {
                     re_log::error!(
                         "Failed to build recording properties chunk for episode {}",
                         episode.0
