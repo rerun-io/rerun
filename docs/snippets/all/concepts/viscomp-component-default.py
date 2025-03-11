@@ -15,6 +15,6 @@ rr.send_blueprint(
             "boxes/1": rr.Boxes2D.from_fields(colors=[0, 255, 0]),
         },
         # Add a default value for all Color components in this view
-        defaults=rr.Boxes2D.from_fields(colors=[0, 0, 255]),
+        defaults=[rr.Boxes2D.from_fields(colors=[0, 0, 255])],
     ),
 )

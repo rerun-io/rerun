@@ -57,9 +57,9 @@ service StorageNodeService {
 
   // Registration APIs
 
-  // TODO(zehiko) support registering more than one recording at a time
-  rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
+  rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
 
+  // TODO(cmc): This needs to be batched. Everything needs to be batched, always.
   rpc UnregisterRecording(UnregisterRecordingRequest) returns (UnregisterRecordingResponse) {}
 
   rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest) returns (UnregisterAllRecordingsResponse) {}
@@ -425,21 +425,29 @@ message GetRecordingSchemaResponse {
 
 // ---------------- RegisterRecording ------------------
 
-message RegisterRecordingRequest {
+message RegisterRecordingsRequest {
   // to which catalog entry do we want to register the recording
   CatalogEntry entry = 1;
-  // human readable description of the recording
-  string description = 2;
-  // recording storage url (e.g. s3://bucket/file or file:///path/to/file)
-  string storage_url = 3;
-  // type of recording
-  RecordingType typ = 4;
-  // (optional) any additional metadata that should be associated with the recording
-  // You can associate any arbtrirary number of columns with a specific recording
-  DataframePart metadata = 5;
+
+  repeated RegisterRecordingDescription recordings = 2;
 }
 
-message RegisterRecordingResponse {
+message RegisterRecordingDescription {
+  // human readable description of the recording
+  string description = 1;
+
+  // recording storage url (e.g. s3://bucket/file or file:///path/to/file)
+  string storage_url = 2;
+
+  // type of recording
+  RecordingType typ = 3;
+
+  // (optional) any additional metadata that should be associated with the recording
+  // You can associate any arbtrirary number of columns with a specific recording
+  DataframePart metadata = 4;
+}
+
+message RegisterRecordingsResponse {
   DataframePart data = 1;
 }
 

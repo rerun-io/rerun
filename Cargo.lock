@@ -5777,6 +5777,7 @@ name = "re_arrow_util"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "insta",
  "itertools 0.13.0",
  "re_log",
  "re_tracing",

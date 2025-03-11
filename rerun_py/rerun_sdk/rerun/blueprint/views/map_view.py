@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from ..._baseclasses import (
     DescribedComponentBatch,
@@ -66,8 +66,8 @@ class MapView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: dict[
+        defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+        overrides: Mapping[
             EntityPathLike,
             AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
