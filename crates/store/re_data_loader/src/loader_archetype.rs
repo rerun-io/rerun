@@ -183,7 +183,7 @@ fn load_video(
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
-    let video_timeline = re_log_types::Timeline::new_temporal("video");
+    let video_timeline = re_log_types::Timeline::new_duration("video");
     timepoint.insert_index(
         *video_timeline.name(),
         re_log_types::IndexCell::ZERO_DURATION,

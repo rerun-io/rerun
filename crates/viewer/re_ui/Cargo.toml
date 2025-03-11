@@ -58,7 +58,7 @@ smallvec.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
-time = { workspace = true, features = ["formatting", "local-offset"] }
+time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 url.workspace = true
 
 

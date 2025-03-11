@@ -877,7 +877,6 @@ impl PyStorageNodeClient {
                 application_id: ApplicationId::from("rerun_data_platform"),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                is_official_example: false,
                 started: Time::now(),
                 store_source: StoreSource::Unknown,
                 store_version: None,

@@ -88,8 +88,8 @@ message StoreInfo {
   // Unique ID of the recording.
   rerun.common.v1alpha1.StoreId store_id = 2;
 
-  // True if the recording is one of the official Rerun examples.
-  bool is_official_example = 3;
+  reserved 3;
+  reserved "is_official_example";
 
   // When the recording started.
   rerun.common.v1alpha1.Time started = 4;

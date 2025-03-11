@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import math
 import time
+from typing import Any, cast
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -106,8 +107,8 @@ def main() -> None:
                     rrb.TimeSeriesView(
                         name=p,
                         origin=f"/{p}",
-                        time_ranges=rrb.VisibleTimeRange(
-                            "sim_time",
+                        time_ranges=rrb.VisibleTimeRanges(
+                            timeline="sim_time",
                             start=rrb.TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=-2.5)),
                             end=rrb.TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=2.5)),
                         ),
@@ -152,7 +153,7 @@ def main() -> None:
         values = np.random.normal(size=values_shape)
 
     if args.temporal_batch_size is None:
-        ticks = enumerate(sim_times)
+        ticks: Any = enumerate(sim_times)
     else:
         offsets = range(0, len(sim_times), args.temporal_batch_size)
         ticks = zip(
@@ -184,7 +185,7 @@ def main() -> None:
                     value_index = slice(index, index + args.temporal_batch_size)
                     rr.send_columns(
                         f"{plot_path}/{series_path}",
-                        indexes=[time_column],
+                        indexes=[cast(rr.IndexColumn, time_column)],
                         columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),
                     )
 

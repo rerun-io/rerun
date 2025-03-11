@@ -428,7 +428,6 @@ fn rr_recording_stream_new_impl(
     let application_id = application_id.as_str("store_info.application_id")?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
-        //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);

@@ -18,8 +18,8 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_tensor")
 
-    tensor = np.array(np.arange(0, 360), dtype=np.int32).reshape((3, 4, 5, 6))
-    tensor = TensorData(array=tensor)
+    tensor_data = np.array(np.arange(0, 360), dtype=np.int32).reshape((3, 4, 5, 6))
+    tensor = TensorData(array=tensor_data)
 
     rr.log("tensor", rr.Tensor(tensor))
 

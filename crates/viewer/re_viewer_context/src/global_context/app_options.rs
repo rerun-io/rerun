@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use re_log_types::TimeZone;
+use re_log_types::TimestampFormat;
 use re_video::decode::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
@@ -28,8 +28,8 @@ pub struct AppOptions {
     pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
-    #[serde(rename = "time_zone_for_timestamps")]
-    pub time_zone: TimeZone,
+    #[serde(rename = "timestamp_format")]
+    pub timestamp_format: TimestampFormat,
 
     /// Preferred method for video decoding on web.
     pub video_decoder_hw_acceleration: DecodeHardwareAcceleration,
@@ -82,7 +82,7 @@ impl Default for AppOptions {
 
             blueprint_gc: true,
 
-            time_zone: TimeZone::Utc,
+            timestamp_format: TimestampFormat::Utc,
 
             video_decoder_hw_acceleration: DecodeHardwareAcceleration::default(),
             video_decoder_override_ffmpeg_path: false,

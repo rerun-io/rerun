@@ -12,11 +12,9 @@ rr.log("boxes/2", rr.Boxes2D(centers=[2, 0], sizes=[1, 1]))
 rr.send_blueprint(
     rrb.Spatial2DView(
         overrides={
-            "boxes/1": [
-                rr.components.Color([0, 255, 0]),
-            ],
+            "boxes/1": rr.Boxes2D.from_fields(colors=[0, 255, 0]),
         },
         # Add a default value for all Color components in this view
-        defaults=[rr.components.Color([0, 0, 255])],
+        defaults=[rr.Boxes2D.from_fields(colors=[0, 0, 255])],
     ),
 )

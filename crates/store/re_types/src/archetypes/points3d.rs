@@ -93,7 +93,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_points3d_column_updates").spawn()?;
 ///
-///     let times = rerun::TimeColumn::new_seconds("time", 10..15);
+///     let times = rerun::TimeColumn::new_duration_seconds("time", 10..15);
 ///
 ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 ///     #[rustfmt::skip]

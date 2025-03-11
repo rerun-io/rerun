@@ -3,7 +3,6 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
-use std::path::PathBuf;
 use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
@@ -184,7 +183,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // dataframes
     crate::dataframe::register(m)?;
 
-    #[cfg(feature = "remote")]
+    // remote
     crate::remote::register(m)?;
 
     Ok(())
@@ -202,7 +201,6 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     recording_id=None,
     make_default=true,
     make_thread_default=true,
-    application_path=None,
     default_enabled=true,
 ))]
 fn new_recording(
@@ -211,22 +209,8 @@ fn new_recording(
     recording_id: Option<String>,
     make_default: bool,
     make_thread_default: bool,
-    application_path: Option<PathBuf>,
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let is_official_example = application_path.is_some_and(|mut path| {
-        // more than 4 layers would be really pushing it
-        for _ in 0..4 {
-            path.pop(); // first iteration is always a file path in our examples
-            if path.join(SENTINEL_FILENAME).exists() {
-                return true;
-            }
-        }
-        false
-    });
-
     let recording_id = if let Some(recording_id) = recording_id {
         StoreId::from_string(StoreKind::Recording, recording_id)
     } else {
@@ -241,7 +225,6 @@ fn new_recording(
 
     let recording = RecordingStreamBuilder::new(application_id)
         .batcher_config(batcher_config)
-        .is_official_example(is_official_example)
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)

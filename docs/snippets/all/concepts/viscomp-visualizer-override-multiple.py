@@ -18,9 +18,9 @@ rr.send_blueprint(
                     rrb.visualizers.Boxes2D,
                     rrb.visualizers.Points2D,
                 ]),
-                rr.components.Color([0, 255, 0]),
+                rr.Boxes2D.from_fields(colors=[0, 255, 0]),
             ],
         },
-        defaults=[rr.components.Color([0, 0, 255])],
+        defaults=[rr.Boxes2D.from_fields(colors=[0, 0, 255])],
     ),
 )

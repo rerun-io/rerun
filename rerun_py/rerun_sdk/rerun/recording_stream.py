@@ -397,34 +397,6 @@ class RecordingStream:
 
         """
 
-        application_path = None
-
-        # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
-        # only need to be written once and just work for all languages out of the box… unfortunately
-        # we lose most of the details of the python part of the backtrace once we go over the bridge.
-        #
-        # Still, better than nothing!
-        try:
-            import inspect
-            import pathlib
-
-            # We're trying to grab the filesystem path of the example script that called `init()`.
-            # The tricky part is that we don't know how many layers are between this script and the
-            # original caller, so we have to walk the stack and look for anything that might look like
-            # an official Rerun example.
-
-            MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
-            FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
-
-            stack = inspect.stack()
-            for frame in stack[:MAX_FRAMES]:
-                filename = frame[FRAME_FILENAME_INDEX]
-                path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
-                if "rerun/examples" in str(path):
-                    application_path = path
-        except Exception:
-            pass
-
         if recording_id is not None:
             recording_id = str(recording_id)
 
@@ -433,7 +405,6 @@ class RecordingStream:
             recording_id=recording_id,
             make_default=make_default,
             make_thread_default=make_thread_default,
-            application_path=application_path,
             default_enabled=default_enabled,
         )
 

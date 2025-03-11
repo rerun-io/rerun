@@ -856,7 +856,6 @@ def new_recording(
     recording_id: Optional[str] = None,
     make_default: bool = True,
     make_thread_default: bool = True,
-    application_path: Optional[str | os.PathLike[str]] = None,
     default_enabled: bool = True,
 ) -> PyRecordingStream:
     """Create a new recording stream."""

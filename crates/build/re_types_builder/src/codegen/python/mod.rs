@@ -393,8 +393,8 @@ impl PythonCodeGenerator {
                     "
             from __future__ import annotations
 
-            from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-                TYPE_CHECKING, SupportsFloat, Literal)
+            from collections.abc import Iterable, Mapping, Set, Sequence, Dict
+            from typing import Any, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
             from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field
@@ -2649,8 +2649,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             for batch in batches:
                 arrow_array = batch.as_arrow_array()
 
-                # For primitive arrays, we infer partition size from the input shape.
-                if pa.types.is_primitive(arrow_array.type):
+                # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
+                if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                     param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
 
