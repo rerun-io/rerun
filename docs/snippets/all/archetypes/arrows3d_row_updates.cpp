@@ -30,8 +30,8 @@ int main() {
             vector[j] = {xs[j], xs[j], zs[j]};
         }
 
-        origins.emplace_back(std::move(origin));
-        vectors.emplace_back(std::move(vector));
+        origins.emplace_back(origin);
+        vectors.emplace_back(vector);
     }
 
     // At each timestep, all arrows share the same but changing color.

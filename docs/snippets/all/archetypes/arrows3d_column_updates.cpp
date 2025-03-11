@@ -47,6 +47,6 @@ int main() {
         "arrows",
         time_column,
         arrows,
-        rerun::Arrows3D().with_colors(colors).columns()
+        rerun::Arrows3D::update_fields().with_colors(colors).columns()
     );
 }
