@@ -30,7 +30,9 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
         return
 
 
-def serve_assets(bind_address: str = "localhost", port: int = 0, background: bool = False) -> socketserver._AfInetAddress:
+def serve_assets(
+    bind_address: str = "localhost", port: int = 0, background: bool = False
+) -> socketserver._AfInetAddress:
     global resource_data
     if resource_data is None:
         with open(WIDGET_PATH, "rb") as f:
