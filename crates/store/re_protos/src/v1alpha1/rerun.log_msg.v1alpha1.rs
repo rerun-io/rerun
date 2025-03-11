@@ -114,9 +114,6 @@ pub struct StoreInfo {
     /// Unique ID of the recording.
     #[prost(message, optional, tag = "2")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
-    /// True if the recording is one of the official Rerun examples.
-    #[prost(bool, tag = "3")]
-    pub is_official_example: bool,
     /// When the recording started.
     #[prost(message, optional, tag = "4")]
     pub started: ::core::option::Option<super::super::common::v1alpha1::Time>,

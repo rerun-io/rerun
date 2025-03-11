@@ -2,7 +2,7 @@ use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, TimeInt, TimePoint, TimeType, Timeline, TimelineName};
+use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
@@ -72,11 +72,11 @@ impl ChunkBuilder {
 
         self.row_ids.push(row_id);
 
-        for (timeline, time) in timepoint.into() {
+        for (timeline, cell) in timepoint.into() {
             self.timelines
-                .entry(*timeline.name())
-                .or_insert_with(|| TimeColumn::builder(timeline))
-                .with_row(timeline.typ(), time);
+                .entry(timeline)
+                .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline, cell.typ())))
+                .with_row(cell.value);
         }
 
         for (component_name, array) in components {
@@ -387,20 +387,8 @@ impl TimeColumnBuilder {
 
     /// Add a row's worth of time data using the given timestamp.
     #[inline]
-    pub fn with_row(&mut self, typ: TimeType, time: TimeInt) -> &mut Self {
-        let Self { timeline, times } = self;
-
-        if timeline.typ() != typ {
-            re_log::warn_once!(
-                "Mixing {:?} and {:?} in the same time column '{}'",
-                typ,
-                timeline.typ(),
-                timeline.name()
-            );
-        }
-
-        times.push(time.as_i64());
-
+    pub fn with_row(&mut self, time: NonMinI64) -> &mut Self {
+        self.times.push(time.into());
         self
     }
 

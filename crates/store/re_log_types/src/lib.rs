@@ -37,8 +37,9 @@ use re_byte_size::SizeBytes;
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
-        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt, TimePoint,
-        TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
+        Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
+        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
+        TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -356,9 +357,6 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// True if the recording is one of the official Rerun examples.
-    pub is_official_example: bool,
-
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
@@ -640,7 +638,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.try_into().unwrap_or(TimeInt::MIN),
+        TimeInt::saturated_nonstatic(frame_nr),
     )
 }
 
@@ -718,7 +716,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            is_official_example: _,
             started: _,
             store_source,
             store_version,

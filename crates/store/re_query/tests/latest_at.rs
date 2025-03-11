@@ -110,11 +110,11 @@ fn invalidation() {
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
             .get(&query.timeline())
-            .copied()
+            .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
             .get(&query.timeline())
-            .copied()
+            .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
 
         let store = ChunkStore::new_handle(

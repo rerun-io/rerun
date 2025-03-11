@@ -238,7 +238,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     test_context.log_entity(entity_path.into(), |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::from(std::collections::BTreeMap::default()),
+            TimePoint::default(),
             &Points2D::new([[0.0, 0.0]]),
         )
     });

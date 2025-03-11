@@ -97,7 +97,8 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
 
 def main() -> None:
     # Ensure we can print unicode characters. Has been historically an issue on Windows CI.
-    sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
 
     checks = [
         ("base_checks", base_checks),
@@ -173,7 +174,10 @@ def main() -> None:
         sys.exit(0)
     else:
         print()
-        print(f"❌ {num_failures} checks / {len(results)} failed!")
+        print(f"❌ {num_failures} checks / {len(results)} failed:")
+        for result in results:
+            if not result.success:
+                print(f"  ❌ {result.command}")
         sys.exit(1)
 
 

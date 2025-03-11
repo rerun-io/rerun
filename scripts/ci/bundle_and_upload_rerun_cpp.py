@@ -27,7 +27,7 @@ def run(
     )
 
 
-def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
+def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str | None = None) -> None:
     logging.info("Downloading rerun_c…")
 
     gcs = storage.Client("rerun-open")

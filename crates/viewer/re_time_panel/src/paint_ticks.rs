@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
 
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{ResolvedTimeRangeF, Time, TimeReal, TimeType, TimeZone};
+use re_log_types::{ResolvedTimeRangeF, Time, TimeReal, TimeType, TimestampFormat};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -13,7 +13,7 @@ pub fn paint_time_ranges_and_ticks(
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
     time_type: TimeType,
-    time_zone_for_timestamps: TimeZone,
+    timestamp_format: TimestampFormat,
 ) {
     let clip_rect = ui.clip_rect();
     let clip_left = clip_rect.left() as f64;
@@ -52,7 +52,7 @@ pub fn paint_time_ranges_and_ticks(
                 &rect,
                 time_type,
                 &time_range,
-                time_zone_for_timestamps,
+                timestamp_format,
             ));
     }
 }
@@ -62,7 +62,7 @@ fn paint_time_range_ticks(
     rect: &Rect,
     time_type: TimeType,
     time_range: &ResolvedTimeRangeF,
-    time_zone_for_timestamps: TimeZone,
+    timestamp_format: TimestampFormat,
 ) -> Vec<Shape> {
     let font_id = egui::TextStyle::Small.resolve(ui.style());
 
@@ -76,7 +76,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                |ns| Time::from_ns_since_epoch(ns).format_time_compact(time_zone_for_timestamps),
+                |ns| Time::from_ns_since_epoch(ns).format_time_compact(timestamp_format),
             )
         }
 

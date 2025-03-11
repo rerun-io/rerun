@@ -324,9 +324,9 @@ impl AppState {
                             &view.space_origin,
                         );
 
-                    let resolver = view.contents.build_resolver(
-                        view_class_registry,
+                    let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                         view,
+                        view_class_registry,
                         &maybe_visualizable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
@@ -377,7 +377,7 @@ impl AppState {
             // nothing: this is already handled above
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
-                datastore_ui.ui(&ctx, ui, app_options.time_zone);
+                datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
             if !should_datastore_ui_remain_active {
                 *display_mode = DisplayMode::LocalRecordings;
             }

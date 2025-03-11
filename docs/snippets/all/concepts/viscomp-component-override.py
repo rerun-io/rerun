@@ -13,9 +13,7 @@ rr.send_blueprint(
     rrb.Spatial2DView(
         # Override the values from the data store for the first box.
         overrides={
-            "boxes/1": [
-                rr.components.Color([0, 255, 0]),
-            ],
+            "boxes/1": rr.Boxes2D.from_fields(colors=[0, 255, 0]),
         },
     ),
 )

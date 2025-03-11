@@ -67,28 +67,6 @@ Each row in the component column can be a batch of data, e.g. a batch of positio
 This lets you log the evolution of a point cloud over time efficiently.
 
 
-### Updating a point cloud over time, in a single operation
-
-Consider this snippet, using the row-oriented `log` API:
-
-snippet: archetypes/points3d_row_updates
-
-which can be translated to the column-oriented `send_columns` API as such:
-
-snippet: archetypes/points3d_column_updates
-
-<picture data-inline-viewer="snippets/points3d_column_updates">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
-  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
-</picture>
-
-Each row in the component column can be a batch of data, e.g. a batch of positions.
-This lets you log the evolution of a point cloud over time efficiently.
-
-
 ### Updating a transform over time, in a single operation
 
 Consider this snippet, using the row-oriented `log` API:

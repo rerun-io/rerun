@@ -38,5 +38,5 @@ view_origin.rs linguist-generated=true
 viewer_recommendation_hash.rs linguist-generated=true
 visible_time_range.rs linguist-generated=true
 visual_bounds2d.rs linguist-generated=true
-visualizer_overrides.rs linguist-generated=true
+visualizer_override.rs linguist-generated=true
 zoom_level.rs linguist-generated=true

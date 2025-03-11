@@ -41,7 +41,6 @@ impl crate::DataUi for EntityDb {
                     application_id,
                     store_id,
                     cloned_from,
-                    is_official_example: _,
                     started,
                     store_source,
                     store_version,
@@ -76,7 +75,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
 
                 ui.grid_left_hand_label("Created");
-                ui.label(started.format(ctx.app_options().time_zone));
+                ui.label(started.format(ctx.app_options().timestamp_format));
                 ui.end_row();
             }
 
@@ -86,7 +85,7 @@ impl crate::DataUi for EntityDb {
                 {
                     let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
                     ui.grid_left_hand_label("Modified");
-                    ui.label(time.format(ctx.app_options().time_zone));
+                    ui.label(time.format(ctx.app_options().timestamp_format));
                     ui.end_row();
                 }
             }

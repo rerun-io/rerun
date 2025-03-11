@@ -94,16 +94,14 @@ def set_index(
         )
     elif timedelta is not None:
         nanos = to_nanos(timedelta)
-        # TODO(#8635): call a function that is specific to time-deltas
-        bindings.set_time_nanos(
+        bindings.set_time_duration_nanos(
             timeline,
             nanos,
             recording=recording.to_native() if recording is not None else None,
         )
     elif datetime is not None:
         nanos = to_nanos_since_epoch(datetime)
-        # TODO(#8635): call a function that is specific to absolute times
-        bindings.set_time_nanos(
+        bindings.set_time_timestamp_nanos_since_epoch(
             timeline,
             nanos,
             recording=recording.to_native() if recording is not None else None,
@@ -226,9 +224,9 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
     """
 
-    bindings.set_time_seconds(
+    bindings.set_time_timestamp_nanos_since_epoch(
         timeline,
-        seconds,
+        int(seconds * 1e9),
         recording=recording.to_native() if recording is not None else None,
     )
 
@@ -274,7 +272,7 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
 
     """
 
-    bindings.set_time_nanos(
+    bindings.set_time_timestamp_nanos_since_epoch(
         timeline,
         nanos,
         recording=recording.to_native() if recording is not None else None,

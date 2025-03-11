@@ -21,13 +21,20 @@ use re_types::archetypes::{
 use re_types::components::{Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
-use crate::lerobot::{is_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex};
+use crate::lerobot::{
+    is_lerobot_dataset, is_v1_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset,
+    TaskIndex,
+};
 use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
 const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
     &["episode_index", "index", "frame_index", "timestamp"];
+
+/// Only supports `LeRobot` datasets that are in a supported version format.
+/// Datasets from unsupported versions won't load.
+const LEROBOT_DATASET_SUPPORTED_VERSIONS: &[&str] = &["v2.0", "v2.1"];
 
 /// A [`DataLoader`] for `LeRobot` datasets.
 ///
@@ -49,12 +56,28 @@ impl DataLoader for LeRobotDatasetLoader {
             return Err(DataLoaderError::Incompatible(filepath));
         }
 
+        if is_v1_lerobot_dataset(&filepath) {
+            re_log::error!("LeRobot 'v1.x' dataset format is unsupported.");
+            return Ok(());
+        }
+
         let dataset = LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
+
+        if !LEROBOT_DATASET_SUPPORTED_VERSIONS
+            .contains(&dataset.metadata.info.codebase_version.as_str())
+        {
+            re_log::error!(
+                "LeRobot '{}' dataset format is unsupported.",
+                dataset.metadata.info.codebase_version
+            );
+            return Ok(());
+        }
+
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(ApplicationId(format!("{filepath:?}")));
+            .unwrap_or(ApplicationId(filepath.display().to_string()));
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -264,8 +287,7 @@ fn log_episode_task(
             continue;
         };
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, time_int);
         let text = TextDocument::new(task.task.clone());
         chunk = chunk.with_archetype(row_id, timepoint, &text);
 
@@ -290,17 +312,14 @@ fn load_episode_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {
@@ -322,19 +341,16 @@ fn load_episode_depth_images(
 
     let mut chunk = Chunk::builder(observation.into());
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(idx);
+    for frame_idx in 0..image_bytes.len() {
+        let img_buffer = image_bytes.value(frame_idx);
         let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
             .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
-        let mut timepoint = TimePoint::default();
-        timepoint.insert(*timeline, time_int);
+        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
-        time_int = time_int.inc();
     }
 
     Ok(std::iter::once(chunk.build().with_context(|| {

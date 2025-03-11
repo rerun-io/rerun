@@ -98,6 +98,18 @@ impl TimeInt {
         Self(Some(sequence))
     }
 
+    /// Clamp to valid non-static range.
+    #[inline]
+    pub fn saturated_nonstatic_i64(value: impl Into<i64>) -> Self {
+        Self(Some(NonMinI64::saturating_from_i64(value)))
+    }
+
+    /// Clamp to valid non-static range.
+    #[inline]
+    pub fn saturated_nonstatic(value: impl TryInto<Self>) -> Self {
+        value.try_into().unwrap_or(Self::MIN).max(Self::MIN)
+    }
+
     /// Returns `i64::MIN` for [`Self::STATIC`].
     #[inline]
     pub const fn as_i64(self) -> i64 {
@@ -168,6 +180,15 @@ impl TryFrom<Time> for TimeInt {
     }
 }
 
+impl TryFrom<TimeInt> for NonMinI64 {
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
+        Self::new(t.as_i64()).ok_or(TryFromIntError)
+    }
+}
+
 impl From<TimeInt> for Time {
     #[inline]
     fn from(int: TimeInt) -> Self {
@@ -225,5 +246,21 @@ impl std::ops::Sub for TimeInt {
             // static - anything = static
             _ => Self(None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saturated_nonstatic() {
+        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MIN), TimeInt::MIN);
+        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MIN + 1), TimeInt::MIN);
+        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MAX), TimeInt::MAX);
+        assert_eq!(
+            TimeInt::saturated_nonstatic_i64(i64::MAX - 1),
+            TimeInt::new_temporal(i64::MAX - 1)
+        );
     }
 }

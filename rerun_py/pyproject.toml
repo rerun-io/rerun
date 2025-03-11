@@ -44,6 +44,11 @@ repository = "https://github.com/rerun-io/rerun"
 [project.scripts]
 rerun = "rerun_cli.__main__:main"
 
+
+######################
+# Ruff configuration #
+######################
+
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
 
@@ -196,3 +201,25 @@ filterwarnings = """
 error
 """
 norecursedirs = ".* venv* target* build"
+
+######################
+# mypy configuration #
+######################
+
+[tool.mypy]
+files = [
+  "rerun_py/rerun_sdk/rerun",
+  "rerun_py/rerun_bindings",
+  "rerun_py/tests",
+  "examples/python",
+  "scripts",
+]
+exclude = ["examples/python/objectron", "examples/python/ros_node"]
+namespace_packages = true
+show_error_codes = true
+strict = true
+enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
+plugins = ["numpy.typing.mypy_plugin"]
+ignore_missing_imports = true
+no_implicit_reexport = false
+disallow_untyped_calls = false

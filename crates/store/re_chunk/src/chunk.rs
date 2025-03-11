@@ -14,7 +14,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
@@ -936,61 +936,132 @@ impl TimeColumn {
         )
     }
 
-    /// Creates a new [`TimeColumn`] of sequence type.
-    pub fn new_seconds(
+    /// Creates a new [`TimeColumn`] of duration type, in seconds.
+    pub fn new_duration_seconds(
         name: impl Into<re_log_types::TimelineName>,
-        times: impl IntoIterator<Item = impl Into<f64>>,
+        seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
-        let time_vec = times.into_iter().map(|t| {
-            let t = t.into();
-            let time = Time::from_seconds_since_epoch(t);
-            TimeInt::try_from(time)
-                .unwrap_or_else(|_| {
-                    re_log::error!(
-                illegal_value = t,
-                new_value = TimeInt::MIN.as_i64(),
-                "TimeColumn::new_seconds() called with illegal value - clamped to minimum legal value"
-            );
-                    TimeInt::MIN
-                })
-                .as_i64()
+        let time_vec = seconds.into_iter().map(|seconds| {
+            let seconds = seconds.into();
+            let nanos = (1e9 * seconds).round();
+            let clamped = NonMinI64::saturating_from_i64(nanos as i64);
+            if clamped.get() as f64 != nanos {
+                re_log::warn!(
+                    illegal_value = nanos,
+                    new_value = clamped.get(),
+                    "TimeColumn::new_duration_seconds() called with out-of-range value. Clamped to valid range."
+                );
+            }
+            clamped.get()
         }).collect_vec();
 
         Self::new(
             None,
-            Timeline::new_temporal(name.into()),
+            Timeline::new(name, TimeType::Time),
             ArrowScalarBuffer::from(time_vec),
         )
     }
 
-    /// Creates a new [`TimeColumn`] of nanoseconds type.
-    pub fn new_nanos(
+    /// Creates a new [`TimeColumn`] of duration type, in seconds.
+    pub fn new_timestamp_seconds_since_epoch(
         name: impl Into<re_log_types::TimelineName>,
-        times: impl IntoIterator<Item = impl Into<i64>>,
+        seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
-        let time_vec = times
+        let time_vec = seconds.into_iter().map(|seconds| {
+            let seconds = seconds.into();
+            let nanos = (1e9 * seconds).round();
+            let clamped = NonMinI64::saturating_from_i64(nanos as i64);
+            if clamped.get() as f64 != nanos {
+                re_log::warn!(
+                    illegal_value = nanos,
+                    new_value = clamped.get(),
+                    "TimeColumn::new_timestamp_seconds_since_epoch() called with out-of-range value. Clamped to valid range."
+                );
+            }
+            clamped.get()
+        }).collect_vec();
+
+        Self::new(
+            None,
+            Timeline::new(name, TimeType::Time),
+            ArrowScalarBuffer::from(time_vec),
+        )
+    }
+
+    /// Creates a new [`TimeColumn`] of duration type, in seconds.
+    #[deprecated = "Use `TimeColumn::new_duration_seconds` or `new_timestamp_seconds_since_epoch` instead"]
+    pub fn new_seconds(
+        name: impl Into<re_log_types::TimelineName>,
+        seconds: impl IntoIterator<Item = impl Into<f64>>,
+    ) -> Self {
+        Self::new_duration_seconds(name, seconds)
+    }
+
+    /// Creates a new [`TimeColumn`] measuring duration in nanoseconds.
+    pub fn new_duration_nanos(
+        name: impl Into<re_log_types::TimelineName>,
+        nanos: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = nanos
             .into_iter()
-            .map(|t| {
-                let t = t.into();
-                let time = Time::from_ns_since_epoch(t);
-                TimeInt::try_from(time)
-                    .unwrap_or_else(|_| {
+            .map(|nanos| {
+                let nanos = nanos.into();
+                NonMinI64::new(nanos)
+                    .unwrap_or_else(|| {
                         re_log::error!(
-                illegal_value = t,
-                new_value = TimeInt::MIN.as_i64(),
-                "TimeColumn::new_nanos() called with illegal value - clamped to minimum legal value"
-            );
-                        TimeInt::MIN
+                            illegal_value = nanos,
+                            new_value = TimeInt::MIN.as_i64(),
+                            "TimeColumn::new_duration_nanos() called with illegal value - clamped to minimum legal value"
+                        );
+                        NonMinI64::MIN
                     })
-                    .as_i64()
+                    .get()
             })
             .collect_vec();
 
         Self::new(
             None,
-            Timeline::new_temporal(name.into()),
+            Timeline::new(name, TimeType::Time),
             ArrowScalarBuffer::from(time_vec),
         )
+    }
+
+    /// Creates a new [`TimeColumn`] of timestamps, as nanoseconds since unix epoch.
+    pub fn new_timestamp_nanos_since_epoch(
+        name: impl Into<re_log_types::TimelineName>,
+        nanos: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = nanos
+            .into_iter()
+            .map(|nanos| {
+                let nanos = nanos.into();
+                NonMinI64::new(nanos)
+                    .unwrap_or_else(|| {
+                        re_log::error!(
+                            illegal_value = nanos,
+                            new_value = TimeInt::MIN.as_i64(),
+                            "TimeColumn::new_timestamp_nanos_since_epoch() called with illegal value - clamped to minimum legal value"
+                        );
+                        NonMinI64::MIN
+                    })
+                    .get()
+            })
+            .collect_vec();
+
+        Self::new(
+            None,
+            Timeline::new(name, TimeType::Time),
+            ArrowScalarBuffer::from(time_vec),
+        )
+    }
+
+    /// Creates a new [`TimeColumn`] of nanoseconds type.
+    #[deprecated = "Use `TimeColumn::new_duration_nanos` or `new_timestamp_nanos_since_epoch` instead"]
+    pub fn new_nanos(
+        name: impl Into<re_log_types::TimelineName>,
+        nanos: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        Self::new_duration_nanos(name, nanos)
     }
 
     /// Parse the given [`ArrowArray`] as a time column.
@@ -1240,9 +1311,21 @@ impl TimeColumn {
         self.timeline.typ().make_arrow_array(self.times.clone())
     }
 
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
         self.times.as_ref()
+    }
+
+    /// All times in a time column are guaranteed not to have the value `i64::MIN`
+    /// (which is reserved for static data).
+    #[inline]
+    pub fn times_nonmin(&self) -> impl DoubleEndedIterator<Item = NonMinI64> + '_ {
+        self.times_raw()
+            .iter()
+            .copied()
+            .map(NonMinI64::saturating_from_i64)
     }
 
     #[inline]

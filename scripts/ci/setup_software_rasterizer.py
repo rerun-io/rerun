@@ -14,8 +14,8 @@ import platform
 import shutil
 import subprocess
 import sys
-from distutils.dir_util import copy_tree
 from pathlib import Path
+from shutil import copytree
 
 # Sourced from https://archive.mesa3d.org/. Bumping this requires
 # updating the mesa build in https://github.com/gfx-rs/ci-build and creating a new release.
@@ -137,20 +137,20 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     ])
 
     # Copy files to target directory.
-    copy_tree("mesa", TARGET_DIR)
-    copy_tree("mesa", TARGET_DIR / "deps")
+    copytree("mesa", TARGET_DIR)
+    copytree("mesa", TARGET_DIR / "deps")
 
     # Print icd file that should be used.
     icd_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()
     print(f"Using ICD file at '{icd_json_path}':")
     with open(icd_json_path, encoding="utf-8") as f:
         print(f.read())
-    icd_json_path = icd_json_path.as_posix().replace("/", "\\")
+    icd_json_path_str = icd_json_path.as_posix().replace("/", "\\")
 
     # Set environment variables, make sure to use windows path style.
     vulkan_runtime_path = f"{os.environ['VULKAN_SDK']}/runtime/x64"
     env_vars = {
-        "VK_DRIVER_FILES": icd_json_path,
+        "VK_DRIVER_FILES": icd_json_path_str,
         # Vulkan runtime install should do this, but the CI action we're using right now for instance doesn't,
         # causing `vulkaninfo` to fail since it can't find the vulkan loader.
         "PATH": f"{os.environ.get('PATH', '')};{vulkan_runtime_path}",
@@ -176,9 +176,11 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     import winreg
 
     key_path = "SOFTWARE\\Khronos\\Vulkan\\Drivers"
-    key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, key_path)
-    winreg.SetValueEx(key, icd_json_path, 0, winreg.REG_DWORD, 0)
-    winreg.CloseKey(key)
+
+    # mypy apparently doesn't have stubs for wingreg
+    key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, key_path)  # type: ignore[attr-defined]
+    winreg.SetValueEx(key, icd_json_path_str, 0, winreg.REG_DWORD, 0)  # type: ignore[attr-defined]
+    winreg.CloseKey(key)  # type: ignore[attr-defined]
 
     return env_vars
 

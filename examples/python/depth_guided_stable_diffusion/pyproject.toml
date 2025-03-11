@@ -13,7 +13,7 @@ dependencies = [
   "requests>=2.31,<3",
   "rerun-sdk",
   "scipy",
-  "torch==2.3.1",         # This must match the version captured in pixi.toml
+  "torch==2.6.0",         # This must match the version captured in pixi.toml
   "transformers>=4.26.0",
 ]
 

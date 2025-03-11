@@ -70,6 +70,13 @@ async fn connect_async(
 ///
 /// Required-feature: `remote`
 ///
+/// Rerun uses it's own custom URI scheme. The following are valid
+/// addresses:
+///
+/// * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
+/// * `rerun+http://localhost:51234` Falls back to using HTTP only.
+/// * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
+///
 /// Parameters
 /// ----------
 /// addr : str
@@ -870,7 +877,6 @@ impl PyStorageNodeClient {
                 application_id: ApplicationId::from("rerun_data_platform"),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                is_official_example: false,
                 started: Time::now(),
                 store_source: StoreSource::Unknown,
                 store_version: None,

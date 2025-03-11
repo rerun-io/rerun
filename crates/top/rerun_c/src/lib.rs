@@ -23,8 +23,8 @@ use re_sdk::{
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
-    Timeline,
+    ComponentDescriptor, EntityPath, IndexCell, RecordingStream, RecordingStreamBuilder, StoreKind,
+    TimePoint, Timeline,
 };
 
 use component_type_registry::COMPONENT_TYPES;
@@ -428,7 +428,6 @@ fn rr_recording_stream_new_impl(
     let application_id = application_id.as_str("store_info.application_id")?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
-        //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
@@ -690,11 +689,12 @@ fn rr_recording_stream_set_index_impl(
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
     let stream = recording_stream(stream)?;
-    match time_type {
-        CTimeType::Sequence => stream.set_time_sequence(timeline, value),
+    let time_type = match time_type {
+        CTimeType::Sequence => TimeType::Sequence,
         // TODO(#8635): do different things for Duration and Timestamp
-        CTimeType::Duration | CTimeType::Timestamp => stream.set_time_nanos(timeline, value),
-    }
+        CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+    };
+    stream.set_index(timeline, IndexCell::new(time_type, value));
     Ok(())
 }
 

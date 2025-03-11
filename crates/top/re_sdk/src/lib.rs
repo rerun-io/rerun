@@ -105,9 +105,9 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
 }
-pub use time::{Time, TimePoint, Timeline};
+pub use time::{IndexCell, Time, TimePoint, Timeline};
 
 pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
@@ -208,7 +208,6 @@ pub fn new_store_info(
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
         cloned_from: None,
-        is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
@@ -216,20 +215,4 @@ pub fn new_store_info(
         },
         store_version: Some(re_build_info::CrateVersion::LOCAL),
     }
-}
-
-#[track_caller]
-fn called_from_official_rust_example() -> bool {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let caller = core::panic::Location::caller();
-    let mut path = std::path::PathBuf::from(caller.file());
-    let mut is_official_example = false;
-    for _ in 0..4 {
-        path.pop(); // first iteration is always a file path in our examples
-        if path.join(SENTINEL_FILENAME).exists() {
-            is_official_example = true;
-        }
-    }
-    is_official_example
 }

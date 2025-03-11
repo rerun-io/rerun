@@ -72,6 +72,19 @@ impl NonMinI64 {
         }
     }
 
+    /// A saturating cast, so that overflowing values will be clamped to the min/max values.
+    #[inline]
+    pub fn saturating_from_i64(value: impl Into<i64>) -> Self {
+        let value = value.into();
+        Self::new(value).unwrap_or(Self::MIN)
+    }
+
+    /// A saturating cast, so that overflowing values will be clamped to the min/max values.
+    #[inline]
+    pub fn saturating_from_u128(value: u128) -> Self {
+        unsafe { Self::new_unchecked(value.min(Self::MAX.get() as u128) as i64) }
+    }
+
     /// Creates a new non-min without checking the value.
     ///
     /// # Safety
@@ -192,5 +205,59 @@ impl<'de> serde::Deserialize<'de> for NonMinI64 {
     {
         let value = i64::deserialize(deserializer)?;
         Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to parse NonMinI64: {0}")]
+pub enum ParseNonMinI64Error {
+    Std(#[from] std::num::ParseIntError),
+
+    #[error("Value is equal to minimum i64. Every i64 integer *except* the lowest representable number of a signed 64 bit number is valid.")]
+    InvalidValue,
+}
+
+impl std::str::FromStr for NonMinI64 {
+    type Err = ParseNonMinI64Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let int = i64::from_str(s)?;
+        Self::new(int).ok_or(ParseNonMinI64Error::InvalidValue)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_nonmin_i64() {
+        assert_eq!(NonMinI64::new(i64::MIN), None);
+        assert_eq!(NonMinI64::new(i64::MIN + 1), Some(NonMinI64::MIN));
+        assert_eq!(NonMinI64::new(i64::MAX), Some(NonMinI64::MAX));
+
+        assert_eq!(NonMinI64::saturating_from_i64(i64::MIN), NonMinI64::MIN);
+        assert_eq!(NonMinI64::saturating_from_i64(i64::MIN + 1), NonMinI64::MIN);
+
+        let ordered = [
+            i64::MIN + 1,
+            i64::MIN + 100,
+            -100,
+            -1,
+            0,
+            1,
+            100,
+            i64::MAX - 100,
+            i64::MAX - 1,
+            i64::MAX,
+        ];
+
+        for w in ordered.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            assert!(a < b);
+            let a = NonMinI64::new(a).unwrap();
+            let b = NonMinI64::new(b).unwrap();
+            assert!(a < b);
+        }
     }
 }

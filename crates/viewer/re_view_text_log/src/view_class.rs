@@ -361,7 +361,7 @@ fn table_ui(
                         let row_time = entry
                             .timepoint
                             .get(timeline)
-                            .copied()
+                            .map(re_log_types::TimeInt::from)
                             .unwrap_or(re_log_types::TimeInt::STATIC);
                         item_ui::time_button(ctx, ui, timeline, row_time);
 

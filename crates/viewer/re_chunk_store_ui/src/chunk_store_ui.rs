@@ -5,7 +5,9 @@ use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
-use re_log_types::{ResolvedTimeRange, StoreKind, TimeType, TimeZone, Timeline, TimelineName};
+use re_log_types::{
+    ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
+};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
@@ -70,7 +72,12 @@ impl DatastoreUi {
     ///
     /// Returns `false` if the datastore UI should be closed (e.g., the close button was clicked),
     /// or `true` if the datastore UI should remain open.
-    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_zone: TimeZone) -> bool {
+    pub fn ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+    ) -> bool {
         let mut datastore_ui_active = true;
 
         egui::Frame {
@@ -79,7 +86,7 @@ impl DatastoreUi {
         }
         .show(ui, |ui| {
             let exit_focused_chunk = if let Some(focused_chunk) = &mut self.focused_chunk {
-                focused_chunk.ui(ui, time_zone)
+                focused_chunk.ui(ui, timestamp_format)
             } else {
                 self.chunk_store_ui(
                     ui,
@@ -89,7 +96,7 @@ impl DatastoreUi {
                     }
                     .store(),
                     &mut datastore_ui_active,
-                    time_zone,
+                    timestamp_format,
                 );
 
                 false
@@ -108,14 +115,14 @@ impl DatastoreUi {
         ui: &mut egui::Ui,
         chunk_store: &ChunkStore,
         datastore_ui_active: &mut bool,
-        time_zone: TimeZone,
+        timestamp_format: TimestampFormat,
     ) {
         let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
         let all_timelines = chunk_store.timelines();
 
-        self.chunk_list_mode.ui(ui, chunk_store, time_zone);
+        self.chunk_list_mode.ui(ui, chunk_store, timestamp_format);
 
         //
         // Collect chunks based on query mode
@@ -304,7 +311,7 @@ impl DatastoreUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     if let Some(time_range) = timeline_ranges.get(timeline.name()) {
-                        ui.label(format_time_range(timeline, time_range, time_zone));
+                        ui.label(format_time_range(timeline, time_range, timestamp_format));
                     } else {
                         ui.label("-");
                     };
@@ -449,14 +456,14 @@ impl DatastoreUi {
 fn format_time_range(
     timeline: &Timeline,
     time_range: &ResolvedTimeRange,
-    time_zone: TimeZone,
+    timestamp_format: TimestampFormat,
 ) -> String {
     if time_range.min() == time_range.max() {
-        timeline.typ().format(time_range.min(), time_zone)
+        timeline.typ().format(time_range.min(), timestamp_format)
     } else {
         format!(
             "{} ({})",
-            timeline.format_time_range(time_range, time_zone),
+            timeline.format_time_range(time_range, timestamp_format),
             match timeline.typ() {
                 TimeType::Time => {
                     format!(

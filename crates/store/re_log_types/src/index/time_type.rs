@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{ResolvedTimeRange, Time, TimeZone};
+use crate::{ResolvedTimeRange, Time, TimestampFormat};
 
 use super::TimeInt;
 
@@ -36,7 +36,7 @@ impl TimeType {
     }
 
     pub fn format_sequence(time_int: TimeInt) -> String {
-        Self::Sequence.format(time_int, TimeZone::Utc)
+        Self::Sequence.format(time_int, TimestampFormat::Utc)
     }
 
     pub fn parse_sequence(s: &str) -> Option<TimeInt> {
@@ -52,7 +52,7 @@ impl TimeType {
     }
 
     /// Parses a human-readable time string into a [`TimeInt`].
-    pub fn parse_time(&self, s: &str, time_zone_for_timestamps: TimeZone) -> Option<TimeInt> {
+    pub fn parse_time(&self, s: &str, timestamp_format: TimestampFormat) -> Option<TimeInt> {
         match s.to_lowercase().as_str() {
             "<static>" | "static" => Some(TimeInt::STATIC),
             "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
@@ -60,12 +60,12 @@ impl TimeType {
             _ => {
                 match self {
                     Self::Time => {
-                        if s.chars().all(|c| c.is_ascii_digit()) {
+                        if let Some(int) = re_format::parse_i64(s) {
                             // If it's just numbers, interpret it as a raw time int.
-                            TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                            TimeInt::try_from(int).ok()
                         } else {
                             // Otherwise, try to make sense of the time string depending on the timezone setting.
-                            TimeInt::try_from(Time::parse(s, time_zone_for_timestamps)?).ok()
+                            TimeInt::try_from(Time::parse(s, timestamp_format)?).ok()
                         }
                     }
                     Self::Sequence => {
@@ -83,7 +83,7 @@ impl TimeType {
     pub fn format(
         &self,
         time_int: impl Into<TimeInt>,
-        time_zone_for_timestamps: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> String {
         let time_int = time_int.into();
         match time_int {
@@ -91,7 +91,7 @@ impl TimeType {
             TimeInt::MIN => "−∞".into(),
             TimeInt::MAX => "+∞".into(),
             _ => match self {
-                Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
+                Self::Time => Time::from(time_int).format(timestamp_format),
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
             },
         }
@@ -99,25 +99,25 @@ impl TimeType {
 
     #[inline]
     pub fn format_utc(&self, time_int: TimeInt) -> String {
-        self.format(time_int, TimeZone::Utc)
+        self.format(time_int, TimestampFormat::Utc)
     }
 
     #[inline]
     pub fn format_range(
         &self,
         time_range: ResolvedTimeRange,
-        time_zone_for_timestamps: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> String {
         format!(
             "{}..={}",
-            self.format(time_range.min(), time_zone_for_timestamps),
-            self.format(time_range.max(), time_zone_for_timestamps)
+            self.format(time_range.min(), timestamp_format),
+            self.format(time_range.max(), timestamp_format)
         )
     }
 
     #[inline]
     pub fn format_range_utc(&self, time_range: ResolvedTimeRange) -> String {
-        self.format_range(time_range, TimeZone::Utc)
+        self.format_range(time_range, TimestampFormat::Utc)
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.
