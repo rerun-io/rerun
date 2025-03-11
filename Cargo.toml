@@ -189,7 +189,8 @@ document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
 ehttp = "0.5.0"
 enumset = "1.0.12"
-env_logger = { version = "0.10", default-features = false }
+env_filter = { version = "0.1", default-features = false }
+env_logger = { version = "0.11", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
