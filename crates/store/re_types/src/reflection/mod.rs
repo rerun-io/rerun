@@ -198,15 +198,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Interactive as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
-                custom_placeholder: Some(Interactive::default().to_arrow()?),
-                datatype: Interactive::arrow_datatype(),
-                verify_arrow_array: Interactive::verify_arrow_array,
-            },
-        ),
-        (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -595,6 +586,15 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
                 datatype: ImagePlaneDistance::arrow_datatype(),
                 verify_arrow_array: ImagePlaneDistance::verify_arrow_array,
+            },
+        ),
+        (
+            <Interactive as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
+                custom_placeholder: Some(Interactive::default().to_arrow()?),
+                datatype: Interactive::arrow_datatype(),
+                verify_arrow_array: Interactive::verify_arrow_array,
             },
         ),
         (
@@ -1022,6 +1022,15 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 verify_arrow_array: Visible::verify_arrow_array,
             },
         ),
+        (
+            <VisibleRecursive as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the container, view, entity or instance and its children are currently visible.",
+                custom_placeholder: Some(VisibleRecursive::default().to_arrow()?),
+                datatype: VisibleRecursive::arrow_datatype(),
+                verify_arrow_array: VisibleRecursive::verify_arrow_array,
+            },
+        ),
     ];
     Ok(ComponentReflectionMap::from_iter(array))
 }
@@ -1438,6 +1447,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.EntityProperties"),
+            ArchetypeReflection {
+                display_name: "Entity properties",
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "interactive", display_name :
+                    "Interactive", component_name : "rerun.components.Interactive"
+                    .into(), docstring_md :
+                    "Whether the entity can be interacted with.\n\nNon interactive components may still be still visible, but mouse interactions in the view are disabled.\n\nDefaults to true.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
+                    "Whether the entity is visible.\n\nIf this is set, it will take precedence over the `visible_recursive` field\nand any `visible_recursive` setting further up in the hierarchy.\n\nDefaults to true.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "visible_recursive", display_name : "Visible recursive",
+                    component_name : "rerun.components.VisibleRecursive".into(),
+                    docstring_md :
+                    "Whether the entity and its children are visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible_recursive` to a different value at which point propagation continues with that value instead.\n\n`visible_recursive` is ignored on any individual entity that has the `visible` field set.\n(But this does not affect tree propagation of the property)\n\nDefaults to true.",
                     is_required : false, },
                 ],
             },
