@@ -24,4 +24,4 @@ int64
 
 ## Used by
 
-* [`RecordingProperties`](../archetypes/recording_properties.md)
+* [`RecordingProperties`](../archetypes/recording_properties.md?speculative-link)

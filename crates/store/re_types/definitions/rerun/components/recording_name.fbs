@@ -9,6 +9,7 @@ table RecordingName (
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.override_crate": "re_types_core",
+  "attr.docs.unreleased",
   "attr.rust.repr": "transparent"
 ) {
   value: rerun.datatypes.Utf8 (order: 100);
