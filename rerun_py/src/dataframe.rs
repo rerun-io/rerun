@@ -16,7 +16,7 @@ use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyDict, PyTuple},
-    IntoPyObjectExt,
+    IntoPyObjectExt as _,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
