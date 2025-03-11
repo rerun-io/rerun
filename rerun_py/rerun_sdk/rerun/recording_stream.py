@@ -970,11 +970,7 @@ class RecordingStream:
         Log data to Rerun.
 
         This is the main entry point for logging data to rerun. It can be used to log anything
-        that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
-
-
-
-        objects.
+        that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike` objects.
 
         When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
         for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
