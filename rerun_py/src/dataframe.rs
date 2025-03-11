@@ -3,6 +3,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
+    borrow::BorrowMut,
     collections::{BTreeMap, BTreeSet},
     str::FromStr as _,
 };
@@ -749,7 +750,7 @@ impl PyRecordingView {
             }
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
@@ -839,7 +840,7 @@ impl PyRecordingView {
             }
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
