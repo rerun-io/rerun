@@ -1374,11 +1374,13 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 /// Set the name of a recording.
 #[pyfunction]
 #[pyo3(signature = (name, recording=None))]
-fn set_recording_name(name: &str, recording: Option<&PyRecordingStream>) {
+fn set_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
-    recording.set_recording_name(name);
+    recording
+        .set_recording_name(name)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Helpers ---

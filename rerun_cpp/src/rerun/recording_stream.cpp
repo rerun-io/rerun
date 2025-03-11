@@ -316,4 +316,10 @@ namespace rerun {
         return status;
     }
 
+    Error RecordingStream::try_set_recording_name(std::string_view name) const {
+        rr_error status = {};
+        rr_recording_stream_set_recording_name(_id, detail::to_rr_string(name), &status);
+        return status;
+    }
+
 } // namespace rerun

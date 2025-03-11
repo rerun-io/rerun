@@ -874,6 +874,22 @@ namespace rerun {
             Collection<ComponentColumn> component_columns
         ) const;
 
+        /// Set the name of a recording.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param name The name of the recording.
+        /// \see `try_set_recording_name`
+        void set_recording_name(std::string_view name) const {
+            try_set_recording_name(name).handle();
+        }
+
+        /// Set the name of a recording.
+        ///
+        /// \param name The name of the recording.
+        /// \see `set_recording_name`
+        Error try_set_recording_name(std::string_view name) const;
+
         /// @}
 
       private:

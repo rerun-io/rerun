@@ -296,6 +296,7 @@ pub enum CErrorCode {
     RecordingStreamStdoutFailure,
     RecordingStreamSpawnFailure,
     RecordingStreamChunkValidationFailure,
+    RecordingStreamPropertyFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
@@ -1009,6 +1010,34 @@ pub unsafe extern "C" fn rr_recording_stream_send_columns(
     if let Err(err) =
         rr_recording_stream_send_columns_impl(stream, entity_path, time_columns, component_batches)
     {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_recording_name_impl(
+    stream: CRecordingStream,
+    name: CStringView,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+    let name = name.as_str("name")?;
+    stream.set_recording_name(name).map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamPropertyFailure,
+            &format!("Failed to set recording name: {err}"),
+        )
+    })
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_set_recording_name(
+    stream: CRecordingStream,
+    name: CStringView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_recording_name_impl(stream, name) {
         err.write_error(error);
     }
 }
