@@ -82,9 +82,7 @@ object_store = { workspace = true, features = ["aws"] }
 re_protos.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
-tonic = { workspace = true, default-features = false, features = [
-  "transport",
-] }
+tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
 
 
