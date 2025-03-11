@@ -74,7 +74,7 @@ image = ["re_types?/image"]
 ecolor = ["re_types?/ecolor"]
 
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
-log = ["dep:env_logger", "dep:log"]
+log = ["dep:env_filter", "dep:log"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -157,7 +157,7 @@ re_viewer = { workspace = true, optional = true }
 re_viewer_context = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
-env_logger = { workspace = true, optional = true }
+env_filter = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 
 # Native dependencies:
