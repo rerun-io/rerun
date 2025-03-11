@@ -560,6 +560,11 @@ extern void rr_recording_stream_send_columns(
     rr_error* error
 );
 
+/// Set the name of a recording.
+extern void rr_recording_stream_set_recording_name(
+    rr_recording_stream stream, rr_string recording_name, rr_error* error
+);
+
 // ----------------------------------------------------------------------------
 // Other utilities
 
