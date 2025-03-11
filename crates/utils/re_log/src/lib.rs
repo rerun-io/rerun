@@ -42,7 +42,7 @@ pub use channel_logger::*;
 pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
 
 #[cfg(feature = "setup")]
-pub use setup::setup_logging;
+pub use setup::{setup_logging, setup_logging_with_filter};
 
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
@@ -86,36 +86,77 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "winit",
 ];
 
-/// Get `RUST_LOG` environment variable or `info`, if not set.
+/// Determines the default log filter.
 ///
+/// Native: Get `RUST_LOG` environment variable or `info`, if not set.
 /// Also sets some other log levels on crates that are too loud.
+///
+/// Web: `debug` since web console allows arbitrary filtering.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        if cfg!(debug_assertions) {
-            "debug".to_owned()
-        } else {
-            // Important to keep the default at (at least) "info",
-            // as we print crucial information at INFO,
-            // e.g. the ip:port when hosting a server with `rerun-cli`.
-            // TODO(#7815): change to "warn" inside notebooks.
-            "info".to_owned()
-        }
-    });
+    let base_log_filter = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        // Important to keep the default at (at least) "info",
+        // as we print crucial information at INFO,
+        // e.g. the ip:port when hosting a server with `rerun-cli`.
+        "info"
+    };
+    log_filter_from_env_or_default(base_log_filter)
+}
 
-    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=error");
+/// Determines the default log filter.
+///
+/// Native: Get `RUST_LOG` environment variable or `info`, if not set.
+/// Also sets some other log levels on crates that are too loud.
+///
+/// Web: `debug` since web console allows arbitrary filtering.
+#[cfg(target_arch = "wasm32")]
+pub fn default_log_filter() -> String {
+    "debug".to_string()
+}
+
+/// Determines the log filter from the `RUST_LOG` environment variable or an explicit default.
+///
+/// Always adds builtin filters as well.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn log_filter_from_env_or_default(default_base_log_filter: &str) -> String {
+    let rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| default_base_log_filter.to_owned());
+    add_builtin_log_filter(&rust_log)
+}
+
+/// Adds builtin log level filters for crates that are too verbose.
+#[cfg(not(target_arch = "wasm32"))]
+fn add_builtin_log_filter(base_log_filter: &str) -> String {
+    let mut rust_log = base_log_filter.to_lowercase();
+
+    if base_log_filter != "off" {
+        // If base level is `off`, don't opt-in to anything.
+
+        for crate_name in crate::CRATES_AT_ERROR_LEVEL {
+            if !rust_log.contains(&format!("{crate_name}=")) {
+                rust_log += &format!(",{crate_name}=error");
+            }
         }
-    }
-    for crate_name in crate::CRATES_AT_WARN_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=warn");
-        }
-    }
-    for crate_name in crate::CRATES_AT_INFO_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=info");
+
+        if base_log_filter != "error" {
+            // If base level is `error`, don't opt-in to `warn` or `info`.
+
+            for crate_name in crate::CRATES_AT_WARN_LEVEL {
+                if !rust_log.contains(&format!("{crate_name}=")) {
+                    rust_log += &format!(",{crate_name}=warn");
+                }
+            }
+
+            if base_log_filter != "warn" {
+                // If base level is not `error`/`warn`, don't opt-in to `info`.
+
+                for crate_name in crate::CRATES_AT_INFO_LEVEL {
+                    if !rust_log.contains(&format!("{crate_name}=")) {
+                        rust_log += &format!(",{crate_name}=info");
+                    }
+                }
+            }
         }
     }
 

@@ -2,12 +2,27 @@
 
 use std::sync::atomic::AtomicIsize;
 
-/// Automatically does the right thing depending on target environment (native vs. web).
+/// Sets up logging for the current process using default log filter as defined in `crate::default_log_filter`.
 ///
+/// Automatically does the right thing depending on target environment (native vs. web).
 /// Directs [`log`] calls to stderr on native.
 pub fn setup_logging() {
+    setup_logging_with_filter(&crate::default_log_filter());
+}
+
+/// Sets up logging for the current process using an explicit log filter.
+///
+/// Automatically does the right thing depending on target environment (native vs. web).
+/// Directs [`log`] calls to stderr on native.
+pub fn setup_logging_with_filter(log_filter: &str) {
+    use std::str::FromStr as _;
+
+    let primary_log_filter = log_filter.split(",").next().unwrap_or("info");
+    let max_level =
+        log::LevelFilter::from_str(primary_log_filter).unwrap_or(log::LevelFilter::Info);
+
     #[cfg(not(target_arch = "wasm32"))]
-    fn setup() {
+    fn setup(max_level: log::LevelFilter, log_filter: &str) {
         if cfg!(debug_assertions) && std::env::var("RUST_BACKTRACE").is_err() {
             // In debug build, default `RUST_BACKTRACE` to `1` if it is not set.
             // This ensures sure we produce backtraces if our examples (etc) panics.
@@ -21,18 +36,9 @@ pub fn setup_logging() {
         }
 
         crate::multi_logger::init().expect("Failed to set logger");
-
-        let log_filter = crate::default_log_filter();
-
-        if log_filter.contains("trace") {
-            log::set_max_level(log::LevelFilter::Trace);
-        } else if log_filter.contains("debug") {
-            log::set_max_level(log::LevelFilter::Debug);
-        } else {
-            log::set_max_level(log::LevelFilter::Info);
-        }
-
         let mut stderr_logger = env_logger::Builder::new();
+
+        log::set_max_level(max_level);
 
         // This can be useful to enable to figure out what is causing a log message.
         let log_file_line = false;
@@ -59,18 +65,16 @@ pub fn setup_logging() {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn setup() {
+    fn setup(max_level: log::LevelFilter, _log_filter: &str) {
         crate::multi_logger::init().expect("Failed to set logger");
-        log::set_max_level(log::LevelFilter::Debug);
-        crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
-            log::LevelFilter::Debug,
-        )))
-        .expect("Failed to install logger");
+        log::set_max_level(max_level);
+        crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(max_level)))
+            .expect("Failed to install logger");
     }
 
     use std::sync::Once;
     static START: Once = Once::new();
-    START.call_once(setup);
+    START.call_once(|| setup(max_level, log_filter));
 }
 
 // ----------------------------------------------------------------------------
