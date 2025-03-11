@@ -157,22 +157,10 @@ exclude = [
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 
   # Snippets that haven't been released yet.
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs',
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
 ]
