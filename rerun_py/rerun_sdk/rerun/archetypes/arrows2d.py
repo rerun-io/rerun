@@ -248,7 +248,14 @@ class Arrows2D(Arrows2DExt, Archetype):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
+                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
+                    # `shape[1]` should be the length of the fixed sized list.
+                    # (This should have been already validated by conversion to the arrow_array)
+                    batch_length = 1
+                else:
+                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
