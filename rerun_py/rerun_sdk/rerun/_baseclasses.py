@@ -197,7 +197,7 @@ class AsComponents(Protocol):
 
 
 @define
-class Archetype:
+class Archetype(AsComponents):
     """Base class for all archetypes."""
 
     def __str__(self) -> str:

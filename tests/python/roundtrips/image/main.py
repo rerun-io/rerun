@@ -28,12 +28,12 @@ def main() -> None:
     rr.log("image", rr.Image(image))
 
     # h=4, w=5 mono image. Pixel = x * y * 123.4
-    image = np.zeros((4, 5), dtype=np.float16)
+    image2 = np.zeros((4, 5), dtype=np.float16)
     for i in range(4):
         for j in range(5):
-            image[i, j] = i * j * 123.4
+            image2[i, j] = i * j * 123.4
 
-    rr.log("image_f16", rr.Image(image))
+    rr.log("image_f16", rr.Image(image2))
 
     rr.script_teardown(args)
 

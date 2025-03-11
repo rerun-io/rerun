@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
+from collections.abc import Iterable
 from uuid import uuid4
 
 import rerun as rr
@@ -75,7 +76,7 @@ def run(args: Namespace) -> None:
     log_boxes()
 
     visual_bounds = rrb.VisualBounds2D(x_range=[-5.5, 5.5], y_range=[-3.0, 3.0])
-    overrides = {
+    overrides: dict[rr.datatypes.EntityPathLike, Iterable[rr.AsComponents]] = {
         "arrows": [
             rrb.VisualizerOverrides([
                 rrb.visualizers.Arrows2D,

@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
-from typing import Any
+from typing import cast
 from uuid import uuid4
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 import rerun as rr
 import rerun.blueprint as rrb
 
@@ -23,7 +24,7 @@ Naturally, Y8 formats are greyscale.
 """
 
 
-def bgra2y_u_v24(bgra: Any, full_range: bool) -> np.ndarray:
+def bgra2y_u_v24(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
     if full_range:
         yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
         y, v, u = cv2.split(yvu)
@@ -33,11 +34,11 @@ def bgra2y_u_v24(bgra: Any, full_range: bool) -> np.ndarray:
     y = np.array(y).flatten()
     u = np.array(u).flatten()
     v = np.array(v).flatten()
-    yuv24 = np.concatenate((y, u, v))
+    yuv24: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
     return yuv24.astype(np.uint8)
 
 
-def bgra2y_u_v16(bgra: Any, full_range: bool) -> np.ndarray:
+def bgra2y_u_v16(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
     if full_range:
         yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
         y, v, u = cv2.split(yvu)
@@ -47,11 +48,11 @@ def bgra2y_u_v16(bgra: Any, full_range: bool) -> np.ndarray:
     y = np.array(y).flatten()
     u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0]))).flatten()
     v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0]))).flatten()
-    yuv16 = np.concatenate((y, u, v))
+    yuv16: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
     return yuv16.astype(np.uint8)
 
 
-def bgra2y_u_v12(bgra: Any, full_range: bool) -> np.ndarray:
+def bgra2y_u_v12(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
     if full_range:
         yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
         y, v, u = cv2.split(yvu)
@@ -61,33 +62,33 @@ def bgra2y_u_v12(bgra: Any, full_range: bool) -> np.ndarray:
     y = np.array(y).flatten()
     u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0] // 2))).flatten()
     v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0] // 2))).flatten()
-    yuv12 = np.concatenate((y, u, v))
+    yuv12: npt.NDArray[np.uint8] = np.concatenate((y, u, v))
     return yuv12.astype(np.uint8)
 
 
-def bgra2y8(bgra: Any, full_range: bool) -> np.ndarray:
+def bgra2y8(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uint8]:
     if full_range:
         yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
         y, _v, _u = cv2.split(yvu)
     else:
         yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
         y, _u, _v = cv2.split(yuv)
-    return y.astype(np.uint8)
+    return cast(npt.NDArray[np.uint8], y).astype(np.uint8)
 
 
-def bgra2nv12(bgra: Any) -> np.ndarray:
-    yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_I420)
+def bgra2nv12(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+    yuv: npt.NDArray[np.uint8] = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_I420)
     uv_row_cnt = yuv.shape[0] // 3
     uv_plane = np.transpose(yuv[uv_row_cnt * 2 :].reshape(2, -1), [1, 0])
     yuv[uv_row_cnt * 2 :] = uv_plane.reshape(uv_row_cnt, -1)
     return yuv
 
 
-def bgra2yuy2(bgra: Any) -> np.ndarray:
+def bgra2yuy2(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_YUY2)
     (y, uv) = cv2.split(yuv)
 
-    yuy2 = np.empty((y.shape[0], y.shape[1] * 2), dtype=y.dtype)
+    yuy2: npt.NDArray[np.uint8] = np.empty((y.shape[0], y.shape[1] * 2), dtype=y.dtype)
     yuy2[:, 0::2] = y
     yuy2[:, 1::4] = uv[:, ::2]
     yuy2[:, 3::4] = uv[:, 1::2]
