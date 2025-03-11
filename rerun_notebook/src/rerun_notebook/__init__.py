@@ -43,7 +43,7 @@ if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
 
     bound_addr = serve_assets(background=True)
-    ESM_MOD = f"http://localhost:{bound_addr[1]}/widget.js"
+    ESM_MOD: str | pathlib.Path = f"http://localhost:{bound_addr[1]}/widget.js"
 elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
@@ -208,7 +208,7 @@ class Viewer(anywidget.AnyWidget):
 
         self.send({"type": "rrd"}, buffers=[data])
 
-    def block_until_ready(self, timeout=5.0) -> None:
+    def block_until_ready(self, timeout: float = 5.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
