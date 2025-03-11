@@ -393,8 +393,8 @@ impl PythonCodeGenerator {
                     "
             from __future__ import annotations
 
-            from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-                TYPE_CHECKING, SupportsFloat, Literal)
+            from collections.abc import Iterable, Mapping, Set, Sequence, Dict
+            from typing import Any, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
             from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field

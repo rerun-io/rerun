@@ -46,7 +46,7 @@ def run(args: Namespace) -> None:
             rrb.TextDocumentView(origin="readme", name="Instructions"),
             rrb.TimeSeriesView(
                 name="Plots",
-                defaults=[rr.components.Color([0, 0, 255])],
+                defaults=[rr.SeriesPoint.from_fields(color=[0, 0, 255])],
                 overrides={
                     "plots/cos": [
                         rrb.VisualizerOverrides("SeriesPoint"),

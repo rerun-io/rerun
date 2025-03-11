@@ -47,7 +47,7 @@ def test_bench_points3d_many_individual(benchmark: Any, num_points: int) -> None
     benchmark(log_points3d_many_individual, data)
 
 
-def log_image(image: np.ndarray, num_log_calls: int) -> None:
+def log_image(image: npt.NDArray[np.uint8], num_log_calls: int) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
@@ -67,9 +67,9 @@ def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, 
 
 
 def test_bench_transforms_over_time_individual(
-    rand_trans: npt.NDArray,
-    rand_quats: npt.NDArray,
-    rand_scales: npt.NDArray,
+    rand_trans: npt.NDArray[np.float32],
+    rand_quats: npt.NDArray[np.float32],
+    rand_scales: npt.NDArray[np.float32],
 ) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
@@ -84,9 +84,9 @@ def test_bench_transforms_over_time_individual(
 
 
 def test_bench_transforms_over_time_batched(
-    rand_trans: npt.NDArray,
-    rand_quats: npt.NDArray,
-    rand_scales: npt.NDArray,
+    rand_trans: npt.NDArray[np.float32],
+    rand_quats: npt.NDArray[np.float32],
+    rand_scales: npt.NDArray[np.float32],
     num_transforms_per_batch: int,
 ) -> None:
     # create a new, empty memory sink for the current recording

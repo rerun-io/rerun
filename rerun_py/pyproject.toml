@@ -213,6 +213,7 @@ files = [
   "rerun_py/tests",
   "examples/python",
   "scripts",
+  "tests/python",
 ]
 exclude = ["examples/python/objectron", "examples/python/ros_node"]
 namespace_packages = true
