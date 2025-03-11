@@ -5,7 +5,6 @@ import logging
 import os
 import pathlib
 import time
-from abc import ABC
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -57,46 +56,70 @@ else:
         )
 
 
-# TODO: is `ABC` necessary here? Or should every method actually be abstract?
-class ViewerCallbacks(ABC):  # noqa: B024
-    def on_selection_change(self, selection: list[SelectionItem]) -> None:  # noqa: B027
+class ViewerCallbacks:
+    def on_selection_change(self, selection: list[SelectionItem]) -> None:
         pass
 
-    def on_timeline_change(self, timeline: str, time: float) -> None:  # noqa: B027
+    def on_timeline_change(self, timeline: str, time: float) -> None:
         pass
 
-    def on_time_update(self, time: float) -> None:  # noqa: B027
+    def on_time_update(self, time: float) -> None:
         pass
 
 
 @dataclass
-class EntityPathSelection:
+class EntitySelection:
     @property
-    def kind(self) -> Literal["entity_path"]:
-        return 0  # "entity_path"
+    def kind(self) -> Literal["entity"]:
+        return "entity"
 
     entity_path: str
 
 
-# @dataclass
-# class ViewSelection:
-#     @property
-#     def kind(self) -> Literal["view"]:
-#         return "view"
+@dataclass
+class InstanceSelection:
+    @property
+    def kind(self) -> Literal["instance"]:
+        return "instance"
 
-#     view_id: str
+    entity_path: str
+    instance_id: int
 
 
-SelectionItem = EntityPathSelection  # | ViewSelection
+@dataclass
+class ViewSelection:
+    @property
+    def kind(self) -> Literal["view"]:
+        return "view"
+
+    view_id: str
+
+
+@dataclass
+class ContainerSelection:
+    @property
+    def kind(self) -> Literal["container"]:
+        return "container"
+
+    container_id: str
+
+
+
+
+SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
 
 
 def _selection_item_from_json(json: Any) -> SelectionItem:
-    if json["type"] == "entity_path":
-        return EntityPathSelection(entity_path=json["entity_path"])
+    if json["type"] == "entity":
+        return EntitySelection(entity_path=json["entity_path"])
+    if json["type"] == "instance":
+        return InstanceSelection(entity_path=json["entity_path"], instance_id=json["instance_id"])
+    if json["type"] == "view":
+        return ViewSelection(view_id=json["view_id"])
+    if json["type"] == "container":
+        return ContainerSelection(container_id=json["container_id"])
     else:
         raise NotImplementedError(f"selection item kind {json[type]} is not handled")
-    # elif json["type"] == "view":
-    #     return ViewSelection
 
 
 class Viewer(anywidget.AnyWidget):

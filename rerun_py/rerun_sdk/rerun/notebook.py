@@ -11,9 +11,12 @@ if TYPE_CHECKING:
 
 try:
     from rerun_notebook import (
-        EntityPathSelection as EntityPathSelection,
+        ContainerSelection as ContainerSelection,
+        EntitySelection as EntitySelection,
+        InstanceSelection as InstanceSelection,
         SelectionItem as SelectionItem,
         ViewerCallbacks as ViewerCallbacks,
+        ViewSelection as ViewSelection,
     )
 except ImportError:
     pass
