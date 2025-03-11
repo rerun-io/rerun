@@ -143,7 +143,7 @@ pub enum LeRobotError {
 ///
 /// Each episode is identified by a unique index and mapped to its corresponding chunk, based on the number of episodes
 /// per chunk (which can be found in `meta/info.json`).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LeRobotDataset {
     pub path: PathBuf,
     pub metadata: LeRobotDatasetMetadata,
@@ -216,7 +216,7 @@ impl LeRobotDataset {
 ///
 /// This is a wrapper struct for the metadata files in the `meta` directory of a
 /// `LeRobot` dataset. For more see [`LeRobotDataset`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)] // TODO(gijsd): The list of tasks is not used yet!
 pub struct LeRobotDatasetMetadata {
     pub info: LeRobotDatasetInfo,
@@ -251,7 +251,7 @@ impl LeRobotDatasetMetadata {
 ///
 /// This struct contains the metadata for a `LeRobot` dataset, and is loaded from the `meta/info.json` file
 /// of the dataset.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LeRobotDatasetInfo {
     /// The type of the robot.
     pub robot_type: String,
@@ -381,7 +381,7 @@ impl LeRobotDatasetInfo {
 ///
 /// For example, a shape of `[3, 224, 224]` for a [`DType::Image`] feature denotes a 3-channel (e.g. RGB)
 /// image with a height and width of 224 pixels each.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub dtype: DType,
     pub shape: Vec<usize>,
@@ -407,7 +407,7 @@ pub enum DType {
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
 /// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
 /// - A list specific to motors (e.g., `{ "motors": ["motor_0", "motor_1", ...] }`).
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Names {
     Motors { motors: Vec<String> },
@@ -426,7 +426,7 @@ impl Names {
 
 /// A wrapper struct that deserializes flat or nested lists of strings
 /// into a single flattened [`Vec`] of names for easy indexing.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct NamesList(Vec<String>);
 
 impl<'de> Deserialize<'de> for NamesList {
@@ -482,7 +482,7 @@ pub struct EpisodeIndex(pub usize);
 /// An episode in a `LeRobot` dataset.
 ///
 /// Each episode contains its index, a list of associated tasks, and its total length in frames.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LeRobotDatasetEpisode {
     #[serde(rename = "episode_index")]
     pub index: EpisodeIndex,
@@ -498,7 +498,7 @@ pub struct TaskIndex(pub usize);
 /// A task in a `LeRobot` dataset.
 ///
 /// Each task consists of its index and a task description.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LeRobotDatasetTask {
     #[serde(rename = "task_index")]
     pub index: TaskIndex,
