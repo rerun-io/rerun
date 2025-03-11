@@ -45,7 +45,7 @@ def log_external_blueprint() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
-    def lerp(a, b, t):
+    def lerp(a, b, t):  # type: ignore[no-untyped-def]
         return a + t * (b - a)
 
     for t in range(int(tau * 2 * 100.0)):

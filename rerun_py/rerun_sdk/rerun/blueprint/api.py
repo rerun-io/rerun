@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Optional, Union
 
 import rerun_bindings as bindings
@@ -44,8 +44,8 @@ class View:
         name: Utf8Like | None,
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
-        defaults: list[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: dict[
+        defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+        overrides: Mapping[
             EntityPathLike,
             AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
@@ -98,8 +98,8 @@ class View:
         self.contents = contents
         self.visible = visible
         self.properties = properties if properties is not None else {}
-        self.defaults = defaults if defaults is not None else []
-        self.overrides = overrides if overrides is not None else {}
+        self.defaults = list(defaults) if defaults is not None else []
+        self.overrides = dict(overrides.items()) if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
