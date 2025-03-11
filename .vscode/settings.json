@@ -49,8 +49,8 @@
     "rust-analyzer.showUnlinkedFileNotification": false,
     // Uncomment the following options and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
     // Don't forget to put it in a comment again before committing.
-    "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
-    "rust-analyzer.cargo.cfgs": ["web","webgl","webgpu"],
+    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+    // "rust-analyzer.cargo.cfgs": ["web","webgl","webgpu"],
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
     "C_Cpp.autoAddFileAssociations": false,
     "cmake.buildDirectory": "${workspaceRoot}/build/debug",
