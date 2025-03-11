@@ -56,6 +56,8 @@ else:
         )
 
 
+# CALLBACK DEFINITION
+# If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
 class ViewerCallbacks:
     def on_selection_change(self, selection: list[SelectionItem]) -> None:
         pass
@@ -67,6 +69,7 @@ class ViewerCallbacks:
         pass
 
 
+# SELECTION ITEM DEFINITION
 @dataclass
 class EntitySelection:
     @property
@@ -109,6 +112,7 @@ class ContainerSelection:
 SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
 
 
+# SELECTION ITEM DEFINITION
 def _selection_item_from_json(json: Any) -> SelectionItem:
     if json["type"] == "entity":
         return EntitySelection(entity_path=json["entity_path"])
@@ -177,6 +181,8 @@ class Viewer(anywidget.AnyWidget):
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
             elif not isinstance(content, str) and "event" in content:
+                # CALLBACK DEFINITION
+                # Event names here come from `widget.ts`.
                 if content["event"] == "selectionchange":
                     selection = [
                         _selection_item_from_json(item) for item in content["payload"]

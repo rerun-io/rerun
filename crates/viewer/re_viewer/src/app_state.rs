@@ -21,7 +21,6 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     app_blueprint::AppBlueprint,
-    callback::Callbacks,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -158,8 +157,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>, // TODO(andreas,jan): fuse timeline callbacks and other callbacks
-        callbacks: Option<&Callbacks>,
+        callbacks: Option<&re_viewer_context::Callbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -310,7 +308,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx, timeline_callbacks);
+        move_time(&ctx, recording, rx, callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -653,7 +651,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+    callbacks: Option<&re_viewer_context::Callbacks>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -668,7 +666,7 @@ fn move_time(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        timeline_callbacks,
+        callbacks,
     );
 
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {

@@ -14,7 +14,7 @@ use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, Callbacks, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
@@ -23,7 +23,6 @@ use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
-    callback::Callbacks,
     AppState,
 };
 // ----------------------------------------------------------------------------
@@ -84,18 +83,8 @@ pub struct StartupOptions {
     /// This also can be changed in the viewer's option menu.
     pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
-    /// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    // TODO(jan, andreas): make this non-wasm
-    #[cfg(target_arch = "wasm32")]
-    pub timeline_options: Option<crate::web::TimelineOptions>,
-
     /// Interaction between JS and the viewer.
-    // TODO(jan, andreas): make this non-wasm, and merge with above.
-    #[cfg(target_arch = "wasm32")]
-    pub callbacks: Option<crate::web::Callbacks>,
+    pub callbacks: Option<Callbacks>,
 
     /// Fullscreen is handled by JS on web.
     ///
@@ -146,10 +135,6 @@ impl Default for StartupOptions {
             force_wgpu_backend: None,
             video_decoder_hw_acceleration: None,
 
-            #[cfg(target_arch = "wasm32")]
-            timeline_options: Default::default(),
-
-            #[cfg(target_arch = "wasm32")]
             callbacks: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
@@ -241,13 +226,6 @@ pub struct App {
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
     reflection: re_types_core::reflection::Reflection,
-
-    /// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    // TODO(andreas/jan): Meld into `callbacks` below.
-    pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
 
     /// Interaction between JS and the viewer.
     ///
@@ -388,73 +366,7 @@ impl App {
             Default::default()
         });
 
-        #[cfg(target_arch = "wasm32")]
-        let timeline_callbacks = {
-            use crate::web_tools::string_from_js_value;
-            use std::rc::Rc;
-            use wasm_bindgen::JsValue;
-
-            startup_options.timeline_options.clone().map(|opts| {
-                re_viewer_context::TimelineCallbacks {
-                    on_timelinechange: Rc::new(move |timeline, time| {
-                        if let Err(err) = opts.on_timelinechange.call2(
-                            &JsValue::from_str(timeline.name().as_str()),
-                            &JsValue::from_f64(time.as_f64()),
-                        ) {
-                            re_log::error!("{}", string_from_js_value(err));
-                        };
-                    }),
-                    on_timeupdate: Rc::new(move |time| {
-                        if let Err(err) =
-                            opts.on_timeupdate.call1(&JsValue::from_f64(time.as_f64()))
-                        {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                    on_play: Rc::new(move || {
-                        if let Err(err) = opts.on_play.call0() {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                    on_pause: Rc::new(move || {
-                        if let Err(err) = opts.on_pause.call0() {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                }
-            })
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let timeline_callbacks = None;
-
-        #[cfg(target_arch = "wasm32")]
-        let callbacks = {
-            use crate::web_tools::string_from_js_value;
-            use crate::web_tools::JsResultExt as _;
-            use std::rc::Rc;
-            use wasm_bindgen::JsValue;
-
-            startup_options.callbacks.clone().map(|opts| Callbacks {
-                on_selection_change: Rc::new(move |selection| {
-                    // Express the collection as a flat list of item + context tuples.
-                    let array = js_sys::Array::new_with_length(selection.len() as u32);
-                    for (i, item) in selection.into_iter().enumerate() {
-                        let Some(value) = serde_wasm_bindgen::to_value(&item)
-                            .map_err(|v| v.into())
-                            .ok_or_log_js_error()
-                        else {
-                            continue;
-                        };
-                        array.set(i as u32, value);
-                    }
-                    opts.on_selection_change.call1(&array).ok_or_log_js_error();
-                }),
-            })
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let callbacks = None;
+        let callbacks = startup_options.callbacks.clone();
 
         Self {
             main_thread_token,
@@ -506,7 +418,6 @@ impl App {
 
             reflection,
 
-            timeline_callbacks,
             callbacks,
             async_runtime: tokio_runtime,
         }
@@ -1401,7 +1312,6 @@ impl App {
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            self.timeline_callbacks.as_ref(),
                             self.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();

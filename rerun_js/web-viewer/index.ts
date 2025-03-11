@@ -107,14 +107,25 @@ export interface AppOptions extends WebViewerOptions {
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
-  timeline?: TimelineOptions;
+  callbacks?: Callbacks;
   fullscreen?: FullscreenOptions;
   enable_history?: boolean;
 }
 
-type CallbackItem = { type: "entity_path"; entity_path: string };
+// SELECTION ITEM DEFINITION
+type EntityItem = { type: "entity"; entity_path: string };
+type InstanceItem = {
+  type: "instance";
+  entity_path: string;
+  instance_id: number;
+};
+type ViewItem = { type: "view"; view_id: string };
+type ContainerItem = { type: "container"; container_id: string };
+type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
 
-interface TimelineOptions {
+// CALLBACK DEFINITION
+interface Callbacks {
+  on_selectionchange: (selection: SelectionItem[]) => void;
   on_timelinechange: (timeline: string, time: number) => void;
   on_timeupdate: (time: number) => void;
   on_pause: () => void;
@@ -130,12 +141,12 @@ interface WebViewerEvents {
   fullscreen: boolean;
   ready: void;
 
+  // CALLBACK DEFINITION
+  selectionchange: [SelectionItem[]];
   timelinechange: [timeline_name: string, time: number];
   timeupdate: number;
   play: void;
   pause: void;
-
-  selectionchange: [CallbackItem[]];
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -216,7 +227,11 @@ export class WebViewer {
         }
       : undefined;
 
-    const timeline = {
+    // CALLBACK DEFINITION
+    const callbacks = {
+      on_selectionchange: (items: SelectionItem[]) => {
+        this.#dispatch_event("selectionchange", items);
+      },
       on_timelinechange: (timeline: string, time: number) =>
         this.#dispatch_event("timelinechange", timeline, time),
       on_timeupdate: (time: number) => this.#dispatch_event("timeupdate", time),
@@ -224,16 +239,9 @@ export class WebViewer {
       on_play: () => this.#dispatch_event("play"),
     };
 
-    const callbacks = {
-      on_selection_change: (items: CallbackItem[]) => {
-        this.#dispatch_event("selectionchange", items);
-      },
-    };
-
     this.#handle = new WebHandle_class({
       ...options,
       fullscreen,
-      timeline,
       callbacks,
     });
     try {
