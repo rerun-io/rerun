@@ -7565,7 +7565,6 @@ dependencies = [
  "clap",
  "document-features",
  "env_filter",
- "env_logger",
  "itertools 0.13.0",
  "log",
  "puffin",
