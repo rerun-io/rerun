@@ -33,7 +33,8 @@ use re_protos::{
         index_properties::Props, storage_node_service_client::StorageNodeServiceClient,
         CatalogEntry, CatalogFilter, ColumnProjection, FetchRecordingRequest,
         GetRecordingSchemaRequest, IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
+        RegisterRecordingDescription, RegisterRecordingsRequest, SearchIndexRequest,
+        UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
@@ -380,20 +381,24 @@ impl PyStorageNodeClient {
                 })
                 .transpose()?;
 
-            let request = RegisterRecordingRequest {
+            let request = RegisterRecordingsRequest {
                 entry: Some(CatalogEntry {
                     name: entry.to_owned(),
                 }),
-                // TODO(jleibs): Description should really just be in the metadata
-                description: Default::default(),
-                storage_url: storage_url.to_string(),
-                metadata,
-                typ: RecordingType::Rrd.into(),
+                recordings: vec![
+                    RegisterRecordingDescription {
+                        // TODO(jleibs): Description should really just be in the metadata
+                        description: Default::default(),
+                        storage_url: storage_url.to_string(),
+                        metadata,
+                        typ: RecordingType::Rrd.into(),
+                    }, //
+                ],
             };
 
             let resp = self
                 .client
-                .register_recording(request)
+                .register_recordings(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
