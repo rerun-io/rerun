@@ -36,6 +36,7 @@ from .half_size3d import HalfSize3D, HalfSize3DBatch
 from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
+from .interactive import Interactive, InteractiveBatch
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
 from .length import Length, LengthBatch
@@ -93,6 +94,7 @@ from .vector3d import Vector3D, Vector3DBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
+from .visible_recursive import VisibleRecursive, VisibleRecursiveBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -155,6 +157,8 @@ __all__ = [
     "ImageFormatBatch",
     "ImagePlaneDistance",
     "ImagePlaneDistanceBatch",
+    "Interactive",
+    "InteractiveBatch",
     "KeypointId",
     "KeypointIdBatch",
     "LatLon",
@@ -259,4 +263,6 @@ __all__ = [
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",
+    "VisibleRecursive",
+    "VisibleRecursiveBatch",
 ]

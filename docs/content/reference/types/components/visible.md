@@ -20,3 +20,6 @@ boolean
  * 🦀 [Rust API docs for `Visible`](https://docs.rs/rerun/latest/rerun/components/struct.Visible.html?speculative-link)
 
 
+## Used by
+
+* [`EntityProperties`](../archetypes/entity_properties.md?speculative-link)

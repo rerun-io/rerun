@@ -22,7 +22,6 @@ force_strength.hpp linguist-generated=true
 grid_columns.hpp linguist-generated=true
 grid_spacing.hpp linguist-generated=true
 included_content.hpp linguist-generated=true
-interactive.hpp linguist-generated=true
 lock_range_during_zoom.hpp linguist-generated=true
 map_provider.cpp linguist-generated=true
 map_provider.hpp linguist-generated=true

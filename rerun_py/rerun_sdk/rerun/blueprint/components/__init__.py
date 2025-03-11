@@ -20,7 +20,6 @@ from .force_strength import ForceStrength, ForceStrengthBatch
 from .grid_columns import GridColumns, GridColumnsBatch
 from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
-from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
 from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
@@ -84,8 +83,6 @@ __all__ = [
     "GridSpacingBatch",
     "IncludedContent",
     "IncludedContentBatch",
-    "Interactive",
-    "InteractiveBatch",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "MapProvider",

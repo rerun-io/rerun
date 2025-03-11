@@ -13,6 +13,7 @@ capsules3d.rs linguist-generated=true
 depth_image.rs linguist-generated=true
 ellipsoids3d.rs linguist-generated=true
 encoded_image.rs linguist-generated=true
+entity_properties.rs linguist-generated=true
 geo_line_strings.rs linguist-generated=true
 geo_points.rs linguist-generated=true
 graph_edges.rs linguist-generated=true

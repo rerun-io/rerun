@@ -15,6 +15,7 @@
 #include "archetypes/depth_image.hpp"
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_image.hpp"
+#include "archetypes/entity_properties.hpp"
 #include "archetypes/geo_line_strings.hpp"
 #include "archetypes/geo_points.hpp"
 #include "archetypes/graph_edges.hpp"
