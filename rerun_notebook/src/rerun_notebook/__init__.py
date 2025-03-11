@@ -120,7 +120,7 @@ def _selection_item_from_json(json: Any) -> SelectionItem:
         raise NotImplementedError(f"selection item kind {json[type]} is not handled")
 
 
-class Viewer(anywidget.AnyWidget):
+class Viewer(anywidget.AnyWidget): # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
 
