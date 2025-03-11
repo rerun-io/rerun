@@ -94,7 +94,8 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
 /// Web: `debug` since web console allows arbitrary filtering.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let base_log_filter = if cfg!(debug_assertions) {
+    let base_log_filter = if false {
+        //cfg!(debug_assertions) {
         "debug"
     } else {
         // Important to keep the default at (at least) "info",
@@ -113,7 +114,7 @@ pub fn default_log_filter() -> String {
 /// Web: `debug` since web console allows arbitrary filtering.
 #[cfg(target_arch = "wasm32")]
 pub fn default_log_filter() -> String {
-    "debug".to_string()
+    "debug".to_owned()
 }
 
 /// Determines the log filter from the `RUST_LOG` environment variable or an explicit default.
