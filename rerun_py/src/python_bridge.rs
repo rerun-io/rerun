@@ -183,7 +183,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // dataframes
     crate::dataframe::register(m)?;
 
-    #[cfg(feature = "remote")]
+    // remote
     crate::remote::register(m)?;
 
     Ok(())
