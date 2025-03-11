@@ -20,6 +20,7 @@ features = [
   [
     "Update rows",
     [
+      "archetypes/arrows3d_row_updates",
       "archetypes/scalar_row_updates",
       "archetypes/points3d_row_updates",
       "archetypes/transform3d_row_updates",
@@ -28,6 +29,7 @@ features = [
   [
     "Update columns",
     [
+      "archetypes/arrows3d_row_columns",
       "archetypes/scalar_column_updates",
       "archetypes/points3d_column_updates",
       "archetypes/transform3d_column_updates",
