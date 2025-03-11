@@ -40,10 +40,10 @@ impl SelectionItem {
                 None
             }
             Item::View(view_id) => Some(Self::View {
-                view_id: view_id.to_string(),
+                view_id: view_id.uuid().to_string(),
             }),
             Item::Container(container_id) => Some(Self::Container {
-                container_id: container_id.to_string(),
+                container_id: container_id.uuid().to_string(),
             }),
             Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
                 if instance_path.is_all() {
