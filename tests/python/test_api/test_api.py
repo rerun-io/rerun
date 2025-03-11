@@ -186,7 +186,7 @@ def raw_mesh() -> None:
     rr.log(
         "mesh_test/triangle",
         rr.Mesh3D(
-            vertex_positions=[[0, 0, 0], [0, 0.7, 0], [1.0, 0.0, 0]],
+            vertex_positions=[[0.0, 0.0, 0.0], [0.0, 0.7, 0.0], [1.0, 0.0, 0.0]],
             vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
         ),
     )
@@ -334,7 +334,7 @@ def run_image_datatypes() -> None:
         "float64",
     ]
 
-    def cast_to(array, dtype):
+    def cast_to(array, dtype):  # type: ignore[no-untyped-def]
         if dtype == "int8":
             # remap [0, 255] to [-128, 127]
             return (array.astype("int16") - 128).astype("int8")

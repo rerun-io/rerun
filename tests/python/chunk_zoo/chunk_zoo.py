@@ -13,7 +13,6 @@ from collections.abc import Sequence
 
 import numpy as np
 import rerun as rr
-import rerun.components as rrc
 
 
 def frame_times(t: int | Sequence[int], *args: int) -> list[rr.IndexColumn]:
@@ -54,7 +53,9 @@ def specimen_archetype_with_clamp_join_semantics() -> None:
         "/archetype_with_clamp_join_semantics",
         frame_times(0),
         [
-            *rr.Points2D.columns(positions=[(i, i) for i in range(10)], _lengths=[10]),
+            *rr.Points2D.columns(
+                positions=[(i, i) for i in range(10)],
+            ).partition([10]),
             *rr.Points2D.columns(radii=2),
         ],
     )
@@ -72,7 +73,7 @@ def specimen_archetype_with_latest_at_semantics() -> None:
     rr.log("/archetype_chunk_with_latest_at_semantics", [rr.Points2D.indicator()])
 
     set_frame_time(5)
-    rr.log("/archetype_chunk_with_latest_at_semantics", [rrc.RadiusBatch(2)])
+    rr.log("/archetype_chunk_with_latest_at_semantics", rr.Points2D.from_fields(radii=2))
 
 
 def specimen_archetype_with_clamp_join_semantics_two_chunks() -> None:
@@ -80,7 +81,7 @@ def specimen_archetype_with_clamp_join_semantics_two_chunks() -> None:
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
         frame_times(0),
-        rr.Points2D.columns(positions=[(i, i) for i in range(10)], _lengths=[10]),
+        rr.Points2D.columns(positions=[(i, i) for i in range(10)]).partition([10]),
     )
 
     rr.send_columns(
@@ -99,9 +100,8 @@ def specimen_archetype_without_clamp_join_semantics() -> None:
             *rr.Mesh3D.columns(
                 vertex_positions=[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)],
                 vertex_colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)],
-                _lengths=[4],
-            ),
-            *rr.Mesh3D.columns(triangle_indices=[(0, 1, 2), (0, 2, 3)], _lengths=[2]),
+            ).partition([4]),
+            *rr.Mesh3D.columns(triangle_indices=[(0, 1, 2), (0, 2, 3)]).partition([2]),
         ],
     )
 
@@ -117,7 +117,7 @@ def specimen_many_rows_with_mismatched_instance_count() -> None:
         15,
         size=100,
     )
-    batch_size = np.sum(positions_partitions)
+    batch_size = int(np.sum(positions_partitions))
 
     # Shuffle the color partitions to induce the mismatch
     colors_partitions = positions_partitions.copy()
@@ -130,8 +130,8 @@ def specimen_many_rows_with_mismatched_instance_count() -> None:
         "/many_rows_with_mismatched_instance_count",
         frame_times(range(len(positions_partitions))),
         [
-            *rr.Points2D.columns(positions=positions, _lengths=positions_partitions),
-            *rr.Points2D.columns(colors=colors, _lengths=colors_partitions),
+            *rr.Points2D.columns(positions=positions).partition(positions_partitions),
+            *rr.Points2D.columns(colors=colors).partition(colors_partitions),
         ],
     )
     rr.log("/many_rows_with_mismatched_instance_count", [rr.Points2D.indicator()], static=True)
@@ -161,7 +161,7 @@ def specimen_archetype_chunk_with_clear() -> None:
     )
 
     set_frame_time(0)
-    rr.log("/archetype_chunk_with_clear", [rr.Points2D.indicator(), rrc.RadiusBatch(2)])
+    rr.log("/archetype_chunk_with_clear", [rr.Points2D.indicator()], rr.Points2D.from_fields(radii=2))
 
     set_frame_time(5)
     rr.log("/archetype_chunk_with_clear", rr.Clear(recursive=False))
@@ -184,12 +184,7 @@ def main() -> None:
         if name.startswith("specimen_") and callable(globals()[name]) and (not args.filter or args.filter in name)
     ]
 
-    # Create an inventory of all the specimens
-    def strip_prefix(s: str) -> str:
-        if s.startswith("specimen_"):
-            return s[len("specimen_") :]
-
-    specimen_list = "\n".join([f"| {strip_prefix(s.__name__)} | {s.__doc__} |" for s in specimens])
+    specimen_list = "\n".join([f"| {s.__name__.removeprefix('specimen_')} | {s.__doc__} |" for s in specimens])
     markdown = (
         "# Chunk Zoo\n\n"
         "This recording contains a variety of chunks of various typologies, for testing purposes.\n\n"
