@@ -17,9 +17,9 @@ int64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `RecordingStartedTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RecordingStartedTimestamp.html)
- * 🐍 [Python API docs for `RecordingStartedTimestamp`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.RecordingStartedTimestamp)
- * 🦀 [Rust API docs for `RecordingStartedTimestamp`](https://docs.rs/rerun/latest/rerun/components/struct.RecordingStartedTimestamp.html)
+ * 🌊 [C++ API docs for `RecordingStartedTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RecordingStartedTimestamp.html?speculative-link)
+ * 🐍 [Python API docs for `RecordingStartedTimestamp`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.RecordingStartedTimestamp)
+ * 🦀 [Rust API docs for `RecordingStartedTimestamp`](https://docs.rs/rerun/latest/rerun/components/struct.RecordingStartedTimestamp.html?speculative-link)
 
 
 ## Used by

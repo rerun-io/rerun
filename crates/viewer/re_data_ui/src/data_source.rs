@@ -48,7 +48,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         }
 
         recordings.sort_by_key(|entity_db| entity_db.recording_started());
-        // TODO: Blueprint don't have a time yet.
+        // TODO(grtlr): Blueprints don't have a time yet. But do we even need that?
         blueprints.sort_by_key(|entity_db| entity_db.recording_started());
 
         ui.scope(|ui| {

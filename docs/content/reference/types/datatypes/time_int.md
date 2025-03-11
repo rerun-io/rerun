@@ -19,5 +19,5 @@ int64
 
 ## Used by
 
-* [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md)
+* [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md?speculative-link)
 * [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
