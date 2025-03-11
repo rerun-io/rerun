@@ -54,7 +54,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .copied()
 ///         .map(rerun::components::VideoTimestamp::from_nanoseconds)
 ///         .collect::<Vec<_>>();
-///     let time_column = rerun::TimeColumn::new_nanos(
+///     let time_column = rerun::TimeColumn::new_duration_nanos(
 ///         "video_time",
 ///         // Note timeline values don't have to be the same as the video timestamps.
 ///         frame_timestamps_ns,

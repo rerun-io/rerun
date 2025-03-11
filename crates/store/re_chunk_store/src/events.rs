@@ -294,7 +294,7 @@ mod tests {
         let mut view = GlobalCounts::default();
 
         let timeline_frame = Timeline::new_sequence("frame");
-        let timeline_other = Timeline::new_temporal("other");
+        let timeline_other = Timeline::new_duration("other");
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
         let row_id1 = RowId::new();

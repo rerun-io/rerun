@@ -4,7 +4,7 @@ use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
-use re_types::blueprint::components::VisualizerOverrides;
+use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -88,15 +88,14 @@ pub fn visualizer_ui_impl(
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE);
         if response.clicked() {
-            let component = VisualizerOverrides::from(
+            let archetype = VisualizerOverrides::new(
                 active_visualizers
                     .iter()
                     .filter(|v| *v != &vis_name)
-                    .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                    .collect::<Vec<_>>(),
+                    .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_component(override_path, &component);
+            ctx.save_blueprint_archetype(override_path, &archetype);
         }
         response
     };
@@ -523,18 +522,14 @@ fn menu_add_new_visualizer(
     // Present an option to enable any visualizer that isn't already enabled.
     for viz in inactive_visualizers {
         if ui.button(viz.as_str()).clicked() {
-            let component = VisualizerOverrides::from(
+            let archetype = VisualizerOverrides::new(
                 active_visualizers
                     .iter()
                     .chain(std::iter::once(viz))
-                    .map(|v| {
-                        let arrow_str: re_types_core::ArrowString = v.as_str().into();
-                        arrow_str
-                    })
-                    .collect::<Vec<_>>(),
+                    .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_component(override_path, &component);
+            ctx.save_blueprint_archetype(override_path, &archetype);
 
             ui.close_menu();
         }

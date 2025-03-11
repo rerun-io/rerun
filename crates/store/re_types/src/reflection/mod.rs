@@ -364,12 +364,12 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VisualizerOverrides as Component>::name(),
+            <VisualizerOverride as Component>::name(),
             ComponentReflection {
-                docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
-                custom_placeholder: Some(VisualizerOverrides::default().to_arrow()?),
-                datatype: VisualizerOverrides::arrow_datatype(),
-                verify_arrow_array: VisualizerOverrides::verify_arrow_array,
+                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.",
+                custom_placeholder: Some(VisualizerOverride::default().to_arrow()?),
+                datatype: VisualizerOverride::arrow_datatype(),
+                verify_arrow_array: VisualizerOverride::verify_arrow_array,
             },
         ),
         (
@@ -861,7 +861,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
-                docstring_md: "Like `Visible`, but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.",
+                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link) since it would conflict with the entity-wide visibility state.",
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),
                 verify_arrow_array: SeriesVisible::verify_arrow_array,
@@ -2557,6 +2557,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
                     is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.VisualizerOverrides"),
+            ArchetypeReflection {
+                display_name: "Visualizer overrides",
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "ranges", display_name : "Ranges",
+                    component_name : "rerun.blueprint.components.VisualizerOverride"
+                    .into(), docstring_md :
+                    "Names of the visualizers that should be active.", is_required :
+                    true, },
                 ],
             },
         ),

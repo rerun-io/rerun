@@ -107,7 +107,8 @@ def log(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 
     entity:
-        Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
+        Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
+        or an iterable of (described)component batches.
 
     *extra:
         An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][]
@@ -147,7 +148,7 @@ def log(
         components = list(entity)
     else:
         raise TypeError(
-            f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
+            f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
             f"but got {type(entity)} instead.",
         )
 
@@ -158,7 +159,7 @@ def log(
             components.extend(ext)
         else:
             raise TypeError(
-                f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
+                f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
                 f"but got {type(entity)} instead.",
             )
 

@@ -996,11 +996,11 @@ impl RecordingStream {
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
-    /// must match. All data that occurs at the same index across the different time and components
+    /// must match. All data that occurs at the same index across the different index/time and components
     /// arrays will act as a single logical row.
     ///
-    /// Note that this API ignores any stateful time set on the log stream via the
-    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Note that this API ignores any stateful index/time set on the log stream via the
+    /// [`Self::set_index`]/[`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     pub fn send_columns(
         &self,
@@ -2082,13 +2082,14 @@ impl RecordingStream {
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_index`]
     /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
@@ -2107,7 +2108,7 @@ impl RecordingStream {
     /// Set the current value of one of the timelines.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
@@ -2123,6 +2124,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_index(&self, timeline: impl Into<TimelineName>, value: impl TryInto<IndexCell>) {
@@ -2147,7 +2149,7 @@ impl RecordingStream {
     /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     /// You can remove a timeline again using `rec.disable_timeline("frame_nr")`.
@@ -2155,9 +2157,9 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_timepoint`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
+    /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
@@ -2165,7 +2167,25 @@ impl RecordingStream {
         self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
     }
 
-    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`.
+    /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`..
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
+    ///
+    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// See also:
+    /// - [`Self::set_index`]
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_timestamp_seconds_since_epoch`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
     #[inline]
     pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
         self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
@@ -2174,6 +2194,22 @@ impl RecordingStream {
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
     ///
     /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
+    ///
+    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// See also:
+    /// - [`Self::set_index`]
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
     #[inline]
     pub fn set_timestamp_seconds_since_epoch(
         &self,
@@ -2189,7 +2225,7 @@ impl RecordingStream {
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
@@ -2203,6 +2239,7 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[deprecated(
+        since = "0.23.0",
         note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
     )]
     #[inline]
@@ -2213,7 +2250,7 @@ impl RecordingStream {
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
     /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
@@ -2227,6 +2264,7 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[deprecated(
+        since = "0.23.0",
         note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
     )]
     #[inline]
@@ -2266,7 +2304,7 @@ impl RecordingStream {
     /// Clears out the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.reset_time()`.
     ///

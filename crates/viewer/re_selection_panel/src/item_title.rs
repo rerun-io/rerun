@@ -79,11 +79,11 @@ impl ItemTitle {
             if let (Some(application_id), Some(started)) =
                 (entity_db.app_id(), entity_db.recording_started())
             {
-                let time = started
-                    .format_time_custom("[hour]:[minute]:[second]", ctx.app_options().time_zone)
-                    .unwrap_or("<unknown time>".to_owned());
-
-                format!("{application_id} - {time}")
+                let time = re_log_types::Timestamp::from(started)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string();
+                format!("{application_id} - {}", time)
             } else {
                 id_str.clone()
             }
