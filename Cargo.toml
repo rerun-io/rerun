@@ -156,7 +156,7 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "53.4", default-features = false }
+arrow = { version = "54.1", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.18.2", features = ["arrow"] }
 async-executor = "1.0"
 async-stream = "0.3"
