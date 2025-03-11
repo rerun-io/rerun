@@ -17,7 +17,7 @@ pub fn setup_logging() {
 pub fn setup_logging_with_filter(log_filter: &str) {
     use std::str::FromStr as _;
 
-    let primary_log_filter = log_filter.split(",").next().unwrap_or("info");
+    let primary_log_filter = log_filter.split(',').next().unwrap_or("info");
     let max_level =
         log::LevelFilter::from_str(primary_log_filter).unwrap_or(log::LevelFilter::Info);
 
@@ -56,7 +56,7 @@ pub fn setup_logging_with_filter(log_filter: &str) {
             });
         }
 
-        stderr_logger.parse_filters(&log_filter);
+        stderr_logger.parse_filters(log_filter);
         crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
         crate::add_boxed_logger(Box::new(PanicOnWarn {
             always_enabled: env_var_bool("RERUN_PANIC_ON_WARN") == Some(true),
