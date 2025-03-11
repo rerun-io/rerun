@@ -177,6 +177,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
+    // properties
+    m.add_function(wrap_pyfunction!(set_recording_name, m)?)?;
+
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
 
@@ -1364,6 +1367,18 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
             .collect_vec(),
     );
     Ok(path.to_string())
+}
+
+// --- Properties ---
+
+/// Set the name of a recording.
+#[pyfunction]
+#[pyo3(signature = (name, recording=None))]
+fn set_recording_name(name: &str, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_recording_name(name);
 }
 
 // --- Helpers ---

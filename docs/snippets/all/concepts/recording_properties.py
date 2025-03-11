@@ -2,6 +2,6 @@
 
 import rerun as rr
 
-rr.init("rerun_example_recording_properties", spawn=True)
+rec = rr.RecordingStream("rerun_example_explicit_recording")
 
-rr.set_recording_name("My Recording")
+rec.set_recording_name("My Recording")
