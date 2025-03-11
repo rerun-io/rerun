@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Optional, Union
 
 import rerun_bindings as bindings
 
-from .._baseclasses import AsComponents, ComponentBatchLike
+from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentBatch
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
@@ -44,8 +44,12 @@ class View:
         name: Utf8Like | None,
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
-        defaults: list[AsComponents | ComponentBatchLike] | None = None,
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
+        defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+        overrides: Mapping[
+            EntityPathLike,
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
     ) -> None:
         """
         Construct a blueprint for a new view.
@@ -70,12 +74,17 @@ class View:
         properties
             Dictionary of property archetypes to add to view's internal hierarchy.
         defaults:
-            List of default components or component batches to add to the view. When an archetype
-            in the view is missing a component included in this set, the value of default will be used
-            instead of the normal fallback for the visualizer.
+            List of archetypes or (described) component batches to add to the view.
+            When an archetype in the view is missing a component included in this set,
+            the value of default will be used instead of the normal fallback for the visualizer.
+
+            Note that an archetype's required components typically don't have any effect.
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
         overrides:
             Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of component or component batches to apply to the entity.
+            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
@@ -89,8 +98,8 @@ class View:
         self.contents = contents
         self.visible = visible
         self.properties = properties if properties is not None else {}
-        self.defaults = defaults if defaults is not None else []
-        self.overrides = overrides if overrides is not None else {}
+        self.defaults = list(defaults) if defaults is not None else []
+        self.overrides = dict(overrides.items()) if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
@@ -143,10 +152,17 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            stream.log(
-                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}",
-                components,  # type: ignore[arg-type]
-            )
+            log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
+            if isinstance(components, Iterable):
+                components_list = list(components)
+
+                for component in components_list:
+                    if isinstance(component, DescribedComponentBatch):
+                        stream.log(log_path, [component])
+                    else:
+                        stream.log(log_path, component)
+            else:  # has to be AsComponents
+                stream.log(log_path, components)
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
@@ -597,7 +613,7 @@ class Blueprint:
             blueprint is currently active.
 
         """
-        blueprint_stream = RecordingStream(
+        blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
                 application_id=application_id,
                 make_default=False,
@@ -627,7 +643,7 @@ class Blueprint:
         if path is None:
             path = f"{application_id}.rbl"
 
-        blueprint_stream = RecordingStream(
+        blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
                 application_id=application_id,
                 make_default=False,
@@ -687,7 +703,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     # We only use this stream object directly, so don't need to make it
     # default or thread default. Making it the thread-default will also
     # lead to an unnecessary warning on mac/win.
-    blueprint_stream = RecordingStream(
+    blueprint_stream = RecordingStream._from_native(
         bindings.new_blueprint(
             application_id=application_id,
             make_default=False,

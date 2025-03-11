@@ -67,18 +67,13 @@ fixed = { workspace = true, default-features = false }
 # we keep it as a direct dependency to ensure it stays pinned to the right version
 half.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 natord.workspace = true
 nohash-hasher.workspace = true
 num-derive.workspace = true
 num-traits.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
-time = { workspace = true, features = [
-  "formatting",
-  "local-offset",
-  "macros",
-  "parsing",
-] }
 typenum.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 web-time.workspace = true

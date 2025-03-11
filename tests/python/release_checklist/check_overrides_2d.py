@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
+from collections.abc import Iterable
 from uuid import uuid4
 
 import rerun as rr
@@ -75,23 +76,27 @@ def run(args: Namespace) -> None:
     log_boxes()
 
     visual_bounds = rrb.VisualBounds2D(x_range=[-5.5, 5.5], y_range=[-3.0, 3.0])
-    overrides = {
+    overrides: dict[rr.datatypes.EntityPathLike, Iterable[rr.AsComponents]] = {
         "arrows": [
             rrb.VisualizerOverrides([
                 rrb.visualizers.Arrows2D,
                 rrb.visualizers.Points2D,
             ]),
-            rr.components.ColorBatch([[255, 0, 0], [0, 255, 0], [0, 0, 255]]),
-            rr.components.RadiusBatch([0.5, 0.25, 0.125]),
-            rr.components.TextBatch(["BigRed", "MidGreen", "SmolBlue"]),
-            rr.components.Position2DBatch([[-2.0, 1.5], [0.0, -0.5], [2.0, 0.75]]),
-            rr.components.Vector2DBatch([[-2.0, 1.0], [0.0, 2.0], [2.0, 1.0]]),
+            rr.Arrows2D.from_fields(
+                origins=[[-2.0, 1.5], [0.0, -0.5], [2.0, 0.75]],
+                vectors=[[-2.0, 1.0], [0.0, 2.0], [2.0, 1.0]],
+                labels=["BigRed", "MidGreen", "SmolBlue"],
+                radii=[0.5, 0.25, 0.125],
+                colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+            ),
         ],
     }
     defaults = [
-        rr.components.ColorBatch([[255, 255, 0], [0, 255, 255], [255, 0, 255]]),
-        rr.components.RadiusBatch([0.1, 0.2, 0.3]),
-        rr.components.TextBatch(["TeenyYellow", "AverageCyan", "GigaPurple"]),
+        rr.Arrows2D.from_fields(
+            labels=["TeenyYellow", "AverageCyan", "GigaPurple"],
+            radii=[0.1, 0.2, 0.3],
+            colors=[[255, 255, 0], [0, 255, 255], [255, 0, 255]],
+        ),
     ]
 
     blueprint = rrb.Blueprint(
@@ -133,10 +138,9 @@ def run(args: Namespace) -> None:
                                 rrb.visualizers.Arrows2D,
                                 rrb.visualizers.Points2D,
                             ]),
-                            rr.components.Color([255, 255, 255]),
-                            rr.components.Radius(0.1),
-                            rr.components.Text("Cerberus"),
-                            rr.components.Position2D([0.0, 0.0]),
+                            rr.Arrows2D.from_fields(
+                                origins=[0.0, 0.0], colors=[255, 255, 255], radii=0.1, labels="Cerberus"
+                            ),
                         ],
                     },
                 ),

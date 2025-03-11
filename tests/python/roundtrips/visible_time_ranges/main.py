@@ -23,17 +23,17 @@ def main() -> None:
             rrb.VisibleTimeRange(
                 "timeline0",
                 start=rr.TimeRangeBoundary.infinite(),
-                end=rr.TimeRangeBoundary.cursor_relative(-10),
+                end=rr.TimeRangeBoundary.cursor_relative(nanos=-10),
             ),
             rrb.VisibleTimeRange(
                 "timeline1",
-                start=rrb.TimeRangeBoundary.cursor_relative(20),
+                start=rrb.TimeRangeBoundary.cursor_relative(nanos=20),
                 end=rrb.TimeRangeBoundary.infinite(),
             ),
             rrb.VisibleTimeRange(
                 "timeline2",
-                start=rrb.TimeRangeBoundary.absolute(20),
-                end=rrb.TimeRangeBoundary.absolute(40),
+                start=rrb.TimeRangeBoundary.absolute(nanos=20),
+                end=rrb.TimeRangeBoundary.absolute(nanos=40),
             ),
         ]),
     )

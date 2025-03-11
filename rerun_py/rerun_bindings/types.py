@@ -53,7 +53,7 @@ Examples:
 
 ViewContentsLike: TypeAlias = Union[
     str,
-    dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
+    dict[str, Union[AnyColumn, ComponentLike, Sequence[ComponentLike]]],
 ]
 """
 A type alias for specifying the contents of a view.

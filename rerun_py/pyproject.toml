@@ -209,9 +209,11 @@ norecursedirs = ".* venv* target* build"
 [tool.mypy]
 files = [
   "rerun_py/rerun_sdk/rerun",
+  "rerun_py/rerun_bindings",
   "rerun_py/tests",
   "examples/python",
   "scripts",
+  "tests/python",
 ]
 exclude = ["examples/python/objectron", "examples/python/ros_node"]
 namespace_packages = true

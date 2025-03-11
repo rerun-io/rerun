@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use re_chunk_store::external::re_chunk::ComponentName;
 use re_chunk_store::ChunkStore;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline, TimestampFormat};
 use re_ui::UiExt as _;
 use re_viewer_context::TimeDragValue;
 
@@ -32,7 +32,7 @@ impl ChunkListMode {
         &mut self,
         ui: &mut egui::Ui,
         chunk_store: &ChunkStore,
-        time_zone: TimeZone,
+        format: TimestampFormat,
     ) -> Option<()> {
         let all_timelines = chunk_store.timelines();
         let all_entities = chunk_store.all_entities_sorted();
@@ -168,37 +168,17 @@ impl ChunkListMode {
             match query {
                 ChunkListQueryMode::LatestAt(time) => {
                     ui.label("at:");
-                    match time_typ {
-                        TimeType::Time => {
-                            time_drag_value.temporal_drag_value_ui(ui, time, true, None, time_zone);
-                        }
-                        TimeType::Sequence => {
-                            time_drag_value.sequence_drag_value_ui(ui, time, true, None);
-                        }
-                    };
+                    time_drag_value.drag_value_ui(ui, time_typ, time, true, None, format);
                 }
                 ChunkListQueryMode::Range(range) => {
                     let (mut min, mut max) = (range.min(), range.max());
+
                     ui.label("from:");
-                    match time_typ {
-                        TimeType::Time => {
-                            time_drag_value
-                                .temporal_drag_value_ui(ui, &mut min, true, None, time_zone);
-                            ui.label("to:");
-                            time_drag_value.temporal_drag_value_ui(
-                                ui,
-                                &mut max,
-                                true,
-                                Some(min),
-                                time_zone,
-                            );
-                        }
-                        TimeType::Sequence => {
-                            time_drag_value.sequence_drag_value_ui(ui, &mut min, true, None);
-                            ui.label("to:");
-                            time_drag_value.sequence_drag_value_ui(ui, &mut max, true, Some(min));
-                        }
-                    };
+                    time_drag_value.drag_value_ui(ui, time_typ, &mut min, true, None, format);
+
+                    ui.label("to:");
+                    time_drag_value.drag_value_ui(ui, time_typ, &mut max, true, Some(min), format);
+
                     range.set_min(min);
                     range.set_max(max);
                 }

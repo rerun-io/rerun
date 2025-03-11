@@ -1,18 +1,12 @@
+//! Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
+
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
-use re_types::archetypes::Points2D;
-use re_types::datatypes::VisibleTimeRange;
-use re_types::Archetype as _;
+use re_types::{archetypes::Points2D, datatypes::VisibleTimeRange, Archetype as _};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
 
-/// # Range: partial primary and secondary updates
-///
-/// Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
-/// end-to-end: all the way to the views and the renderer.
 fn intra_timestamp_data(test_context: &mut TestContext) {
     let timeline = Timeline::new_sequence("frame");
     let points_path = EntityPath::from("points");
@@ -24,12 +18,17 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         )
     };
 
+    // Note on positions:
+    // Blueprint is configured to show range from 0 to 100 in x/y.
+    // All points should fit snug in that area.
+
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(42),
             &Points2D::update_fields()
-                .with_positions([(0.0, 0.0), (1.0, 1.0)])
+                .with_positions([(20.0, 20.0), (50.0, 50.0)])
+                .with_radii([3.0])
                 .with_colors([0xFF0000FF]),
         )
     });
@@ -38,7 +37,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             frame(43),
-            &Points2D::update_fields().with_radii([0.1]),
+            &Points2D::update_fields().with_radii([5.0]),
         )
     });
 
@@ -54,14 +53,14 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             frame(45),
-            &Points2D::update_fields().with_positions([(0.0, 1.0), (1.0, 0.0)]),
+            &Points2D::update_fields().with_positions([(20.0, 50.0), (50.0, 20.0)]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(45),
-            &Points2D::update_fields().with_radii([0.2]),
+            &Points2D::update_fields().with_radii([10.0]),
         )
     });
 
@@ -69,21 +68,21 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::update_fields().with_radii([0.2]),
+            &Points2D::update_fields().with_radii([10.0]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::update_fields().with_positions([(0.0, 2.0), (1.0, 2.0)]),
+            &Points2D::update_fields().with_positions([(20.0, 80.0), (50.0, 80.0)]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::update_fields().with_radii([0.15]),
+            &Points2D::update_fields().with_radii([7.0]),
         )
     });
     test_context.log_entity(points_path.clone(), |builder| {
@@ -97,7 +96,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         builder.with_archetype(
             RowId::new(),
             frame(46),
-            &Points2D::update_fields().with_positions([(2.0, 2.0), (2.0, 0.0)]),
+            &Points2D::update_fields().with_positions([(80.0, 80.0), (80.0, 10.0)]),
         )
     });
 
@@ -169,17 +168,8 @@ fn intra_timestamp_test() {
 }
 
 fn visible_timerange_data(test_context: &mut TestContext) {
-    let timeline = Timeline::new_temporal("timestamp");
+    let timeline = Timeline::new_duration("timestamp");
     {
-        test_context.log_entity("bg".into(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &re_types::archetypes::Boxes2D::from_mins_and_sizes([(0.0, 0.0)], [(100.0, 100.0)])
-                    .with_colors([0x333333FF])
-                    .with_radii([2.5]),
-            )
-        });
         for i in 0..10 {
             let x = i as f32 * 10.0 + 5.0;
             let y_red = 40.0;
@@ -198,7 +188,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                             TimePoint::default(),
                             &re_types::archetypes::Points2D::new([(x, y)])
                                 .with_colors([0x555555FF])
-                                .with_radii([2.5])
+                                .with_radii([4.0])
                                 .with_draw_order(1.0),
                         )
                     },
@@ -213,7 +203,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                         time_point,
                         &re_types::archetypes::Points2D::new([(x, y_red)])
                             .with_colors([0xFF0000FF])
-                            .with_radii([2.5])
+                            .with_radii([4.0])
                             .with_draw_order(3.0),
                     )
                 });
@@ -225,7 +215,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                     time_point,
                     &re_types::archetypes::Points2D::new([(x, y_green)])
                         .with_colors([0x00FF00FF])
-                        .with_radii([2.5])
+                        .with_radii([4.0])
                         .with_draw_order(3.0),
                 )
             });
@@ -313,12 +303,7 @@ fn run_visible_time_range_test(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        name,
-        egui::vec2(300.0, 150.0) * 2.0,
-    );
+    run_view_ui_and_save_snapshot(&mut test_context, view_id, name, egui::vec2(200.0, 200.0));
 }
 
 fn get_test_context() -> TestContext {
@@ -344,28 +329,42 @@ fn setup_blueprint(
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
+        // Set the bounds such that the points are fully visible, that way we get more pixels contributing to the output.
+        let property_path = re_viewport_blueprint::entity_path_for_view_property(
+            view_id,
+            ctx.store_context.blueprint.tree(),
+            re_types::blueprint::archetypes::VisualBounds2D::name(),
+        );
+        ctx.save_blueprint_archetype(
+            &property_path,
+            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
+                x_range: [0.0, 100.0].into(),
+                y_range: [0.0, 100.0].into(),
+            }),
+        );
+
         if let Some(time_range) = time_range {
-            let visible_time_range_list = vec![re_types::blueprint::components::VisibleTimeRange(
-                time_range,
-            )];
+            let visible_time_range_list =
+                re_types::blueprint::archetypes::VisibleTimeRanges::new([time_range]);
             let property_path = re_viewport_blueprint::entity_path_for_view_property(
                 view_id,
                 ctx.store_context.blueprint.tree(),
                 re_types::blueprint::archetypes::VisibleTimeRanges::name(),
             );
 
-            ctx.save_blueprint_component(&property_path, &visible_time_range_list);
+            ctx.save_blueprint_archetype(&property_path, &visible_time_range_list);
         }
 
         if let Some(green_time_range) = green_time_range {
-            let visible_time_range_list = vec![re_types::blueprint::components::VisibleTimeRange(
-                green_time_range,
-            )];
-            let property_path = view_id
-                .as_entity_path()
-                .join(&EntityPath::from("ViewContents/recursive_overrides/green"));
-
-            ctx.save_blueprint_component(&property_path, &visible_time_range_list);
+            let visible_time_range_list =
+                re_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
+            ctx.save_blueprint_archetype(
+                &re_viewport_blueprint::ViewContents::override_path_for_entity(
+                    view_id,
+                    &"green".into(),
+                ),
+                &visible_time_range_list,
+            );
         }
 
         view_id
@@ -413,10 +412,5 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.run();
-
-    let broken_percent_threshold = 0.02;
-    let num_pixels = (size.x * size.y).ceil() as u64;
-
-    use re_viewer_context::test_context::HarnessExt as _;
-    harness.snapshot_with_broken_pixels_threshold(name, num_pixels, broken_percent_threshold);
+    harness.snapshot(name);
 }

@@ -16,8 +16,8 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, NonMinI64, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, Timeline, TimelineName,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -120,8 +120,6 @@ pub struct RecordingStreamBuilder {
     enabled: Option<bool>,
 
     batcher_config: Option<ChunkBatcherConfig>,
-
-    is_official_example: bool,
 }
 
 impl RecordingStreamBuilder {
@@ -139,7 +137,6 @@ impl RecordingStreamBuilder {
     #[track_caller]
     pub fn new(application_id: impl Into<ApplicationId>) -> Self {
         let application_id = application_id.into();
-        let is_official_example = crate::called_from_official_rust_example();
 
         Self {
             application_id,
@@ -151,7 +148,6 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
-            is_official_example,
         }
     }
 
@@ -224,14 +220,6 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn store_source(mut self, store_source: StoreSource) -> Self {
         self.store_source = Some(store_source);
-        self
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    #[doc(hidden)]
-    #[inline]
-    pub fn is_official_example(mut self, is_official_example: bool) -> Self {
-        self.is_official_example = is_official_example;
         self
     }
 
@@ -611,7 +599,6 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
-            is_official_example,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
@@ -624,7 +611,7 @@ impl RecordingStreamBuilder {
             application_id,
             store_id,
             cloned_from: None,
-            is_official_example,
+
             started: Time::now(),
             store_source,
             store_version: Some(re_build_info::CrateVersion::LOCAL),
@@ -967,11 +954,11 @@ impl RecordingStream {
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
-    /// must match. All data that occurs at the same index across the different time and components
+    /// must match. All data that occurs at the same index across the different index/time and components
     /// arrays will act as a single logical row.
     ///
-    /// Note that this API ignores any stateful time set on the log stream via the
-    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Note that this API ignores any stateful index/time set on the log stream via the
+    /// [`Self::set_index`]/[`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     pub fn send_columns(
         &self,
@@ -2032,14 +2019,14 @@ impl RecordingStream {
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
+    /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
@@ -2055,10 +2042,51 @@ impl RecordingStream {
         }
     }
 
-    /// Set the current time of the recording, for the current calling thread.
+    /// Set the current value of one of the timelines.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// Example:
+    /// ```no_run
+    /// # mod rerun { pub use re_sdk::*; }
+    /// # let rec: rerun::RecordingStream = unimplemented!();
+    /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
+    /// rec.set_index("duration", std::time::Duration::from_millis(123));
+    /// rec.set_index("capture_time", std::time::SystemTime::now());
+    /// ```
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    pub fn set_index(&self, timeline: impl Into<TimelineName>, value: impl TryInto<IndexCell>) {
+        let f = move |inner: &RecordingStreamInner| {
+            let timeline = timeline.into();
+            if let Ok(value) = value.try_into() {
+                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, value);
+            } else {
+                re_log::warn_once!(
+                    "set_index({timeline}): Failed to convert the given value to an IndexCell"
+                );
+            }
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_index() ignored");
+        }
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     /// You can remove a timeline again using `rec.disable_timeline("frame_nr")`.
@@ -2066,41 +2094,75 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
+    /// - [`Self::set_index`]
     /// - [`Self::set_timepoint`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
+    /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, seq: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let seq = seq.into();
-            let seq = if let Ok(seq) = NonMinI64::try_from(seq) {
-                seq
-            } else {
-                re_log::error!(
-                    illegal_value = seq,
-                    new_value = NonMinI64::MIN.get(),
-                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
-                );
-                NonMinI64::MIN
-            };
+    #[inline]
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
+        self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
+    }
 
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_sequence(seq),
-            );
-        };
+    /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`..
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
+    ///
+    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// See also:
+    /// - [`Self::set_index`]
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_timestamp_seconds_since_epoch`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    #[inline]
+    pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
+        self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
+    }
 
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
-        }
+    /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    ///
+    /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
+    ///
+    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// See also:
+    /// - [`Self::set_index`]
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    #[inline]
+    pub fn set_timestamp_seconds_since_epoch(
+        &self,
+        timeline: impl Into<TimelineName>,
+        secs: impl Into<f64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_seconds_since_epoch(secs.into()),
+        );
     }
 
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
@@ -2113,39 +2175,19 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
+    #[deprecated(
+        since = "0.23.0",
+        note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
+    )]
+    #[inline]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let mut seconds = seconds.into();
-            if seconds.is_nan() {
-                re_log::error!("set_time_seconds() called with NaN");
-                seconds = 0.0;
-            }
-
-            let nanos = 1e9 * seconds;
-            let nanos_clamped = nanos.clamp(NonMinI64::MIN.get() as _, NonMinI64::MAX.get() as _);
-
-            if nanos != nanos_clamped {
-                re_log::warn_once!(
-                    "set_time_seconds() called with out-of-range value {seconds:?}. Clamping to valid range."
-                );
-            }
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(nanos_clamped.round() as i64),
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
-        }
+        self.set_duration_seconds(timeline, seconds);
     }
 
     /// Set the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
     /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
@@ -2158,30 +2200,20 @@ impl RecordingStream {
     /// - [`Self::set_time_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
-        let f = move |inner: &RecordingStreamInner| {
-            let ns = ns.into();
-            let ns = if let Ok(ns) = NonMinI64::try_from(ns) {
-                ns
-            } else {
-                re_log::error!(
-                    illegal_value = ns,
-                    new_value = NonMinI64::MIN.get(),
-                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
-                );
-                NonMinI64::MIN
-            };
-
-            ThreadInfo::set_thread_time(
-                &inner.info.store_id,
-                timeline.into(),
-                IndexCell::from_duration_nanos(ns), // TODO(#8635): update
-            );
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
-        }
+    #[deprecated(
+        since = "0.23.0",
+        note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
+    )]
+    #[inline]
+    pub fn set_time_nanos(
+        &self,
+        timeline: impl Into<TimelineName>,
+        nanos_since_epoch: impl Into<i64>,
+    ) {
+        self.set_index(
+            timeline,
+            IndexCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
+        );
     }
 
     /// Clears out the current time of the recording for the specified timeline, for the
@@ -2209,7 +2241,7 @@ impl RecordingStream {
     /// Clears out the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// to one of the index/time setting methods.
     ///
     /// For example: `rec.reset_time()`.
     ///

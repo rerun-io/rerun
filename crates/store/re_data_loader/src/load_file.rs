@@ -100,7 +100,6 @@ pub(crate) fn prepare_store_info(
             application_id,
             store_id: store_id.clone(),
             cloned_from: None,
-            is_official_example: false,
             started: re_log_types::Time::now(),
             store_source,
             store_version: Some(re_build_info::CrateVersion::LOCAL),
