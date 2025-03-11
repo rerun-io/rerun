@@ -37,9 +37,7 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get(
-    "RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js"
-)
+ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
@@ -51,9 +49,7 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
 else:
     ESM_MOD = ASSET_ENV
     if not (ASSET_ENV.startswith(("http://", "https://"))):
-        raise ValueError(
-            f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}"
-        )
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
 # CALLBACK DEFINITION
@@ -105,8 +101,6 @@ class ContainerSelection:
         return "container"
 
     container_id: str
-
-
 
 
 SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
@@ -184,9 +178,7 @@ class Viewer(anywidget.AnyWidget):
                 # CALLBACK DEFINITION
                 # Event names here come from `widget.ts`.
                 if content["event"] == "selectionchange":
-                    selection = [
-                        _selection_item_from_json(item) for item in content["payload"]
-                    ]
+                    selection = [_selection_item_from_json(item) for item in content["payload"]]
                     for callback in self._callbacks:
                         callback.on_selection_change(selection)
                 elif content["event"] == "timelinechange":
@@ -233,12 +225,8 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                 poll(1)
                 time.sleep(0.1)
 
-    def update_panel_states(
-        self, panel_states: Mapping[Panel, PanelState | Literal["default"]]
-    ) -> None:
-        new_panel_states = (
-            dict(self._panel_states.items()) if self._panel_states else {}
-        )
+    def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)
