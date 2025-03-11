@@ -1,2 +1,2 @@
 for _ in range(10):
-    rr.log("camera/image", static=True, camera.save_current_frame())
+    rr.log("camera/image", camera.save_current_frame(), static=True)

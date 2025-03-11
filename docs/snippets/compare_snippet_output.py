@@ -11,17 +11,21 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import tomlkit
+from tomlkit.container import Container
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
 from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
-OPT_OUT_ENTIRELY = config["opt_out"]["run"]
-OPT_OUT_COMPARE = config["opt_out"]["compare"]
-EXTRA_ARGS = config["extra_args"]
+assert isinstance(config["opt_out"], Container)
+
+OPT_OUT_ENTIRELY: dict[str, Any] = config["opt_out"]["run"].value
+OPT_OUT_COMPARE = config["opt_out"]["compare"].value
+EXTRA_ARGS = config["extra_args"].value
 
 
 class Example:
@@ -32,13 +36,13 @@ class Example:
     def opt_out_entirely(self) -> list[str]:
         for key in [self.subdir, self.subdir + "/" + self.name]:
             if key in OPT_OUT_ENTIRELY:
-                return OPT_OUT_ENTIRELY[key]
+                return list(OPT_OUT_ENTIRELY[key])
         return []
 
     def opt_out_compare(self) -> list[str]:
         for key in [self.subdir, self.subdir + "/" + self.name]:
             if key in OPT_OUT_COMPARE:
-                return OPT_OUT_COMPARE[key]
+                return list(OPT_OUT_COMPARE[key])
         return []
 
     def extra_args(self) -> list[str]:

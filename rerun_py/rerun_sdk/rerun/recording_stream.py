@@ -960,7 +960,7 @@ class RecordingStream:
 
     def log(
         self,
-        entity_path: str | list[str],
+        entity_path: str | list[object],
         entity: AsComponents | Iterable[DescribedComponentBatch],
         *extra: AsComponents | Iterable[DescribedComponentBatch],
         static: bool = False,
