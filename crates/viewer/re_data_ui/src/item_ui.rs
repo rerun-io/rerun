@@ -751,8 +751,8 @@ pub fn entity_db_button_ui(
     } else {
         entity_db
             .recording_started()
-            .and_then(|started: re_log_types::Time| {
-                re_log_types::Timestamp::from(info.started)
+            .map(|started: re_log_types::Time| {
+                re_log_types::Timestamp::from(started)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
                     .strftime("%H:%M:%S")
                     .to_string()

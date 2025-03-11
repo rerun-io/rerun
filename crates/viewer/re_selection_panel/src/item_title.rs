@@ -83,7 +83,7 @@ impl ItemTitle {
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
                     .strftime("%H:%M:%S")
                     .to_string();
-                format!("{application_id} - {}", time)
+                format!("{application_id} - {time}")
             } else {
                 id_str.clone()
             }
