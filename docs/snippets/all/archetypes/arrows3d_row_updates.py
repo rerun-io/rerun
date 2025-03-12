@@ -15,7 +15,7 @@ times = np.arange(10, 15, 1.0)
 
 # At each time step, all arrows maintain their origin.
 origins = np.linspace((-1, -1, 0), (1, 1, 0), 5)
-vectors = [np.linspace((1, 1, i / 10), (1, 1, i), 5) for i in range(5)]
+vectors = [np.linspace((-1, -1, 0), (1, 1, i), 5) for i in range(5)]
 
 
 # At each timestep, all arrows share the same but changing color.

@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (
                 linspace(-1., 1., 5).map(move |x| (x, x, 0.)),
                 linspace(-1., 1., 5)
-                    .zip(linspace(i / 10., i, 5))
+                    .zip(linspace(0., i, 5))
                     .map(|(x, z)| (x, x, z)),
             )
         })
