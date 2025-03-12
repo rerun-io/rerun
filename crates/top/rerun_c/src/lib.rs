@@ -296,7 +296,6 @@ pub enum CErrorCode {
     RecordingStreamStdoutFailure,
     RecordingStreamSpawnFailure,
     RecordingStreamChunkValidationFailure,
-    RecordingStreamPropertyFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
