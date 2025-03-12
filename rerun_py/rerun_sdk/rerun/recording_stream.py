@@ -763,7 +763,7 @@ class RecordingStream:
             recording=self,
         )
 
-    def set_recording_name(self, name: str) -> None:
+    def set_name(self, name: str) -> None:
         """
         Set the name of the recording.
 
@@ -776,7 +776,7 @@ class RecordingStream:
 
         """
 
-        bindings.set_recording_name(name, recording=self.to_native())
+        bindings.set_name(name, recording=self.to_native())
 
     @overload
     def set_index(self, timeline: str, *, sequence: int) -> None: ...

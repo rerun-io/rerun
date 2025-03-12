@@ -36,7 +36,7 @@ use re_protos::{
         RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
-use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
+use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind};
 
 use crate::dataframe::{
     ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
