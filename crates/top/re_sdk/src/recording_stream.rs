@@ -154,7 +154,7 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
 
-            properties: RecordingProperties::default(),
+            properties: RecordingProperties::new().with_started(Time::now().nanos_since_epoch()),
         }
     }
 
@@ -855,7 +855,7 @@ impl RecordingStreamInner {
 
         re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-        let properties_chunk = Chunk::builder(EntityPath::recording_properties())
+        let properties_chunk = Chunk::builder(EntityPath::partition_properties())
             .with_archetype(RowId::new(), TimePoint::default(), &properties)
             .build()?;
 
@@ -1141,7 +1141,7 @@ impl RecordingStream {
     /// that is reserved for recording properties.
     #[inline]
     pub fn set_properties(&self, properties: &RecordingProperties) -> RecordingStreamResult<()> {
-        self.log_static(EntityPath::recording_properties(), properties)
+        self.log_static(EntityPath::partition_properties(), properties)
     }
 
     /// Sets the name of the recording.

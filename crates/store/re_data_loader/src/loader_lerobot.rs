@@ -130,7 +130,7 @@ fn load_and_stream(
                     .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
-                let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
+                let Ok(initial) = Chunk::builder(EntityPath::partition_properties())
                     .with_archetype(RowId::new(), TimePoint::default(), &properties)
                     .build()
                 else {

@@ -142,7 +142,7 @@ impl EntityDb {
 
     pub fn property<C: re_types_core::Component>(&self) -> Option<C> {
         self.latest_at_component::<C>(
-            &EntityPath::recording_properties(),
+            &EntityPath::partition_properties(),
             // TODO(grtlr): Does `log_time` make sense here?
             &LatestAtQuery::latest(Timeline::log_tick().name().clone()),
         )
