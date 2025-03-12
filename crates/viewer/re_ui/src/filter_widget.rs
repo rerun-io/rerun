@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use egui::{Color32, NumExt as _, Widget as _};
+use egui::{Color32, Id, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
@@ -184,81 +184,52 @@ impl FilterState {
     pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
+        let textedit_id = Id::new(ui.id().with("textedit"));
+        let response = ui.ctx().read_response(textedit_id);
+
+        let visuals = response
+            .as_ref()
+            .map(|r| ui.style().interact(r))
+            .unwrap_or(&ui.visuals().widgets.inactive);
+
+        let selection_stroke = ui.visuals().selection.stroke;
+        let stroke = if response.is_some_and(|r| r.has_focus()) {
+            selection_stroke
+        } else {
+            let mut stroke = visuals.bg_stroke;
+            stroke.width = selection_stroke.width;
+            stroke
+        };
+
         egui::Frame::new()
-            .inner_margin(egui::Margin::symmetric(0, 2))
+            .inner_margin(egui::Margin::symmetric(3, 2))
+            .fill(ui.visuals().extreme_bg_color)
+            .stroke(stroke)
+            .corner_radius(visuals.corner_radius)
             .show(ui, |ui| {
-                let background_shape = ui.painter().add(egui::Shape::Noop);
+                egui::Frame::new().show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.set_height(19.0);
 
-                let top_left = ui.cursor().min;
+                        ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
 
-                let (textedit_response, bottom_right) = egui::Frame::new()
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.set_height(19.0);
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if !inner_state.filter_query.is_empty()
+                                && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                            {
+                                *inner_state = Default::default();
+                            }
 
-                            ui.add_enabled_ui(false, |ui| {
-                                ui.small_icon_button(&crate::icons::SEARCH)
-                            });
-
-                            let textedit_response = ui
-                                .with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        if !inner_state.filter_query.is_empty()
-                                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
-                                        {
-                                            *inner_state = Default::default();
-                                        }
-
-                                        ui.add(
-                                            egui::TextEdit::singleline(
-                                                &mut inner_state.filter_query,
-                                            )
-                                            .frame(false)
-                                            .id_salt("search_filter")
-                                            .hint_text("Search for entity…")
-                                            .desired_width(ui.available_width()),
-                                        )
-                                    },
-                                )
-                                .inner;
-
-                            let bottom_right = ui.cursor().left_bottom();
-
-                            (textedit_response, bottom_right)
-                        })
-                        .inner
-                    })
-                    .inner;
-
-                // TODO(ab): this section is largely copied from `egui::TextEdit::show`. Would be great
-                // to have sufficient configuration option to avoid it.
-                let outer_rect = egui::Rect::from_two_pos(top_left, bottom_right);
-                let visuals = ui.style().interact(&textedit_response);
-                // always expand the border
-                let frame_rect = outer_rect.expand(ui.visuals().widgets.open.expansion);
-                let background_color = ui.visuals().extreme_bg_color;
-                let shape = {
-                    if textedit_response.has_focus() {
-                        egui::epaint::RectShape::new(
-                            frame_rect,
-                            visuals.corner_radius,
-                            background_color,
-                            ui.visuals().selection.stroke,
-                            egui::StrokeKind::Inside,
-                        )
-                    } else {
-                        egui::epaint::RectShape::new(
-                            frame_rect,
-                            visuals.corner_radius,
-                            background_color,
-                            visuals.bg_stroke,
-                            egui::StrokeKind::Inside,
-                        )
-                    }
-                };
-
-                ui.painter().set(background_shape, shape);
+                            ui.add(
+                                egui::TextEdit::singleline(&mut inner_state.filter_query)
+                                    .id(textedit_id)
+                                    .frame(false)
+                                    .hint_text("Search for entity…")
+                                    .desired_width(ui.available_width()),
+                            )
+                        });
+                    });
+                });
             });
 
         if self
