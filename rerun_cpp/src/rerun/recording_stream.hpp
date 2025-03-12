@@ -880,15 +880,15 @@ namespace rerun {
         ///
         /// \param name The name of the recording.
         /// \see `try_set_recording_name`
-        void set_recording_name(std::string_view name) const {
-            try_set_recording_name(name).handle();
+        void set_name(std::string_view name) const {
+            try_set_name(name).handle();
         }
 
         /// Set the name of a recording.
         ///
         /// \param name The name of the recording.
         /// \see `set_recording_name`
-        Error try_set_recording_name(std::string_view name) const;
+        Error try_set_name(std::string_view name) const;
 
         /// @}
 
