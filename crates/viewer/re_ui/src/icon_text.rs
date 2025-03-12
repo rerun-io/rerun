@@ -1,7 +1,6 @@
 use crate::{icon_text, icons, Help, Icon};
 use egui::{Context, ModifierNames, Modifiers, WidgetText};
-use itertools::Itertools;
-use std::borrow::Cow;
+use itertools::Itertools as _;
 use std::fmt::Debug;
 use std::iter::once;
 use std::{fmt, vec};
@@ -15,8 +14,8 @@ pub enum IconTextItem {
 impl Debug for IconTextItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IconTextItem::Icon(icon) => write!(f, "Icon({})", icon.id),
-            IconTextItem::Text(text) => write!(f, "Text({})", text.text()),
+            Self::Icon(icon) => write!(f, "Icon({})", icon.id),
+            Self::Text(text) => write!(f, "Text({})", text.text()),
         }
     }
 }
@@ -38,25 +37,25 @@ pub struct IconText(pub Vec<IconTextItem>);
 
 impl From<String> for IconText {
     fn from(value: String) -> Self {
-        IconText(vec![IconTextItem::Text(value.into())])
+        Self(vec![IconTextItem::Text(value.into())])
     }
 }
 
 impl From<&str> for IconText {
     fn from(value: &str) -> Self {
-        IconText(vec![IconTextItem::Text(value.into())])
+        Self(vec![IconTextItem::Text(value.into())])
     }
 }
 
 impl From<Icon> for IconText {
     fn from(icon: Icon) -> Self {
-        IconText(vec![IconTextItem::Icon(icon)])
+        Self(vec![IconTextItem::Icon(icon)])
     }
 }
 
 impl From<IconTextItem> for IconText {
     fn from(value: IconTextItem) -> Self {
-        IconText(vec![value])
+        Self(vec![value])
     }
 }
 
@@ -77,7 +76,7 @@ impl IconText {
     }
 
     /// Add an item to the row.
-    pub fn add(&mut self, item: impl Into<IconText>) {
+    pub fn add(&mut self, item: impl Into<Self>) {
         self.0.extend(item.into().0);
     }
 }
@@ -110,6 +109,7 @@ pub fn maybe_plus(ctx: &Context) -> IconText {
 }
 
 /// Shows a keyboard shortcut with a modifier and the given icon.
+///
 /// On Mac, this will show the symbol for the modifier.
 /// Otherwise, it will show the name of the modifier, and a "+" between the modifier and the icon.
 pub fn shortcut_with_icon(
@@ -143,11 +143,11 @@ pub fn modifiers_text(modifiers: Modifiers, ctx: &egui::Context) -> IconText {
             if char == '⌘' {
                 icon_text.add(IconTextItem::icon(icons::COMMAND));
             } else if char == '⌃' {
-                icon_text.add(IconTextItem::icon(icons::CONTROL))
+                icon_text.add(IconTextItem::icon(icons::CONTROL));
             } else if char == '⇧' {
-                icon_text.add(IconTextItem::icon(icons::SHIFT))
+                icon_text.add(IconTextItem::icon(icons::SHIFT));
             } else if char == '⌥' {
-                icon_text.add(IconTextItem::icon(icons::OPTION))
+                icon_text.add(IconTextItem::icon(icons::OPTION));
             } else {
                 // If there is anything else than the modifier symbols, just show the text.
                 return text.into();
@@ -156,8 +156,8 @@ pub fn modifiers_text(modifiers: Modifiers, ctx: &egui::Context) -> IconText {
         icon_text
     } else {
         let mut vec: Vec<_> = text
-            .split("+")
-            .map(|item| IconTextItem::text(item))
+            .split('+')
+            .map(IconTextItem::text)
             // We want each + to be an extra item so the spacing looks nicer
             .flat_map(|item| once(item).chain(once(IconTextItem::text("+"))))
             .collect();

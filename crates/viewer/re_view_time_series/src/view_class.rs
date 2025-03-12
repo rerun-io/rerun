@@ -17,10 +17,7 @@ use re_types::{
     datatypes::TimeRange,
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{
-    icon_text, icons, list_item, modifiers_text, shortcut_with_icon, Help, MouseButtonText,
-    UiExt as _,
-};
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,

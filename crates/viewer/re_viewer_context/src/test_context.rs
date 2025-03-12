@@ -500,7 +500,7 @@ impl TestContext {
             });
             let help_view = help(&harness.ctx);
             let name = format!("help_view_{}_{os:?}", help_view.get_title())
-                .replace(" ", "_")
+                .replace(' ', "_")
                 .to_lowercase();
             harness.fit_contents();
             harness.snapshot(&name);

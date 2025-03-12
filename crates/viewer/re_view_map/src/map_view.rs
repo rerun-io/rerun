@@ -14,7 +14,7 @@ use re_types::{
     },
     View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, modifiers_text, shortcut_with_icon, Help};
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,

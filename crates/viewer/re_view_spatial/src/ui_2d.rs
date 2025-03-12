@@ -8,9 +8,7 @@ use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
 };
-use re_ui::{
-    icon_text, icons, modifiers_text, shortcut_with_icon, ContextExt as _, Help, MouseButtonText,
-};
+use re_ui::{icon_text, icons, shortcut_with_icon, ContextExt as _, Help, MouseButtonText};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
     gpu_bridge, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,

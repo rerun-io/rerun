@@ -1,6 +1,6 @@
 use crate::icon_text::{IconText, IconTextItem};
 use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt as _};
-use egui::{OpenUrl, RichText, Sense, TextBuffer as _, TextStyle, Ui, UiBuilder};
+use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
@@ -96,7 +96,7 @@ impl Help {
 
     /// Add a single control row to the last controls section.
     ///
-    /// Split any + or / into an extra IconTextItem, like this:
+    /// Split any + or / into an extra `IconTextItem`, like this:
     /// ```rust
     /// re_ui::Help::new("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
     /// ```
