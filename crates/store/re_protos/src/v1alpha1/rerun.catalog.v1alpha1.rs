@@ -29,6 +29,81 @@ impl ::prost::Name for FindEntriesResponse {
         "/rerun.catalog.v1alpha1.FindEntriesResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for CreateDatasetEntryRequest {
+    const NAME: &'static str = "CreateDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for CreateDatasetEntryResponse {
+    const NAME: &'static str = "CreateDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub key: ::core::option::Option<EntryKey>,
+}
+impl ::prost::Name for ReadDatasetEntryRequest {
+    const NAME: &'static str = "ReadDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for ReadDatasetEntryResponse {
+    const NAME: &'static str = "ReadDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteDatasetEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub key: ::core::option::Option<EntryKey>,
+}
+impl ::prost::Name for DeleteDatasetEntryRequest {
+    const NAME: &'static str = "DeleteDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.DeleteDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.DeleteDatasetEntryRequest".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteDatasetEntryResponse {}
 impl ::prost::Name for DeleteDatasetEntryResponse {
@@ -47,6 +122,8 @@ pub struct EntryFilter {
     pub id: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(enumeration = "EntryType", optional, tag = "3")]
+    pub r#type: ::core::option::Option<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -76,10 +153,14 @@ impl ::prost::Name for EntryId {
 /// Minimal info about an Entry for high-level catalog summary
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryDetails {
+    /// The EntryId is immutable
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<EntryId>,
+    /// The name is a short human-readable string
+    /// TODO(jleibs): Define valid name constraints
     #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
+    /// The type of entry
     #[prost(enumeration = "EntryType", tag = "3")]
     pub r#type: i32,
     #[prost(message, optional, tag = "4")]
@@ -131,14 +212,37 @@ impl ::prost::Name for DatasetManifest {
         "/rerun.catalog.v1alpha1.DatasetManifest".into()
     }
 }
-/// What type of entry
+/// EntryKey is used to access an entry by either id or name.
+/// All APIs that require specifying an entry should use this
+/// message.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryKey {
+    #[prost(string, optional, tag = "1")]
+    pub id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for EntryKey {
+    const NAME: &'static str = "EntryKey";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.EntryKey".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.EntryKey".into()
+    }
+}
+/// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum EntryType {
-    Dataset = 0,
-    Table = 1,
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+    Dataset = 1,
     DatasetView = 2,
-    TableView = 3,
+    Table = 3,
+    TableView = 4,
 }
 impl EntryType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -147,19 +251,21 @@ impl EntryType {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Dataset => "Dataset",
-            Self::Table => "Table",
-            Self::DatasetView => "DatasetView",
-            Self::TableView => "TableView",
+            Self::Unspecified => "ENTRY_TYPE_UNSPECIFIED",
+            Self::Dataset => "ENTRY_TYPE_DATASET",
+            Self::DatasetView => "ENTRY_TYPE_DATASET_VIEW",
+            Self::Table => "ENTRY_TYPE_TABLE",
+            Self::TableView => "ENTRY_TYPE_TABLE_VIEW",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "Dataset" => Some(Self::Dataset),
-            "Table" => Some(Self::Table),
-            "DatasetView" => Some(Self::DatasetView),
-            "TableView" => Some(Self::TableView),
+            "ENTRY_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENTRY_TYPE_DATASET" => Some(Self::Dataset),
+            "ENTRY_TYPE_DATASET_VIEW" => Some(Self::DatasetView),
+            "ENTRY_TYPE_TABLE" => Some(Self::Table),
+            "ENTRY_TYPE_TABLE_VIEW" => Some(Self::TableView),
             _ => None,
         }
     }
@@ -264,8 +370,9 @@ pub mod catalog_service_client {
         }
         pub async fn create_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::DatasetEntry>,
-        ) -> std::result::Result<tonic::Response<super::DatasetEntry>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -282,8 +389,9 @@ pub mod catalog_service_client {
         }
         pub async fn read_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::EntryId>,
-        ) -> std::result::Result<tonic::Response<super::DatasetEntry>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -300,7 +408,7 @@ pub mod catalog_service_client {
         }
         pub async fn delete_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::EntryId>,
+            request: impl tonic::IntoRequest<super::DeleteDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::DeleteDatasetEntryResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
@@ -338,15 +446,15 @@ pub mod catalog_service_server {
         ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>;
         async fn create_dataset_entry(
             &self,
-            request: tonic::Request<super::DatasetEntry>,
-        ) -> std::result::Result<tonic::Response<super::DatasetEntry>, tonic::Status>;
+            request: tonic::Request<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
         async fn read_dataset_entry(
             &self,
-            request: tonic::Request<super::EntryId>,
-        ) -> std::result::Result<tonic::Response<super::DatasetEntry>, tonic::Status>;
+            request: tonic::Request<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>;
         async fn delete_dataset_entry(
             &self,
-            request: tonic::Request<super::EntryId>,
+            request: tonic::Request<super::DeleteDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::DeleteDatasetEntryResponse>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -466,14 +574,15 @@ pub mod catalog_service_server {
                 "/rerun.catalog.v1alpha1.CatalogService/CreateDatasetEntry" => {
                     #[allow(non_camel_case_types)]
                     struct CreateDatasetEntrySvc<T: CatalogService>(pub Arc<T>);
-                    impl<T: CatalogService> tonic::server::UnaryService<super::DatasetEntry>
+                    impl<T: CatalogService>
+                        tonic::server::UnaryService<super::CreateDatasetEntryRequest>
                         for CreateDatasetEntrySvc<T>
                     {
-                        type Response = super::DatasetEntry;
+                        type Response = super::CreateDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DatasetEntry>,
+                            request: tonic::Request<super::CreateDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -507,12 +616,15 @@ pub mod catalog_service_server {
                 "/rerun.catalog.v1alpha1.CatalogService/ReadDatasetEntry" => {
                     #[allow(non_camel_case_types)]
                     struct ReadDatasetEntrySvc<T: CatalogService>(pub Arc<T>);
-                    impl<T: CatalogService> tonic::server::UnaryService<super::EntryId> for ReadDatasetEntrySvc<T> {
-                        type Response = super::DatasetEntry;
+                    impl<T: CatalogService>
+                        tonic::server::UnaryService<super::ReadDatasetEntryRequest>
+                        for ReadDatasetEntrySvc<T>
+                    {
+                        type Response = super::ReadDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::EntryId>,
+                            request: tonic::Request<super::ReadDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -546,12 +658,15 @@ pub mod catalog_service_server {
                 "/rerun.catalog.v1alpha1.CatalogService/DeleteDatasetEntry" => {
                     #[allow(non_camel_case_types)]
                     struct DeleteDatasetEntrySvc<T: CatalogService>(pub Arc<T>);
-                    impl<T: CatalogService> tonic::server::UnaryService<super::EntryId> for DeleteDatasetEntrySvc<T> {
+                    impl<T: CatalogService>
+                        tonic::server::UnaryService<super::DeleteDatasetEntryRequest>
+                        for DeleteDatasetEntrySvc<T>
+                    {
                         type Response = super::DeleteDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::EntryId>,
+                            request: tonic::Request<super::DeleteDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
