@@ -83,7 +83,7 @@ pub struct StartupOptions {
     /// This also can be changed in the viewer's option menu.
     pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
-    /// Interaction between JS and the viewer.
+    /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub callbacks: Option<Callbacks>,
 
     /// Fullscreen is handled by JS on web.
