@@ -11,7 +11,7 @@ use re_chunk_store::{
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
 use re_query::CachesStats;
-use re_types::components::RecordingStartedTimestamp;
+use re_types::components::Timestamp;
 
 use crate::{BlueprintUndoState, Caches, StoreContext};
 
@@ -273,7 +273,7 @@ impl StoreHub {
             let maybe_app_id = entity_db.app_id().map(|id| id.0.as_str());
             let maybe_name = entity_db.property::<re_types::components::Name>();
             let maybe_started =
-                entity_db.property::<re_types::components::RecordingStartedTimestamp>();
+                entity_db.property::<re_types::components::Timestamp>();
             (maybe_app_id, maybe_started, maybe_name)
         });
 
@@ -393,7 +393,7 @@ impl StoreHub {
         for rec in self
             .store_bundle
             .recordings()
-            .sorted_by_key(|entity_db| entity_db.property::<RecordingStartedTimestamp>())
+            .sorted_by_key(|entity_db| entity_db.property::<Timestamp>())
         {
             if rec.app_id() == Some(&app_id) {
                 self.active_rec_id = Some(rec.store_id().clone());

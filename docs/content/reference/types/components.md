@@ -59,7 +59,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
-* [`RecordingStartedTimestamp`](components/recording_started_timestamp.md): When the recording started.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
@@ -75,6 +74,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`Timestamp`](components/timestamp.md): When the recording started.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.

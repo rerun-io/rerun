@@ -63,7 +63,6 @@ from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
 from .range1d import Range1D, Range1DBatch
-from .recording_started_timestamp import RecordingStartedTimestamp, RecordingStartedTimestampBatch
 from .resolution import Resolution, ResolutionBatch
 from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
@@ -79,6 +78,7 @@ from .tensor_width_dimension import TensorWidthDimension, TensorWidthDimensionBa
 from .texcoord2d import Texcoord2D, Texcoord2DBatch
 from .text import Text, TextBatch
 from .text_log_level import TextLogLevel, TextLogLevelBatch
+from .timestamp import Timestamp, TimestampBatch
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch
 from .transform_relation import (
     TransformRelation,
@@ -208,8 +208,6 @@ __all__ = [
     "RadiusBatch",
     "Range1D",
     "Range1DBatch",
-    "RecordingStartedTimestamp",
-    "RecordingStartedTimestampBatch",
     "Resolution",
     "ResolutionBatch",
     "RotationAxisAngle",
@@ -240,6 +238,8 @@ __all__ = [
     "TextBatch",
     "TextLogLevel",
     "TextLogLevelBatch",
+    "Timestamp",
+    "TimestampBatch",
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformRelation",

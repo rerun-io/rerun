@@ -6,7 +6,7 @@ namespace rerun.components;
 /// When the recording started.
 ///
 /// Should be an absolute time, i.e. relative to Unix Epoch.
-table RecordingStartedTimestamp (
+table Timestamp (
   "attr.arrow.transparent",
   "attr.python.array_aliases": "npt.NDArray[np.int64]",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",

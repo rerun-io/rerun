@@ -20,7 +20,7 @@ use re_log_types::{
     Timeline, TimelineName,
 };
 use re_types::archetypes::RecordingProperties;
-use re_types::components::RecordingStartedTimestamp;
+use re_types::components::Timestamp;
 use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
@@ -208,7 +208,7 @@ impl RecordingStreamBuilder {
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_started(mut self, time: impl Into<Time>) -> Self {
-        let started = RecordingStartedTimestamp::from(time.into().nanos_since_epoch());
+        let started = Timestamp::from(time.into().nanos_since_epoch());
         self.properties = self.properties.with_started(started);
         self
     }

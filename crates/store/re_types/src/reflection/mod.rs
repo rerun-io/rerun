@@ -796,15 +796,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RecordingStartedTimestamp as Component>::name(),
-            ComponentReflection {
-                docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
-                custom_placeholder: None,
-                datatype: RecordingStartedTimestamp::arrow_datatype(),
-                verify_arrow_array: RecordingStartedTimestamp::verify_arrow_array,
-            },
-        ),
-        (
             <Resolution as Component>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
@@ -939,6 +930,15 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
                 datatype: TextLogLevel::arrow_datatype(),
                 verify_arrow_array: TextLogLevel::verify_arrow_array,
+            },
+        ),
+        (
+            <Timestamp as Component>::name(),
+            ComponentReflection {
+                docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
+                custom_placeholder: None,
+                datatype: Timestamp::arrow_datatype(),
+                verify_arrow_array: Timestamp::verify_arrow_array,
             },
         ),
         (
@@ -1829,8 +1829,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { name : "started", display_name :
-                    "Started", component_name :
-                    "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
+                    "Started", component_name : "rerun.components.Timestamp".into(),
+                    docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
                     is_required : false, }, ArchetypeFieldReflection { name : "name",
                     display_name : "Name", component_name : "rerun.components.Name"

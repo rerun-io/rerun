@@ -8,9 +8,8 @@
 namespace rerun::archetypes {
     RecordingProperties RecordingProperties::clear_fields() {
         auto archetype = RecordingProperties();
-        archetype.started =
-            ComponentBatch::empty<rerun::components::RecordingStartedTimestamp>(Descriptor_started)
-                .value_or_throw();
+        archetype.started = ComponentBatch::empty<rerun::components::Timestamp>(Descriptor_started)
+                                .value_or_throw();
         archetype.name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
         return archetype;

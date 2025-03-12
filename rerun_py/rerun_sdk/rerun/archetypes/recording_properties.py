@@ -167,10 +167,10 @@ class RecordingProperties(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
-    started: components.RecordingStartedTimestampBatch | None = field(
+    started: components.TimestampBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.RecordingStartedTimestampBatch._converter,  # type: ignore[misc]
+        converter=components.TimestampBatch._converter,  # type: ignore[misc]
     )
     # When the recording started.
     #

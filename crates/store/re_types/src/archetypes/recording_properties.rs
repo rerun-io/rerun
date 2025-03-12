@@ -36,7 +36,7 @@ impl RecordingProperties {
     pub fn descriptor_started() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: "rerun.components.RecordingStartedTimestamp".into(),
+            component_name: "rerun.components.Timestamp".into(),
             archetype_field_name: Some("started".into()),
         }
     }
@@ -189,7 +189,7 @@ impl RecordingProperties {
         use ::re_types_core::Loggable as _;
         Self {
             started: Some(SerializedComponentBatch::new(
-                crate::components::RecordingStartedTimestamp::arrow_empty(),
+                crate::components::Timestamp::arrow_empty(),
                 Self::descriptor_started(),
             )),
             name: Some(SerializedComponentBatch::new(
@@ -251,22 +251,19 @@ impl RecordingProperties {
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
     #[inline]
-    pub fn with_started(
-        mut self,
-        started: impl Into<crate::components::RecordingStartedTimestamp>,
-    ) -> Self {
+    pub fn with_started(mut self, started: impl Into<crate::components::Timestamp>) -> Self {
         self.started = try_serialize_field(Self::descriptor_started(), [started]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::RecordingStartedTimestamp`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::Timestamp`] in a single component batch.
     ///
     /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_started`] should
     /// be used when logging a single row's worth of data.
     #[inline]
     pub fn with_many_started(
         mut self,
-        started: impl IntoIterator<Item = impl Into<crate::components::RecordingStartedTimestamp>>,
+        started: impl IntoIterator<Item = impl Into<crate::components::Timestamp>>,
     ) -> Self {
         self.started = try_serialize_field(Self::descriptor_started(), started);
         self

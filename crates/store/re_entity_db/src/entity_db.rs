@@ -144,7 +144,7 @@ impl EntityDb {
         self.latest_at_component::<C>(
             &EntityPath::partition_properties(),
             // TODO(grtlr): Does `log_time` make sense here?
-            &LatestAtQuery::latest(Timeline::log_tick().name().clone()),
+            &LatestAtQuery::latest(*Timeline::log_tick().name()),
         )
         .map(|(_, value)| value)
     }
