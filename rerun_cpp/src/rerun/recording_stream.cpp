@@ -1,5 +1,5 @@
-#include "archetypes.hpp"
 #include "recording_stream.hpp"
+#include "archetypes.hpp"
 #include "c/rerun.h"
 #include "component_batch.hpp"
 #include "config.hpp"
