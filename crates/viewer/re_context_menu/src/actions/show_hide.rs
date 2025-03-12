@@ -124,7 +124,7 @@ fn data_result_visible(
             query_result
                 .tree
                 .lookup_result_by_path(&instance_path.entity_path)
-                .map(|data_result| data_result.is_visible(ctx.viewer_context))
+                .map(|data_result| data_result.is_visible())
         })
         .flatten()
 }
@@ -140,7 +140,7 @@ fn set_data_result_visible(
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
         {
-            data_result.save_recursive_override_or_clear_if_redundant(
+            data_result.save_recursively_propagated_override_or_clear_if_redundant(
                 ctx.viewer_context,
                 &query_result.tree,
                 &re_types::components::Visible::from(visible),

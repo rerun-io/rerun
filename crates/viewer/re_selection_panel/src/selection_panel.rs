@@ -8,7 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::blueprint::components::Interactive;
+use re_types::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
@@ -944,27 +944,18 @@ fn visible_interactive_toggle_ui(
     data_result: &DataResult,
 ) {
     use re_types::components::Visible;
-    use re_types::Component as _;
 
     {
-        let visible_before = data_result.is_visible(ctx.viewer_ctx);
+        let visible_before = data_result.is_visible();
         let mut visible = visible_before;
-
-        let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
-            "\n\nVisible status was inherited from a parent entity."
-        } else {
-            ""
-        };
 
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
         )
-        .on_hover_text(format!(
-            "If disabled, the entity won't be shown in the view.{inherited_hint}"
-        ));
+        .on_hover_text("If disabled, the entity won't be shown in the view.");
 
         if visible_before != visible {
-            data_result.save_recursive_override_or_clear_if_redundant(
+            data_result.save_recursively_propagated_override_or_clear_if_redundant(
                 ctx.viewer_ctx,
                 &query_result.tree,
                 &Visible::from(visible),
@@ -973,24 +964,16 @@ fn visible_interactive_toggle_ui(
     }
 
     {
-        let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
+        let interactive_before = data_result.is_interactive();
         let mut interactive = interactive_before;
-
-        let inherited_hint = if data_result.is_inherited(&query_result.tree, Interactive::name()) {
-            "\n\nInteractive status was inherited from a parent entity."
-        } else {
-            ""
-        };
 
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
         )
-        .on_hover_text(format!(
-            "If disabled, the entity will not react to any mouse interaction.{inherited_hint}"
-        ));
+        .on_hover_text("If disabled, the entity will not react to any mouse interaction.");
 
         if interactive_before != interactive {
-            data_result.save_recursive_override_or_clear_if_redundant(
+            data_result.save_recursively_propagated_override_or_clear_if_redundant(
                 ctx.viewer_ctx,
                 &query_result.tree,
                 &Interactive(interactive.into()),

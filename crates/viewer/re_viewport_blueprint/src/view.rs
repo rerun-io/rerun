@@ -452,7 +452,7 @@ mod tests {
     use re_chunk::RowId;
     use re_entity_db::EntityDb;
     use re_log_types::{
-        example_components::{MyColor, MyLabel, MyPoint},
+        example_components::{MyLabel, MyPoint},
         StoreId, StoreKind, TimePoint,
     };
     use re_types::{Component as _, ComponentName};
@@ -515,10 +515,7 @@ mod tests {
 
         // Basic blueprint - a single view that queries everything.
         let view = ViewBlueprint::new("3D".into(), RecommendedView::root());
-        let individual_override_root =
-            ViewContents::override_path_for_entity(view.id, &EntityPath::root());
-        let recursive_override_root =
-            ViewContents::recursive_override_path_for_entity(view.id, &EntityPath::root());
+        let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
@@ -531,169 +528,34 @@ mod tests {
         );
 
         struct Scenario {
-            recursive_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
-            individual_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
+            blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
             expected_overrides: HashMap<EntityPath, HashMap<ComponentName, EntityPath>>,
+            // TODO: add expected visible & interactive
         }
 
         let scenarios: Vec<Scenario> = vec![
             // No overrides.
             Scenario {
-                recursive_overrides: Vec::new(),
-                individual_overrides: Vec::new(),
+                blueprint_overrides: Vec::new(),
                 expected_overrides: HashMap::default(),
-            },
-            // Recursive override at parent entity.
-            Scenario {
-                recursive_overrides: vec![(
-                    "parent".into(),
-                    Box::new(MyLabel("parent_override".to_owned())),
-                )],
-                individual_overrides: Vec::new(),
-                expected_overrides: HashMap::from([
-                    (
-                        "parent".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/child".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                ]),
             },
             // Set a single individual.
             Scenario {
-                recursive_overrides: Vec::new(),
-                individual_overrides: vec![(
+                blueprint_overrides: vec![(
                     "parent".into(),
                     Box::new(MyLabel("parent_individual".to_owned())),
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashMap::from([(
-                        MyLabel::name(),
-                        individual_override_root.join(&"parent".into()),
-                    )]),
+                    HashMap::from([(MyLabel::name(), override_root.join(&"parent".into()))]),
                 )]),
-            },
-            // Recursive override, partially shadowed by individual.
-            Scenario {
-                recursive_overrides: vec![
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyLabel("parent_individual".to_owned())),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyColor::from_rgb(0, 1, 2)),
-                    ),
-                ],
-                individual_overrides: vec![(
-                    "parent/skipped/grandchild".into(),
-                    Box::new(MyColor::from_rgb(1, 2, 3)),
-                )],
-                expected_overrides: HashMap::from([
-                    (
-                        "parent/skipped".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                        ]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                individual_override_root.join(&"parent/skipped/grandchild".into()),
-                            ),
-                        ]),
-                    ),
-                ]),
-            },
-            // Recursive override, partially shadowed by another recursive override.
-            Scenario {
-                recursive_overrides: vec![
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyLabel("parent_individual".to_owned())),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyColor::from_rgb(0, 1, 2)),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        Box::new(MyColor::from_rgb(3, 2, 1)),
-                    ),
-                ],
-                individual_overrides: Vec::new(),
-                expected_overrides: HashMap::from([
-                    (
-                        "parent/skipped".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                        ]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped/grandchild".into()),
-                            ),
-                        ]),
-                    ),
-                ]),
             },
         ];
 
         for (
             i,
             Scenario {
-                recursive_overrides,
-                individual_overrides,
+                blueprint_overrides,
                 expected_overrides,
             },
         ) in scenarios.into_iter().enumerate()
@@ -714,12 +576,9 @@ mod tests {
                         .unwrap();
                 };
 
-            // log individual and override components as instructed.
-            for (entity_path, batch) in recursive_overrides {
-                add_to_blueprint(&recursive_override_root.join(&entity_path), batch.as_ref());
-            }
-            for (entity_path, batch) in individual_overrides {
-                add_to_blueprint(&individual_override_root.join(&entity_path), batch.as_ref());
+            // log override components as instructed.
+            for (entity_path, batch) in blueprint_overrides {
+                add_to_blueprint(&override_root.join(&entity_path), batch.as_ref());
             }
 
             // Set up a store query and update the overrides.
@@ -731,12 +590,11 @@ mod tests {
                 HashMap::default();
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
-                let resolved_component_overrides =
-                    &result.property_overrides.resolved_component_overrides;
-                if !resolved_component_overrides.is_empty() {
+                let component_overrides = &result.property_overrides.component_overrides;
+                if !component_overrides.is_empty() {
                     visited.insert(
                         result.entity_path.clone(),
-                        resolved_component_overrides
+                        component_overrides
                             .iter()
                             .map(|(component_name, OverridePath { store_kind, path })| {
                                 assert_eq!(*store_kind, StoreKind::Blueprint);
@@ -773,7 +631,6 @@ mod tests {
             &store_ctx,
             &test_ctx.view_class_registry,
             &test_ctx.blueprint_query,
-            view.id,
             visualizable_entities,
         );
         let mut view_states = ViewStates::default();

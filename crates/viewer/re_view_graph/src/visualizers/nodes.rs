@@ -71,7 +71,7 @@ impl VisualizerSystem for NodeVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphNodes>(
                     ctx,

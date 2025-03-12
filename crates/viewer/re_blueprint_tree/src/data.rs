@@ -220,7 +220,6 @@ impl ViewData {
         let mut hierarchy = Vec::with_capacity(10);
         let mut hierarchy_highlights = PathRanges::default();
         let origin_tree = DataResultData::from_data_result_and_filter(
-            ctx,
             view_blueprint,
             query_result,
             &DataResultNodeOrPath::from_path_lookup(result_tree, &view_blueprint.space_origin),
@@ -264,7 +263,6 @@ impl ViewData {
             .into_iter()
             .filter_map(|node| {
                 let projection_tree = DataResultData::from_data_result_and_filter(
-                    ctx,
                     view_blueprint,
                     query_result,
                     &DataResultNodeOrPath::DataResultNode(node),
@@ -366,9 +364,7 @@ pub struct DataResultData {
 }
 
 impl DataResultData {
-    #[allow(clippy::too_many_arguments)]
     fn from_data_result_and_filter(
-        ctx: &ViewerContext<'_>,
         view_blueprint: &ViewBlueprint,
         query_result: &DataQueryResult,
         data_result_or_path: &DataResultNodeOrPath<'_>,
@@ -386,7 +382,7 @@ impl DataResultData {
 
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
-        let visible = data_result_node.is_some_and(|node| node.data_result.is_visible(ctx));
+        let visible = data_result_node.is_some_and(|node| node.data_result.is_visible());
 
         let entity_part_ui_string = entity_path
             .last()
@@ -504,7 +500,6 @@ impl DataResultData {
 
                             child_node.and_then(|child_node| {
                                 Self::from_data_result_and_filter(
-                                    ctx,
                                     view_blueprint,
                                     query_result,
                                     &DataResultNodeOrPath::DataResultNode(child_node),
@@ -588,7 +583,7 @@ impl DataResultData {
         let query_result = ctx.lookup_query_result(self.view_id);
         let result_tree = &query_result.tree;
         if let Some(data_result) = result_tree.lookup_result_by_path(&self.entity_path) {
-            data_result.save_recursive_override_or_clear_if_redundant(
+            data_result.save_recursively_propagated_override_or_clear_if_redundant(
                 ctx,
                 &query_result.tree,
                 &Visible::from(visible),
