@@ -53,7 +53,6 @@ web-time.workspace = true
 
 [dev-dependencies]
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
-re_types.workspace = true
 
 anyhow.workspace = true
 criterion.workspace = true

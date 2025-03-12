@@ -670,7 +670,6 @@ jupyter = ">=1.0"
 polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
-mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 

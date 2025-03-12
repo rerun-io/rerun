@@ -107,7 +107,8 @@ fn global_web_viewer_server(
 fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
-    re_log::setup_logging();
+    // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
+    re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
 
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;

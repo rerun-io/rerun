@@ -28,3 +28,6 @@ re_tracing.workspace = true
 
 arrow.workspace = true
 itertools.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
