@@ -6174,7 +6174,6 @@ dependencies = [
  "re_query",
  "re_smart_channel",
  "re_tracing",
- "re_types",
  "re_types_core",
  "serde",
  "similar-asserts",
