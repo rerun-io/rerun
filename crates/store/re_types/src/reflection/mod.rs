@@ -1452,9 +1452,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.EntityProperties"),
+            ArchetypeName::new("rerun.archetypes.EntityBehavior"),
             ArchetypeReflection {
-                display_name: "Entity properties",
+                display_name: "Entity behavior",
                 scope: None,
                 view_types: &[],
                 fields: vec![

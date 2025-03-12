@@ -22,4 +22,4 @@ boolean
 
 ## Used by
 
-* [`EntityProperties`](../archetypes/entity_properties.md?speculative-link)
+* [`EntityBehavior`](../archetypes/entity_behavior.md?speculative-link)

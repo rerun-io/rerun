@@ -1,10 +1,10 @@
 namespace rerun.archetypes;
 
-/// General visualization properties of an entity.
+/// General visualization behavior of an entity.
 ///
 /// TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
 // TODO(#9251): Add example
-table EntityProperties (
+table EntityBehavior (
   "attr.docs.unreleased",
   "attr.docs.category": "General"
 ) {

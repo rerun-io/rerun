@@ -15,7 +15,7 @@ from .clear import Clear
 from .depth_image import DepthImage
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
-from .entity_properties import EntityProperties
+from .entity_behavior import EntityBehavior
 from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
 from .graph_edges import GraphEdges
@@ -53,7 +53,7 @@ __all__ = [
     "DepthImage",
     "Ellipsoids3D",
     "EncodedImage",
-    "EntityProperties",
+    "EntityBehavior",
     "GeoLineStrings",
     "GeoPoints",
     "GraphEdges",

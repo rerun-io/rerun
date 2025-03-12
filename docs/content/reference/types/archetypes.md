@@ -14,7 +14,7 @@ This page lists all built-in archetypes.
 
 ## General
 
-* [`EntityProperties`](archetypes/entity_properties.md): General visualization properties of an entity.
+* [`EntityBehavior`](archetypes/entity_behavior.md): General visualization behavior of an entity.
 
 ## Geospatial
 
