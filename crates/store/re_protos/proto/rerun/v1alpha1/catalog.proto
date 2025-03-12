@@ -8,68 +8,107 @@ package rerun.catalog.v1alpha1;
 import "google/protobuf/timestamp.proto";
 
 service CatalogService {
-  rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
-  rpc CreateDatasetEntry(DatasetEntry) returns (DatasetEntry) {}
-  rpc ReadDatasetEntry(EntryId) returns (DatasetEntry) {}
-  rpc DeleteDatasetEntry(EntryId) returns (DeleteDatasetEntryResponse) {}
+    rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
+    rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
+    rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+    rpc DeleteDatasetEntry(DeleteDatasetEntryRequest) returns (DeleteDatasetEntryResponse) {}
 }
 
+// ---------------- Services ------------------
+
+// FindEntries
+
 message FindEntriesRequest {
-  EntryFilter filter = 1;
+    EntryFilter filter = 1;
 }
 
 message FindEntriesResponse {
-  repeated EntryDetails entries = 1;
+    repeated EntryDetails entries = 1;
 }
 
+// CreateDatasetEntry
+
+message CreateDatasetEntryRequest {
+    DatasetEntry dataset = 1;
+}
+
+message CreateDatasetEntryResponse {
+    DatasetEntry dataset = 1;
+}
+
+// ReadDatasetEntry
+
+message ReadDatasetEntryRequest {
+    EntryKey key = 1;
+}
+
+message ReadDatasetEntryResponse {
+    DatasetEntry dataset = 1;
+}
+
+// DeleteDatasetEntry
+
+message DeleteDatasetEntryRequest {
+    EntryKey key = 1;
+}
 
 message DeleteDatasetEntryResponse {}
 
+// ---------------- Common ------------------
 
 message EntryFilter {
-  optional string id = 1;
-  optional string name = 2;
+    optional string id = 1;
+    optional string name = 2;
+    optional EntryType type = 3;
 }
 
-
-//
-// COMMON
-//
-
 message EntryId {
-  string id = 1;
+    string id = 1;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
 enum EntryType {
-  Dataset = 0;
-  Table = 1;
-  DatasetView = 2;
-  TableView = 3;
+    // Always reserve unspecified as default value
+    ENTRY_TYPE_UNSPECIFIED = 0;
+    // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+    ENTRY_TYPE_DATASET = 1;
+    ENTRY_TYPE_DATASET_VIEW = 2;
+    ENTRY_TYPE_TABLE = 3;
+    ENTRY_TYPE_TABLE_VIEW = 4;
 }
-
 
 // Minimal info about an Entry for high-level catalog summary
 message EntryDetails {
-  EntryId id = 1;
-  string name = 2;
-  EntryType type = 3;
-  
-  google.protobuf.Timestamp created_at = 4;
-  google.protobuf.Timestamp updated_at = 5;
+    // The EntryId is immutable
+    EntryId id = 1;
+
+    // The name is a short human-readable string
+    // TODO(jleibs): Define valid name constraints
+    string name = 2;
+
+    // The type of entry
+    EntryType type = 3;
+
+    google.protobuf.Timestamp created_at = 4;
+    google.protobuf.Timestamp updated_at = 5;
 }
-
-
 
 message DatasetEntry {
-  EntryDetails details = 1;
+    EntryDetails details = 1;
 
-  // Read-only
-  DatasetManifest manifest = 2;
+    // Read-only
+    DatasetManifest manifest = 2;
 }
-
 
 // Serves as both manifest info and "opaque" handle to the dataset APIs.
 message DatasetManifest {
-  string path = 1;
+    string path = 1;
+}
+
+// EntryKey is used to access an entry by either id or name.
+// All APIs that require specifying an entry should use this
+// message.
+message EntryKey {
+    optional string id = 1;
+    optional string name = 2;
 }
