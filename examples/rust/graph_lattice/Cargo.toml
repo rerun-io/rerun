@@ -11,4 +11,4 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
-itertools = "0.13"
+itertools = "0.14"

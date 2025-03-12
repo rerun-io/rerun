@@ -11,5 +11,5 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "dataframe",
 ] }
 
-itertools = "0.13"
+itertools = "0.14"
 unindent = "0.2"

@@ -16,6 +16,7 @@ use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyDict, PyTuple},
+    IntoPyObjectExt as _,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -52,10 +53,11 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 fn py_rerun_warn(msg: &str) -> PyResult<()> {
     Python::with_gil(|py| {
-        let warning_type = PyModule::import_bound(py, "rerun")?
+        let warning_type = PyModule::import(py, "rerun")?
             .getattr("error_utils")?
             .getattr("RerunWarning")?;
-        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        let cstr_msg = std::ffi::CString::new(msg)?;
+        PyErr::warn(py, &warning_type, &cstr_msg, 0)?;
         Ok(())
     })
 }
@@ -397,7 +399,7 @@ impl IndexValuesLike<'_> {
                 // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
                 if let Ok(chunks) = any.getattr("chunks") {
                     let mut values = BTreeSet::new();
-                    for chunk in chunks.iter()? {
+                    for chunk in chunks.try_iter()? {
                         let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
                         let array = make_array(chunk.0.clone());
 
@@ -496,12 +498,12 @@ impl PySchema {
                 .indices_and_components()
                 .into_iter()
                 .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
+                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py(py)
+                        PyComponentColumnDescriptor(col).into_py_any(py)
                     }
                 })
-                .collect::<Vec<PyObject>>()
+                .collect::<PyResult<Vec<_>>>()?
                 .into_iter(),
         };
         Py::new(slf.py(), iter)
@@ -749,7 +751,7 @@ impl PyRecordingView {
             }
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
@@ -839,7 +841,7 @@ impl PyRecordingView {
             }
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
