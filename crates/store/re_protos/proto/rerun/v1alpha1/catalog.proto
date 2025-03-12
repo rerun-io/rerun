@@ -109,6 +109,6 @@ message DatasetManifest {
 // All APIs that require specifying an entry should use this
 // message.
 message EntryKey {
-    optional string id = 1;
+    optional EntryId id = 1;
     optional string name = 2;
 }
