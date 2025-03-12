@@ -37,7 +37,7 @@ def log_some_views() -> None:
 
     rr.log(
         "/objects/boxes/boxes3d",
-        rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3),
+        rr.Boxes3D(centers=[[0.0, 0.0, 0.0], [1.0, 1.5, 1.15], [3.0, 2.0, 1.0]], half_sizes=[0.5, 1.0, 0.5] * 3),
     )
 
 

@@ -8,7 +8,7 @@ import os
 import sys
 
 
-def compute_file_hash(file_path):
+def compute_file_hash(file_path: str) -> str:
     sha256 = hashlib.sha256()
     relative_path = os.path.basename(file_path)
     sha256.update(relative_path.encode())  # Include file name in the hash
@@ -20,7 +20,7 @@ def compute_file_hash(file_path):
     return sha256.hexdigest()
 
 
-def compute_directory_hash(directory):
+def compute_directory_hash(directory: str) -> str:
     sha256 = hashlib.sha256()
 
     for root, _, files in sorted(os.walk(directory)):

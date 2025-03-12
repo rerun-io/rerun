@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response};
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeInt, TimeType, TimeZone};
+use re_log_types::{TimeInt, TimeType, TimestampFormat};
 
 /// Drag value widget for editing time values for both sequence and temporal timelines.
 ///
@@ -73,6 +73,34 @@ impl TimeDragValue {
         TimeInt::new_temporal(*self.range.end())
     }
 
+    /// Show a drag value widget, taking into account the time type.
+    pub fn drag_value_ui(
+        &self,
+        ui: &mut egui::Ui,
+        time_type: TimeType,
+        time: &mut TimeInt,
+        absolute: bool,
+        low_bound_override: Option<TimeInt>,
+        timestamp_format: TimestampFormat,
+    ) -> Response {
+        match time_type {
+            TimeType::Sequence => {
+                self.sequence_drag_value_ui(ui, time, absolute, low_bound_override)
+            }
+
+            TimeType::Time => {
+                self.temporal_drag_value_ui(
+                    ui,
+                    time,
+                    absolute,
+                    low_bound_override,
+                    timestamp_format,
+                )
+                .0
+            }
+        }
+    }
+
     /// Show a sequence drag value widget.
     pub fn sequence_drag_value_ui(
         &self,
@@ -122,7 +150,7 @@ impl TimeDragValue {
         value: &mut TimeInt,
         absolute: bool,
         low_bound_override: Option<TimeInt>,
-        time_zone_for_timestamps: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> (Response, Option<Response>) {
         let mut time_range = if absolute {
             self.abs_range.clone()
@@ -154,8 +182,7 @@ impl TimeDragValue {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time
-                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
+                    TimeType::Time.format(TimeInt::new_temporal(base_time), timestamp_format)
                 ))
             })
         } else {

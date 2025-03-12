@@ -17,6 +17,25 @@ We've added a explicit API for setting time, where you need to explicitly specif
 Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
 Now you need to be explicit.
 
+
+### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
+Use one of these instead:
+* `set_duration_seconds`
+* `set_timestamp_seconds_since_epoch`
+* `set_index` with `std::time::Duration`
+* `set_index` with `std::time::SystemTime`
+
+
+### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+We've deprecated the following functions, with the following replacements:
+* `set_time_sequence` -> `set_index_sequence`
+* `set_time` -> `set_index_duration` or `set_index_timestamp`
+* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
+* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+
+`TimeColumn` also has deprecated functions.
+
+
 ### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
 We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
 
@@ -90,14 +109,32 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
-### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
-We've deprecated the following functions, with the following replacements:
-* `set_time_sequence` -> `set_index_sequence`
-* `set_time` -> `set_index_duration` or `set_index_timestamp`
-* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
-* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
-`TimeColumn` also has deprecated functions.
+Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream?speculative-link) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
+
+<!-- NOLINT_START -->
+
+```python
+# before
+rec = rr. new_recording("rerun_example")
+
+# after
+rec = rr.RecordingStream("my_app_id")
+```
+
+If you used the `spawn=True` argument, you will now have to call the `spawn()` method explicitly:
+
+```python
+# before
+rec = rr. new_recording("my_app_id", spawn=True)
+
+# after
+rec = rr.RecordingStream("my_app_id")
+rec.spawn()
+```
+
+<!-- NOLINT_END -->
 
 ## 🐍 Python: removed `rr.log_components()`, `rr.connect()`, `rr.connect_tcp()`, and `rr.serve()`
 
@@ -119,7 +156,143 @@ See the [`RecordingStream` docs](https://ref.rerun.io/docs/cpp/0.23.0/classrerun
 
 Calls to these functions must be changed to use [`connect_grpc`](https://docs.rs/rerun/0.23.0/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link) instead.
 
-Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect_grpc("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+Note that the string passed to `connect_grpc` must now be a valid Rerun URL. If you were previously calling `connect("127.0.0.1:9876")`, it must be changed to `connect_grpc("rerun+http://127.0.0.1:9876/proxy")`.
+
+The following schemes are supported: `rerun+http://`, `rerun+https://` and `rerun://`, which is an alias for `rerun+https://`.
+These schemes are then converted on the fly to either `http://` or `https://`.
+Rerun uses gRPC-based protocols under the hood, which means that the paths (`/catalog`, `/recording/12345`, …) are mapped to gRPC services and methods on the fly.
+
+## 🐍 Python: blueprint overrides & defaults are now archetype based
+
+Just like with `send_columns` in the previous release, blueprint overrides and defaults are now archetype based.
+
+**Examples:**
+
+Setting default & override for radius
+
+Before:
+```py
+rrb.Spatial2DView(
+    name="Rect 1",
+    origin="/",
+    contents=["/**"],
+    defaults=[rr.components.Radius(2)],
+    overrides={"rect/0": [rr.components.Radius(1)]},
+)
+```
+After:
+```py
+rrb.Spatial2DView(
+    name="Rect 1",
+    origin="/",
+    contents=["/**"],
+    defaults=[rr.Boxes2D.from_fields(radii=1)],
+    overrides={"rect/0": rr.Boxes2D.from_fields(radii=2)},
+)
+```
+
+Setting up styles for a plot.
+
+Before:
+```py
+# …
+rrb.TimeSeriesView(
+    name="Trig",
+    origin="/trig",
+    overrides={
+        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+    },
+),
+rrb.TimeSeriesView(
+    name="Classification",
+    origin="/classification",
+    overrides={
+        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
+    },
+),
+# …
+```
+After:
+```py
+# …
+rrb.TimeSeriesView(
+    name="Trig",
+    origin="/trig",
+    overrides={
+        "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
+        "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+    },
+),
+rrb.TimeSeriesView(
+    name="Classification",
+    origin="/classification",
+    overrides={
+        "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
+        "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
+    },
+),
+# …
+```
+
+⚠️ Warning: Just like regular log/send calls, overlapping component types still overwrite each other.
+E.g. overriding a box radius will also override point radius on the same entity.
+In a future release, components tagged with a different archetype or field name can live side by side,
+but for the moment the Viewer is not able to make this distinction.
+For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
+
+
+### Visible time range overrides have to specify the underlying archetype
+
+(Note that this functionality broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))
+
+Before:
+```py
+# …
+overrides={
+    "helix/structure/scaffolding/beads": [
+        rrb.VisibleTimeRange(
+            "stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+        ),
+    ],
+},
+# …
+```
+
+After:
+```py
+# …
+overrides={
+    "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
+            timeline="stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
+        ),
+}
+# …
+```
+… or respectively for multiple timelines:
+```py
+# …
+overrides={
+    "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges([
+        rrb.VisibleTimeRange(
+            timeline="stable_time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3)
+        ),
+        rrb.VisibleTimeRange(
+            timeline="index",
+            start=rrb.TimeRangeBoundary.absolute(seq=10),
+            end=rrb.TimeRangeBoundary.absolute(seq=100)
+        ),
+    ])
+}
+# …
+```
 
 ## Consistent constructor naming of `Asset3D` across C++ and Rust
 

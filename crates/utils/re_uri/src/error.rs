@@ -6,8 +6,8 @@ pub enum Error {
     #[error("invalid or missing scheme (expected `rerun(+http|+https)://`)")]
     InvalidScheme,
 
-    #[error("invalid time range (expected `TIMELINE@(\\d+)s?..(\\d+)s?`)")]
-    InvalidTimeRange,
+    #[error("invalid time range (expected `TIMELINE@time..time`): {0}")]
+    InvalidTimeRange(String),
 
     #[error("unexpected endpoint: {0}")]
     UnexpectedEndpoint(String),

@@ -67,7 +67,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         let pos = tip(angle * TAU, length);
         let color = color(angle, blue);
 
-        rec.set_time_seconds("sim_time", step as f64);
+        rec.set_duration_seconds("sim_time", step as f64);
 
         rec.log(
             format!("world/{name}_pt"),

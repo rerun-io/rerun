@@ -33,7 +33,8 @@ use re_protos::{
         index_properties::Props, storage_node_service_client::StorageNodeServiceClient,
         CatalogEntry, CatalogFilter, ColumnProjection, FetchRecordingRequest,
         GetRecordingSchemaRequest, IndexColumn, QueryCatalogRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, SearchIndexRequest, UpdateCatalogRequest, VectorIvfPqIndex,
+        RegisterRecordingDescription, RegisterRecordingsRequest, SearchIndexRequest,
+        UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
@@ -69,6 +70,13 @@ async fn connect_async(
 /// Load a rerun archive from an RRD file.
 ///
 /// Required-feature: `remote`
+///
+/// Rerun uses it's own custom URI scheme. The following are valid
+/// addresses:
+///
+/// * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
+/// * `rerun+http://localhost:51234` Falls back to using HTTP only.
+/// * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
 ///
 /// Parameters
 /// ----------
@@ -373,20 +381,24 @@ impl PyStorageNodeClient {
                 })
                 .transpose()?;
 
-            let request = RegisterRecordingRequest {
+            let request = RegisterRecordingsRequest {
                 entry: Some(CatalogEntry {
                     name: entry.to_owned(),
                 }),
-                // TODO(jleibs): Description should really just be in the metadata
-                description: Default::default(),
-                storage_url: storage_url.to_string(),
-                metadata,
-                typ: RecordingType::Rrd.into(),
+                recordings: vec![
+                    RegisterRecordingDescription {
+                        // TODO(jleibs): Description should really just be in the metadata
+                        description: Default::default(),
+                        storage_url: storage_url.to_string(),
+                        metadata,
+                        typ: RecordingType::Rrd.into(),
+                    }, //
+                ],
             };
 
             let resp = self
                 .client
-                .register_recording(request)
+                .register_recordings(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
@@ -870,7 +882,6 @@ impl PyStorageNodeClient {
                 application_id: ApplicationId::from("rerun_data_platform"),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                is_official_example: false,
                 started: Time::now(),
                 store_source: StoreSource::Unknown,
                 store_version: None,

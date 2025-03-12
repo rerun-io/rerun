@@ -66,8 +66,11 @@ def log_some_views() -> None:
 
     rr.set_index("frame_nr", sequence=0)
 
-    rr.log("boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
-    rr.log("boxes2d", rr.Boxes2D(centers=[[0, 0], [1.3, 0.5], [3, 2]], half_sizes=[0.5, 1] * 3))
+    rr.log(
+        "boxes3d",
+        rr.Boxes3D(centers=[[0.0, 0.0, 0.0], [1.0, 1.5, 1.15], [3.0, 2.0, 1.0]], half_sizes=[0.5, 1.0, 0.5] * 3),
+    )
+    rr.log("boxes2d", rr.Boxes2D(centers=[[0.0, 0.0], [1.3, 0.5], [3.0, 2.0]], half_sizes=[0.5, 1.0] * 3))
     rr.log("text_logs", rr.TextLog("Hello, world!", level=rr.TextLogLevel.INFO))
     rr.log("points2d", rr.Points2D([[0, 0], [1, 1], [3, 2]], labels=["a", "b", "c"]))
     rr.log("points2d/bbx", rr.Boxes2D(centers=[1, 1], half_sizes=[3, 3]))

@@ -1,8 +1,8 @@
 namespace rerun.components;
 
-/// Like `Visible`, but for time series.
+/// Like [components.Visible], but for time series.
 ///
-/// TODO(#6889): This is a temporary workaround. Right now we can't use `Visible` since it would conflict with the entity-wide visibility state.
+/// TODO(#6889): This is a temporary workaround. Right now we can't use [components.Visible] since it would conflict with the entity-wide visibility state.
 struct SeriesVisible (
     "attr.docs.unreleased", // this component got moved, links changed.
     "attr.arrow.transparent",

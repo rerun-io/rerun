@@ -3,11 +3,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
+
+from ..._baseclasses import (
+    DescribedComponentBatch,
+)
+
 __all__ = ["TensorView"]
 
 
 from ... import datatypes
-from ..._baseclasses import AsComponents, ComponentBatchLike
+from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import View, ViewContentsLike
@@ -76,8 +82,12 @@ class TensorView(View):
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
-        defaults: list[AsComponents | ComponentBatchLike] | None = None,
-        overrides: dict[EntityPathLike, list[ComponentBatchLike]] | None = None,
+        defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
+        overrides: Mapping[
+            EntityPathLike,
+            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
+        ]
+        | None = None,
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
         scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
         view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
@@ -101,16 +111,22 @@ class TensorView(View):
 
             Defaults to true if not specified.
         defaults:
-            List of default components or component batches to add to the view. When an archetype
-            in the view is missing a component included in this set, the value of default will be used
-            instead of the normal fallback for the visualizer.
+            List of archetypes or (described) component batches to add to the view.
+            When an archetype in the view is missing a component included in this set,
+            the value of default will be used instead of the normal fallback for the visualizer.
+
+            Note that an archetype's required components typically don't have any effect.
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
         overrides:
             Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of component or component batches to apply to the entity.
+            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+
+            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
+
         slice_selection:
             How to select the slice of the tensor to show.
         scalar_mapping:

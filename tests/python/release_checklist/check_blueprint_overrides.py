@@ -46,13 +46,11 @@ def run(args: Namespace) -> None:
             rrb.TextDocumentView(origin="readme", name="Instructions"),
             rrb.TimeSeriesView(
                 name="Plots",
-                defaults=[rr.components.Color([0, 0, 255])],
+                defaults=[rr.SeriesPoint.from_fields(color=[0, 0, 255])],
                 overrides={
                     "plots/cos": [
                         rrb.VisualizerOverrides("SeriesPoint"),
-                        rr.components.Color([0, 255, 0]),
-                        # TODDO(#6670): This should just be `rr.components.MarkerShape.Cross`
-                        rr.components.MarkerShapeBatch("cross"),
+                        rr.SeriesPoint.from_fields(color=[0, 255, 0], marker="cross"),
                     ],
                 },
             ),

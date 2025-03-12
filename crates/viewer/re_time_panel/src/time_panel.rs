@@ -501,7 +501,7 @@ impl TimePanel {
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
             time_ctrl.time_type(),
-            ctx.app_options().time_zone,
+            ctx.app_options().timestamp_format,
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
@@ -1283,7 +1283,7 @@ impl TimePanel {
             let mut time_str = self
                 .time_edit_string
                 .clone()
-                .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().time_zone));
+                .unwrap_or_else(|| time_type.format(time_int, ctx.app_options().timestamp_format));
 
             ui.style_mut().spacing.text_edit_width = 200.0;
 
@@ -1292,7 +1292,8 @@ impl TimePanel {
                 self.time_edit_string = Some(time_str.clone());
             }
             if response.lost_focus() {
-                if let Some(time_int) = time_type.parse_time(&time_str, ctx.app_options().time_zone)
+                if let Some(time_int) =
+                    time_type.parse_time(&time_str, ctx.app_options().timestamp_format)
                 {
                     time_ctrl.set_time(time_int);
                 }

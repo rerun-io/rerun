@@ -54,20 +54,16 @@ def _setup_rerun() -> None:
                     origin="gyroscope",
                     name="Gyroscope",
                     overrides={
-                        "/gyroscope": [
-                            rr.components.NameBatch(XYZ_AXIS_NAMES),
-                            rr.components.ColorBatch(XYZ_AXIS_COLORS),
-                        ],
+                        # TODO(#9022): Pluralize series line type.
+                        "/gyroscope": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                     },
                 ),
                 rrb.TimeSeriesView(
                     origin="accelerometer",
                     name="Accelerometer",
                     overrides={
-                        "/accelerometer": [
-                            rr.components.NameBatch(XYZ_AXIS_NAMES),
-                            rr.components.ColorBatch(XYZ_AXIS_COLORS),
-                        ],
+                        # TODO(#9022): Pluralize series line type.
+                        "/accelerometer": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                     },
                 ),
             ),

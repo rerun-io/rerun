@@ -16,7 +16,5 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 mod arrow;
 mod dataframe;
 mod python_bridge;
-mod video;
-
-#[cfg(feature = "remote")]
 mod remote;
+mod video;

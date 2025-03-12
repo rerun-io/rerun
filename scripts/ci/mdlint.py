@@ -379,6 +379,7 @@ def check_file(path: str) -> str | None:
 
     if len(errors) != 0:
         return "\n".join([error.render(path, content) for error in errors])
+    return None
 
 
 def lint(glob_pattern: str) -> None:
@@ -393,12 +394,12 @@ def lint(glob_pattern: str) -> None:
 
 
 def explain(error_code: str) -> None:
-    f = EXPLAIN[error_code]
-    if not f:
+    if error_code not in EXPLAIN:
         print(f'Unknown error code "{error_code}"')
         print(f"Available error codes: {', '.join(EXPLAIN.keys())}")
         return
 
+    f = EXPLAIN[error_code]
     print(f())
 
 

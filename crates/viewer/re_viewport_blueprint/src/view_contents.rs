@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, Timeline};
-use re_types::blueprint::components::VisualizerOverrides;
+use re_log_types::{
+    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter,
+    ResolvedEntityPathRule, Timeline,
+};
+use re_types::blueprint::components::VisualizerOverride;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
@@ -38,7 +40,7 @@ use crate::{ViewBlueprint, ViewProperty};
 /// [`ViewBlueprint::duplicate`].
 #[derive(Clone, Debug)]
 pub struct ViewContents {
-    pub blueprint_entity_path: EntityPath,
+    view_id: ViewId,
 
     view_class_identifier: ViewClassIdentifier,
 
@@ -80,29 +82,53 @@ impl ViewContents {
 }
 
 impl ViewContents {
+    const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
+    const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
+
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling
     /// `save_to_blueprint_store` on the enclosing `ViewBlueprint`.
     pub fn new(
-        id: ViewId,
+        view_id: ViewId,
         view_class_identifier: ViewClassIdentifier,
         entity_path_filter: ResolvedEntityPathFilter,
     ) -> Self {
-        // Don't use `entity_path_for_view_sub_archetype` here because this will do a search in the future,
-        // thus needing the entity tree.
-        let blueprint_entity_path = id.as_entity_path().join(&EntityPath::from_single_string(
-            blueprint_archetypes::ViewContents::name().short_name(),
-        ));
-
         let new_entity_path_filter = Arc::new(Mutex::new(entity_path_filter.clone()));
 
         Self {
-            blueprint_entity_path,
+            view_id,
             view_class_identifier,
             entity_path_filter,
             new_entity_path_filter,
         }
+    }
+
+    /// Entity path for a given view id.
+    fn blueprint_entity_path_for_id(id: ViewId) -> EntityPath {
+        // Don't use `entity_path_for_view_property` here because this will do a search in the future,
+        // thus needing the entity tree.
+        id.as_entity_path().join(&EntityPath::from_single_string(
+            blueprint_archetypes::ViewContents::name().short_name(),
+        ))
+    }
+
+    /// Computes the override path for a given entity in a given view.
+    pub fn override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
+        Self::blueprint_entity_path_for_id(id)
+            .join(&EntityPath::from_single_string(
+                Self::INDIVIDUAL_OVERRIDES_PREFIX,
+            ))
+            .join(entity_path)
+    }
+
+    /// Computes the recursive override path for a given entity in a given view.
+    pub fn recursive_override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
+        Self::blueprint_entity_path_for_id(id)
+            .join(&EntityPath::from_single_string(
+                Self::RECURSIVE_OVERRIDES_PREFIX,
+            ))
+            .join(entity_path)
     }
 
     /// Attempt to load a [`ViewContents`] from the blueprint store.
@@ -138,7 +164,7 @@ impl ViewContents {
         let new_entity_path_filter = Arc::new(Mutex::new(entity_path_filter.clone()));
 
         Self {
-            blueprint_entity_path: property.blueprint_store_path,
+            view_id,
             view_class_identifier,
             entity_path_filter,
             new_entity_path_filter,
@@ -152,42 +178,11 @@ impl ViewContents {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        ctx.save_blueprint_archetype(
-            &self.blueprint_entity_path,
-            &blueprint_archetypes::ViewContents::new(
-                self.new_entity_path_filter
-                    .lock()
-                    .iter_unresolved_expressions(),
-            ),
-        );
+        self.save_entity_path_filter_to_blueprint(ctx);
     }
 
     pub fn entity_path_filter(&self) -> &ResolvedEntityPathFilter {
         &self.entity_path_filter
-    }
-
-    pub fn build_resolver<'a>(
-        &self,
-        view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-        view: &'a ViewBlueprint,
-        maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
-    ) -> DataQueryPropertyResolver<'a> {
-        let base_override_root = &self.blueprint_entity_path;
-        let individual_override_root =
-            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
-        let recursive_override_root =
-            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
-        DataQueryPropertyResolver {
-            view_class_registry,
-            view,
-            individual_override_root,
-            recursive_override_root,
-            maybe_visualizable_entities_per_visualizer,
-            visualizable_entities_per_visualizer,
-            indicated_entities_per_visualizer,
-        }
     }
 
     /// Sets the entity path filter to the provided one.
@@ -261,14 +256,18 @@ impl ViewContents {
 
     /// Save the entity path filter.
     fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        ctx.save_blueprint_component(
-            &self.blueprint_entity_path,
+        ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            self.view_id,
+        )
+        .save_blueprint_component(
+            ctx,
             &self
                 .new_entity_path_filter
                 .lock()
-                .unresolved()
-                .iter_expressions()
-                .map(|s| QueryExpression(s.into()))
+                .iter_unresolved_expressions()
+                .map(|s| blueprint_components::QueryExpression(s.into()))
                 .collect::<Vec<_>>(),
         );
     }
@@ -293,12 +292,14 @@ impl ViewContents {
         let executor = QueryExpressionEvaluator {
             visualizable_entities_for_visualizer_systems,
             entity_path_filter: self.entity_path_filter.clone(),
-            recursive_override_base_path: self
-                .blueprint_entity_path
-                .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into()),
-            individual_override_base_path: self
-                .blueprint_entity_path
-                .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into()),
+            recursive_override_base_path: Self::recursive_override_path_for_entity(
+                view_id,
+                &EntityPath::root(),
+            ),
+            individual_override_base_path: Self::override_path_for_entity(
+                view_id,
+                &EntityPath::root(),
+            ),
         };
 
         let mut num_matching_entities = 0;
@@ -444,7 +445,30 @@ pub struct DataQueryPropertyResolver<'a> {
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
-impl DataQueryPropertyResolver<'_> {
+impl<'a> DataQueryPropertyResolver<'a> {
+    pub fn new(
+        view: &'a ViewBlueprint,
+        view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+        maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
+        visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
+    ) -> Self {
+        let individual_override_root =
+            ViewContents::override_path_for_entity(view.id, &EntityPath::root());
+        let recursive_override_root =
+            ViewContents::recursive_override_path_for_entity(view.id, &EntityPath::root());
+
+        Self {
+            view_class_registry,
+            view,
+            individual_override_root,
+            recursive_override_root,
+            maybe_visualizable_entities_per_visualizer,
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
+        }
+    }
+
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
@@ -474,15 +498,20 @@ impl DataQueryPropertyResolver<'_> {
                 // Update visualizers from overrides.
                 if !node.data_result.visualizers.is_empty() {
                     // If the user has overridden the visualizers, update which visualizers are used.
-                    if let Some(viz_override) = blueprint
-                        .latest_at_component::<VisualizerOverrides>(
-                            &individual_override_path,
-                            blueprint_query,
-                        )
-                        .map(|(_index, value)| value)
-                    {
+                    let viz_override_query = blueprint.latest_at(
+                        blueprint_query,
+                        &individual_override_path,
+                        // TODO(andreas): Use tags from `VisualizerOverrides`.
+                        [VisualizerOverride::name()],
+                    );
+                    let viz_overrides = viz_override_query
+                        .get_required(&VisualizerOverride::name())
+                        .map(|viz_override| {
+                            viz_override.iter_slices::<String>(VisualizerOverride::name())
+                        });
+                    if let Ok(viz_overrides) = viz_overrides {
                         node.data_result.visualizers =
-                            viz_override.0.iter().map(Into::into).collect();
+                            viz_overrides.flatten().map(|s| s.as_str().into()).collect();
                     } else {
                         // Otherwise ask the `ViewClass` to choose.
                         node.data_result.visualizers = self
@@ -560,7 +589,7 @@ impl DataQueryPropertyResolver<'_> {
                 use re_types::Component as _;
                 let latest_at_results = blueprint.latest_at(
                     blueprint_query,
-                    &recursive_override_path,
+                    &individual_override_path,
                     std::iter::once(blueprint_components::VisibleTimeRange::name()),
                 );
                 let visible_time_ranges =

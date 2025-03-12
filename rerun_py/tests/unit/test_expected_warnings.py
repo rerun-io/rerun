@@ -44,7 +44,7 @@ def test_expected_warnings() -> None:
     )
     expect_warning(
         lambda: rr.log("test_transform", rr.datatypes.Vec3D([1, 0, 0])),  # type: ignore[arg-type]
-        "Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, but got",
+        "Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, but got",
     )
     expect_warning(
         lambda: rr.log("world/image", rr.Pinhole(focal_length=3)),

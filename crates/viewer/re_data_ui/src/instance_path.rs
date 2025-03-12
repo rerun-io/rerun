@@ -76,7 +76,7 @@ impl DataUi for InstancePath {
                 format!(
                     "Nothing logged at {} = {}",
                     query.timeline(),
-                    typ.format(query.at(), ctx.app_options().time_zone),
+                    typ.format(query.at(), ctx.app_options().timestamp_format),
                 ),
             );
             return;

@@ -32,13 +32,13 @@ HAS_NO_RERUN_ARGS = {
     "examples/python/stdio",
 }
 
-MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+MIN_PYTHON_REQUIREMENTS: dict[str, tuple[int, int]] = {
     "examples/python/controlnet": (3, 10),
     # pyopf requires Python 3.10
     "examples/python/open_photogrammetry_format": (3, 10),
 }
 
-MAX_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+MAX_PYTHON_REQUIREMENTS: dict[str, tuple[int, int]] = {
     "examples/python/face_tracking": (3, 11),  # TODO(ab): remove when mediapipe is 3.12 compatible
     "examples/python/human_pose_tracking": (3, 11),  # TODO(ab): remove when mediapipe is 3.12 compatible
     "examples/python/llm_embedding_ner": (3, 11),  # TODO(ab): remove when torch is umap-learn/numba is 3.12 compatible
@@ -53,7 +53,7 @@ SKIP_LIST = [
     "examples/python/external_data_loader",
 ]
 
-MAC_SKIP_LIST = []
+MAC_SKIP_LIST: list[str] = []
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
@@ -93,7 +93,7 @@ def run_py_example(path: str, viewer_port: int | None = None, *, wait: bool = Tr
 
 
 # stdout and stderr
-def output_from_process(process: Any) -> str:
+def output_from_process(process: subprocess.Popen[bytes]) -> str:
     return process.communicate()[0].decode("utf-8").rstrip()
 
 
@@ -232,14 +232,16 @@ def run_install_requirements(examples: list[str]) -> None:
     for example in examples:
         req = Path(example) / "requirements.txt"
         if req.exists():
-            args.extend(["-r", req])
+            args.extend(["-r", str(req)])
 
     print("Installing examples requirements…")
-    returncode = subprocess.Popen([
-        "pip",
-        "install",
-        *args,
-    ]).wait()
+    returncode = subprocess.Popen(
+        [
+            "pip",
+            "install",
+        ]
+        + args
+    ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 

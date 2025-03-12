@@ -96,7 +96,7 @@ def lint_url(url: str) -> str | None:
     }
 
     if url in ALLOW_LIST_URLS:
-        return
+        return None
 
     if m := re.match(r"https://github.com/.*/blob/(\w+)/.*", url):
         branch = m.group(1)
@@ -864,8 +864,8 @@ def fix_enforced_upper_case(s: str) -> str:
 def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
-    errors = []
-    lines_out = []
+    errors: list[str] = []
+    lines_out: list[str] = []
 
     in_example_readme = (
         "/examples/python/" in filepath

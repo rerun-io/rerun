@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::{ResolvedTimeRange, TimeType, TimeZone};
+use crate::{ResolvedTimeRange, TimeType, TimestampFormat};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -47,12 +47,11 @@ pub struct Timeline {
 }
 
 impl Timeline {
-    /// For absolute or relative time.
     #[inline]
-    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ,
         }
     }
 
@@ -65,12 +64,31 @@ impl Timeline {
         }
     }
 
+    /// For relative times (e.g. seconds since start).
     #[inline]
-    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
+    pub fn new_duration(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ,
+            typ: TimeType::Time,
         }
+    }
+
+    /// For absolute timestamps.
+    #[inline]
+    pub fn new_timestamp(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Time,
+        }
+    }
+
+    #[deprecated(
+        since = "0.23.0",
+        note = "Use `Timeline::new_duration` or `new_timestamp` instead"
+    )]
+    #[inline]
+    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+        Self::new_duration(name)
     }
 
     #[inline]
@@ -108,15 +126,15 @@ impl Timeline {
     pub fn format_time_range(
         &self,
         time_range: &ResolvedTimeRange,
-        time_zone_for_timestamps: TimeZone,
+        timestamp_format: TimestampFormat,
     ) -> String {
-        self.typ.format_range(*time_range, time_zone_for_timestamps)
+        self.typ.format_range(*time_range, timestamp_format)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
     #[inline]
     pub fn format_time_range_utc(&self, time_range: &ResolvedTimeRange) -> String {
-        self.format_time_range(time_range, TimeZone::Utc)
+        self.format_time_range(time_range, TimestampFormat::Utc)
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.

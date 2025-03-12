@@ -37,6 +37,7 @@ tracing = { workspace = true, features = ["log"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_filter.workspace = true
 env_logger = { workspace = true, optional = true, features = [
   "auto-color",
   "humantime",

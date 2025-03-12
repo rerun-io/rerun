@@ -30,7 +30,6 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
-#[cfg(feature = "remote")]
 use crate::remote::PyRemoteRecording;
 
 /// Register the `rerun.dataframe` module.
@@ -575,7 +574,6 @@ pub struct PyRecording {
 #[derive(Clone)]
 pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
-    #[cfg(feature = "remote")]
     Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
@@ -648,7 +646,6 @@ impl PyRecordingView {
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
     fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
-        #![allow(clippy::unnecessary_wraps)] // In case of feature != "remote"
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -663,7 +660,6 @@ impl PyRecordingView {
                     schema: query_handle.view_contents().clone(),
                 })
             }
-            #[cfg(feature = "remote")]
             PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
                 "Schema is not implemented for remote recordings yet.",
             )),
@@ -751,7 +747,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
             }
-            #[cfg(feature = "remote")]
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
                 let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
@@ -842,7 +837,6 @@ impl PyRecordingView {
 
                 Ok(PyArrowType(Box::new(reader)))
             }
-            #[cfg(feature = "remote")]
             PyRecordingHandle::Remote(recording) => {
                 let borrowed_recording = recording.borrow(py);
                 let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
@@ -1428,7 +1422,7 @@ impl PyRRDArchive {
 ///
 /// Parameters
 /// ----------
-/// path_to_rrd : str | os.PathLike
+/// path_to_rrd : str | os.PathLike[str]
 ///     The path to the file to load.
 ///
 /// Returns
@@ -1460,7 +1454,7 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 ///
 /// Parameters
 /// ----------
-/// path_to_rrd : str | os.PathLike
+/// path_to_rrd : str | os.PathLike[str]
 ///     The path to the file to load.
 ///
 /// Returns

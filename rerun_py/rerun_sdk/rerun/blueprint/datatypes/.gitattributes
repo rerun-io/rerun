@@ -7,4 +7,3 @@ filter_by_range.py linguist-generated=true
 filter_is_not_null.py linguist-generated=true
 selected_columns.py linguist-generated=true
 tensor_dimension_index_slider.py linguist-generated=true
-utf8list.py linguist-generated=true

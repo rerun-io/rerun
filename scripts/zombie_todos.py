@@ -24,7 +24,7 @@ headers = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
-issues = []
+issues: list[int] = []
 
 repo_owner = "rerun-io"
 repo_name = "rerun"

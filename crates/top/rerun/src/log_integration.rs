@@ -23,7 +23,7 @@ use crate::RecordingStream;
 #[derive(Debug)]
 pub struct Logger {
     rec: RecordingStream,
-    filter: Option<env_logger::filter::Filter>,
+    filter: Option<env_filter::Filter>,
     path_prefix: Option<String>,
 }
 
@@ -60,7 +60,7 @@ impl Logger {
     /// [env_logger syntax]: https://docs.rs/env_logger/latest/env_logger/index.html#enabling-logging
     #[inline]
     pub fn with_filter(mut self, filter: impl AsRef<str>) -> Self {
-        use env_logger::filter::Builder;
+        use env_filter::Builder;
         self.filter = Some(Builder::new().parse(filter.as_ref()).build());
         self
     }
@@ -70,7 +70,7 @@ impl Logger {
     /// All calls to [`log`] macros will go through this [`Logger`] from this point on.
     pub fn init(mut self) -> Result<(), log::SetLoggerError> {
         if self.filter.is_none() {
-            use env_logger::filter::Builder;
+            use env_filter::Builder;
             self.filter = Some(Builder::new().parse(&re_log::default_log_filter()).build());
         }
 

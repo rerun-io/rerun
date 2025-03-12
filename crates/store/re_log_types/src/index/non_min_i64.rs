@@ -208,6 +208,24 @@ impl<'de> serde::Deserialize<'de> for NonMinI64 {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to parse NonMinI64: {0}")]
+pub enum ParseNonMinI64Error {
+    Std(#[from] std::num::ParseIntError),
+
+    #[error("Value is equal to minimum i64. Every i64 integer *except* the lowest representable number of a signed 64 bit number is valid.")]
+    InvalidValue,
+}
+
+impl std::str::FromStr for NonMinI64 {
+    type Err = ParseNonMinI64Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let int = i64::from_str(s)?;
+        Self::new(int).ok_or(ParseNonMinI64Error::InvalidValue)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

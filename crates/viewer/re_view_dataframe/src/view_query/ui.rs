@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashSet};
 
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{
-    EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline, TimelineName,
+    EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
@@ -76,7 +76,7 @@ impl Query {
                                 time_drag_value,
                                 None,
                                 *timeline_type,
-                                ctx.app_options().time_zone,
+                                ctx.app_options().timestamp_format,
                                 &mut start,
                             );
 
@@ -111,7 +111,7 @@ impl Query {
                                 time_drag_value,
                                 Some(start),
                                 *timeline_type,
-                                ctx.app_options().time_zone,
+                                ctx.app_options().timestamp_format,
                                 &mut end,
                             );
 
@@ -524,7 +524,7 @@ fn time_boundary_ui(
     time_drag_value: &TimeDragValue,
     low_bound_override: Option<TimeInt>,
     timeline_typ: TimeType,
-    time_zone: TimeZone,
+    timestamp_format: TimestampFormat,
     time: &mut TimeInt,
 ) -> egui::Response {
     if *time == TimeInt::MAX {
@@ -542,17 +542,14 @@ fn time_boundary_ui(
         }
         response
     } else {
-        match timeline_typ {
-            TimeType::Time => {
-                time_drag_value
-                    .temporal_drag_value_ui(ui, time, true, low_bound_override, time_zone)
-                    .0
-            }
-
-            TimeType::Sequence => {
-                time_drag_value.sequence_drag_value_ui(ui, time, true, low_bound_override)
-            }
-        }
+        time_drag_value.drag_value_ui(
+            ui,
+            timeline_typ,
+            time,
+            true,
+            low_bound_override,
+            timestamp_format,
+        )
     }
 }
 

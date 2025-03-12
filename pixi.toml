@@ -277,7 +277,7 @@ misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
-py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
+py-lint = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
 
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -527,7 +527,7 @@ cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
 Pillow = "==10.0.0"              # For `thumbnails.py`
-pygithub = "==1.59.0"            # Among others for `sync_release_assets.py`.
+pygithub = "==2.6.1"             # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
@@ -670,7 +670,6 @@ jupyter = ">=1.0"
 polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
-mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 

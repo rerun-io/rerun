@@ -72,7 +72,7 @@ use re_chunk::{
     external::crossbeam::channel::TryRecvError, ChunkBatcher, ChunkBatcherConfig, PendingRow,
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
-use re_log_types::{TimePoint, TimeType, Timeline};
+use re_log_types::{TimePoint, Timeline};
 use re_types::{components::Scalar, Component as _, Loggable as _};
 
 /// The memory overhead of storing many scalars in the store.
@@ -98,8 +98,7 @@ fn scalar_memory_overhead() {
 
         for i in 0..NUM_SCALARS {
             let entity_path = re_log_types::entity_path!("scalar");
-            let timepoint =
-                TimePoint::default().with(Timeline::new("log_time", TimeType::Time), i as i64);
+            let timepoint = TimePoint::default().with(Timeline::log_time(), i as i64);
             let scalars = Scalar::to_arrow([Scalar::from(i as f64)]).unwrap();
 
             let row = PendingRow::new(

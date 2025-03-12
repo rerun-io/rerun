@@ -148,6 +148,7 @@ exclude = [
   # Temporarily down or not accessible.
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
+  'https://pyo3.rs',                                                # Temporarily down, should remove this again once it is up again.
 
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
@@ -156,22 +157,10 @@ exclude = [
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 
   # Snippets that haven't been released yet.
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/points3d_partial_updates_legacy.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.py',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_column_updates.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.rs',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.cpp',
-  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs',
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
 ]

@@ -189,7 +189,8 @@ document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
 ehttp = "0.5.0"
 enumset = "1.0.12"
-env_logger = { version = "0.10", default-features = false }
+env_filter = { version = "0.1", default-features = false }
+env_logger = { version = "0.11", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
@@ -211,6 +212,7 @@ indicatif = "0.17.7" # Progress bar
 infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
+jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
 libc = "0.2"
@@ -291,6 +293,7 @@ tempfile = "3.0"
 thiserror = "1.0"
 tiff = "0.9.1"
 time = { version = "0.3.36", default-features = false, features = [
+  # TODO(emilk): stop using `time`, and replace all uses with `jiff`
   "wasm-bindgen",
 ] }
 tiny_http = { version = "0.12", default-features = false }

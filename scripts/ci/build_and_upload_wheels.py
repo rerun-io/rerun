@@ -62,7 +62,9 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
+def build_and_upload(
+    bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str | None
+) -> None:
     # pypi / extra builds require a web build
     if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")
@@ -70,8 +72,7 @@ def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, targe
     if mode is BuildMode.PYPI:
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
-        # Remote is necessary to fully validate the signature match on the wheels
-        maturin_feature_flags = "--no-default-features --features extension-module,remote"
+        maturin_feature_flags = "--no-default-features --features extension-module"
     elif mode is BuildMode.EXTRA:
         maturin_feature_flags = "--no-default-features --features pypi,extra"
 

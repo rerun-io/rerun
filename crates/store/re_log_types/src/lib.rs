@@ -38,7 +38,8 @@ pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
         Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
-        TimePoint, TimeReal, TimeType, TimeZone, Timeline, TimelineName, TryFromIntError,
+        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
+        TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -355,9 +356,6 @@ pub struct StoreInfo {
     /// we clone it and make the clone the _active_ blueprint.
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
-
-    /// True if the recording is one of the official Rerun examples.
-    pub is_official_example: bool,
 
     /// When the recording started.
     ///
@@ -718,7 +716,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            is_official_example: _,
             started: _,
             store_source,
             store_version,
