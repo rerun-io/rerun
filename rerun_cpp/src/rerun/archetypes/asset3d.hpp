@@ -105,8 +105,9 @@ namespace rerun::archetypes {
         /// from the data at render-time. If it can't, rendering will fail with an error.
         ///
         /// \deprecated Use `from_file_path` instead.
-        [[deprecated("Use `from_file_path` instead")]]
-        static Result<Asset3D> from_file(const std::filesystem::path& path);
+        [[deprecated("Use `from_file_path` instead")]] static Result<Asset3D> from_file(
+            const std::filesystem::path& path
+        );
 
         /// Creates a new `Asset3D` from the file contents at `path`.
         ///
@@ -122,8 +123,7 @@ namespace rerun::archetypes {
         /// at render-time. If it can't, rendering will fail with an error.
         ///
         /// \deprecated Use `from_file_contents` instead.
-        [[deprecated("Use `from_file_contents` instead")]]
-        static Asset3D from_bytes(
+        [[deprecated("Use `from_file_contents` instead")]] static Asset3D from_bytes(
             rerun::Collection<uint8_t> bytes,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
