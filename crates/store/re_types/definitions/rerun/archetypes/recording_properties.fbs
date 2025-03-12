@@ -16,4 +16,22 @@ table RecordingProperties (
 
   /// A user-chosen name for the recording.
   name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// The Rerun store version.
+  source_version: rerun.components.RecordingStoreVersion ("attr.rerun.component_optional", nullable, order: 3000);
+
+  ///
+  source_extra_kind: rerun.components.RecordingSourceExtraKind ("attr.rerun.component_optional", nullable, order: 4000);
+
+  ///
+  source_extra_file: rerun.components.RecordingSourceExtraRust ("attr.rerun.component_optional", nullable, order: 5000);
+
+  ///
+  source_extra_file: rerun.components.RecordingSourceExtraFile ("attr.rerun.component_optional", nullable, order: 5000);
+
+  ///
+  source_extra_python: rerun.components.RecordingSourceExtraPython ("attr.rerun.component_optional", nullable, order: 6000);
+
+  ///
+  source_extra_other: rerun.components.RecordingSourceExtraOther ("attr.rerun.component_optional", nullable, order: 7000);
 }

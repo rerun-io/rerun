@@ -1,0 +1,78 @@
+namespace rerun.datatypes;
+
+/// What kind of source a recording comes from.
+enum SourceKind: ubyte (
+  "attr.docs.unreleased"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// We don't know anything about the source of this recording.
+    Unspecified,
+
+    /// The recording came from the C++ SDK.
+    CSdk,
+
+    /// The recording came from the Python SDK.
+    ///
+    /// `extra` is `PythonVersion`.
+    PythonSdk,
+
+    /// The recording came from the Rust SDK.
+    ///
+    /// `extra` is `RustSdk`.
+    RustSdk,
+
+    /// The recording came from a file.
+    ///
+    /// `extra` is `FileSource`.
+    File,
+
+    /// The recording came from some action in the viewer.
+    Viewer,
+
+    // TODO: Dataplatform?
+
+    /// The recording came from some other source.
+    ///
+    /// `extra` is a string.
+    Other,
+}
+
+/// Information about the Rust SDK that created the recording.
+table RustSdkSource (
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.docs.unreleased"
+) {
+    /// Version of the Rust compiler used to compile the SDK.
+	  rustc_version: rerun.datatypes.SemVer (order: 100);
+
+    /// Version of LLVM used by the Rust compiler.
+	  llvm_version: rerun.datatypes.SemVer (order: 200);
+}
+
+/// A recording which came from a file.
+enum FileSource: ubyte (
+  "attr.docs.unreleased"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// We don't know where the file came from.
+    Unspecified,
+
+    /// The file came from the command line.
+    Cli,
+
+    /// The file was served over HTTP.
+    Uri,
+
+    /// The file was dragged into the viewer.
+    DragAndDrop,
+
+    /// The file was opened using a file dialog.
+    FileDialog,
+
+    /// The recording was produced using a data loader, such as when logging a mesh file.
+    Sdk,
+}

@@ -1,0 +1,31 @@
+namespace rerun.datatypes;
+
+/// A compact semantic versioning scheme of the Rerun crate encoded as bits.
+struct SemVerBits (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "int, npt.NDArray[np.uint32]",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.docs.unreleased",
+  "attr.rust.tuple_struct"
+) {
+  bits: [ubyte: 4] (order: 100);
+}
+
+/// A general semantic versioning scheme.
+table SemVer (
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.docs.unreleased"
+) {
+  /// The major version number.
+  major: int32 (order: 100);
+
+  /// The minor version number.
+  minor: int32 (order: 200);
+
+  /// The batch version number.
+  patch: int32 (order: 300);
+
+  /// An optional suffix to cover additional information.
+  suffix: rerun.datatypes.Utf8 (nullable, order: 400);
+}
