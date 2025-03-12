@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use egui::{Color32, Id, NumExt as _, Widget as _};
+use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
@@ -184,7 +184,7 @@ impl FilterState {
     pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
-        let textedit_id = Id::new(ui.id().with("textedit"));
+        let textedit_id = ui.id().with("textedit");
         let response = ui.ctx().read_response(textedit_id);
 
         let visuals = response
@@ -207,27 +207,25 @@ impl FilterState {
             .stroke(stroke)
             .corner_radius(visuals.corner_radius)
             .show(ui, |ui| {
-                egui::Frame::new().show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.set_height(19.0);
+                ui.horizontal(|ui| {
+                    ui.set_height(19.0);
 
-                        ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
+                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
 
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if !inner_state.filter_query.is_empty()
-                                && ui.small_icon_button(&crate::icons::CLOSE).clicked()
-                            {
-                                *inner_state = Default::default();
-                            }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if !inner_state.filter_query.is_empty()
+                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                        {
+                            *inner_state = Default::default();
+                        }
 
-                            ui.add(
-                                egui::TextEdit::singleline(&mut inner_state.filter_query)
-                                    .id(textedit_id)
-                                    .frame(false)
-                                    .hint_text("Search for entity…")
-                                    .desired_width(ui.available_width()),
-                            )
-                        });
+                        ui.add(
+                            egui::TextEdit::singleline(&mut inner_state.filter_query)
+                                .id(textedit_id)
+                                .frame(false)
+                                .hint_text("Search for entity…")
+                                .desired_width(ui.available_width()),
+                        )
                     });
                 });
             });
