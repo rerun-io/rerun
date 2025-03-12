@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::array::AsArray;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
 use slotmap::SlotMap;
@@ -17,6 +18,7 @@ use re_types::{
     },
     Archetype as _, ViewClassIdentifier,
 };
+use re_types::{components, Component as _, Loggable};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,
@@ -431,12 +433,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> Self {
-        let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
-
         Self {
             view_class_registry,
             view,
-            override_root,
             maybe_visualizable_entities_per_visualizer,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
@@ -454,14 +453,22 @@ impl<'a> DataQueryPropertyResolver<'a> {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         query_result: &mut DataQueryResult,
-        default_query_range: &QueryRange,
         handle: DataResultHandle,
+        default_query_range: &QueryRange,
+        parent_visible: bool,
+        parent_interactive: bool,
     ) {
         let Some(node) = query_result.tree.lookup_node_mut(handle) else {
             return;
         };
+        let property_overrides = &mut node.data_result.property_overrides;
 
-        let override_path = &node.data_result.property_overrides.override_path;
+        // Set defaults for time-range/visible/interactive.
+        property_overrides.query_range = default_query_range.clone();
+        property_overrides.visible = parent_visible;
+        property_overrides.interactive = parent_interactive;
+
+        let override_path = &property_overrides.override_path;
 
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
@@ -469,10 +476,17 @@ impl<'a> DataQueryPropertyResolver<'a> {
         if !node.data_result.visualizers.is_empty() {
             // If the user has overridden the visualizers, update which visualizers are used.
             if let Some(viz_override) = blueprint
-                .latest_at_component::<VisualizerOverrides>(&override_path, blueprint_query)
-                .map(|(_index, value)| value)
+                .latest_at(
+                    blueprint_query,
+                    override_path,
+                    [blueprint_components::VisualizerOverride::name()],
+                )
+                .component_batch::<blueprint_components::VisualizerOverride>()
             {
-                node.data_result.visualizers = viz_override.0.iter().map(Into::into).collect();
+                node.data_result.visualizers = viz_override
+                    .into_iter()
+                    .map(|vis| vis.as_str().into())
+                    .collect();
             } else {
                 // Otherwise ask the `ViewClass` to choose.
                 node.data_result.visualizers = self
@@ -488,7 +502,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         }
 
         // Gather overrides.
-        let component_overrides = &mut node.data_result.property_overrides.component_overrides;
+        let component_overrides = &mut property_overrides.component_overrides;
         if let Some(override_subtree) = blueprint.tree().subtree(override_path) {
             for component_name in blueprint
                 .storage_engine()
@@ -502,49 +516,61 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .latest_at(blueprint_query, override_path, [component_name])
                     .component_batch_raw(&component_name)
                 {
-                    // TODO(andreas): Why not keep the component data while we're here? Could speed up a lot of things.
                     if !component_data.is_empty() {
+                        // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
                         component_overrides.insert(
                             component_name,
                             OverridePath::blueprint_path(override_path.clone()),
                         );
 
-                        // TODO: special handle interactive/visible/timerange here?
+                        // Handle special overrides:
+
+                        // Visible time range override.
+                        if component_name == blueprint_components::VisibleTimeRange::name() {
+                            if let Ok(visible_time_ranges) =
+                                blueprint_components::VisibleTimeRange::from_arrow(&component_data)
+                            {
+                                if let Some(time_range) = visible_time_ranges.iter().find(|range| {
+                                    range.timeline.as_str() == active_timeline.name().as_str()
+                                }) {
+                                    property_overrides.query_range =
+                                        QueryRange::TimeRange(time_range.0.range.clone());
+                                }
+                            }
+                        }
+                        // Visible override.
+                        else if component_name == components::Visible::name() {
+                            if let Some(visible_array) = component_data.as_boolean_opt() {
+                                // We already checked for non-empty above, so this should be safe.
+                                property_overrides.visible = visible_array.value(0);
+                            }
+                        }
+                        // Interactive override.
+                        else if component_name == components::Interactive::name() {
+                            if let Some(interactive_array) = component_data.as_boolean_opt() {
+                                // We already checked for non-empty above, so this should be safe.
+                                property_overrides.interactive = interactive_array.value(0);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // TODO: handle interactive/visible propagation
-
-        // Figure out relevant visual time range.
-        use re_types::Component as _;
-        let latest_at_results = blueprint.latest_at(
-            blueprint_query,
-            &override_path,
-            std::iter::once(blueprint_components::VisibleTimeRange::name()),
-        ); // TODO(andreas): We already did this query above, should be able to re-use results.
-        let visible_time_ranges =
-            latest_at_results.component_batch::<blueprint_components::VisibleTimeRange>();
-        let time_range = visible_time_ranges.as_ref().and_then(|ranges| {
-            ranges
-                .iter()
-                .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
-        });
-        node.data_result.property_overrides.query_range = time_range.map_or_else(
-            || default_query_range.clone(),
-            |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
-        );
-
         let children = node.children.clone(); // Borrow-checker workaround.
+        let visible = node.data_result.property_overrides.visible;
+        let interactive = node.data_result.property_overrides.interactive;
+
         for child in children {
             self.update_overrides_recursive(
                 blueprint,
                 blueprint_query,
                 active_timeline,
                 query_result,
-                default_query_range,
                 child,
+                default_query_range,
+                visible,
+                interactive,
             );
         }
     }
@@ -578,8 +604,10 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 blueprint_query,
                 active_timeline,
                 query_result,
-                &default_query_range,
                 root,
+                &default_query_range,
+                true, // parent_visible
+                true, // parent_interactive
             );
         }
     }
