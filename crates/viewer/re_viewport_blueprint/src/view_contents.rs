@@ -418,7 +418,6 @@ impl QueryExpressionEvaluator<'_> {
 pub struct DataQueryPropertyResolver<'a> {
     view_class_registry: &'a re_viewer_context::ViewClassRegistry,
     view: &'a ViewBlueprint,
-    override_root: EntityPath,
     maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
     visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
@@ -458,100 +457,95 @@ impl<'a> DataQueryPropertyResolver<'a> {
         default_query_range: &QueryRange,
         handle: DataResultHandle,
     ) {
-        let blueprint_engine = blueprint.storage_engine();
+        let Some(node) = query_result.tree.lookup_node_mut(handle) else {
+            return;
+        };
 
-        if let Some(child_handles) = query_result.tree.lookup_node_mut(handle).map(|node| {
-            let override_path = self.override_root.join(&node.data_result.entity_path);
+        let override_path = &node.data_result.property_overrides.override_path;
 
-            // Update visualizers from overrides.
-            if !node.data_result.visualizers.is_empty() {
-                // If the user has overridden the visualizers, update which visualizers are used.
-                if let Some(viz_override) = blueprint
-                    .latest_at(
-                        blueprint_query,
-                        &override_path,
-                        [blueprint_components::VisualizerOverride::name()],
-                    )
-                    .component_batch::<blueprint_components::VisualizerOverride>()
-                {
-                    node.data_result.visualizers = viz_override
-                        .into_iter()
-                        .map(|vis| vis.as_str().into())
-                        .collect();
-                } else {
-                    // Otherwise ask the `ViewClass` to choose.
-                    node.data_result.visualizers = self
-                        .view
-                        .class(self.view_class_registry)
-                        .choose_default_visualizers(
-                            &node.data_result.entity_path,
-                            self.maybe_visualizable_entities_per_visualizer,
-                            self.visualizable_entities_per_visualizer,
-                            self.indicated_entities_per_visualizer,
-                        );
-                }
+        // Update visualizers from overrides.
+        // So far, `visualizers` is set to the available visualizers.
+        // TODO(andreas): Seems strange, why don't allow force overriding?
+        if !node.data_result.visualizers.is_empty() {
+            // If the user has overridden the visualizers, update which visualizers are used.
+            if let Some(viz_override) = blueprint
+                .latest_at_component::<VisualizerOverrides>(&override_path, blueprint_query)
+                .map(|(_index, value)| value)
+            {
+                node.data_result.visualizers = viz_override.0.iter().map(Into::into).collect();
+            } else {
+                // Otherwise ask the `ViewClass` to choose.
+                node.data_result.visualizers = self
+                    .view
+                    .class(self.view_class_registry)
+                    .choose_default_visualizers(
+                        &node.data_result.entity_path,
+                        self.maybe_visualizable_entities_per_visualizer,
+                        self.visualizable_entities_per_visualizer,
+                        self.indicated_entities_per_visualizer,
+                    );
             }
+        }
 
-            // Gather overrides.
-            let component_overrides = &mut node.data_result.property_overrides.component_overrides;
-            if let Some(override_subtree) = blueprint.tree().subtree(&override_path) {
-                for component_name in blueprint_engine
-                    .store()
-                    .all_components_for_entity(&override_subtree.path)
-                    .unwrap_or_default()
+        // Gather overrides.
+        let component_overrides = &mut node.data_result.property_overrides.component_overrides;
+        if let Some(override_subtree) = blueprint.tree().subtree(override_path) {
+            for component_name in blueprint
+                .storage_engine()
+                .store()
+                .all_components_for_entity(&override_subtree.path)
+                .unwrap_or_default()
+            {
+                if let Some(component_data) = blueprint
+                    .storage_engine()
+                    .cache()
+                    .latest_at(blueprint_query, override_path, [component_name])
+                    .component_batch_raw(&component_name)
                 {
-                    if let Some(component_data) = blueprint
-                        .storage_engine()
-                        .cache()
-                        .latest_at(blueprint_query, &override_path, [component_name])
-                        .component_batch_raw(&component_name)
-                    {
-                        // TODO(andreas): Why not keep the component data while we're here? Could speed up a lot of things.
-                        if !component_data.is_empty() {
-                            component_overrides.insert(
-                                component_name,
-                                OverridePath::blueprint_path(override_path.clone()),
-                            );
+                    // TODO(andreas): Why not keep the component data while we're here? Could speed up a lot of things.
+                    if !component_data.is_empty() {
+                        component_overrides.insert(
+                            component_name,
+                            OverridePath::blueprint_path(override_path.clone()),
+                        );
 
-                            // TODO: special handle interactive/visible/timerange here?
-                        }
+                        // TODO: special handle interactive/visible/timerange here?
                     }
                 }
             }
+        }
 
-            // TODO: handle interactive/visible propagation
+        // TODO: handle interactive/visible propagation
 
-            // Figure out relevant visual time range.
-            use re_types::Component as _;
-            let latest_at_results = blueprint.latest_at(
+        // Figure out relevant visual time range.
+        use re_types::Component as _;
+        let latest_at_results = blueprint.latest_at(
+            blueprint_query,
+            &override_path,
+            std::iter::once(blueprint_components::VisibleTimeRange::name()),
+        ); // TODO(andreas): We already did this query above, should be able to re-use results.
+        let visible_time_ranges =
+            latest_at_results.component_batch::<blueprint_components::VisibleTimeRange>();
+        let time_range = visible_time_ranges.as_ref().and_then(|ranges| {
+            ranges
+                .iter()
+                .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
+        });
+        node.data_result.property_overrides.query_range = time_range.map_or_else(
+            || default_query_range.clone(),
+            |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
+        );
+
+        let children = node.children.clone(); // Borrow-checker workaround.
+        for child in children {
+            self.update_overrides_recursive(
+                blueprint,
                 blueprint_query,
-                &override_path,
-                std::iter::once(blueprint_components::VisibleTimeRange::name()),
+                active_timeline,
+                query_result,
+                default_query_range,
+                child,
             );
-            let visible_time_ranges =
-                latest_at_results.component_batch::<blueprint_components::VisibleTimeRange>();
-            let time_range = visible_time_ranges.as_ref().and_then(|ranges| {
-                ranges
-                    .iter()
-                    .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
-            });
-            node.data_result.property_overrides.query_range = time_range.map_or_else(
-                || default_query_range.clone(),
-                |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
-            );
-
-            node.children.clone()
-        }) {
-            for child in child_handles {
-                self.update_overrides_recursive(
-                    blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    query_result,
-                    default_query_range,
-                    child,
-                );
-            }
         }
     }
 
