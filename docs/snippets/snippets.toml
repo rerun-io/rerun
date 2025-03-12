@@ -18,6 +18,12 @@
 [snippets_ref]
 features = [
   [
+    "Setting recording properties",
+    [
+      "concepts/recording_properties",
+    ],
+  ],
+  [
     "Update rows",
     [
       "archetypes/scalar_row_updates",
