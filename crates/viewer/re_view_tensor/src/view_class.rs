@@ -64,8 +64,8 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Tensor view")
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new2("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(
                 "An N-dimensional tensor displayed as a 2D slice with a custom colormap.

@@ -2,7 +2,7 @@ use egui::os::OperatingSystem;
 use egui::{vec2, Modifiers};
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt as _};
+use re_ui::{icon_text, icons, maybe_plus, modifiers_text, Help, MouseButtonText, UiExt as _};
 
 #[test]
 fn test_help() {
@@ -16,14 +16,14 @@ fn test_help() {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 ui.help_hover_button().on_hover_ui(|ui| {
-                    let mut help = Help::new("Help example")
+                    let mut help = Help::new2("Help example")
                         .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-                        .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+                        .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                         .control(
                             "Zoom",
                             icon_text!(
-                                ModifiersText(Modifiers::COMMAND, ui.ctx()),
-                                "+",
+                                modifiers_text(Modifiers::COMMAND, ui.ctx()),
+                                maybe_plus(ui.ctx()),
                                 icons::SCROLL
                             ),
                         )
@@ -39,7 +39,7 @@ fn test_help() {
                     ] {
                         help = help.control(
                             format!("{modifier:?}"),
-                            icon_text!(ModifiersText(modifier, ui.ctx())),
+                            icon_text!(modifiers_text(modifier, ui.ctx())),
                         );
                     }
 

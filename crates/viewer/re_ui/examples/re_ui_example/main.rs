@@ -5,8 +5,8 @@ mod right_panel;
 use egui::Modifiers;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens, Help,
-    ModifiersText, UICommand, UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, maybe_plus, modifiers_text, CommandPalette,
+    ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
 };
 use re_ui::{icon_text, icons, notifications};
 
@@ -481,14 +481,14 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                 .on_hover_text("This is a tooltip");
 
             ui.label("Help").on_hover_ui(|ui| {
-                Help::new("Help example")
+                Help::new2("Help example")
                     .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(
                         "Zoom",
                         icon_text!(
-                            ModifiersText(Modifiers::COMMAND, ui.ctx()),
-                            "+",
+                            modifiers_text(Modifiers::COMMAND, ui.ctx()),
+                            maybe_plus(ui.ctx()),
                             icons::SCROLL
                         ),
                     )

@@ -50,8 +50,8 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Dataframe view")
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new2("Dataframe view")
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
             .markdown(
                 "This view displays entity content in a tabular form.

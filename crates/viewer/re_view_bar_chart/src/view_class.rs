@@ -6,7 +6,10 @@ use re_types::{
     datatypes::TensorBuffer,
     View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText};
+use re_ui::{
+    icon_text, icons, list_item, maybe_plus, modifiers_text, shortcut_with_icon, Help,
+    MouseButtonText,
+};
 use re_view::{
     controls::{self, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
     suggest_view_for_each_entity, view_property_ui,
@@ -42,29 +45,21 @@ impl ViewClass for BarChartView {
         Box::<()>::default()
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Bar chart view")
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new2("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                icon_text!(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }

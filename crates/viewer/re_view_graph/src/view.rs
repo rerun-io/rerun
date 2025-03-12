@@ -9,7 +9,9 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::{self, icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt as _};
+use re_ui::{
+    self, icon_text, icons, modifiers_text, shortcut_with_icon, Help, MouseButtonText, UiExt as _,
+};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -46,16 +48,16 @@ impl ViewClass for GraphView {
         &re_ui::icons::VIEW_GRAPH
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Graph view")
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new2("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(
                 "Pan",
-                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
             )
             .control(
                 "Zoom",
-                icon_text!(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }

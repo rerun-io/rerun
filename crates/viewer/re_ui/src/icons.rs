@@ -144,3 +144,6 @@ pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.png");
 pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.png");
 pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.png");
 pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
+pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
+pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
+pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");

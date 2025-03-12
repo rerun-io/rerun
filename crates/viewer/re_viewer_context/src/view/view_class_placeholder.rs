@@ -23,8 +23,8 @@ impl ViewClass for ViewClassPlaceholder {
         &re_ui::icons::VIEW_UNKNOWN
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Placeholder view").markdown("Placeholder view for unknown view class")
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+        Help::new2("Placeholder view").markdown("Placeholder view for unknown view class")
     }
 
     fn on_register(

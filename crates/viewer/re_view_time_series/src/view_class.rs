@@ -15,7 +15,10 @@ use re_types::{
     datatypes::TimeRange,
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
+use re_ui::{
+    icon_text, icons, list_item, modifiers_text, shortcut_with_icon, Help, MouseButtonText,
+    UiExt as _,
+};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
@@ -107,29 +110,21 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
-        Help::new("Time series view")
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
+        Help::new2("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                icon_text!(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
             .control(
                 "Move time cursor",
@@ -144,9 +139,7 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    ModifiersText(egui::Modifiers::ALT, egui_ctx),
-                    "+",
-                    icons::LEFT_MOUSE_CLICK,
+                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend"
                 ),
             )

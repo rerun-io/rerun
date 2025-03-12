@@ -17,8 +17,8 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget, icon_text, icons, list_item, ContextExt as _, DesignTokens, Help, ModifiersText,
-    UiExt as _,
+    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
+    DesignTokens, Help, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -1360,23 +1360,27 @@ fn paint_range_highlight(
 
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        Help::new("Timeline")
-            .control("Play/Pause", icon_text!("Space"))
+        Help::new2("Timeline")
+            .control("Play/Pause", "Space")
             .control(
                 "Move time cursor",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag time scale"),
+                icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
             )
             .control(
                 "Select time segment",
-                icon_text!(icons::SHIFT, "+ drag time scale"),
+                icon_text!(icons::SHIFT, "+", "drag time scale"),
             )
             .control(
                 "Pan",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag event canvas"),
+                icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
             )
             .control(
                 "Zoom",
-                icon_text!(ModifiersText(Modifiers::COMMAND, ui.ctx()), icons::SCROLL),
+                icon_text!(
+                    modifiers_text(Modifiers::COMMAND, ui.ctx()),
+                    maybe_plus(ui.ctx()),
+                    icons::SCROLL
+                ),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
             .ui(ui);
