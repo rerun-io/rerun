@@ -40,26 +40,6 @@ impl Help {
         &self.title
     }
 
-    pub fn control_text(text: impl ToString) -> IconTextItem {
-        IconTextItem::Text(
-            RichText::new(text.to_string())
-                .text_style(TextStyle::Body)
-                .size(11.0)
-                .color(design_tokens().color(ColorToken::gray(Scale::S700)))
-                .into(),
-        )
-    }
-
-    pub fn control_text_monospace(text: impl ToString) -> IconTextItem {
-        IconTextItem::Text(
-            RichText::new(text.to_string())
-                .monospace()
-                .size(11.0)
-                .color(design_tokens().color(ColorToken::gray(Scale::S700)))
-                .into(),
-        )
-    }
-
     /// Create a new help popup.
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(title: impl ToString) -> Self {

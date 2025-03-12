@@ -1,6 +1,5 @@
-use crate::{icon_text, icons, Help, Icon};
+use crate::{icon_text, icons, Icon};
 use egui::{Context, ModifierNames, Modifiers, WidgetText};
-use itertools::Itertools as _;
 use std::fmt::Debug;
 use std::iter::once;
 use std::{fmt, vec};
@@ -172,12 +171,11 @@ pub struct MouseButtonText(pub egui::PointerButton);
 impl From<MouseButtonText> for IconText {
     fn from(value: MouseButtonText) -> Self {
         match value.0 {
-            egui::PointerButton::Primary => IconTextItem::icon(icons::LEFT_MOUSE_CLICK),
-            egui::PointerButton::Secondary => IconTextItem::icon(icons::RIGHT_MOUSE_CLICK),
-            egui::PointerButton::Middle => Help::control_text_monospace("middle mouse button"),
-            egui::PointerButton::Extra1 => Help::control_text_monospace("extra 1 mouse button"),
-            egui::PointerButton::Extra2 => Help::control_text_monospace("extra 2 mouse button"),
+            egui::PointerButton::Primary => icons::LEFT_MOUSE_CLICK.into(),
+            egui::PointerButton::Secondary => icons::RIGHT_MOUSE_CLICK.into(),
+            egui::PointerButton::Middle => "middle mouse button".into(),
+            egui::PointerButton::Extra1 => "extra 1 mouse button".into(),
+            egui::PointerButton::Extra2 => "extra 2 mouse button".into(),
         }
-        .into()
     }
 }
