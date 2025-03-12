@@ -16,12 +16,12 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, RecordingProperties, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-    TimeInt, TimePoint, Timeline, TimelineName,
+    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
-use re_types_core::{
-    AsComponents, ComponentBatch as _, SerializationError, SerializedComponentColumn,
-};
+use re_types::archetypes::RecordingProperties;
+use re_types::components::RecordingStartedTimestamp;
+use re_types::{AsComponents, ComponentBatch as _, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -201,14 +201,15 @@ impl RecordingStreamBuilder {
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_name(mut self, name: impl Into<String>) -> Self {
-        self.properties.recording_name = Some(name.into());
+        self.properties = self.properties.with_name(name.into());
         self
     }
 
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_started(mut self, time: impl Into<Time>) -> Self {
-        self.properties.recording_started = time.into();
+        let started = RecordingStartedTimestamp::from(time.into().nanos_since_epoch());
+        self.properties = self.properties.with_started(started);
         self
     }
 
@@ -854,7 +855,11 @@ impl RecordingStreamInner {
 
         re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-        batcher.push_chunk(Chunk::properties(properties.clone())?);
+        let properties_chunk = Chunk::builder(EntityPath::recording_properties())
+            .with_archetype(RowId::new(), TimePoint::default(), &properties)
+            .build()?;
+
+        batcher.push_chunk(properties_chunk);
 
         Ok(Self {
             info,
@@ -1124,23 +1129,26 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
-    /// Set the name of the recording.
+    /// Sets the recording properties.
     ///
-    /// When provided, this name will show up in the viewer.
+    /// This is a convenience wrapper for statically logging to the entity path
+    /// that is reserved for recording properties.
     #[inline]
-    pub fn set_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
-        let component = re_types_core::components::RecordingName::from(name.into());
-        self.log_serialized_batches(
-            EntityPath::recording_properties(),
-            true,
-            component.serialized(),
-        )
+    pub fn set_properties(&self, properties: &RecordingProperties) -> RecordingStreamResult<()> {
+        self.log_static(EntityPath::recording_properties(), properties)
+    }
+
+    /// Sets the name of the recording.
+    #[inline]
+    pub fn set_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
+        let update = RecordingProperties::update_fields().with_name(name.into());
+        self.set_properties(&update)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
@@ -1151,7 +1159,7 @@ impl RecordingStream {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -1450,12 +1458,6 @@ impl RecordingStream {
     #[inline]
     pub fn store_info(&self) -> Option<StoreInfo> {
         self.with(|inner| inner.info.clone())
-    }
-
-    /// The [`RecordingProperties`] associated with this `RecordingStream`.
-    #[inline]
-    pub fn recording_properties(&self) -> Option<RecordingProperties> {
-        self.with(|inner| inner.properties.clone())
     }
 
     /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our

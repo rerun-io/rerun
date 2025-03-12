@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_graph_lattice")?;
 
-    rec.set_recording_name("test123")?;
+    rec.set_name("test123")?;
 
     let coordinates = (0..NUM_NODES).cartesian_product(0..NUM_NODES);
 

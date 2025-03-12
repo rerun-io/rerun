@@ -2,10 +2,5 @@
 
 mod clear_is_recursive;
 mod clear_is_recursive_ext;
-mod recording_name;
-mod recording_name_ext;
-mod recording_started_timestamp;
 
 pub use self::clear_is_recursive::ClearIsRecursive;
-pub use self::recording_name::RecordingName;
-pub use self::recording_started_timestamp::RecordingStartedTimestamp;

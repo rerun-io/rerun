@@ -25,7 +25,9 @@ __all__ = ["RecordingProperties"]
 class RecordingProperties(Archetype):
     """**Archetype**: A list of properties associated with a recording."""
 
-    def __init__(self: Any, started: datatypes.TimeIntLike, *, name: datatypes.Utf8Like | None = None) -> None:
+    def __init__(
+        self: Any, *, started: datatypes.TimeIntLike | None = None, name: datatypes.Utf8Like | None = None
+    ) -> None:
         """
         Create a new instance of the RecordingProperties archetype.
 

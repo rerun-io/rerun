@@ -27,7 +27,6 @@ pub mod path;
 // mod data_row;
 // mod data_table;
 mod instance;
-mod recording_properties;
 mod vec_deque_ext;
 
 use std::sync::Arc;
@@ -44,7 +43,6 @@ pub use self::{
     },
     instance::Instance,
     path::*,
-    recording_properties::RecordingProperties,
     vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
 };
 

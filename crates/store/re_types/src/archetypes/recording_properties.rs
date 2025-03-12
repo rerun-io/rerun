@@ -12,14 +12,14 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::try_serialize_field;
-use crate::SerializationResult;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentName};
-use crate::{DeserializationError, DeserializationResult};
+use ::re_types_core::try_serialize_field;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of properties associated with a recording.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct RecordingProperties {
     /// When the recording started.
     ///
@@ -90,14 +90,15 @@ impl RecordingProperties {
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`RecordingProperties`] [`crate::Archetype`]
-pub type RecordingPropertiesIndicator = crate::GenericIndicatorComponent<RecordingProperties>;
+/// Indicator component for the [`RecordingProperties`] [`::re_types_core::Archetype`]
+pub type RecordingPropertiesIndicator =
+    ::re_types_core::GenericIndicatorComponent<RecordingProperties>;
 
-impl crate::Archetype for RecordingProperties {
+impl ::re_types_core::Archetype for RecordingProperties {
     type Indicator = RecordingPropertiesIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.RecordingProperties".into()
     }
 
@@ -137,7 +138,7 @@ impl crate::Archetype for RecordingProperties {
         arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let started = arrays_by_descr
             .get(&Self::descriptor_started())
@@ -149,10 +150,10 @@ impl crate::Archetype for RecordingProperties {
     }
 }
 
-impl crate::AsComponents for RecordingProperties {
+impl ::re_types_core::AsComponents for RecordingProperties {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
             self.started.clone(),
@@ -164,14 +165,14 @@ impl crate::AsComponents for RecordingProperties {
     }
 }
 
-impl crate::ArchetypeReflectionMarker for RecordingProperties {}
+impl ::re_types_core::ArchetypeReflectionMarker for RecordingProperties {}
 
 impl RecordingProperties {
     /// Create a new `RecordingProperties`.
     #[inline]
-    pub fn new(started: impl Into<crate::components::RecordingStartedTimestamp>) -> Self {
+    pub fn new() -> Self {
         Self {
-            started: try_serialize_field(Self::descriptor_started(), [started]),
+            started: None,
             name: None,
         }
     }
@@ -185,7 +186,7 @@ impl RecordingProperties {
     /// Clear all the fields of a `RecordingProperties`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use crate::Loggable as _;
+        use ::re_types_core::Loggable as _;
         Self {
             started: Some(SerializedComponentBatch::new(
                 crate::components::RecordingStartedTimestamp::arrow_empty(),
@@ -207,12 +208,12 @@ impl RecordingProperties {
     ///
     /// The specified `lengths` must sum to the total length of the component batch.
     ///
-    /// [`SerializedComponentColumn`]: [crate::SerializedComponentColumn]
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
     #[inline]
     pub fn columns<I>(
         self,
         _lengths: I,
-    ) -> SerializationResult<impl Iterator<Item = crate::SerializedComponentColumn>>
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
     where
         I: IntoIterator<Item = usize> + Clone,
     {
@@ -227,7 +228,7 @@ impl RecordingProperties {
         Ok(columns
             .into_iter()
             .flatten()
-            .chain([crate::indicator_column::<Self>(
+            .chain([::re_types_core::indicator_column::<Self>(
                 _lengths.into_iter().count(),
             )?]))
     }
@@ -239,7 +240,7 @@ impl RecordingProperties {
     #[inline]
     pub fn columns_of_unit_batches(
         self,
-    ) -> SerializationResult<impl Iterator<Item = crate::SerializedComponentColumn>> {
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_started = self.started.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
         let len = None.or(len_started).or(len_name).unwrap_or(0);

@@ -109,7 +109,7 @@ pub mod time {
 }
 pub use time::{IndexCell, Time, TimePoint, Timeline};
 
-pub use re_types_core::{
+pub use re_types::external::re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentName, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, LoggableBatch, NamedIndicatorComponent,

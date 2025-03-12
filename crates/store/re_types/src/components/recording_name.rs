@@ -12,27 +12,27 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::try_serialize_field;
-use crate::SerializationResult;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentName};
-use crate::{DeserializationError, DeserializationResult};
+use ::re_types_core::try_serialize_field;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Assigns a name to a recording.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct RecordingName(pub crate::datatypes::Utf8);
 
-impl crate::Component for RecordingName {
+impl ::re_types_core::Component for RecordingName {
     #[inline]
     fn descriptor() -> ComponentDescriptor {
         ComponentDescriptor::new("rerun.components.RecordingName")
     }
 }
 
-crate::macros::impl_into_cow!(RecordingName);
+::re_types_core::macros::impl_into_cow!(RecordingName);
 
-impl crate::Loggable for RecordingName {
+impl ::re_types_core::Loggable for RecordingName {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         crate::datatypes::Utf8::arrow_datatype()

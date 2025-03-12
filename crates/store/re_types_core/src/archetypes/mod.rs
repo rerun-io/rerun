@@ -2,7 +2,5 @@
 
 mod clear;
 mod clear_ext;
-mod recording_properties;
 
 pub use self::clear::Clear;
-pub use self::recording_properties::RecordingProperties;

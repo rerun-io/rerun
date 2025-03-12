@@ -10,7 +10,6 @@ table RecordingStartedTimestamp (
   "attr.arrow.transparent",
   "attr.python.array_aliases": "npt.NDArray[np.int64]",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.override_crate": "re_types_core",
   "attr.docs.unreleased",
   "attr.rust.repr": "transparent"
 ) {

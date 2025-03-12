@@ -5,6 +5,7 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
+use re_types::components::{RecordingName, RecordingStartedTimestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -746,13 +747,13 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let recording_name = if let Some(recording_name) = entity_db.recording_name() {
-        Some(format!("{recording_name}"))
+    let recording_name = if let Some(recording_name) = entity_db.property::<RecordingName>() {
+        Some(format!("{}", recording_name.0.as_str()))
     } else {
         entity_db
-            .recording_started()
-            .map(|started: re_log_types::Time| {
-                re_log_types::Timestamp::from(started)
+            .property::<RecordingStartedTimestamp>()
+            .map(|started| {
+                re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
                     .strftime("%H:%M:%S")
                     .to_string()

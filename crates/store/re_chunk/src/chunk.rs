@@ -14,8 +14,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, RecordingProperties, ResolvedTimeRange, TimeInt, TimePoint, TimeType,
-    Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
@@ -830,15 +829,6 @@ impl Chunk {
             timelines: Default::default(),
             components: Default::default(),
         }
-    }
-
-    /// Simple helper that crates a new [`Chunk`] that contains the [`RecordingProperties`].
-    #[inline]
-    pub fn properties(properties: RecordingProperties) -> ChunkResult<Self> {
-        let properties = re_types_core::archetypes::RecordingProperties::from(properties);
-        Self::builder(EntityPath::recording_properties())
-            .with_archetype(RowId::new(), TimePoint::default(), &properties)
-            .build()
     }
 
     /// Unconditionally inserts an [`ArrowListArray`] as a component column.

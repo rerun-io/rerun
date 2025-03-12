@@ -54,10 +54,6 @@ namespace rerun::archetypes {
         RecordingProperties& operator=(const RecordingProperties& other) = default;
         RecordingProperties& operator=(RecordingProperties&& other) = default;
 
-        explicit RecordingProperties(rerun::components::RecordingStartedTimestamp _started)
-            : started(ComponentBatch::from_loggable(std::move(_started), Descriptor_started)
-                          .value_or_throw()) {}
-
         /// Update only some specific fields of a `RecordingProperties`.
         static RecordingProperties update_fields() {
             return RecordingProperties();

@@ -14,7 +14,7 @@ use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
-use re_log_types::{ApplicationId, RecordingProperties, StoreId};
+use re_log_types::{ApplicationId, StoreId};
 use re_types::archetypes::{
     AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
 };
@@ -126,14 +126,14 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties = RecordingProperties {
-                    recording_started: re_log_types::Time::now(),
-                    recording_name: Some(format!("Episode {}", episode.0)),
-                };
+                let properties = re_types::archetypes::RecordingProperties::new()
+                    .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
-
-                let Ok(initial_chunk) = Chunk::properties(properties) else {
+                let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
+                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                    .build()
+                else {
                     re_log::error!(
                         "Failed to build recording properties chunk for episode {}",
                         episode.0
@@ -141,7 +141,7 @@ fn load_and_stream(
                     return;
                 };
 
-                for chunk in std::iter::once(initial_chunk).chain(chunks.into_iter()) {
+                for chunk in std::iter::once(initial).chain(chunks.into_iter()) {
                     let data = LoadedData::Chunk(
                         LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
                         store_id.clone(),

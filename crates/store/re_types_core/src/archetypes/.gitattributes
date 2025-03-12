@@ -3,4 +3,3 @@
 .gitattributes linguist-generated=true
 clear.rs linguist-generated=true
 mod.rs linguist-generated=true
-recording_properties.rs linguist-generated=true

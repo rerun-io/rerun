@@ -12,11 +12,11 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::try_serialize_field;
-use crate::SerializationResult;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentName};
-use crate::{DeserializationError, DeserializationResult};
+use ::re_types_core::try_serialize_field;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: When the recording started.
 ///
@@ -25,16 +25,16 @@ use crate::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct RecordingStartedTimestamp(pub crate::datatypes::TimeInt);
 
-impl crate::Component for RecordingStartedTimestamp {
+impl ::re_types_core::Component for RecordingStartedTimestamp {
     #[inline]
     fn descriptor() -> ComponentDescriptor {
         ComponentDescriptor::new("rerun.components.RecordingStartedTimestamp")
     }
 }
 
-crate::macros::impl_into_cow!(RecordingStartedTimestamp);
+::re_types_core::macros::impl_into_cow!(RecordingStartedTimestamp);
 
-impl crate::Loggable for RecordingStartedTimestamp {
+impl ::re_types_core::Loggable for RecordingStartedTimestamp {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         crate::datatypes::TimeInt::arrow_datatype()
