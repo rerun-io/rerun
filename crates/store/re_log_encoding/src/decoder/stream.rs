@@ -243,7 +243,6 @@ mod tests {
                 application_id: ApplicationId::unknown(),
                 store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
                 cloned_from: None,
-                started: Time::from_ns_since_epoch(0),
                 store_source: StoreSource::Unknown,
                 store_version: Some(CrateVersion::LOCAL),
             },

@@ -636,7 +636,6 @@ mod tests {
                 "test_recording".to_owned(),
             ),
             cloned_from: None,
-            started: re_log_types::Time::now(),
             store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                 major: 3,
                 minor: 8,
@@ -661,7 +660,6 @@ mod tests {
                     "test_recording".to_owned(),
                 ),
                 cloned_from: None,
-                started: re_log_types::Time::now(),
                 store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                     major: 3,
                     minor: 8,
