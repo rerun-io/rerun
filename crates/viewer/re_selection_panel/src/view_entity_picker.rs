@@ -57,7 +57,10 @@ impl ViewEntityPicker {
                     return;
                 };
 
-                self.filter_state.ui(ui, "Search");
+                ui.add_space(5.0);
+                self.filter_state.search_field_ui(ui);
+                ui.add_space(5.0);
+
                 let matcher = self.filter_state.filter();
                 add_entities_ui(ctx, ui, view, &matcher, self.filter_state.session_id());
             },

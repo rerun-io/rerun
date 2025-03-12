@@ -8,16 +8,16 @@ pub fn test_filter_widget() {
         ui.set_width(100.0);
         ui.set_max_width(100.0);
 
-        FilterState::default().ui(ui, egui::RichText::new("Small").strong());
+        FilterState::default().section_title_ui(ui, egui::RichText::new("Small").strong());
 
-        FilterState::default().ui(
+        FilterState::default().section_title_ui(
             ui,
             egui::RichText::new("Expanding available width").strong(),
         );
 
         ui.set_width(600.0);
         ui.set_max_width(600.0);
-        FilterState::default().ui(ui, egui::RichText::new("Lots of space").strong());
+        FilterState::default().section_title_ui(ui, egui::RichText::new("Lots of space").strong());
     };
 
     let mut harness = egui_kittest::Harness::builder()

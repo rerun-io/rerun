@@ -89,11 +89,15 @@ impl FilterState {
         FilterMatcher::new(self.query())
     }
 
-    /// Display the filter widget.
+    /// Display the filter widget as a section title.
+    ///
+    /// In this mode, the UI serves primarily as a section title. The filter is active when
+    /// explicitly turned on using the search button, which creates a session that is ended by
+    /// clicking the close button.
     ///
     /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
     /// search button, as usual for [`list_item::ListItem`]-based widgets.
-    pub fn ui(
+    pub fn section_title_ui(
         &mut self,
         ui: &mut egui::Ui,
         section_title: impl Into<egui::WidgetText>,
@@ -171,6 +175,99 @@ impl FilterState {
         }
 
         title_response
+    }
+
+    /// Display the filter widget as a search field.
+    ///
+    /// In this mode, the filter is active as soon as the query is non-empty. The session remains
+    /// active until the query is cleared.
+    pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
+        let inner_state = self.inner_state.get_or_insert_with(Default::default);
+
+        egui::Frame::new()
+            .inner_margin(egui::Margin::symmetric(0, 2))
+            .show(ui, |ui| {
+                let background_shape = ui.painter().add(egui::Shape::Noop);
+
+                let top_left = ui.cursor().min;
+
+                let (textedit_response, bottom_right) = egui::Frame::new()
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.set_height(19.0);
+
+                            ui.add_enabled_ui(false, |ui| {
+                                ui.small_icon_button(&crate::icons::SEARCH)
+                            });
+
+                            let textedit_response = ui
+                                .with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if !inner_state.filter_query.is_empty()
+                                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                                        {
+                                            *inner_state = Default::default();
+                                        }
+
+                                        ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut inner_state.filter_query,
+                                            )
+                                            .frame(false)
+                                            .id_salt("search_filter")
+                                            .hint_text("Search for entity…")
+                                            .desired_width(ui.available_width()),
+                                        )
+                                    },
+                                )
+                                .inner;
+
+                            let bottom_right = ui.cursor().left_bottom();
+
+                            (textedit_response, bottom_right)
+                        })
+                        .inner
+                    })
+                    .inner;
+
+                // TODO(ab): this section is largely copied from `egui::TextEdit::show`. Would be great
+                // to have sufficient configuration option to avoid it.
+                let outer_rect = egui::Rect::from_two_pos(top_left, bottom_right);
+                let visuals = ui.style().interact(&textedit_response);
+                // always expand the border
+                let frame_rect = outer_rect.expand(ui.visuals().widgets.open.expansion);
+                let background_color = ui.visuals().extreme_bg_color;
+                let shape = {
+                    if textedit_response.has_focus() {
+                        egui::epaint::RectShape::new(
+                            frame_rect,
+                            visuals.corner_radius,
+                            background_color,
+                            ui.visuals().selection.stroke,
+                            egui::StrokeKind::Inside,
+                        )
+                    } else {
+                        egui::epaint::RectShape::new(
+                            frame_rect,
+                            visuals.corner_radius,
+                            background_color,
+                            visuals.bg_stroke,
+                            egui::StrokeKind::Inside,
+                        )
+                    }
+                };
+
+                ui.painter().set(background_shape, shape);
+            });
+
+        if self
+            .inner_state
+            .as_ref()
+            .is_some_and(|state| state.filter_query.is_empty())
+        {
+            self.inner_state = None;
+        }
     }
 }
 
