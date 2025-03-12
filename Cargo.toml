@@ -212,7 +212,7 @@ indicatif = "0.17.7" # Progress bar
 infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
-jiff = "0.2.3"
+jiff = { version = "0.2.3", features = ["js"] }
 js-sys = "0.3"
 jsonwebtoken = { version = "9", default-features = false }
 libc = "0.2"

@@ -3,7 +3,6 @@
 // This is semantically equivalent to the `arrows3d_row_updates` example, albeit much faster.
 
 #include <rerun.hpp>
-#include <rerun/demo_utils.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -22,11 +21,13 @@ int main() {
     for (size_t i = 0; i < 5; i++) {
         float fi = static_cast<float>(i);
 
-        auto xs = rerun::demo::linspace(-1.f, 1.f, 5);
-        auto zs = rerun::demo::linspace(fi / 10.f, fi, 5);
         for (size_t j = 0; j < 5; j++) {
-            std::array<float, 3> origin = {xs[j], xs[j], 0.0};
-            std::array<float, 3> vector = {xs[j], xs[j], zs[j]};
+            auto fj = static_cast<float>(j);
+            auto xs = -1.f + fj * (2.f / 4.f);
+            auto zs = fj * (fi / 4.f);
+
+            std::array<float, 3> origin = {xs, xs, 0.f};
+            std::array<float, 3> vector = {xs, xs, zs};
 
             origins.emplace_back(origin);
             vectors.emplace_back(vector);

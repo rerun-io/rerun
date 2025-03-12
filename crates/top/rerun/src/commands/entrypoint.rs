@@ -809,14 +809,12 @@ fn run_impl(
             anyhow::bail!("`--serve` does not support catalogs");
         }
 
-        #[cfg(not(feature = "server"))]
-        {
+        if !cfg!(feature = "server") {
             _ = (call_source, rxs);
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
-        #[cfg(not(feature = "web_viewer"))]
-        if args.web_viewer {
+        if !cfg!(feature = "web_viewer") {
             anyhow::bail!(
                 "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
             );

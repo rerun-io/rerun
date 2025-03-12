@@ -20,14 +20,15 @@ int main() {
     for (size_t i = 0; i < 5; i++) {
         float fi = static_cast<float>(i);
 
-        auto xs = rerun::demo::linspace(-1.f, 1.f, 5);
-        auto zs = rerun::demo::linspace(fi / 10.f, fi, 5);
-
         std::array<std::array<float, 3>, 5> origin;
         std::array<std::array<float, 3>, 5> vector;
         for (size_t j = 0; j < 5; j++) {
-            origin[j] = {xs[j], xs[j], 0.0};
-            vector[j] = {xs[j], xs[j], zs[j]};
+            auto fj = static_cast<float>(j);
+            auto xs = -1.f + fj * (2.f / 4.f);
+            auto zs = fj * (fi / 4.f);
+
+            origin[j] = {xs, xs, 0.0};
+            vector[j] = {xs, xs, zs};
         }
 
         origins.emplace_back(origin);

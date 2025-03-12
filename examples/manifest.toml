@@ -101,6 +101,7 @@ examples = [
   "open_photogrammetry_format",
   "kiss-icp",
   "differentiable_blocks_world",
+  "mast3r_slam",
   "stereo_vision_slam",
   "glomap",
   "hloc_glomap",
