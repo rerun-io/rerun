@@ -123,7 +123,7 @@ pub struct EntryFilter {
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "EntryType", optional, tag = "3")]
-    pub r#type: ::core::option::Option<i32>,
+    pub entry_type: ::core::option::Option<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -162,7 +162,7 @@ pub struct EntryDetails {
     pub name: ::prost::alloc::string::String,
     /// The type of entry
     #[prost(enumeration = "EntryType", tag = "3")]
-    pub r#type: i32,
+    pub entry_type: i32,
     #[prost(message, optional, tag = "4")]
     pub created_at: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "5")]
