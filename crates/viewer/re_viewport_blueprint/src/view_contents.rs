@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::AsArray;
+use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
 use slotmap::SlotMap;
@@ -18,7 +18,7 @@ use re_types::{
     },
     Archetype as _, ViewClassIdentifier,
 };
-use re_types::{components, Component as _, Loggable};
+use re_types::{components, Component as _, Loggable as _};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,

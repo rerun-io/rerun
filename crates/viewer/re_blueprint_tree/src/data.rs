@@ -16,7 +16,6 @@ use smallvec::SmallVec;
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_log_types::EntityPath;
-use re_types::components::Visible;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
@@ -583,11 +582,7 @@ impl DataResultData {
         let query_result = ctx.lookup_query_result(self.view_id);
         let result_tree = &query_result.tree;
         if let Some(data_result) = result_tree.lookup_result_by_path(&self.entity_path) {
-            data_result.save_recursively_propagated_override_or_clear_if_redundant(
-                ctx,
-                &query_result.tree,
-                &Visible::from(visible),
-            );
+            data_result.save_visible(ctx, &query_result.tree, visible);
         }
     }
 

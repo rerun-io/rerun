@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
-use re_types::ComponentName;
+use re_types::{archetypes, components, ComponentName};
 
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
@@ -94,52 +94,79 @@ impl DataResult {
         &self.property_overrides.override_path
     }
 
-    /// Saves a recursive override OR clears recursive overrides if the override is due to a parent recursive override or a default value.
+    /// Overrides the `visible` behavior such that the given value becomes set next frame.
+    ///
+    /// If no override is set, this will always set the override.
+    /// If an override is set, this will either write an override or clear it if the parent has the desired value already.
+    ///
+    /// In either case, this will be effective only by the next frame.
     // TODO: Add a unit test.
-    // TODO(#6541): Check the datastore.
-    pub fn save_recursively_propagated_override_or_clear_if_redundant<
-        C: re_types::Component + Eq + Default,
-    >(
+    pub fn save_visible(
         &self,
         ctx: &ViewerContext<'_>,
         data_result_tree: &DataResultTree,
-        desired_override: &C,
+        new_value: bool,
     ) {
-        re_tracing::profile_function!();
-
-        if let Some(current_resolved_override) = self.lookup_override::<C>(ctx) {
-            // Do nothing if the resolved override is already the same as the new override.
-            if &current_resolved_override == desired_override {
-                return;
-            }
-
-            // TODO: comment incorrect.
-            // TODO(andreas): Assumes this is a recursive override
-            let parent_recursive_override = self
+        // Check if we should instead clear an existing override.
+        if self.lookup_override::<components::Visible>(ctx).is_some() {
+            let parent_visibility = self
                 .entity_path
                 .parent()
                 .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
-                .and_then(|data_result| data_result.lookup_override::<C>(ctx)); // TODO: incorrect
+                .map_or(true, |data_result| data_result.is_visible());
 
-            // If the parent has a recursive override that is the same as the new override,
-            // clear both individual and recursive override at the current path.
-            // (at least one of them has to be set, otherwise the current resolved override would be the same as the desired override)
-            //
-            // Another case for clearing
-            if parent_recursive_override.as_ref() == Some(desired_override)
-                || (parent_recursive_override.is_none() && desired_override == &C::default())
-            {
-                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.override_path);
-            } else {
-                ctx.save_blueprint_component(
+            if parent_visibility == new_value {
+                // TODO(andreas): tagged empty component.
+                ctx.save_empty_blueprint_component::<components::Visible>(
                     &self.property_overrides.override_path,
-                    desired_override,
                 );
+                return;
             }
-        } else {
-            // No override at all so far, simply set it.
-            ctx.save_blueprint_component(&self.property_overrides.override_path, desired_override);
         }
+
+        ctx.save_blueprint_archetype(
+            &self.property_overrides.override_path,
+            &archetypes::EntityBehavior::update_fields().with_visible(new_value),
+        );
+    }
+
+    /// Overrides the `interactive` behavior such that the given value becomes set next frame.
+    ///
+    /// If no override is set, this will always set the override.
+    /// If an override is set, this will either write an override or clear it if the parent has the desired value already.
+    ///
+    /// In either case, this will be effective only by the next frame.
+    // TODO: Add a unit test.
+    pub fn save_interactive(
+        &self,
+        ctx: &ViewerContext<'_>,
+        data_result_tree: &DataResultTree,
+        new_value: bool,
+    ) {
+        // Check if we should instead clear an existing override.
+        if self
+            .lookup_override::<components::Interactive>(ctx)
+            .is_some()
+        {
+            let parent_interactivity = self
+                .entity_path
+                .parent()
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .map_or(true, |data_result| data_result.is_interactive());
+
+            if parent_interactivity == new_value {
+                // TODO(andreas): tagged empty component.
+                ctx.save_empty_blueprint_component::<components::Interactive>(
+                    &self.property_overrides.override_path,
+                );
+                return;
+            }
+        }
+
+        ctx.save_blueprint_archetype(
+            &self.property_overrides.override_path,
+            &archetypes::EntityBehavior::update_fields().with_interactive(new_value),
+        );
     }
 
     fn lookup_override<C: 'static + re_types::Component>(

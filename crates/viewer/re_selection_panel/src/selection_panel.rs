@@ -8,7 +8,6 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
@@ -943,8 +942,6 @@ fn visible_interactive_toggle_ui(
     query_result: &DataQueryResult,
     data_result: &DataResult,
 ) {
-    use re_types::components::Visible;
-
     {
         let visible_before = data_result.is_visible();
         let mut visible = visible_before;
@@ -955,14 +952,9 @@ fn visible_interactive_toggle_ui(
         .on_hover_text("If disabled, the entity won't be shown in the view.");
 
         if visible_before != visible {
-            data_result.save_recursively_propagated_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Visible::from(visible),
-            );
+            data_result.save_visible(ctx.viewer_ctx, &query_result.tree, visible);
         }
     }
-
     {
         let interactive_before = data_result.is_interactive();
         let mut interactive = interactive_before;
@@ -973,11 +965,7 @@ fn visible_interactive_toggle_ui(
         .on_hover_text("If disabled, the entity will not react to any mouse interaction.");
 
         if interactive_before != interactive {
-            data_result.save_recursively_propagated_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Interactive(interactive.into()),
-            );
+            data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
         }
     }
 }

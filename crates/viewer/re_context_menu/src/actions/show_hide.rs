@@ -140,11 +140,7 @@ fn set_data_result_visible(
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
         {
-            data_result.save_recursively_propagated_override_or_clear_if_redundant(
-                ctx.viewer_context,
-                &query_result.tree,
-                &re_types::components::Visible::from(visible),
-            );
+            data_result.save_visible(ctx.viewer_context, &query_result.tree, visible);
         }
     } else {
         re_log::error!("No query available for view {:?}", view_id);
