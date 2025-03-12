@@ -85,7 +85,7 @@ class AnyBatchValue(ComponentBatchLike):
                     if not isinstance(value, (str, bytes)):
                         try:
                             self.pa_array = pa.array(value, type=pa_type)
-                        except TypeError as e:
+                        except TypeError:
                             pass
                     if self.pa_array is None:
                         try:
