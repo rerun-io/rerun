@@ -3742,10 +3742,12 @@ checksum = "5c163c633eb184a4ad2a5e7a5dacf12a58c830d717a7963563d4eceb4ced079f"
 dependencies = [
  "jiff-static",
  "jiff-tzdb-platform",
+ "js-sys",
  "log",
  "portable-atomic",
  "portable-atomic-util",
  "serde",
+ "wasm-bindgen",
  "windows-sys 0.59.0",
 ]
 
@@ -6174,7 +6176,6 @@ dependencies = [
  "re_query",
  "re_smart_channel",
  "re_tracing",
- "re_types",
  "re_types_core",
  "serde",
  "similar-asserts",
