@@ -88,9 +88,11 @@ class AnyBatchValue(ComponentBatchLike):
                         except TypeError as e:
                             pass
                     if self.pa_array is None:
-                        pa_scalar = pa.scalar(value, type=pa_type)
-                        if pa_scalar is not None:
+                        try:
+                            pa_scalar = pa.scalar(value, type=pa_type)
                             self.pa_array = pa.array([pa_scalar], type=pa_type)
+                        except TypeError:
+                            pass
                     if self.pa_array is None:
                         # Fall back - use numpy
                         np_value = np.atleast_1d(np.asarray(value, dtype=np_type))
@@ -109,10 +111,12 @@ class AnyBatchValue(ComponentBatchLike):
                             except TypeError:
                                 pass
                         if self.pa_array is None:
-                            pa_scalar = pa.scalar(value)
-                            if pa_scalar is not None:
+                            try:
+                                pa_scalar = pa.scalar(value)
                                 self.pa_array = pa.array([pa_scalar])
                                 ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
+                            except TypeError:
+                                pass
                         if self.pa_array is None:
                             # Fall back - use numpy which handles a wide variety of lists, tuples,
                             # and mixtures of them and will turn into a well formed array
