@@ -118,8 +118,8 @@ impl ::prost::Name for DeleteDatasetEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryFilter {
-    #[prost(string, optional, tag = "1")]
-    pub id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "EntryType", optional, tag = "3")]

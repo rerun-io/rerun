@@ -57,7 +57,7 @@ message DeleteDatasetEntryResponse {}
 // ---------------- Common ------------------
 
 message EntryFilter {
-    optional string id = 1;
+    optional EntryId id = 1;
     optional string name = 2;
     optional EntryType entry_type = 3;
 }
