@@ -77,10 +77,9 @@ impl ItemTitle {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
         let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-            if let (Some(application_id), Some(started)) = (
-                entity_db.app_id(),
-                entity_db.property::<Timestamp>(),
-            ) {
+            if let (Some(application_id), Some(started)) =
+                (entity_db.app_id(), entity_db.property::<Timestamp>())
+            {
                 let time = re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
                     .strftime("%H:%M:%S")
