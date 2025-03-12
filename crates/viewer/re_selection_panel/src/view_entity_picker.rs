@@ -44,7 +44,9 @@ impl ViewEntityPicker {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
                     .default_height(640.0)
                     .full_span_content(true)
-                    .scrollable([false, true])
+                    // we set the scroll area ourselves
+                    .set_side_margin(false)
+                    .scrollable([false, false])
             },
             |ui, open| {
                 let Some(view_id) = &self.view_id else {
@@ -58,11 +60,27 @@ impl ViewEntityPicker {
                 };
 
                 ui.add_space(5.0);
-                self.filter_state.search_field_ui(ui);
+                ui.panel_content(|ui| {
+                    self.filter_state.search_field_ui(ui);
+                });
                 ui.add_space(5.0);
 
-                let matcher = self.filter_state.filter();
-                add_entities_ui(ctx, ui, view, &matcher, self.filter_state.session_id());
+                let max_height = 0.85 * ui.ctx().screen_rect().height();
+                egui::ScrollArea::new([false, true])
+                    .min_scrolled_height(max_height)
+                    .max_height(max_height)
+                    .show(ui, |ui| {
+                        ui.panel_content(|ui| {
+                            let matcher = self.filter_state.filter();
+                            add_entities_ui(
+                                ctx,
+                                ui,
+                                view,
+                                &matcher,
+                                self.filter_state.session_id(),
+                            );
+                        });
+                    });
             },
         );
     }
