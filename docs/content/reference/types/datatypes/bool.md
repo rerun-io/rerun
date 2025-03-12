@@ -23,5 +23,4 @@ boolean
 * [`Interactive`](../components/interactive.md)
 * [`SeriesVisible`](../components/series_visible.md?speculative-link)
 * [`ShowLabels`](../components/show_labels.md)
-* [`VisibleRecursive`](../components/visible_recursive.md?speculative-link)
 * [`Visible`](../components/visible.md?speculative-link)

@@ -85,5 +85,4 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
-* [`VisibleRecursive`](components/visible_recursive.md): Whether the container, view, entity or instance and its children are currently visible.
 

@@ -94,7 +94,6 @@ from .vector3d import Vector3D, Vector3DBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
-from .visible_recursive import VisibleRecursive, VisibleRecursiveBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -263,6 +262,4 @@ __all__ = [
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",
-    "VisibleRecursive",
-    "VisibleRecursiveBatch",
 ]

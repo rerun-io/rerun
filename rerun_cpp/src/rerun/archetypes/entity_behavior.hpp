@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/interactive.hpp"
 #include "../components/visible.hpp"
-#include "../components/visible_recursive.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -24,29 +23,19 @@ namespace rerun::archetypes {
     struct EntityBehavior {
         /// Whether the entity can be interacted with.
         ///
-        /// Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+        /// This property is propagated down the entity hierarchy until another child entity
+        /// sets `interactive` to a different value at which point propagation continues with that value instead.
         ///
-        /// Defaults to true.
+        /// Defaults to parent's `interactive` value or true if there is no parent.
         std::optional<ComponentBatch> interactive;
 
         /// Whether the entity is visible.
         ///
-        /// If this is set, it will take precedence over the `visible_recursive` field
-        /// and any `visible_recursive` setting further up in the hierarchy.
-        ///
-        /// Defaults to true.
-        std::optional<ComponentBatch> visible;
-
-        /// Whether the entity and its children are visible.
-        ///
         /// This property is propagated down the entity hierarchy until another child entity
-        /// sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+        /// sets `visible` to a different value at which point propagation continues with that value instead.
         ///
-        /// `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-        /// (But this does not affect tree propagation of the property)
-        ///
-        /// Defaults to true.
-        std::optional<ComponentBatch> visible_recursive;
+        /// Defaults to parent's `visible` value or true if there is no parent.
+        std::optional<ComponentBatch> visible;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -67,11 +56,6 @@ namespace rerun::archetypes {
             ArchetypeName, "visible",
             Loggable<rerun::components::Visible>::Descriptor.component_name
         );
-        /// `ComponentDescriptor` for the `visible_recursive` field.
-        static constexpr auto Descriptor_visible_recursive = ComponentDescriptor(
-            ArchetypeName, "visible_recursive",
-            Loggable<rerun::components::VisibleRecursive>::Descriptor.component_name
-        );
 
       public:
         EntityBehavior() = default;
@@ -90,9 +74,10 @@ namespace rerun::archetypes {
 
         /// Whether the entity can be interacted with.
         ///
-        /// Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+        /// This property is propagated down the entity hierarchy until another child entity
+        /// sets `interactive` to a different value at which point propagation continues with that value instead.
         ///
-        /// Defaults to true.
+        /// Defaults to parent's `interactive` value or true if there is no parent.
         EntityBehavior with_interactive(const rerun::components::Interactive& _interactive) && {
             interactive = ComponentBatch::from_loggable(_interactive, Descriptor_interactive)
                               .value_or_throw();
@@ -113,10 +98,10 @@ namespace rerun::archetypes {
 
         /// Whether the entity is visible.
         ///
-        /// If this is set, it will take precedence over the `visible_recursive` field
-        /// and any `visible_recursive` setting further up in the hierarchy.
+        /// This property is propagated down the entity hierarchy until another child entity
+        /// sets `visible` to a different value at which point propagation continues with that value instead.
         ///
-        /// Defaults to true.
+        /// Defaults to parent's `visible` value or true if there is no parent.
         EntityBehavior with_visible(const rerun::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             return std::move(*this);
@@ -129,37 +114,6 @@ namespace rerun::archetypes {
         EntityBehavior with_many_visible(const Collection<rerun::components::Visible>& _visible
         ) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// Whether the entity and its children are visible.
-        ///
-        /// This property is propagated down the entity hierarchy until another child entity
-        /// sets `visible_recursive` to a different value at which point propagation continues with that value instead.
-        ///
-        /// `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-        /// (But this does not affect tree propagation of the property)
-        ///
-        /// Defaults to true.
-        EntityBehavior with_visible_recursive(
-            const rerun::components::VisibleRecursive& _visible_recursive
-        ) && {
-            visible_recursive =
-                ComponentBatch::from_loggable(_visible_recursive, Descriptor_visible_recursive)
-                    .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `visible_recursive` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_visible_recursive` should
-        /// be used when logging a single row's worth of data.
-        EntityBehavior with_many_visible_recursive(
-            const Collection<rerun::components::VisibleRecursive>& _visible_recursive
-        ) && {
-            visible_recursive =
-                ComponentBatch::from_loggable(_visible_recursive, Descriptor_visible_recursive)
-                    .value_or_throw();
             return std::move(*this);
         }
 

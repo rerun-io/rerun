@@ -9,7 +9,7 @@ TODO(#6541): Fields of this archetype currently only have an effect when logged 
 
 ## Components
 
-**Optional**: [`Interactive`](../components/interactive.md), [`Visible`](../components/visible.md), [`VisibleRecursive`](../components/visible_recursive.md)
+**Optional**: [`Interactive`](../components/interactive.md), [`Visible`](../components/visible.md)
 
 ## Shown in
 * [DataframeView](../views/dataframe_view.md)

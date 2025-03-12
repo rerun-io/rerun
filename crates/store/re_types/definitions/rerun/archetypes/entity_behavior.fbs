@@ -10,28 +10,17 @@ table EntityBehavior (
 ) {
     /// Whether the entity can be interacted with.
     ///
-    /// Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `interactive` to a different value at which point propagation continues with that value instead.
     ///
-    /// Defaults to true.
+    /// Defaults to parent's `interactive` value or true if there is no parent.
     interactive: rerun.components.Interactive ("attr.rerun.component_optional", nullable, order: 100);
 
     /// Whether the entity is visible.
     ///
-    /// If this is set, it will take precedence over the `visible_recursive` field
-    /// and any `visible_recursive` setting further up in the hierarchy.
-    ///
-    /// Defaults to true.
-    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 200);
-
-    /// Whether the entity and its children are visible.
-    ///
     /// This property is propagated down the entity hierarchy until another child entity
-    /// sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+    /// sets `visible` to a different value at which point propagation continues with that value instead.
     ///
-    /// `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-    /// (But this does not affect tree propagation of the property)
-    ///
-    /// Defaults to true.
-    // TODO(#6889): Use `Visible` component and rely on field tag instead.
-    visible_recursive: rerun.components.VisibleRecursive ("attr.rerun.component_optional", nullable, order: 300);
+    /// Defaults to parent's `visible` value or true if there is no parent.
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 200);
 }

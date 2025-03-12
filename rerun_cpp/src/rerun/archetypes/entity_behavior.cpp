@@ -13,23 +13,17 @@ namespace rerun::archetypes {
                 .value_or_throw();
         archetype.visible =
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
-        archetype.visible_recursive =
-            ComponentBatch::empty<rerun::components::VisibleRecursive>(Descriptor_visible_recursive)
-                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> EntityBehavior::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(3);
         if (interactive.has_value()) {
             columns.push_back(interactive.value().partitioned(lengths_).value_or_throw());
         }
         if (visible.has_value()) {
             columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
-        }
-        if (visible_recursive.has_value()) {
-            columns.push_back(visible_recursive.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<EntityBehavior>(static_cast<uint32_t>(lengths_.size()))
@@ -45,9 +39,6 @@ namespace rerun::archetypes {
         if (visible.has_value()) {
             return columns(std::vector<uint32_t>(visible.value().length(), 1));
         }
-        if (visible_recursive.has_value()) {
-            return columns(std::vector<uint32_t>(visible_recursive.value().length(), 1));
-        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -59,16 +50,13 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
         if (archetype.interactive.has_value()) {
             cells.push_back(archetype.interactive.value());
         }
         if (archetype.visible.has_value()) {
             cells.push_back(archetype.visible.value());
-        }
-        if (archetype.visible_recursive.has_value()) {
-            cells.push_back(archetype.visible_recursive.value());
         }
         {
             auto result = ComponentBatch::from_indicator<EntityBehavior>();

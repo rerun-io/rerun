@@ -74,4 +74,3 @@
 #include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"
 #include "components/visible.hpp"
-#include "components/visible_recursive.hpp"

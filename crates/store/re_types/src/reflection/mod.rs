@@ -1022,15 +1022,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 verify_arrow_array: Visible::verify_arrow_array,
             },
         ),
-        (
-            <VisibleRecursive as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether the container, view, entity or instance and its children are currently visible.",
-                custom_placeholder: Some(VisibleRecursive::default().to_arrow()?),
-                datatype: VisibleRecursive::arrow_datatype(),
-                verify_arrow_array: VisibleRecursive::verify_arrow_array,
-            },
-        ),
     ];
     Ok(ComponentReflectionMap::from_iter(array))
 }
@@ -1461,16 +1452,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "interactive", display_name :
                     "Interactive", component_name : "rerun.components.Interactive"
                     .into(), docstring_md :
-                    "Whether the entity can be interacted with.\n\nNon interactive components may still be still visible, but mouse interactions in the view are disabled.\n\nDefaults to true.",
+                    "Whether the entity can be interacted with.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `interactive` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `interactive` value or true if there is no parent.",
                     is_required : false, }, ArchetypeFieldReflection { name : "visible",
                     display_name : "Visible", component_name : "rerun.components.Visible"
                     .into(), docstring_md :
-                    "Whether the entity is visible.\n\nIf this is set, it will take precedence over the `visible_recursive` field\nand any `visible_recursive` setting further up in the hierarchy.\n\nDefaults to true.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "visible_recursive", display_name : "Visible recursive",
-                    component_name : "rerun.components.VisibleRecursive".into(),
-                    docstring_md :
-                    "Whether the entity and its children are visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible_recursive` to a different value at which point propagation continues with that value instead.\n\n`visible_recursive` is ignored on any individual entity that has the `visible` field set.\n(But this does not affect tree propagation of the property)\n\nDefaults to true.",
+                    "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
                     is_required : false, },
                 ],
             },

@@ -25,29 +25,19 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct EntityBehavior {
     /// Whether the entity can be interacted with.
     ///
-    /// Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `interactive` to a different value at which point propagation continues with that value instead.
     ///
-    /// Defaults to true.
+    /// Defaults to parent's `interactive` value or true if there is no parent.
     pub interactive: Option<SerializedComponentBatch>,
 
     /// Whether the entity is visible.
     ///
-    /// If this is set, it will take precedence over the `visible_recursive` field
-    /// and any `visible_recursive` setting further up in the hierarchy.
-    ///
-    /// Defaults to true.
-    pub visible: Option<SerializedComponentBatch>,
-
-    /// Whether the entity and its children are visible.
-    ///
     /// This property is propagated down the entity hierarchy until another child entity
-    /// sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+    /// sets `visible` to a different value at which point propagation continues with that value instead.
     ///
-    /// `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-    /// (But this does not affect tree propagation of the property)
-    ///
-    /// Defaults to true.
-    pub visible_recursive: Option<SerializedComponentBatch>,
+    /// Defaults to parent's `visible` value or true if there is no parent.
+    pub visible: Option<SerializedComponentBatch>,
 }
 
 impl EntityBehavior {
@@ -71,16 +61,6 @@ impl EntityBehavior {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::visible_recursive`].
-    #[inline]
-    pub fn descriptor_visible_recursive() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EntityBehavior".into()),
-            component_name: "rerun.components.VisibleRecursive".into(),
-            archetype_field_name: Some("visible_recursive".into()),
-        }
-    }
-
     /// Returns the [`ComponentDescriptor`] for the associated indicator component.
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
@@ -98,28 +78,26 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [EntityBehavior::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             EntityBehavior::descriptor_interactive(),
             EntityBehavior::descriptor_visible(),
-            EntityBehavior::descriptor_visible_recursive(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             EntityBehavior::descriptor_indicator(),
             EntityBehavior::descriptor_interactive(),
             EntityBehavior::descriptor_visible(),
-            EntityBehavior::descriptor_visible_recursive(),
         ]
     });
 
 impl EntityBehavior {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`EntityBehavior`] [`::re_types_core::Archetype`]
@@ -179,15 +157,9 @@ impl ::re_types_core::Archetype for EntityBehavior {
         let visible = arrays_by_descr
             .get(&Self::descriptor_visible())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
-        let visible_recursive = arrays_by_descr
-            .get(&Self::descriptor_visible_recursive())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_visible_recursive())
-            });
         Ok(Self {
             interactive,
             visible,
-            visible_recursive,
         })
     }
 }
@@ -200,7 +172,6 @@ impl ::re_types_core::AsComponents for EntityBehavior {
             Some(Self::indicator()),
             self.interactive.clone(),
             self.visible.clone(),
-            self.visible_recursive.clone(),
         ]
         .into_iter()
         .flatten()
@@ -217,7 +188,6 @@ impl EntityBehavior {
         Self {
             interactive: None,
             visible: None,
-            visible_recursive: None,
         }
     }
 
@@ -239,10 +209,6 @@ impl EntityBehavior {
             visible: Some(SerializedComponentBatch::new(
                 crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
-            )),
-            visible_recursive: Some(SerializedComponentBatch::new(
-                crate::components::VisibleRecursive::arrow_empty(),
-                Self::descriptor_visible_recursive(),
             )),
         }
     }
@@ -272,9 +238,6 @@ impl EntityBehavior {
             self.visible
                 .map(|visible| visible.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.visible_recursive
-                .map(|visible_recursive| visible_recursive.partitioned(_lengths.clone()))
-                .transpose()?,
         ];
         Ok(columns
             .into_iter()
@@ -294,20 +257,16 @@ impl EntityBehavior {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_interactive = self.interactive.as_ref().map(|b| b.array.len());
         let len_visible = self.visible.as_ref().map(|b| b.array.len());
-        let len_visible_recursive = self.visible_recursive.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_interactive)
-            .or(len_visible)
-            .or(len_visible_recursive)
-            .unwrap_or(0);
+        let len = None.or(len_interactive).or(len_visible).unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
 
     /// Whether the entity can be interacted with.
     ///
-    /// Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `interactive` to a different value at which point propagation continues with that value instead.
     ///
-    /// Defaults to true.
+    /// Defaults to parent's `interactive` value or true if there is no parent.
     #[inline]
     pub fn with_interactive(
         mut self,
@@ -332,10 +291,10 @@ impl EntityBehavior {
 
     /// Whether the entity is visible.
     ///
-    /// If this is set, it will take precedence over the `visible_recursive` field
-    /// and any `visible_recursive` setting further up in the hierarchy.
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `visible` to a different value at which point propagation continues with that value instead.
     ///
-    /// Defaults to true.
+    /// Defaults to parent's `visible` value or true if there is no parent.
     #[inline]
     pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
@@ -354,46 +313,11 @@ impl EntityBehavior {
         self.visible = try_serialize_field(Self::descriptor_visible(), visible);
         self
     }
-
-    /// Whether the entity and its children are visible.
-    ///
-    /// This property is propagated down the entity hierarchy until another child entity
-    /// sets `visible_recursive` to a different value at which point propagation continues with that value instead.
-    ///
-    /// `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-    /// (But this does not affect tree propagation of the property)
-    ///
-    /// Defaults to true.
-    #[inline]
-    pub fn with_visible_recursive(
-        mut self,
-        visible_recursive: impl Into<crate::components::VisibleRecursive>,
-    ) -> Self {
-        self.visible_recursive =
-            try_serialize_field(Self::descriptor_visible_recursive(), [visible_recursive]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::VisibleRecursive`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_visible_recursive`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_visible_recursive(
-        mut self,
-        visible_recursive: impl IntoIterator<Item = impl Into<crate::components::VisibleRecursive>>,
-    ) -> Self {
-        self.visible_recursive =
-            try_serialize_field(Self::descriptor_visible_recursive(), visible_recursive);
-        self
-    }
 }
 
 impl ::re_byte_size::SizeBytes for EntityBehavior {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.interactive.heap_size_bytes()
-            + self.visible.heap_size_bytes()
-            + self.visible_recursive.heap_size_bytes()
+        self.interactive.heap_size_bytes() + self.visible.heap_size_bytes()
     }
 }

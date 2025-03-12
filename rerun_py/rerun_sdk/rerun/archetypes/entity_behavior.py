@@ -30,11 +30,7 @@ class EntityBehavior(Archetype):
     """
 
     def __init__(
-        self: Any,
-        *,
-        interactive: datatypes.BoolLike | None = None,
-        visible: datatypes.BoolLike | None = None,
-        visible_recursive: datatypes.BoolLike | None = None,
+        self: Any, *, interactive: datatypes.BoolLike | None = None, visible: datatypes.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the EntityBehavior archetype.
@@ -44,32 +40,23 @@ class EntityBehavior(Archetype):
         interactive:
             Whether the entity can be interacted with.
 
-            Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+            This property is propagated down the entity hierarchy until another child entity
+            sets `interactive` to a different value at which point propagation continues with that value instead.
 
-            Defaults to true.
+            Defaults to parent's `interactive` value or true if there is no parent.
         visible:
             Whether the entity is visible.
 
-            If this is set, it will take precedence over the `visible_recursive` field
-            and any `visible_recursive` setting further up in the hierarchy.
-
-            Defaults to true.
-        visible_recursive:
-            Whether the entity and its children are visible.
-
             This property is propagated down the entity hierarchy until another child entity
-            sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+            sets `visible` to a different value at which point propagation continues with that value instead.
 
-            `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-            (But this does not affect tree propagation of the property)
-
-            Defaults to true.
+            Defaults to parent's `visible` value or true if there is no parent.
 
         """
 
         # You can define your own __init__ function as a member of EntityBehaviorExt in entity_behavior_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(interactive=interactive, visible=visible, visible_recursive=visible_recursive)
+            self.__attrs_init__(interactive=interactive, visible=visible)
             return
         self.__attrs_clear__()
 
@@ -78,7 +65,6 @@ class EntityBehavior(Archetype):
         self.__attrs_init__(
             interactive=None,
             visible=None,
-            visible_recursive=None,
         )
 
     @classmethod
@@ -95,7 +81,6 @@ class EntityBehavior(Archetype):
         clear_unset: bool = False,
         interactive: datatypes.BoolLike | None = None,
         visible: datatypes.BoolLike | None = None,
-        visible_recursive: datatypes.BoolLike | None = None,
     ) -> EntityBehavior:
         """
         Update only some specific fields of a `EntityBehavior`.
@@ -107,26 +92,17 @@ class EntityBehavior(Archetype):
         interactive:
             Whether the entity can be interacted with.
 
-            Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+            This property is propagated down the entity hierarchy until another child entity
+            sets `interactive` to a different value at which point propagation continues with that value instead.
 
-            Defaults to true.
+            Defaults to parent's `interactive` value or true if there is no parent.
         visible:
             Whether the entity is visible.
 
-            If this is set, it will take precedence over the `visible_recursive` field
-            and any `visible_recursive` setting further up in the hierarchy.
-
-            Defaults to true.
-        visible_recursive:
-            Whether the entity and its children are visible.
-
             This property is propagated down the entity hierarchy until another child entity
-            sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+            sets `visible` to a different value at which point propagation continues with that value instead.
 
-            `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-            (But this does not affect tree propagation of the property)
-
-            Defaults to true.
+            Defaults to parent's `visible` value or true if there is no parent.
 
         """
 
@@ -135,7 +111,6 @@ class EntityBehavior(Archetype):
             kwargs = {
                 "interactive": interactive,
                 "visible": visible,
-                "visible_recursive": visible_recursive,
             }
 
             if clear_unset:
@@ -158,7 +133,6 @@ class EntityBehavior(Archetype):
         *,
         interactive: datatypes.BoolArrayLike | None = None,
         visible: datatypes.BoolArrayLike | None = None,
-        visible_recursive: datatypes.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -173,26 +147,17 @@ class EntityBehavior(Archetype):
         interactive:
             Whether the entity can be interacted with.
 
-            Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+            This property is propagated down the entity hierarchy until another child entity
+            sets `interactive` to a different value at which point propagation continues with that value instead.
 
-            Defaults to true.
+            Defaults to parent's `interactive` value or true if there is no parent.
         visible:
             Whether the entity is visible.
 
-            If this is set, it will take precedence over the `visible_recursive` field
-            and any `visible_recursive` setting further up in the hierarchy.
-
-            Defaults to true.
-        visible_recursive:
-            Whether the entity and its children are visible.
-
             This property is propagated down the entity hierarchy until another child entity
-            sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+            sets `visible` to a different value at which point propagation continues with that value instead.
 
-            `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-            (But this does not affect tree propagation of the property)
-
-            Defaults to true.
+            Defaults to parent's `visible` value or true if there is no parent.
 
         """
 
@@ -201,14 +166,13 @@ class EntityBehavior(Archetype):
             inst.__attrs_init__(
                 interactive=interactive,
                 visible=visible,
-                visible_recursive=visible_recursive,
             )
 
         batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"interactive": interactive, "visible": visible, "visible_recursive": visible_recursive}
+        kwargs = {"interactive": interactive, "visible": visible}
         columns = []
 
         for batch in batches:
@@ -238,9 +202,10 @@ class EntityBehavior(Archetype):
     )
     # Whether the entity can be interacted with.
     #
-    # Non interactive components may still be still visible, but mouse interactions in the view are disabled.
+    # This property is propagated down the entity hierarchy until another child entity
+    # sets `interactive` to a different value at which point propagation continues with that value instead.
     #
-    # Defaults to true.
+    # Defaults to parent's `interactive` value or true if there is no parent.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -251,27 +216,10 @@ class EntityBehavior(Archetype):
     )
     # Whether the entity is visible.
     #
-    # If this is set, it will take precedence over the `visible_recursive` field
-    # and any `visible_recursive` setting further up in the hierarchy.
-    #
-    # Defaults to true.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    visible_recursive: components.VisibleRecursiveBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.VisibleRecursiveBatch._converter,  # type: ignore[misc]
-    )
-    # Whether the entity and its children are visible.
-    #
     # This property is propagated down the entity hierarchy until another child entity
-    # sets `visible_recursive` to a different value at which point propagation continues with that value instead.
+    # sets `visible` to a different value at which point propagation continues with that value instead.
     #
-    # `visible_recursive` is ignored on any individual entity that has the `visible` field set.
-    # (But this does not affect tree propagation of the property)
-    #
-    # Defaults to true.
+    # Defaults to parent's `visible` value or true if there is no parent.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
