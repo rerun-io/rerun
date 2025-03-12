@@ -389,7 +389,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 // ----------------------------------------------------------------------------
 
 pub fn help(egui_ctx: &egui::Context) -> Help {
-    Help::new2("3D view")
+    Help::new("3D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
         .control(
             "Pan",
@@ -997,4 +997,9 @@ fn default_eye(
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
         eye_up,
     )
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

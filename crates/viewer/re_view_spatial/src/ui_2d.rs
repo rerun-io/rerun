@@ -116,7 +116,7 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
 }
 
 pub fn help(egui_ctx: &egui::Context) -> Help {
-    Help::new2("2D view")
+    Help::new("2D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
         .control(
             "Pan",
@@ -450,4 +450,9 @@ fn show_projections_from_3d_space(
         }
     }
     shapes
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

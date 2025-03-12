@@ -65,7 +65,7 @@ impl ViewClass for TensorView {
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new2("Tensor view")
+        Help::new("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(
                 "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
@@ -695,3 +695,8 @@ impl TypedComponentFallbackProvider<Colormap> for TensorView {
 
 // Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
 re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
+}

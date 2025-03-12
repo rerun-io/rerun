@@ -1358,32 +1358,35 @@ fn paint_range_highlight(
     }
 }
 
+fn help(ctx: &egui::Context) -> Help {
+    Help::new("Timeline")
+        .control("Play/Pause", "Space")
+        .control(
+            "Move time cursor",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+        )
+        .control(
+            "Select time segment",
+            icon_text!(icons::SHIFT, "+", "drag time scale"),
+        )
+        .control(
+            "Pan",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
+        )
+        .control(
+            "Zoom",
+            icon_text!(
+                modifiers_text(Modifiers::COMMAND, ctx),
+                maybe_plus(ctx),
+                icons::SCROLL
+            ),
+        )
+        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+}
+
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        Help::new2("Timeline")
-            .control("Play/Pause", "Space")
-            .control(
-                "Move time cursor",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
-            )
-            .control(
-                "Select time segment",
-                icon_text!(icons::SHIFT, "+", "drag time scale"),
-            )
-            .control(
-                "Pan",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
-            )
-            .control(
-                "Zoom",
-                icon_text!(
-                    modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                    maybe_plus(ui.ctx()),
-                    icons::SCROLL
-                ),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
-            .ui(ui);
+        help(ui.ctx()).ui(ui);
     });
 }
 
@@ -1794,4 +1797,9 @@ fn time_marker_ui(
         time_area_response
             .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

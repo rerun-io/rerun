@@ -46,7 +46,7 @@ impl ViewClass for BarChartView {
     }
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new2("Bar chart view")
+        Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
@@ -264,3 +264,8 @@ impl TypedComponentFallbackProvider<Corner2D> for BarChartView {
 }
 
 re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| BarChartView.help(ctx));
+}

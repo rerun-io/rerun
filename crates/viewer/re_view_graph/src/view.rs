@@ -49,7 +49,7 @@ impl ViewClass for GraphView {
     }
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new2("Graph view")
+        Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(
                 "Pan",
@@ -234,4 +234,9 @@ impl ViewClass for GraphView {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| GraphView.help(ctx));
 }

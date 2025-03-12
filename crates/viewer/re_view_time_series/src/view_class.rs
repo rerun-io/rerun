@@ -1,7 +1,9 @@
 use egui::ahash::{HashMap, HashSet};
-
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
+use crate::line_visualizer_system::SeriesLineSystem;
+use crate::point_visualizer_system::SeriesPointSystem;
+use crate::PlotSeriesKind;
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimestampFormat};
@@ -34,11 +36,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
-
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
-
 // ---
 
 #[derive(Clone)]
@@ -111,7 +108,7 @@ impl ViewClass for TimeSeriesView {
     }
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new2("Time series view")
+        Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
@@ -847,3 +844,8 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
 }
 
 re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}

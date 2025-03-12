@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimelineName};
+use re_types::blueprint::views::TextLogView;
 use re_types::View as _;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -56,7 +57,7 @@ impl ViewClass for TextView {
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new2("Text log view")
+        Help::new("Text log view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
             .markdown(
                 "TextLog entries over time.
@@ -441,4 +442,9 @@ fn calc_row_height(entry: &Entry) -> f32 {
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
     num_rows as f32 * re_ui::DesignTokens::table_line_height()
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
 }

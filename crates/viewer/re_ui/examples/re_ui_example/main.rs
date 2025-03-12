@@ -481,7 +481,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                 .on_hover_text("This is a tooltip");
 
             ui.label("Help").on_hover_ui(|ui| {
-                Help::new2("Help example")
+                Help::new("Help example")
                     .docs_link("https://rerun.io/docs/reference/types/views/map_view")
                     .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(

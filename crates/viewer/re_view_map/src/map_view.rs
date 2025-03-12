@@ -103,7 +103,7 @@ impl ViewClass for MapView {
     }
 
     fn help(&self, egui_ctx: &egui::Context) -> Help {
-        Help::new2("Map view")
+        Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
@@ -623,4 +623,9 @@ fn picking_gpu(
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         *last_gpu_picking_result
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }

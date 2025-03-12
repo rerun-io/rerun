@@ -62,7 +62,7 @@ impl ViewClass for TextDocumentView {
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new2("Text document view")
+        Help::new("Text document view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
             .markdown("Supports raw text and markdown.")
     }
@@ -198,4 +198,9 @@ fn text_document_ui(
             text_document.text_entries.len()
         ));
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
 }

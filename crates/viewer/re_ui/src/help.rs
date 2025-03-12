@@ -36,6 +36,10 @@ impl ControlRow {
 }
 
 impl Help {
+    pub fn get_title(&self) -> &String {
+        &self.title
+    }
+
     pub fn control_text(text: impl ToString) -> IconTextItem {
         IconTextItem::Text(
             RichText::new(text.to_string())
@@ -58,7 +62,7 @@ impl Help {
 
     /// Create a new help popup.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new2(title: impl ToString) -> Self {
+    pub fn new(title: impl ToString) -> Self {
         Self {
             title: title.to_string(),
             docs_link: None,
@@ -94,7 +98,7 @@ impl Help {
     ///
     /// Split any + or / into an extra IconTextItem, like this:
     /// ```rust
-    /// re_ui::Help::new2("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
+    /// re_ui::Help::new("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
     /// ```
     #[allow(clippy::needless_pass_by_value)]
     #[inline]

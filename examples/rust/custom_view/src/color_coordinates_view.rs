@@ -81,7 +81,7 @@ impl ViewClass for ColorCoordinatesView {
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new2("Color coordinates view")
+        Help::new("Color coordinates view")
             .markdown("A demo view that shows colors as coordinates on a 2D plane.")
     }
 

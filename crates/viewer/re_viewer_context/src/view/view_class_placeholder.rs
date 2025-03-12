@@ -24,7 +24,7 @@ impl ViewClass for ViewClassPlaceholder {
     }
 
     fn help(&self, _egui_ctx: &egui::Context) -> Help {
-        Help::new2("Placeholder view").markdown("Placeholder view for unknown view class")
+        Help::new("Placeholder view").markdown("Placeholder view for unknown view class")
     }
 
     fn on_register(
