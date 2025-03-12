@@ -57,7 +57,6 @@ position2d.hpp linguist-generated=true
 position3d.hpp linguist-generated=true
 radius.hpp linguist-generated=true
 range1d.hpp linguist-generated=true
-recording_name.hpp linguist-generated=true
 recording_started_timestamp.hpp linguist-generated=true
 resolution.hpp linguist-generated=true
 rotation_axis_angle.hpp linguist-generated=true

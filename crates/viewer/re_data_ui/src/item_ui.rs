@@ -5,7 +5,7 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
-use re_types::components::{RecordingName, RecordingStartedTimestamp};
+use re_types::components::{Name, RecordingStartedTimestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -747,8 +747,8 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let recording_name = if let Some(recording_name) = entity_db.property::<RecordingName>() {
-        Some(format!("{}", recording_name.0.as_str()))
+    let recording_name = if let Some(recording_name) = entity_db.property::<Name>() {
+        Some(recording_name.to_string())
     } else {
         entity_db
             .property::<RecordingStartedTimestamp>()

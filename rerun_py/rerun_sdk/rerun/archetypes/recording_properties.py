@@ -178,10 +178,10 @@ class RecordingProperties(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    name: components.RecordingNameBatch | None = field(
+    name: components.NameBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.RecordingNameBatch._converter,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # A user-chosen name for the recording.
     #

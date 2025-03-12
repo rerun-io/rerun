@@ -46,7 +46,7 @@ impl RecordingProperties {
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: "rerun.components.RecordingName".into(),
+            component_name: "rerun.components.Name".into(),
             archetype_field_name: Some("name".into()),
         }
     }
@@ -193,7 +193,7 @@ impl RecordingProperties {
                 Self::descriptor_started(),
             )),
             name: Some(SerializedComponentBatch::new(
-                crate::components::RecordingName::arrow_empty(),
+                crate::components::Name::arrow_empty(),
                 Self::descriptor_name(),
             )),
         }
@@ -274,19 +274,19 @@ impl RecordingProperties {
 
     /// A user-chosen name for the recording.
     #[inline]
-    pub fn with_name(mut self, name: impl Into<crate::components::RecordingName>) -> Self {
+    pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), [name]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::RecordingName`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::Name`] in a single component batch.
     ///
     /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_name`] should
     /// be used when logging a single row's worth of data.
     #[inline]
     pub fn with_many_name(
         mut self,
-        name: impl IntoIterator<Item = impl Into<crate::components::RecordingName>>,
+        name: impl IntoIterator<Item = impl Into<crate::components::Name>>,
     ) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), name);
         self

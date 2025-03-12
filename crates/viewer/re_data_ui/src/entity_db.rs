@@ -2,7 +2,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::{StoreKind, Timestamp};
-use re_types::components::{RecordingName, RecordingStartedTimestamp};
+use re_types::components::{Name, RecordingStartedTimestamp};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -74,7 +74,7 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
 
-                if let Some(name) = db.property::<RecordingName>() {
+                if let Some(name) = db.property::<Name>() {
                      ui.grid_left_hand_label("Name");
                      ui.label(name.to_string());
                      ui.end_row();

@@ -271,7 +271,7 @@ impl StoreHub {
 
         recs.sort_by_key(|entity_db| {
             let maybe_app_id = entity_db.app_id().map(|id| id.0.as_str());
-            let maybe_name = entity_db.property::<re_types::components::RecordingName>();
+            let maybe_name = entity_db.property::<re_types::components::Name>();
             let maybe_started =
                 entity_db.property::<re_types::components::RecordingStartedTimestamp>();
             (maybe_app_id, maybe_started, maybe_name)

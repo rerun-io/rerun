@@ -796,15 +796,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RecordingName as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Assigns a name to a recording.",
-                custom_placeholder: Some(RecordingName::default().to_arrow()?),
-                datatype: RecordingName::arrow_datatype(),
-                verify_arrow_array: RecordingName::verify_arrow_array,
-            },
-        ),
-        (
             <RecordingStartedTimestamp as Component>::name(),
             ComponentReflection {
                 docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
@@ -1842,9 +1833,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.RecordingStartedTimestamp".into(), docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
                     is_required : false, }, ArchetypeFieldReflection { name : "name",
-                    display_name : "Name", component_name :
-                    "rerun.components.RecordingName".into(), docstring_md :
-                    "A user-chosen name for the recording.", is_required : false, },
+                    display_name : "Name", component_name : "rerun.components.Name"
+                    .into(), docstring_md : "A user-chosen name for the recording.",
+                    is_required : false, },
                 ],
             },
         ),

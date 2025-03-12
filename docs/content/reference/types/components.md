@@ -59,7 +59,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
-* [`RecordingName`](components/recording_name.md): Assigns a name to a recording.
 * [`RecordingStartedTimestamp`](components/recording_started_timestamp.md): When the recording started.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.

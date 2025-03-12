@@ -48,7 +48,6 @@
 #include "components/position3d.hpp"
 #include "components/radius.hpp"
 #include "components/range1d.hpp"
-#include "components/recording_name.hpp"
 #include "components/recording_started_timestamp.hpp"
 #include "components/resolution.hpp"
 #include "components/rotation_axis_angle.hpp"

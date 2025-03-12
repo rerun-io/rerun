@@ -21,7 +21,7 @@ use re_log_types::{
 };
 use re_types::archetypes::RecordingProperties;
 use re_types::components::RecordingStartedTimestamp;
-use re_types::{AsComponents, ComponentBatch as _, SerializationError, SerializedComponentColumn};
+use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;

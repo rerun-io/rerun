@@ -6,7 +6,7 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/recording_name.hpp"
+#include "../components/name.hpp"
 #include "../components/recording_started_timestamp.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -43,8 +43,7 @@ namespace rerun::archetypes {
         );
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
-            ArchetypeName, "name",
-            Loggable<rerun::components::RecordingName>::Descriptor.component_name
+            ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
         );
 
       public:
@@ -84,7 +83,7 @@ namespace rerun::archetypes {
         }
 
         /// A user-chosen name for the recording.
-        RecordingProperties with_name(const rerun::components::RecordingName& _name) && {
+        RecordingProperties with_name(const rerun::components::Name& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);
         }
@@ -93,8 +92,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_name` should
         /// be used when logging a single row's worth of data.
-        RecordingProperties with_many_name(const Collection<rerun::components::RecordingName>& _name
-        ) && {
+        RecordingProperties with_many_name(const Collection<rerun::components::Name>& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);
         }

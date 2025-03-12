@@ -42,7 +42,6 @@ include "./components/position2d.fbs";
 include "./components/position3d.fbs";
 include "./components/radius.fbs";
 include "./components/range1d.fbs";
-include "./components/recording_name.fbs";
 include "./components/recording_started_timestamp.fbs";
 include "./components/resolution.fbs";
 include "./components/rotation_axis_angle.fbs";

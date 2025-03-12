@@ -47,7 +47,6 @@ position2d.rs linguist-generated=true
 position3d.rs linguist-generated=true
 radius.rs linguist-generated=true
 range1d.rs linguist-generated=true
-recording_name.rs linguist-generated=true
 recording_started_timestamp.rs linguist-generated=true
 resolution.rs linguist-generated=true
 rotation_axis_angle.rs linguist-generated=true

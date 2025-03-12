@@ -48,7 +48,6 @@ position2d.py linguist-generated=true
 position3d.py linguist-generated=true
 radius.py linguist-generated=true
 range1d.py linguist-generated=true
-recording_name.py linguist-generated=true
 recording_started_timestamp.py linguist-generated=true
 resolution.py linguist-generated=true
 rotation_axis_angle.py linguist-generated=true

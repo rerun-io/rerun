@@ -7,7 +7,7 @@ A list of properties associated with a recording.
 
 ## Components
 
-**Optional**: [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md), [`RecordingName`](../components/recording_name.md)
+**Optional**: [`RecordingStartedTimestamp`](../components/recording_started_timestamp.md), [`Name`](../components/name.md)
 
 ## Shown in
 * [DataframeView](../views/dataframe_view.md)
