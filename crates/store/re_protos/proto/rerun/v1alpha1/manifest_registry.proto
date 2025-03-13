@@ -42,7 +42,7 @@ service ManifestRegistryService {
     // - 'timepoint' -  represents the points in time where index query matches.
     // What time points are matched depends on the type of index that is queried.
     // For example: for vector search it might be timepoints where top-K matches
-    // are found within *each* resource in the indexed entry. For inverted index
+    // are found within *each* partition in the indexed entry. For inverted index
     // it might be timepoints where the query string is found in the indexed column
     // - 'data' - the data that is returned for the matched timepoints
     rpc SearchIndex(SearchIndexRequest) returns (stream SearchIndexResponse) {}
