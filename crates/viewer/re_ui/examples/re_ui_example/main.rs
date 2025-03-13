@@ -210,7 +210,7 @@ impl eframe::App for ExampleApp {
             self.modal_handler.ui(
                 ui.ctx(),
                 || re_ui::modal::ModalWrapper::new("Modal window"),
-                |ui, _| ui.label("This is a modal window."),
+                |ui| ui.label("This is a modal window."),
             );
 
             // ---
@@ -222,7 +222,7 @@ impl eframe::App for ExampleApp {
             self.full_span_modal_handler.ui(
                 ui.ctx(),
                 || re_ui::modal::ModalWrapper::new("Modal window").full_span_content(true),
-                |ui, _| {
+                |ui| {
                     list_item::list_item_scope(ui, "modal demo", |ui| {
                         for idx in 0..10 {
                             list_item::ListItem::new()

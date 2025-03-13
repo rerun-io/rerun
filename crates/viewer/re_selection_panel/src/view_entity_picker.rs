@@ -48,14 +48,14 @@ impl ViewEntityPicker {
                     .set_side_margin(false)
                     .scrollable([false, false])
             },
-            |ui, open| {
+            |ui| {
                 let Some(view_id) = &self.view_id else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 
                 let Some(view) = viewport_blueprint.view(view_id) else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 

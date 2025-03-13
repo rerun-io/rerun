@@ -37,7 +37,7 @@ impl AddServerModal {
         self.modal.ui(
             ui.ctx(),
             || ModalWrapper::new("Add Server"),
-            |ui, keep_open| {
+            |ui| {
                 ui.label("Scheme:");
 
                 egui::ComboBox::new("scheme", "")
@@ -84,7 +84,7 @@ impl AddServerModal {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let Ok(origin) = origin {
                         if ui.button("Add").clicked() {
-                            *keep_open = false;
+                            ui.close();
 
                             let _ = ctx.command_sender.send(Command::AddServer(origin));
                         }
@@ -93,7 +93,7 @@ impl AddServerModal {
                     }
 
                     if ui.button("Cancel").clicked() {
-                        *keep_open = false;
+                        ui.close();
                     }
                 });
             },
