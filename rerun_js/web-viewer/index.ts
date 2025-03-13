@@ -113,15 +113,24 @@ export interface AppOptions extends WebViewerOptions {
 }
 
 // SELECTION ITEM DEFINITION
-type EntityItem = { type: "entity"; entity_path: string };
-type InstanceItem = {
+/** Selected a single entity. */
+export type EntityItem = { type: "entity"; entity_path: string };
+
+/** Selected a single instance of an entity. */
+export type InstanceItem = {
   type: "instance";
   entity_path: string;
   instance_id: number;
 };
-type ViewItem = { type: "view"; view_id: string };
-type ContainerItem = { type: "container"; container_id: string };
-type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
+
+/** Selected a view. */
+export type ViewItem = { type: "view"; view_id: string };
+
+/** Selected a container. */
+export type ContainerItem = { type: "container"; container_id: string };
+
+/** A single item in a selection. */
+export type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
 
 // CALLBACK DEFINITION
 interface Callbacks {
@@ -154,16 +163,16 @@ interface WebViewerEvents {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? never
-    : K]: WebViewerEvents[K] extends any[]
-    ? WebViewerEvents[K]
-    : [WebViewerEvents[K]];
+  ? never
+  : K]: WebViewerEvents[K] extends any[]
+  ? WebViewerEvents[K]
+  : [WebViewerEvents[K]];
 };
 
 type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? K
-    : never]: WebViewerEvents[K];
+  ? K
+  : never]: WebViewerEvents[K];
 };
 
 type Cancel = () => void;
@@ -222,9 +231,9 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-          get_state: () => this.#fullscreen,
-          on_toggle: () => this.toggle_fullscreen(),
-        }
+        get_state: () => this.#fullscreen,
+        on_toggle: () => this.toggle_fullscreen(),
+      }
       : undefined;
 
     // CALLBACK DEFINITION
@@ -589,8 +598,7 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${
-          value ? "playing" : "paused"
+        `attempted to set play state to ${value ? "playing" : "paused"
         } in a stopped web viewer`,
       );
     }
@@ -720,7 +728,7 @@ export class WebViewer {
     }
   }
 
-  #minimize = () => {};
+  #minimize = () => { };
 
   #maximize = () => {
     _minimize_current_fullscreen_viewer?.();
