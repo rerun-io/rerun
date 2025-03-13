@@ -58,7 +58,7 @@ message DeleteDatasetEntryResponse {}
 // ---------------- Common ------------------
 
 message EntryFilter {
-    optional rerun.common.v1alpha1.EntryId id = 1;
+    optional rerun.common.v1alpha1.Tuid id = 1;
     optional string name = 2;
     optional EntryType entry_type = 3;
 }
@@ -78,7 +78,7 @@ enum EntryType {
 // Minimal info about an Entry for high-level catalog summary
 message EntryDetails {
     // The EntryId is immutable
-    rerun.common.v1alpha1.EntryId id = 1;
+    rerun.common.v1alpha1.Tuid id = 1;
 
     // The name is a short human-readable string
     // TODO(jleibs): Define valid name constraints
@@ -103,6 +103,6 @@ message DatasetEntry {
 // All APIs that require specifying an entry should use this
 // message.
 message EntryKey {
-    optional rerun.common.v1alpha1.EntryId id = 1;
+    optional rerun.common.v1alpha1.Tuid id = 1;
     optional string name = 2;
 }

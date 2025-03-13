@@ -91,9 +91,7 @@ impl PyCatalogClient {
                 .details
                 .ok_or(PyRuntimeError::new_err("No details in response"))?
                 .id
-                .ok_or(PyRuntimeError::new_err("No id in details"))?
-                .id
-                .ok_or(PyRuntimeError::new_err("No tuid in id"))
+                .ok_or(PyRuntimeError::new_err("No id in details"))
                 .map(|id| PyEntryId { id })
         })
     }
