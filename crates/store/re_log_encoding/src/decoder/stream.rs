@@ -227,9 +227,7 @@ fn is_chunk_empty(chunk: &Chunk) -> bool {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_types::{
-        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-    };
+    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use crate::encoder::Encoder;
     use crate::EncodingOptions;

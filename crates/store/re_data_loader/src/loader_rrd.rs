@@ -310,7 +310,7 @@ mod tests {
     use re_chunk::RowId;
     use re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
     use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
 
     use super::*;

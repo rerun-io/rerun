@@ -585,7 +585,7 @@ mod tests {
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_encoding::Compression;
     use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,

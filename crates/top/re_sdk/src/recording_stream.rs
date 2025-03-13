@@ -2568,7 +2568,7 @@ mod tests {
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-        use re_types_core::{Component as _, Loggable};
+        use re_types::{Component as _, Loggable};
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
@@ -2674,7 +2674,7 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        use re_types_core::ComponentBatch as _;
+        use re_types::ComponentBatch as _;
         rec.log("labels", &labels.try_serialized().unwrap())
             .unwrap();
     }
