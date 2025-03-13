@@ -36,8 +36,8 @@ impl ControlRow {
 }
 
 impl Help {
-    pub fn get_title(&self) -> &String {
-        &self.title
+    pub fn title(&self) -> &str {
+        self.title.as_str()
     }
 
     /// Create a new help popup.
