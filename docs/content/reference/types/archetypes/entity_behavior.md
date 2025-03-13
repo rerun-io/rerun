@@ -19,3 +19,9 @@ TODO(#6541): Fields of this archetype currently only have an effect when logged 
  * 🐍 [Python API docs for `EntityBehavior`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.EntityBehavior)
  * 🦀 [Rust API docs for `EntityBehavior`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EntityBehavior.html?speculative-link)
 
+## Example
+
+### entity_behavior
+
+snippet: archetypes/entity_behavior
+

@@ -27,6 +27,34 @@ class EntityBehavior(Archetype):
     **Archetype**: General visualization behavior of an entity.
 
     TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
+
+    Example
+    -------
+    ### `entity_behavior`:
+    ```python
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+    rr.init("rerun_example_entity_behavior", spawn=True)
+
+    # Use `EntityBehavior` to override visibility & interactivity of entities in the blueprint.
+    rr.send_blueprint(
+        rrb.Spatial2DView(
+            overrides={
+                "hidden_subtree": rr.EntityBehavior(visible=False),
+                "hidden_subtree/not_hidden": rr.EntityBehavior(visible=True),
+                "non_interactive_subtree": rr.EntityBehavior(interactive=False),
+            }
+        )
+    )
+
+    rr.log("hidden_subtree", rr.Points2D(positions=(0, 0), radii=0.5))
+    rr.log("hidden_subtree/also_hidden", rr.LineStrips2D(strips=[(-1, 1), (1, -1)]))
+    rr.log("hidden_subtree/not_hidden", rr.LineStrips2D(strips=[(1, 1), (-1, -1)]))
+    rr.log("non_interactive_subtree", rr.Boxes2D(centers=(0, 0), half_sizes=(1, 1)))
+    rr.log("non_interactive_subtree/also_non_interactive", rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)))
+    ```
+
     """
 
     def __init__(
@@ -178,12 +206,19 @@ class EntityBehavior(Archetype):
         for batch in batches:
             arrow_array = batch.as_arrow_array()
 
-            # For primitive arrays, we infer partition size from the input shape.
-            if pa.types.is_primitive(arrow_array.type):
+            # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
+            if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
 
-                batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
+                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
+                    # `shape[1]` should be the length of the fixed sized list.
+                    # (This should have been already validated by conversion to the arrow_array)
+                    batch_length = 1
+                else:
+                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                 sizes = batch_length * np.ones(num_rows)
             else:
