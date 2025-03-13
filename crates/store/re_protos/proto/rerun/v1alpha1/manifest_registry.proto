@@ -31,7 +31,7 @@ service ManifestRegistryService {
     rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
     // List indexes for the Dataset
-    rpc ListIndexes(ListIndedesRequest) returns (ListIndexesResponse) {}
+    rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
 
     // Reindex the Dataset for the given index
     rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
@@ -294,7 +294,7 @@ message CreateIndexResponse {
     uint64 indexed_rows = 1;
 }
 
-message ListIndexRequest {
+message ListIndexesRequest {
     // Dataset for which we want to list indexes
     rerun.common.v1alpha1.DatasetEntry entry = 1;
 }
