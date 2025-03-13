@@ -5,11 +5,11 @@ package rerun.manifest_registry.v1alpha1;
 import "rerun/v1alpha1/common.proto";
 
 service ManifestRegistryService {
-    // add partitions to the Dataset
-    rpc AddPartitions(AddPartitionsRequest) returns (AddPartitionsResponse) {}
+    // register new partitions with the Dataset
+    rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
 
-    // remove partitions from the Dataset
-    rpc RemovePartitions(RemovePartitionsRequest) returns (RemovePartitionsResponse) {}
+    // unregister partitions from the Dataset
+    rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (UnregisterPartitionsResponse) {}
 
     // list partitions in the Dataset
     rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {}
@@ -66,7 +66,7 @@ enum PartitionType {
     PARTITION_TYPE_RRD = 1;
 }
 
-message AddPartitionsRequest {
+message RegisterPartitionsRequest {
     // Dataset entry
     rerun.common.v1alpha1.DatasetEntry entry = 1;
 
@@ -74,11 +74,11 @@ message AddPartitionsRequest {
     repeated Partition partitions = 2;
 }
 
-message AddPartitionsResponse {
+message RegisterPartitionsResponse {
     rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message RemovePartitionsRequest {
+message UnregisterPartitionsRequest {
     // Dataset from which we want to remove partitions
     rerun.common.v1alpha1.DatasetEntry entry = 1;
 
@@ -86,7 +86,7 @@ message RemovePartitionsRequest {
     repeated PartitionId partition_ids = 2;
 }
 
-message RemovePartitionsResponse {}
+message UnregisterPartitionsResponse {}
 
 message ListPartitionsRequest {
     // Dataset for which we want to list partitions
