@@ -1647,14 +1647,12 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     } else if let Some(time) = time_ctrl.time_int() {
         if ui.button("Copy current timestamp").clicked() {
             let time = format!("{}", time.as_i64());
             re_log::info!("Copied current timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     }
 
@@ -1662,7 +1660,6 @@ fn copy_time_properties_context_menu(
         let timeline = format!("{}", time_ctrl.timeline().name());
         re_log::info!("Copied current timeline: {}", timeline);
         ui.ctx().copy_text(timeline);
-        ui.close_menu();
     }
 }
 
