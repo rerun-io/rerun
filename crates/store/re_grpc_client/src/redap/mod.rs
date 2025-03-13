@@ -182,6 +182,21 @@ pub async fn catalog_client(
     Ok(CatalogServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn catalog_client_with_interceptor<I: tonic::service::Interceptor>(
+    origin: Origin,
+    interceptor: I,
+) -> Result<
+    CatalogServiceClient<
+        tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
+    >,
+    ConnectionError,
+> {
+    let channel = channel(origin).await?;
+    Ok(CatalogServiceClient::with_interceptor(channel, interceptor)
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+}
+
 pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::RecordingEndpoint,
