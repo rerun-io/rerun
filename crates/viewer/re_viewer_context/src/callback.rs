@@ -25,7 +25,7 @@ pub enum SelectionItem {
     /// * A mesh.
     Entity { entity_path: String },
 
-    /// Selected a single instance.
+    /// Selected a single instance of an entity.
     ///
     /// Examples:
     /// * A single point in a point cloud.
@@ -77,7 +77,7 @@ pub struct Callbacks {
     /// Fired when the selection changes.
     pub on_selection_change: Rc<dyn Fn(Vec<SelectionItem>)>,
 
-    /// Fired when the a different timeline is selected.
+    /// Fired when a different timeline is selected.
     pub on_timeline_change: Rc<dyn Fn(Timeline, TimeReal)>,
 
     /// Fired when the timepoint changes.
