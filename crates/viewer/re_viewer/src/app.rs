@@ -14,7 +14,7 @@ use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, Callbacks, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
@@ -83,12 +83,8 @@ pub struct StartupOptions {
     /// This also can be changed in the viewer's option menu.
     pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
-    /// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    #[cfg(target_arch = "wasm32")]
-    pub timeline_options: Option<crate::web::TimelineOptions>,
+    /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
+    pub callbacks: Option<Callbacks>,
 
     /// Fullscreen is handled by JS on web.
     ///
@@ -139,8 +135,7 @@ impl Default for StartupOptions {
             force_wgpu_backend: None,
             video_decoder_hw_acceleration: None,
 
-            #[cfg(target_arch = "wasm32")]
-            timeline_options: Default::default(),
+            callbacks: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
@@ -232,11 +227,8 @@ pub struct App {
 
     reflection: re_types_core::reflection::Reflection,
 
-    /// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
+    /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
+    pub callbacks: Option<Callbacks>,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -372,45 +364,7 @@ impl App {
             Default::default()
         });
 
-        #[cfg(target_arch = "wasm32")]
-        let timeline_callbacks = {
-            use crate::web_tools::string_from_js_value;
-            use std::rc::Rc;
-            use wasm_bindgen::JsValue;
-
-            startup_options.timeline_options.clone().map(|opts| {
-                re_viewer_context::TimelineCallbacks {
-                    on_timelinechange: Rc::new(move |timeline, time| {
-                        if let Err(err) = opts.on_timelinechange.call2(
-                            &JsValue::from_str(timeline.name().as_str()),
-                            &JsValue::from_f64(time.as_f64()),
-                        ) {
-                            re_log::error!("{}", string_from_js_value(err));
-                        };
-                    }),
-                    on_timeupdate: Rc::new(move |time| {
-                        if let Err(err) =
-                            opts.on_timeupdate.call1(&JsValue::from_f64(time.as_f64()))
-                        {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                    on_play: Rc::new(move || {
-                        if let Err(err) = opts.on_play.call0() {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                    on_pause: Rc::new(move || {
-                        if let Err(err) = opts.on_pause.call0() {
-                            re_log::error!("{}", string_from_js_value(err));
-                        }
-                    }),
-                }
-            })
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let timeline_callbacks = None;
+        let callbacks = startup_options.callbacks.clone();
 
         Self {
             main_thread_token,
@@ -462,7 +416,7 @@ impl App {
 
             reflection,
 
-            timeline_callbacks,
+            callbacks,
             async_runtime: tokio_runtime,
         }
     }
@@ -1356,7 +1310,7 @@ impl App {
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            self.timeline_callbacks.as_ref(),
+                            self.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
                     }
