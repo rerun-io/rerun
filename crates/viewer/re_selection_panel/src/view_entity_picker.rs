@@ -102,7 +102,7 @@ fn add_entities_ui(
 
     let mut hierarchy = Default::default();
     let mut hierarchy_highlights = Default::default();
-    let entity_data = EntityData::from_entity_tree_and_filter(
+    let entity_data = EntityPickerEntryData::from_entity_tree_and_filter(
         &view.space_origin,
         tree,
         filter_matcher,
@@ -130,7 +130,7 @@ fn add_entities_ui(
 fn add_entities_tree_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    entity_data: &EntityData,
+    entity_data: &EntityPickerEntryData,
     view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &ResolvedEntityPathFilter,
@@ -188,7 +188,7 @@ fn add_entities_tree_ui(
 fn add_entities_line_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    entity_data: &EntityData,
+    entity_data: &EntityPickerEntryData,
     view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &ResolvedEntityPathFilter,
@@ -300,15 +300,15 @@ fn add_entities_line_ui(
 // ---
 
 #[derive(Debug)]
-pub struct EntityData {
+struct EntityPickerEntryData {
     pub entity_path: EntityPath,
     pub label: String,
     pub highlight_sections: SmallVec<[Range<usize>; 1]>,
-    pub children: Vec<EntityData>,
+    pub children: Vec<EntityPickerEntryData>,
 }
 
-impl EntityData {
-    pub fn from_entity_tree_and_filter(
+impl EntityPickerEntryData {
+    fn from_entity_tree_and_filter(
         view_origin: &EntityPath,
         entity_tree: &EntityTree,
         filter_matcher: &FilterMatcher,
@@ -341,7 +341,7 @@ impl EntityData {
         struct NodeInfo {
             is_leaf: bool,
             is_this_a_match: bool,
-            children: Vec<EntityData>,
+            children: Vec<EntityPickerEntryData>,
         }
 
         let node_info = if entity_tree.children.is_empty() {
