@@ -18,7 +18,7 @@ service ManifestRegistryService {
     rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
 
     // Query Dataset manifest
-    rpc QueryManifest(QueryPartitionManifestRequest)
+    rpc QueryPartitionManifest(QueryPartitionManifestRequest)
         returns (stream QueryPartitionManifestResponse) {}
 
     // Get all chunks for a single partition
