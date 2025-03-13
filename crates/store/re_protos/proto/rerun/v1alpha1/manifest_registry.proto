@@ -17,8 +17,8 @@ service ManifestRegistryService {
   // create manifests for all partitions in the Dataset
   rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
 
-  // Query specific partition manifest
-  rpc QueryPartition(QueryPartitionRequest) returns (stream QueryPartitionResponse) {}
+  // Query Dataset and return a dataframe containing relevant chunk IDs
+  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
   // Get all chunks for a single partition
   rpc GetAllChunks(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
@@ -36,8 +36,10 @@ service ManifestRegistryService {
   // Reindex the Dataset for the given index
   rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-  // Search indexed data.
-  // The response to `SearchIndex` is a RecordBatch with 3 columns:
+  // Do a full text, vector or scalar search. For optimal performance, user
+  // should first create an index on the relevant column(s) through `CreateIndex`.
+  //
+  // The response is a RecordBatch with 3 columns:
   // - 'partition_id' - which partition the data is from
   // - 'timepoint' -  represents the points in time where index query matches.
   // What time points are matched depends on the type of index that is queried.
@@ -45,7 +47,7 @@ service ManifestRegistryService {
   // are found within *each* partition in the indexed entry. For inverted index
   // it might be timepoints where the query string is found in the indexed column
   // - 'data' - the data that is returned for the matched timepoints
-  rpc SearchIndex(SearchIndexRequest) returns (stream SearchIndexResponse) {}
+  rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 }
 
 message Partition {
@@ -110,12 +112,12 @@ message CreateManifestsRequest {
 
 message CreateManifestsResponse {}
 
-message QueryPartitionRequest {
+message QueryDatasetRequest {
   // Dataset for which we want to query manifest
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // What partition are we querying the manifest for?
-  PartitionId partition_id = 2;
+  // Optionally the client can specify what partitions are queried
+  repeated PartitionId partition_id = 2;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
@@ -152,7 +154,7 @@ message QueryPartitionRequest {
   QueryManifestRangeRelevantChunks range = 12;
 }
 
-message QueryPartitionResponse {
+message QueryDatasetResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -315,7 +317,7 @@ message ReIndexRequest {
 
 message ReIndexResponse {}
 
-message SearchIndexRequest {
+message SearchDatasetRequest {
   // Dataset for which we want to search index
   rerun.common.v1alpha1.DatasetHandle entry = 1;
   // Index column that is queried
@@ -331,7 +333,7 @@ message SearchIndexRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 }
 
-message SearchIndexResponse {
+message SearchDatasetResponse {
   // Chunks as arrow RecordBatch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
