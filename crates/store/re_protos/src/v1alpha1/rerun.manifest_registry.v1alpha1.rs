@@ -21,21 +21,6 @@ impl ::prost::Name for Partition {
         "/rerun.manifest_registry.v1alpha1.Partition".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct PartitionId {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
-}
-impl ::prost::Name for PartitionId {
-    const NAME: &'static str = "PartitionId";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.PartitionId".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.PartitionId".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterPartitionsRequest {
     /// Dataset entry
@@ -77,7 +62,7 @@ pub struct UnregisterPartitionsRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partitions to remove
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<PartitionId>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
 }
 impl ::prost::Name for UnregisterPartitionsRequest {
     const NAME: &'static str = "UnregisterPartitionsRequest";
@@ -171,7 +156,7 @@ pub struct QueryDatasetRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Optionally the client can specify what partitions are queried
     #[prost(message, repeated, tag = "2")]
-    pub partition_id: ::prost::alloc::vec::Vec<PartitionId>,
+    pub partition_id: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "3")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
@@ -305,7 +290,7 @@ pub struct GetAllChunksRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partition for which we want to get chunks
     #[prost(message, optional, tag = "2")]
-    pub partition_id: ::core::option::Option<PartitionId>,
+    pub partition_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
 }
 impl ::prost::Name for GetAllChunksRequest {
     const NAME: &'static str = "GetAllChunksRequest";
@@ -340,7 +325,7 @@ pub struct GetChunksRangeRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partition for which we want to get chunks
     #[prost(message, optional, tag = "2")]
-    pub partition_id: ::core::option::Option<PartitionId>,
+    pub partition_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     /// Timeline for which we specify the time range
     #[prost(message, optional, tag = "3")]
     pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
@@ -587,7 +572,7 @@ impl ::prost::Name for ReIndexResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchIndexRequest {
+pub struct SearchDatasetRequest {
     /// Dataset for which we want to search index
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
@@ -607,30 +592,30 @@ pub struct SearchIndexRequest {
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
-impl ::prost::Name for SearchIndexRequest {
-    const NAME: &'static str = "SearchIndexRequest";
+impl ::prost::Name for SearchDatasetRequest {
+    const NAME: &'static str = "SearchDatasetRequest";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.SearchIndexRequest".into()
+        "rerun.manifest_registry.v1alpha1.SearchDatasetRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.SearchIndexRequest".into()
+        "/rerun.manifest_registry.v1alpha1.SearchDatasetRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchIndexResponse {
+pub struct SearchDatasetResponse {
     /// Chunks as arrow RecordBatch
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for SearchIndexResponse {
-    const NAME: &'static str = "SearchIndexResponse";
+impl ::prost::Name for SearchDatasetResponse {
+    const NAME: &'static str = "SearchDatasetResponse";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.SearchIndexResponse".into()
+        "rerun.manifest_registry.v1alpha1.SearchDatasetResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.SearchIndexResponse".into()
+        "/rerun.manifest_registry.v1alpha1.SearchDatasetResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -1062,9 +1047,9 @@ pub mod manifest_registry_service_client {
         /// - 'data' - the data that is returned for the matched timepoints
         pub async fn search_dataset(
             &mut self,
-            request: impl tonic::IntoRequest<super::SearchIndexRequest>,
+            request: impl tonic::IntoRequest<super::SearchDatasetRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::SearchIndexResponse>>,
+            tonic::Response<tonic::codec::Streaming<super::SearchDatasetResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1164,7 +1149,7 @@ pub mod manifest_registry_service_server {
         ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::SearchIndexResponse, tonic::Status>,
+                Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Do a full text, vector or scalar search. For optimal performance, user
@@ -1180,7 +1165,7 @@ pub mod manifest_registry_service_server {
         /// - 'data' - the data that is returned for the matched timepoints
         async fn search_dataset(
             &self,
-            request: tonic::Request<super::SearchIndexRequest>,
+            request: tonic::Request<super::SearchDatasetRequest>,
         ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -1753,9 +1738,9 @@ pub mod manifest_registry_service_server {
                     struct SearchDatasetSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::SearchIndexRequest>
+                    > tonic::server::ServerStreamingService<super::SearchDatasetRequest>
                     for SearchDatasetSvc<T> {
-                        type Response = super::SearchIndexResponse;
+                        type Response = super::SearchDatasetResponse;
                         type ResponseStream = T::SearchDatasetStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
@@ -1763,7 +1748,7 @@ pub mod manifest_registry_service_server {
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::SearchIndexRequest>,
+                            request: tonic::Request<super::SearchDatasetRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {

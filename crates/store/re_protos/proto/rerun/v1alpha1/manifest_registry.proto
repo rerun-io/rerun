@@ -61,10 +61,6 @@ message Partition {
   PartitionType typ = 3;
 }
 
-message PartitionId {
-  rerun.common.v1alpha1.Tuid id = 1;
-}
-
 enum PartitionType {
   PARTITION_TYPE_UNSPECIFIED = 0;
   PARTITION_TYPE_RRD = 1;
@@ -87,7 +83,7 @@ message UnregisterPartitionsRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partitions to remove
-  repeated PartitionId partition_ids = 2;
+  repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
 }
 
 message UnregisterPartitionsResponse {}
@@ -117,7 +113,7 @@ message QueryDatasetRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Optionally the client can specify what partitions are queried
-  repeated PartitionId partition_id = 2;
+  repeated rerun.common.v1alpha1.Tuid partition_id = 2;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
@@ -207,7 +203,7 @@ message GetAllChunksRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partition for which we want to get chunks
-  PartitionId partition_id = 2;
+  rerun.common.v1alpha1.Tuid partition_id = 2;
 }
 
 message GetAllChunksResponse {
@@ -220,7 +216,7 @@ message GetChunksRangeRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partition for which we want to get chunks
-  PartitionId partition_id = 2;
+  rerun.common.v1alpha1.Tuid partition_id = 2;
 
   // Timeline for which we specify the time range
   rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
