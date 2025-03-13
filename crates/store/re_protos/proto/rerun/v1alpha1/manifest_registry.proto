@@ -18,8 +18,7 @@ service ManifestRegistryService {
     rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
 
     // Query Dataset manifest
-    rpc QueryPartitionManifest(QueryPartitionManifestRequest)
-        returns (stream QueryPartitionManifestResponse) {}
+    rpc QueryPartition(QueryPartitionRequest) returns (stream QueryPartitionResponse) {}
 
     // Get all chunks for a single partition
     rpc GetAllChunks(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
@@ -111,7 +110,7 @@ message CreateManifestsRequest {
 
 message CreateManifestsResponse {}
 
-message QueryPartitionManifestRequest {
+message QueryPartitionRequest {
     // Dataset for which we want to query manifest
     rerun.common.v1alpha1.DatasetEntry entry = 1;
 
@@ -153,7 +152,7 @@ message QueryPartitionManifestRequest {
     QueryManifestRangeRelevantChunks range = 12;
 }
 
-message QueryPartitionManifestResponse {
+message QueryPartitionResponse {
     rerun.common.v1alpha1.DataframePart data = 1;
 }
 
