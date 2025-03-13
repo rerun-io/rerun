@@ -227,9 +227,7 @@ pub struct App {
 
     reflection: re_types_core::reflection::Reflection,
 
-    /// Interaction between JS and the viewer.
-    ///
-    /// This allows to signal the viewer to trigger on certain events.
+    /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub callbacks: Option<Callbacks>,
 
     /// The async runtime that should be used for all asynchronous operations.
