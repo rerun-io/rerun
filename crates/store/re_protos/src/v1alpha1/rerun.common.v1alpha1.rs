@@ -462,6 +462,119 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetEntry {
+    /// Unique Dataset identifier
+    #[prost(message, optional, tag = "1")]
+    pub dataset_id: ::core::option::Option<Tuid>,
+    /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
+    #[prost(string, tag = "2")]
+    pub dataset_url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for DatasetEntry {
+    const NAME: &'static str = "DatasetEntry";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DatasetEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DatasetEntry".into()
+    }
+}
+/// DataframePart is arrow IPC encoded RecordBatch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DataframePart {
+    /// encoder version used to encode the data
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// Data payload is Arrow IPC encoded RecordBatch
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for DataframePart {
+    const NAME: &'static str = "DataframePart";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DataframePart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DataframePart".into()
+    }
+}
+/// Generic parameters that will influence the behavior of the Lance scanner.
+///
+/// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+/// one way or another.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParameters {
+    /// List of columns to project. If empty, all columns will be projected. If non-existent
+    /// is specified, an error will be returned.
+    #[prost(string, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.filter(filter)
+    /// ```
+    #[prost(string, tag = "2")]
+    pub filter: ::prost::alloc::string::String,
+    /// An arbitrary offset that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(_, limit_offset)
+    /// ```
+    #[prost(int64, tag = "3")]
+    pub limit_offset: i64,
+    /// An arbitrary limit that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(limit_len, _)
+    /// ```
+    #[prost(int64, tag = "4")]
+    pub limit_len: i64,
+    /// An arbitrary order clause that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.order_by(…)
+    /// ```
+    #[prost(message, optional, tag = "5")]
+    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+    #[prost(bool, tag = "6")]
+    pub explain_plan: bool,
+    /// If set, the final `scanner.filter` will be dumped to the server's log.
+    #[prost(bool, tag = "7")]
+    pub explain_filter: bool,
+}
+impl ::prost::Name for ScanParameters {
+    const NAME: &'static str = "ScanParameters";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParameters".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParameters".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParametersOrderClause {
+    #[prost(bool, tag = "1")]
+    pub ascending: bool,
+    #[prost(bool, tag = "2")]
+    pub nulls_first: bool,
+    #[prost(string, tag = "3")]
+    pub column_name: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ScanParametersOrderClause {
+    const NAME: &'static str = "ScanParametersOrderClause";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

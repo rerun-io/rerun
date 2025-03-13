@@ -102,29 +102,6 @@ impl ::prost::Name for FindCollectionsResponse {
         "/rerun.remote_store.v1alpha1.FindCollectionsResponse".into()
     }
 }
-/// DataframePart is arrow IPC encoded RecordBatch
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DataframePart {
-    /// encoder version used to encode the data
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::EncoderVersion",
-        tag = "1"
-    )]
-    pub encoder_version: i32,
-    /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
-}
-impl ::prost::Name for DataframePart {
-    const NAME: &'static str = "DataframePart";
-    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.DataframePart".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.DataframePart".into()
-    }
-}
 /// GetChunksRange is a streaming API that allows to fetch chunks within a time range
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksRangeRequest {
@@ -395,7 +372,7 @@ pub struct SearchIndexRequest {
     /// be a vector of appropriate size, for inverted index this should be a string.
     /// Query data is represented as a unit (single row) RecordBatch with 1 column.
     #[prost(message, optional, tag = "3")]
-    pub query: ::core::option::Option<DataframePart>,
+    pub query: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
     /// Index type specific properties
     #[prost(message, optional, tag = "4")]
     pub properties: ::core::option::Option<IndexQueryProperties>,
@@ -416,7 +393,7 @@ impl ::prost::Name for SearchIndexRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SearchIndexResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for SearchIndexResponse {
     const NAME: &'static str = "SearchIndexResponse";
@@ -550,7 +527,7 @@ pub struct ListManifestsRequest {
     ///
     /// TODO(zehiko, cmc): actually support those.
     #[prost(message, optional, tag = "2")]
-    pub scan_parameters: ::core::option::Option<ScanParameters>,
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
 impl ::prost::Name for ListManifestsRequest {
     const NAME: &'static str = "ListManifestsRequest";
@@ -565,7 +542,7 @@ impl ::prost::Name for ListManifestsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListManifestsResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for ListManifestsResponse {
     const NAME: &'static str = "ListManifestsResponse";
@@ -626,7 +603,7 @@ pub struct QueryManifestRequest {
     pub range: ::core::option::Option<QueryManifestRangeRelevantChunks>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "13")]
-    pub scan_parameters: ::core::option::Option<ScanParameters>,
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
 impl ::prost::Name for QueryManifestRequest {
     const NAME: &'static str = "QueryManifestRequest";
@@ -641,7 +618,7 @@ impl ::prost::Name for QueryManifestRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for QueryManifestResponse {
     const NAME: &'static str = "QueryManifestResponse";
@@ -719,76 +696,6 @@ impl ::prost::Name for QueryManifestRangeRelevantChunks {
         "/rerun.remote_store.v1alpha1.QueryManifestRangeRelevantChunks".into()
     }
 }
-/// Generic parameters that will influence the behavior of the Lance scanner.
-///
-/// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
-/// one way or another.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScanParameters {
-    /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
-    ///
-    /// ```text
-    /// scanner.filter(filter)
-    /// ```
-    #[prost(string, tag = "1")]
-    pub filter: ::prost::alloc::string::String,
-    /// An arbitrary offset that will be passed to the Lance scanner as-is.
-    ///
-    /// ```text
-    /// scanner.limit(_, limit_offset)
-    /// ```
-    #[prost(int64, tag = "2")]
-    pub limit_offset: i64,
-    /// An arbitrary limit that will be passed to the Lance scanner as-is.
-    ///
-    /// ```text
-    /// scanner.limit(limit_len, _)
-    /// ```
-    #[prost(int64, tag = "3")]
-    pub limit_len: i64,
-    /// An arbitrary order clause that will be passed to the Lance scanner as-is.
-    ///
-    /// ```text
-    /// scanner.order_by(…)
-    /// ```
-    #[prost(message, optional, tag = "4")]
-    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
-    /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-    #[prost(bool, tag = "5")]
-    pub explain_plan: bool,
-    /// If set, the final `scanner.filter` will be dumped to the server's log.
-    #[prost(bool, tag = "6")]
-    pub explain_filter: bool,
-}
-impl ::prost::Name for ScanParameters {
-    const NAME: &'static str = "ScanParameters";
-    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.ScanParameters".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.ScanParameters".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScanParametersOrderClause {
-    #[prost(bool, tag = "1")]
-    pub ascending: bool,
-    #[prost(bool, tag = "2")]
-    pub nulls_first: bool,
-    #[prost(string, tag = "3")]
-    pub column_name: ::prost::alloc::string::String,
-}
-impl ::prost::Name for ScanParametersOrderClause {
-    const NAME: &'static str = "ScanParametersOrderClause";
-    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaRequest {
     /// which catalog entry do we want to fetch the schema from
@@ -855,7 +762,7 @@ pub struct RegisterRecordingDescription {
     /// (optional) any additional metadata that should be associated with the recording
     /// You can associate any arbtrirary number of columns with a specific recording
     #[prost(message, optional, tag = "4")]
-    pub metadata: ::core::option::Option<DataframePart>,
+    pub metadata: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for RegisterRecordingDescription {
     const NAME: &'static str = "RegisterRecordingDescription";
@@ -870,7 +777,7 @@ impl ::prost::Name for RegisterRecordingDescription {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for RegisterRecordingsResponse {
     const NAME: &'static str = "RegisterRecordingsResponse";
@@ -948,7 +855,7 @@ pub struct UpdateCatalogRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// Properties that we want to update
     #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<DataframePart>,
+    pub metadata: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for UpdateCatalogRequest {
     const NAME: &'static str = "UpdateCatalogRequest";
@@ -997,7 +904,7 @@ impl ::prost::Name for QueryRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for QueryResponse {
     const NAME: &'static str = "QueryResponse";
@@ -1035,7 +942,7 @@ impl ::prost::Name for QueryCatalogRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<DataframePart>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for QueryCatalogResponse {
     const NAME: &'static str = "QueryCatalogResponse";
