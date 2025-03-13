@@ -85,6 +85,7 @@ pub struct ModalWrapper {
     min_height: Option<f32>,
     default_height: Option<f32>,
     full_span_content: bool,
+    set_side_margins: bool,
     scrollable: egui::Vec2b,
 }
 
@@ -97,6 +98,7 @@ impl ModalWrapper {
             min_height: None,
             default_height: None,
             full_span_content: false,
+            set_side_margins: true,
             scrollable: false.into(),
         }
     }
@@ -132,6 +134,17 @@ impl ModalWrapper {
     #[inline]
     pub fn full_span_content(mut self, full_span_content: bool) -> Self {
         self.full_span_content = full_span_content;
+        self
+    }
+
+    /// Configure whether the side margin should be set.
+    ///
+    /// In general, the side margin should be set for a better layout. It may be useful to not set
+    /// them if the client code wants to setup a custom scroll area, which should be outside of the
+    /// side margins.
+    #[inline]
+    pub fn set_side_margin(mut self, set_side_margins: bool) -> Self {
+        self.set_side_margins = set_side_margins;
         self
     }
 
@@ -203,7 +216,7 @@ impl ModalWrapper {
                     // (if any). Otherwise, the scroll bar is not snug with the right border and
                     // may interfere with the action buttons of `ListItem`s.
                     view_padding_frame(&ViewPaddingFrameParams {
-                        left_and_right: true,
+                        left_and_right: self.set_side_margins,
                         top: false,
                         bottom: false,
                     })

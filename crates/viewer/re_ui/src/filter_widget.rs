@@ -89,11 +89,15 @@ impl FilterState {
         FilterMatcher::new(self.query())
     }
 
-    /// Display the filter widget.
+    /// Display the filter widget as a section title.
+    ///
+    /// In this mode, the UI serves primarily as a section title. The filter is active when
+    /// explicitly turned on using the search button, which creates a session that is ended by
+    /// clicking the close button.
     ///
     /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
     /// search button, as usual for [`list_item::ListItem`]-based widgets.
-    pub fn ui(
+    pub fn section_title_ui(
         &mut self,
         ui: &mut egui::Ui,
         section_title: impl Into<egui::WidgetText>,
@@ -171,6 +175,68 @@ impl FilterState {
         }
 
         title_response
+    }
+
+    /// Display the filter widget as a search field.
+    ///
+    /// In this mode, the filter is active as soon as the query is non-empty. The session remains
+    /// active until the query is cleared.
+    pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
+        let inner_state = self.inner_state.get_or_insert_with(Default::default);
+
+        let textedit_id = ui.id().with("textedit");
+        let response = ui.ctx().read_response(textedit_id);
+
+        let visuals = response
+            .as_ref()
+            .map(|r| ui.style().interact(r))
+            .unwrap_or(&ui.visuals().widgets.inactive);
+
+        let selection_stroke = ui.visuals().selection.stroke;
+        let stroke = if response.is_some_and(|r| r.has_focus()) {
+            selection_stroke
+        } else {
+            let mut stroke = visuals.bg_stroke;
+            stroke.width = selection_stroke.width;
+            stroke
+        };
+
+        egui::Frame::new()
+            .inner_margin(egui::Margin::symmetric(3, 2))
+            .fill(ui.visuals().extreme_bg_color)
+            .stroke(stroke)
+            .corner_radius(visuals.corner_radius)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.set_height(19.0);
+
+                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if !inner_state.filter_query.is_empty()
+                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                        {
+                            *inner_state = Default::default();
+                        }
+
+                        ui.add(
+                            egui::TextEdit::singleline(&mut inner_state.filter_query)
+                                .id(textedit_id)
+                                .frame(false)
+                                .hint_text("Search for entity…")
+                                .desired_width(ui.available_width()),
+                        )
+                    });
+                });
+            });
+
+        if self
+            .inner_state
+            .as_ref()
+            .is_some_and(|state| state.filter_query.is_empty())
+        {
+            self.inner_state = None;
+        }
     }
 }
 

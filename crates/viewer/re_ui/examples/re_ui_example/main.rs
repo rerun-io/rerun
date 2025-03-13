@@ -257,7 +257,7 @@ impl eframe::App for ExampleApp {
 
                 ui.full_span_separator();
                 self.filter_state
-                    .ui(ui, egui::RichText::new("Filter demo").strong());
+                    .section_title_ui(ui, egui::RichText::new("Filter demo").strong());
                 ui.full_span_separator();
 
                 let names = vec![

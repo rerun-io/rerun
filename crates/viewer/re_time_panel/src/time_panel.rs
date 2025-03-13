@@ -447,7 +447,7 @@ impl TimePanel {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
-                    self.filter_state.ui(
+                    self.filter_state.section_title_ui(
                         ui,
                         egui::RichText::new(if self.source == TimePanelSource::Blueprint {
                             "Blueprint Streams"
