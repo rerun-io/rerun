@@ -468,8 +468,8 @@ pub struct DatasetHandle {
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<Tuid>,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
-    #[prost(string, tag = "2")]
-    pub dataset_url: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "2")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for DatasetHandle {
     const NAME: &'static str = "DatasetHandle";

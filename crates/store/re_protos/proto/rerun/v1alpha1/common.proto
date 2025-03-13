@@ -215,5 +215,5 @@ message DatasetHandle {
   Tuid entry_id = 1;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
-  string dataset_url = 2;
+  optional string dataset_url = 2;
 }

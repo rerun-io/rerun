@@ -82,7 +82,7 @@ message EntryDetails {
 
     // The name is a short human-readable string
     // TODO(jleibs): Define valid name constraints
-    string name = 2;
+    optional string name = 2;
 
     // The type of entry
     EntryType entry_type = 3;

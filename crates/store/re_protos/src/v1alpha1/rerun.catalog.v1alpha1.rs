@@ -143,8 +143,8 @@ pub struct EntryDetails {
     pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     /// The name is a short human-readable string
     /// TODO(jleibs): Define valid name constraints
-    #[prost(string, tag = "2")]
-    pub name: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// The type of entry
     #[prost(enumeration = "EntryType", tag = "3")]
     pub entry_type: i32,

@@ -75,7 +75,7 @@ impl PyCatalogClient {
                 .create_dataset_entry(CreateDatasetEntryRequest {
                     dataset: Some(DatasetEntry {
                         details: Some(EntryDetails {
-                            name: name.to_owned(),
+                            name: Some(name.to_owned()),
                             ..Default::default()
                         }),
                         dataset_handle: None,
@@ -108,7 +108,14 @@ impl PyCatalogClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
 
-            Ok(resp.entries.into_iter().map(|entry| entry.name).collect())
+            resp.entries
+                .into_iter()
+                .map(|entry| {
+                    entry
+                        .name
+                        .ok_or(PyRuntimeError::new_err("No name in details"))
+                })
+                .collect()
         })
     }
 
