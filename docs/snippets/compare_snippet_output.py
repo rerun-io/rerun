@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import tomlkit
 from tomlkit.container import Container
@@ -21,10 +21,10 @@ from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
-assert isinstance(config["opt_out"], Container)
 
-OPT_OUT_ENTIRELY: dict[str, Any] = config["opt_out"]["run"].value
-OPT_OUT_COMPARE = config["opt_out"]["compare"].value
+OPT_OUT: dict[str, Any] = cast(Container, config["opt_out"])
+OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
+OPT_OUT_COMPARE = OPT_OUT["compare"].value
 EXTRA_ARGS = config["extra_args"].value
 
 
