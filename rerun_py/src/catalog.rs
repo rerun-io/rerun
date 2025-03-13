@@ -1,20 +1,17 @@
 #![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError, PyValueError},
-    prelude::*,
-    types::PyDict,
-    Bound, PyResult,
-};
+use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 
 use re_protos::catalog::v1alpha1::{
     catalog_service_client::CatalogServiceClient, CreateDatasetEntryRequest, DatasetEntry,
     DeleteDatasetEntryRequest, EntryDetails, EntryFilter, EntryKey, FindEntriesRequest,
 };
+use re_protos::common::v1alpha1::Tuid;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyEntryId>()?;
     m.add_class::<PyCatalogClient>()?;
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
@@ -44,6 +41,18 @@ pub fn connect(addr: String) -> PyResult<PyCatalogClient> {
     Ok(PyCatalogClient { runtime, client })
 }
 
+/// A unique identifier for an entry in the catalog.
+#[pyclass(name = "EntryId")]
+pub struct PyEntryId {
+    id: Tuid,
+}
+
+impl From<Tuid> for PyEntryId {
+    fn from(id: Tuid) -> Self {
+        Self { id }
+    }
+}
+
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
 pub struct PyCatalogClient {
@@ -59,7 +68,7 @@ pub struct PyCatalogClient {
 #[pymethods]
 impl PyCatalogClient {
     // TODO: Create and return a dataset object
-    fn create_dataset(&mut self, name: &str) -> PyResult<String> {
+    fn create_dataset(&mut self, name: &str) -> PyResult<PyEntryId> {
         self.runtime.block_on(async {
             let resp = self
                 .client
@@ -69,7 +78,7 @@ impl PyCatalogClient {
                             name: name.to_owned(),
                             ..Default::default()
                         }),
-                        manifest: None,
+                        dataset_handle: None,
                     }),
                 })
                 .await
@@ -77,15 +86,15 @@ impl PyCatalogClient {
                 .into_inner();
 
             // TODO: This stuff is so ugly
-            Ok(resp
-                .dataset
+            resp.dataset
                 .ok_or(PyRuntimeError::new_err("No dataset in response"))?
                 .details
                 .ok_or(PyRuntimeError::new_err("No details in response"))?
                 .id
                 .ok_or(PyRuntimeError::new_err("No id in details"))?
                 .id
-                .clone())
+                .ok_or(PyRuntimeError::new_err("No tuid in id"))
+                .map(|id| PyEntryId { id })
         })
     }
 

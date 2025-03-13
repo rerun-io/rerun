@@ -209,3 +209,15 @@ message Tuid {
   // then incremented for each new `Tuid` being allocated.
   fixed64 inc = 2;
 }
+
+message EntryId {
+  Tuid id = 1;
+}
+
+message DatasetHandle {
+  // Unique entry identifier (for debug purposes)
+  EntryId entry_id = 1;
+
+  // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
+  string dataset_url = 2;
+}

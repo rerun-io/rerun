@@ -462,6 +462,40 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct EntryId {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<Tuid>,
+}
+impl ::prost::Name for EntryId {
+    const NAME: &'static str = "EntryId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.EntryId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.EntryId".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetHandle {
+    /// Unique entry identifier (for debug purposes)
+    #[prost(message, optional, tag = "1")]
+    pub entry_id: ::core::option::Option<EntryId>,
+    /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
+    #[prost(string, tag = "2")]
+    pub dataset_url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for DatasetHandle {
+    const NAME: &'static str = "DatasetHandle";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DatasetHandle".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DatasetHandle".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

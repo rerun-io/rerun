@@ -6,6 +6,7 @@ syntax = "proto3";
 package rerun.catalog.v1alpha1;
 
 import "google/protobuf/timestamp.proto";
+import "rerun/v1alpha1/common.proto";
 
 service CatalogService {
     rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
@@ -57,14 +58,11 @@ message DeleteDatasetEntryResponse {}
 // ---------------- Common ------------------
 
 message EntryFilter {
-    optional EntryId id = 1;
+    optional rerun.common.v1alpha1.EntryId id = 1;
     optional string name = 2;
     optional EntryType entry_type = 3;
 }
 
-message EntryId {
-    string id = 1;
-}
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
 enum EntryType {
@@ -80,7 +78,7 @@ enum EntryType {
 // Minimal info about an Entry for high-level catalog summary
 message EntryDetails {
     // The EntryId is immutable
-    EntryId id = 1;
+    rerun.common.v1alpha1.EntryId id = 1;
 
     // The name is a short human-readable string
     // TODO(jleibs): Define valid name constraints
@@ -97,18 +95,14 @@ message DatasetEntry {
     EntryDetails details = 1;
 
     // Read-only
-    DatasetManifest manifest = 2;
+    rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
 }
 
-// Serves as both manifest info and "opaque" handle to the dataset APIs.
-message DatasetManifest {
-    string path = 1;
-}
 
 // EntryKey is used to access an entry by either id or name.
 // All APIs that require specifying an entry should use this
 // message.
 message EntryKey {
-    optional EntryId id = 1;
+    optional rerun.common.v1alpha1.EntryId id = 1;
     optional string name = 2;
 }

@@ -119,7 +119,7 @@ impl ::prost::Name for DeleteDatasetEntryResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryFilter {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<EntryId>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "EntryType", optional, tag = "3")]
@@ -135,27 +135,12 @@ impl ::prost::Name for EntryFilter {
         "/rerun.catalog.v1alpha1.EntryFilter".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EntryId {
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-impl ::prost::Name for EntryId {
-    const NAME: &'static str = "EntryId";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.EntryId".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.EntryId".into()
-    }
-}
 /// Minimal info about an Entry for high-level catalog summary
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryDetails {
     /// The EntryId is immutable
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<EntryId>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The name is a short human-readable string
     /// TODO(jleibs): Define valid name constraints
     #[prost(string, tag = "2")]
@@ -184,7 +169,7 @@ pub struct DatasetEntry {
     pub details: ::core::option::Option<EntryDetails>,
     /// Read-only
     #[prost(message, optional, tag = "2")]
-    pub manifest: ::core::option::Option<DatasetManifest>,
+    pub dataset_handle: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
 }
 impl ::prost::Name for DatasetEntry {
     const NAME: &'static str = "DatasetEntry";
@@ -196,29 +181,13 @@ impl ::prost::Name for DatasetEntry {
         "/rerun.catalog.v1alpha1.DatasetEntry".into()
     }
 }
-/// Serves as both manifest info and "opaque" handle to the dataset APIs.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DatasetManifest {
-    #[prost(string, tag = "1")]
-    pub path: ::prost::alloc::string::String,
-}
-impl ::prost::Name for DatasetManifest {
-    const NAME: &'static str = "DatasetManifest";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.DatasetManifest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.DatasetManifest".into()
-    }
-}
 /// EntryKey is used to access an entry by either id or name.
 /// All APIs that require specifying an entry should use this
 /// message.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryKey {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<EntryId>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
 }
