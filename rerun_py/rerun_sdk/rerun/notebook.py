@@ -19,6 +19,10 @@ try:
         ViewSelection as ViewSelection,
     )
 except ImportError:
+    # The notebook package is an optional dependency, so we ignore
+    # the import error. If the user is trying to use the notebook
+    # part of rerun, they'll be notified when they try to init a
+    # `Viewer` instance.
     pass
 
 from rerun import bindings
