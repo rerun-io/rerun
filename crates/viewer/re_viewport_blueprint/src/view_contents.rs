@@ -558,8 +558,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
         }
 
         let children = node.children.clone(); // Borrow-checker workaround.
-        let visible = node.data_result.property_overrides.visible;
-        let interactive = node.data_result.property_overrides.interactive;
+        let visible = property_overrides.visible;
+        let interactive = property_overrides.interactive;
 
         for child in children {
             self.update_overrides_recursive(

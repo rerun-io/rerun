@@ -100,7 +100,6 @@ impl DataResult {
     /// If an override is set, this will either write an override or clear it if the parent has the desired value already.
     ///
     /// In either case, this will be effective only by the next frame.
-    // TODO: Add a unit test.
     pub fn save_visible(
         &self,
         ctx: &ViewerContext<'_>,
@@ -136,7 +135,6 @@ impl DataResult {
     /// If an override is set, this will either write an override or clear it if the parent has the desired value already.
     ///
     /// In either case, this will be effective only by the next frame.
-    // TODO: Add a unit test.
     pub fn save_interactive(
         &self,
         ctx: &ViewerContext<'_>,
