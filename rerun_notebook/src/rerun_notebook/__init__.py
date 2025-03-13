@@ -62,22 +62,13 @@ class ViewerCallbacks:
     """
 
     def on_selection_change(self, selection: list[SelectionItem]) -> None:
-        """
-        Fired when the selection changes.
-        """
-        pass
+        """Fired when the selection changes."""
 
     def on_timeline_change(self, timeline: str, time: float) -> None:
-        """
-        Fired when a different timeline is selected.
-        """
-        pass
+        """Fired when a different timeline is selected."""
 
     def on_time_update(self, time: float) -> None:
-        """
-        Fired when the timepoint changes.
-        """
-        pass
+        """Fired when the timepoint changes."""
 
 
 @dataclass
@@ -88,7 +79,9 @@ class EntitySelection:
     Examples:
     * A full point cloud.
     * A mesh.
+
     """
+
     @property
     def kind(self) -> Literal["entity"]:
         return "entity"
@@ -103,7 +96,9 @@ class InstanceSelection:
 
     Examples:
     * A single point in a point cloud.
+
     """
+
     @property
     def kind(self) -> Literal["instance"]:
         return "instance"
@@ -115,6 +110,7 @@ class InstanceSelection:
 @dataclass
 class ViewSelection:
     """Selected a view."""
+
     @property
     def kind(self) -> Literal["view"]:
         return "view"
@@ -125,6 +121,7 @@ class ViewSelection:
 @dataclass
 class ContainerSelection:
     """Selected a container."""
+
     @property
     def kind(self) -> Literal["container"]:
         return "container"
