@@ -5,354 +5,354 @@ package rerun.manifest_registry.v1alpha1;
 import "rerun/v1alpha1/common.proto";
 
 service ManifestRegistryService {
-    // register new partitions with the Dataset
-    rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
+  // register new partitions with the Dataset
+  rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
 
-    // unregister partitions from the Dataset
-    rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (UnregisterPartitionsResponse) {}
+  // unregister partitions from the Dataset
+  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (UnregisterPartitionsResponse) {}
 
-    // list partitions in the Dataset
-    rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {}
+  // list partitions in the Dataset
+  rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {}
 
-    // create manifests for all partitions in the Dataset
-    rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
+  // create manifests for all partitions in the Dataset
+  rpc CreateManifests(CreateManifestsRequest) returns (CreateManifestsResponse) {}
 
-    // Query specific partition manifest
-    rpc QueryPartition(QueryPartitionRequest) returns (stream QueryPartitionResponse) {}
+  // Query specific partition manifest
+  rpc QueryPartition(QueryPartitionRequest) returns (stream QueryPartitionResponse) {}
 
-    // Get all chunks for a single partition
-    rpc GetAllChunks(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
+  // Get all chunks for a single partition
+  rpc GetAllChunks(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
 
-    // Get partition chunks that contain data for the specified time range
-    rpc GetChunksRange(GetChunksRangeRequest) returns (stream GetChunksRangeResponse) {}
+  // Get partition chunks that contain data for the specified time range
+  rpc GetChunksRange(GetChunksRangeRequest) returns (stream GetChunksRangeResponse) {}
 
-    // Create index for the Dataset. All the partitions and data matching the given
-    // index column will be indexed
-    rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+  // Create index for the Dataset. All the partitions and data matching the given
+  // index column will be indexed
+  rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
-    // List indexes for the Dataset
-    rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
+  // List indexes for the Dataset
+  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
 
-    // Reindex the Dataset for the given index
-    rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
+  // Reindex the Dataset for the given index
+  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-    // Search indexed data.
-    // The response to `SearchIndex` is a RecordBatch with 3 columns:
-    // - 'partition_id' - which partition the data is from
-    // - 'timepoint' -  represents the points in time where index query matches.
-    // What time points are matched depends on the type of index that is queried.
-    // For example: for vector search it might be timepoints where top-K matches
-    // are found within *each* partition in the indexed entry. For inverted index
-    // it might be timepoints where the query string is found in the indexed column
-    // - 'data' - the data that is returned for the matched timepoints
-    rpc SearchIndex(SearchIndexRequest) returns (stream SearchIndexResponse) {}
+  // Search indexed data.
+  // The response to `SearchIndex` is a RecordBatch with 3 columns:
+  // - 'partition_id' - which partition the data is from
+  // - 'timepoint' -  represents the points in time where index query matches.
+  // What time points are matched depends on the type of index that is queried.
+  // For example: for vector search it might be timepoints where top-K matches
+  // are found within *each* partition in the indexed entry. For inverted index
+  // it might be timepoints where the query string is found in the indexed column
+  // - 'data' - the data that is returned for the matched timepoints
+  rpc SearchIndex(SearchIndexRequest) returns (stream SearchIndexResponse) {}
 }
 
 message Partition {
-    // human readable description of the partition
-    string description = 1;
+  // human readable description of the partition
+  string description = 1;
 
-    // partition storage url (e.g. s3://bucket/file or file:///path/to/file)
-    string storage_url = 2;
+  // partition storage url (e.g. s3://bucket/file or file:///path/to/file)
+  string storage_url = 2;
 
-    // type of partition (rrd, mcap, Lance, etc)
-    PartitionType typ = 3;
+  // type of partition (rrd, mcap, Lance, etc)
+  PartitionType typ = 3;
 }
 
 message PartitionId {
-    rerun.common.v1alpha1.Tuid id = 1;
+  rerun.common.v1alpha1.Tuid id = 1;
 }
 
 enum PartitionType {
-    PARTITION_TYPE_UNSPECIFIED = 0;
-    PARTITION_TYPE_RRD = 1;
+  PARTITION_TYPE_UNSPECIFIED = 0;
+  PARTITION_TYPE_RRD = 1;
 }
 
 message RegisterPartitionsRequest {
-    // Dataset entry
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset entry
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // Partitions to add
-    repeated Partition partitions = 2;
+  // Partitions to add
+  repeated Partition partitions = 2;
 }
 
 message RegisterPartitionsResponse {
-    rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message UnregisterPartitionsRequest {
-    // Dataset from which we want to remove partitions
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset from which we want to remove partitions
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // Partitions to remove
-    repeated PartitionId partition_ids = 2;
+  // Partitions to remove
+  repeated PartitionId partition_ids = 2;
 }
 
 message UnregisterPartitionsResponse {}
 
 message ListPartitionsRequest {
-    // Dataset for which we want to list partitions
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset for which we want to list partitions
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // Scan parameters
-    rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
 message ListPartitionsResponse {
-    // Partitions metadata as arrow RecordBatch
-    rerun.common.v1alpha1.DataframePart data = 1;
+  // Partitions metadata as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message CreateManifestsRequest {
-    // Dataset for which we want to create manifests
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset for which we want to create manifests
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 }
 
 message CreateManifestsResponse {}
 
 message QueryPartitionRequest {
-    // Dataset for which we want to query manifest
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset for which we want to query manifest
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // What partition are we querying the manifest for?
-    PartitionId partition_id = 2;
+  // What partition are we querying the manifest for?
+  PartitionId partition_id = 2;
 
-    // Generic parameters that will influence the behavior of the Lance scanner.
-    rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+  // Generic parameters that will influence the behavior of the Lance scanner.
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
 
-    // If true, `columns` will contain the entire schema.
-    bool columns_always_include_everything = 4;
+  // If true, `columns` will contain the entire schema.
+  bool columns_always_include_everything = 4;
 
-    // If true, `columns` always includes `chunk_id`,
-    bool columns_always_include_chunk_ids = 5;
+  // If true, `columns` always includes `chunk_id`,
+  bool columns_always_include_chunk_ids = 5;
 
-    // If true, `columns` always includes `byte_offset` and `byte_size`.
-    bool columns_always_include_byte_offsets = 6;
+  // If true, `columns` always includes `byte_offset` and `byte_size`.
+  bool columns_always_include_byte_offsets = 6;
 
-    // If true, `columns` always includes `entity_path`.
-    bool columns_always_include_entity_paths = 7;
+  // If true, `columns` always includes `entity_path`.
+  bool columns_always_include_entity_paths = 7;
 
-    // If true, `columns` always includes all static component-level indexes.
-    bool columns_always_include_static_indexes = 8;
+  // If true, `columns` always includes all static component-level indexes.
+  bool columns_always_include_static_indexes = 8;
 
-    // If true, `columns` always includes all temporal chunk-level indexes.
-    bool columns_always_include_global_indexes = 9;
+  // If true, `columns` always includes all temporal chunk-level indexes.
+  bool columns_always_include_global_indexes = 9;
 
-    // If true, `columns` always includes all component-level indexes.
-    bool columns_always_include_component_indexes = 10;
+  // If true, `columns` always includes all component-level indexes.
+  bool columns_always_include_component_indexes = 10;
 
-    // If specified, will perform a latest-at query with the given parameters.
-    //
-    // Incompatible with `range`.
-    QueryManifestLatestAtRelevantChunks latest_at = 11;
+  // If specified, will perform a latest-at query with the given parameters.
+  //
+  // Incompatible with `range`.
+  QueryManifestLatestAtRelevantChunks latest_at = 11;
 
-    // If specified, will perform a range query with the given parameters.
-    //
-    // Incompatible with `latest_at`.
-    QueryManifestRangeRelevantChunks range = 12;
+  // If specified, will perform a range query with the given parameters.
+  //
+  // Incompatible with `latest_at`.
+  QueryManifestRangeRelevantChunks range = 12;
 }
 
 message QueryPartitionResponse {
-    rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message QueryManifestLatestAtRelevantChunks {
-    // Which entity paths are we interested in?
-    repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
+  // Which entity paths are we interested in?
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
-    // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  // Which index column should we perform the query on? E.g. `log_time`.
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
 
-    // What index value are we looking for?
-    int64 at = 3;
+  // What index value are we looking for?
+  int64 at = 3;
 
-    // Which components are we interested in?
-    //
-    // If left unspecified, all existing components are considered of interest.
-    //
-    // This will perform a basic fuzzy match on the available columns' descriptors.
-    // The fuzzy logic is a simple case-sensitive `contains()` query.
-    // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 4;
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLine`, etc.
+  repeated string fuzzy_descriptors = 4;
 }
 
 message QueryManifestRangeRelevantChunks {
-    // Which entity paths are we interested in?
-    repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
+  // Which entity paths are we interested in?
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
-    // Which index column should we perform the query on? E.g. `log_time`.
-    rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  // Which index column should we perform the query on? E.g. `log_time`.
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
 
-    // What index range are we looking for?
-    rerun.common.v1alpha1.TimeRange index_range = 3;
+  // What index range are we looking for?
+  rerun.common.v1alpha1.TimeRange index_range = 3;
 
-    // Which components are we interested in?
-    //
-    // If left unspecified, all existing components are considered of interest.
-    //
-    // This will perform a basic fuzzy match on the available columns' descriptors.
-    // The fuzzy logic is a simple case-sensitive `contains()` query.
-    // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    // `SeriesLine`, etc.
-    repeated string fuzzy_descriptors = 4;
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLine`, etc.
+  repeated string fuzzy_descriptors = 4;
 }
 
 message GetAllChunksRequest {
-    // Partition's Dataset
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Partition's Dataset
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // Partition for which we want to get chunks
-    PartitionId partition_id = 2;
+  // Partition for which we want to get chunks
+  PartitionId partition_id = 2;
 }
 
 message GetAllChunksResponse {
-    // Chunks as arrow RecordBatch
-    rerun.common.v1alpha1.RerunChunk chunk = 1;
+  // Chunks as arrow RecordBatch
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message GetChunksRangeRequest {
-    // Partition's Dataset
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Partition's Dataset
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // Partition for which we want to get chunks
-    PartitionId partition_id = 2;
+  // Partition for which we want to get chunks
+  PartitionId partition_id = 2;
 
-    // Timeline for which we specify the time range
-    rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
-    // Time range for which we want to fetch the chunks
-    rerun.common.v1alpha1.TimeRange time_range = 4;
+  // Timeline for which we specify the time range
+  rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
+  // Time range for which we want to fetch the chunks
+  rerun.common.v1alpha1.TimeRange time_range = 4;
 }
 
 message GetChunksRangeResponse {
-    rerun.common.v1alpha1.RerunChunk chunk = 1;
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message CreateIndexRequest {
-    // Dataset for which we want to create index
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset for which we want to create index
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 
-    // what kind of index do we want to create and what are
-    // its index specific properties
-    IndexProperties properties = 2;
-    // Component / column we want to index
-    IndexColumn column = 3;
-    // What is the filter index i.e. timeline for which we
-    // will query the timepoints
-    // TODO(zehiko) this might go away and we might just index
-    // across all the timelines
-    rerun.common.v1alpha1.IndexColumnSelector time_index = 4;
+  // what kind of index do we want to create and what are
+  // its index specific properties
+  IndexProperties properties = 2;
+  // Component / column we want to index
+  IndexColumn column = 3;
+  // What is the filter index i.e. timeline for which we
+  // will query the timepoints
+  // TODO(zehiko) this might go away and we might just index
+  // across all the timelines
+  rerun.common.v1alpha1.IndexColumnSelector time_index = 4;
 }
 
 // used to define which column we want to index
 message IndexColumn {
-    // The path of the entity.
-    rerun.common.v1alpha1.EntityPath entity_path = 1;
-    // Optional name of the `Archetype` associated with this data.
-    optional string archetype_name = 2;
-    // Optional name of the field within `Archetype` associated with this data.
-    optional string archetype_field_name = 3;
-    // Semantic name associated with this data.
-    string component_name = 4;
+  // The path of the entity.
+  rerun.common.v1alpha1.EntityPath entity_path = 1;
+  // Optional name of the `Archetype` associated with this data.
+  optional string archetype_name = 2;
+  // Optional name of the field within `Archetype` associated with this data.
+  optional string archetype_field_name = 3;
+  // Semantic name associated with this data.
+  string component_name = 4;
 }
 
 message IndexProperties {
-    oneof props {
-        InvertedIndex inverted = 1;
-        VectorIvfPqIndex vector = 2;
-        BTreeIndex btree = 3;
-    }
+  oneof props {
+    InvertedIndex inverted = 1;
+    VectorIvfPqIndex vector = 2;
+    BTreeIndex btree = 3;
+  }
 }
 
 message InvertedIndex {
-    bool store_position = 1;
-    string base_tokenizer = 2;
-    // TODO(zehiko) add other properties as needed
+  bool store_position = 1;
+  string base_tokenizer = 2;
+  // TODO(zehiko) add other properties as needed
 }
 
 message VectorIvfPqIndex {
-    uint32 num_partitions = 1;
-    uint32 num_sub_vectors = 2;
-    VectorDistanceMetric distance_metrics = 3;
+  uint32 num_partitions = 1;
+  uint32 num_sub_vectors = 2;
+  VectorDistanceMetric distance_metrics = 3;
 }
 
 enum VectorDistanceMetric {
-    VECTOR_DISTANCE_METRIC_UNSPECIFIED = 0;
-    VECTOR_DISTANCE_METRIC_L2 = 1;
-    VECTOR_DISTANCE_METRIC_COSINE = 2;
-    VECTOR_DISTANCE_METRIC_DOT = 3;
-    VECTOR_DISTANCE_METRIC_HAMMING = 4;
+  VECTOR_DISTANCE_METRIC_UNSPECIFIED = 0;
+  VECTOR_DISTANCE_METRIC_L2 = 1;
+  VECTOR_DISTANCE_METRIC_COSINE = 2;
+  VECTOR_DISTANCE_METRIC_DOT = 3;
+  VECTOR_DISTANCE_METRIC_HAMMING = 4;
 }
 
 message BTreeIndex {
-    // TODO(zehiko) add properties as needed
+  // TODO(zehiko) add properties as needed
 }
 
 message CreateIndexResponse {
-    uint64 indexed_rows = 1;
+  uint64 indexed_rows = 1;
 }
 
 message ListIndexesRequest {
-    // Dataset for which we want to list indexes
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Dataset for which we want to list indexes
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
 }
 
 message ListIndexesResponse {
-    // Indexes metadata as arrow RecordBatch
-    rerun.common.v1alpha1.DataframePart data = 1;
-    // Scan parameters
-    rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+  // Indexes metadata as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
 message ReIndexRequest {
-    // Dataset for which we want to reindex
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
-    // which column do we want to reindex
-    IndexColumn column = 2;
+  // Dataset for which we want to reindex
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // which column do we want to reindex
+  IndexColumn column = 2;
 }
 
 message ReIndexResponse {}
 
 message SearchIndexRequest {
-    // Dataset for which we want to search index
-    rerun.common.v1alpha1.DatasetEntry entry = 1;
-    // Index column that is queried
-    IndexColumn column = 2;
-    // Query data - type of data is index specific. Caller must ensure
-    // to provide the right type. For vector search this should
-    // be a vector of appropriate size, for inverted index this should be a string.
-    // Query data is represented as a unit (single row) RecordBatch with 1 column.
-    rerun.common.v1alpha1.DataframePart query = 3;
-    // Index type specific properties
-    IndexQueryProperties properties = 4;
-    // Scan parameters
-    rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+  // Dataset for which we want to search index
+  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  // Index column that is queried
+  IndexColumn column = 2;
+  // Query data - type of data is index specific. Caller must ensure
+  // to provide the right type. For vector search this should
+  // be a vector of appropriate size, for inverted index this should be a string.
+  // Query data is represented as a unit (single row) RecordBatch with 1 column.
+  rerun.common.v1alpha1.DataframePart query = 3;
+  // Index type specific properties
+  IndexQueryProperties properties = 4;
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 }
 
 message SearchIndexResponse {
-    // Chunks as arrow RecordBatch
-    rerun.common.v1alpha1.DataframePart data = 1;
+  // Chunks as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message IndexQueryProperties {
-    // specific index query properties based on the index type
-    oneof props {
-        InvertedIndexQuery inverted = 1;
-        VectorIndexQuery vector = 2;
-        BTreeIndexQuery btree = 3;
-    }
+  // specific index query properties based on the index type
+  oneof props {
+    InvertedIndexQuery inverted = 1;
+    VectorIndexQuery vector = 2;
+    BTreeIndexQuery btree = 3;
+  }
 }
 
 message InvertedIndexQuery {
-    // TODO(zehiko) add properties as needed
+  // TODO(zehiko) add properties as needed
 }
 
 message VectorIndexQuery {
-    uint32 top_k = 1;
+  uint32 top_k = 1;
 }
 
 message BTreeIndexQuery {
-    // TODO(zehiko) add properties as needed
+  // TODO(zehiko) add properties as needed
 }

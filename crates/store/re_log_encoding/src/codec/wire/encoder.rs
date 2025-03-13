@@ -1,5 +1,4 @@
-use re_protos::common::v1alpha1::RerunChunk;
-use re_protos::remote_store::v1alpha1::DataframePart;
+use re_protos::common::v1alpha1::{DataframePart, RerunChunk};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 

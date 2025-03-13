@@ -9,7 +9,7 @@ mod tests {
     };
     use re_chunk::{Chunk, RowId};
     use re_log_types::{example_components::MyPoint, Timeline};
-    use re_protos::{common::v1alpha1::EncoderVersion, remote_store::v1alpha1::DataframePart};
+    use re_protos::{common::v1alpha1::DataframePart, common::v1alpha1::EncoderVersion};
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
