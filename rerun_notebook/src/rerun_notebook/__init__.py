@@ -55,19 +55,42 @@ else:
 # CALLBACK DEFINITION
 # If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
 class ViewerCallbacks:
+    """
+    Base class for Viewer callback definitions.
+
+    You should inherit from this class, override the callback methods you need,
+    and then pass an instance to `Viewer.register_callbacks`.
+    """
+
     def on_selection_change(self, selection: list[SelectionItem]) -> None:
+        """
+        Fired when the selection changes.
+        """
         pass
 
     def on_timeline_change(self, timeline: str, time: float) -> None:
+        """
+        Fired when a different timeline is selected.
+        """
         pass
 
     def on_time_update(self, time: float) -> None:
+        """
+        Fired when the timepoint changes.
+        """
         pass
 
 
 # SELECTION ITEM DEFINITION
 @dataclass
 class EntitySelection:
+    """
+    Selected a single entity.
+
+    Examples:
+    * A full point cloud.
+    * A mesh.
+    """
     @property
     def kind(self) -> Literal["entity"]:
         return "entity"
@@ -77,6 +100,12 @@ class EntitySelection:
 
 @dataclass
 class InstanceSelection:
+    """
+    Selected a single instance of an entity.
+
+    Examples:
+    * A single point in a point cloud.
+    """
     @property
     def kind(self) -> Literal["instance"]:
         return "instance"
@@ -87,6 +116,7 @@ class InstanceSelection:
 
 @dataclass
 class ViewSelection:
+    """Selected a view."""
     @property
     def kind(self) -> Literal["view"]:
         return "view"
@@ -96,6 +126,7 @@ class ViewSelection:
 
 @dataclass
 class ContainerSelection:
+    """Selected a container."""
     @property
     def kind(self) -> Literal["container"]:
         return "container"
@@ -104,6 +135,7 @@ class ContainerSelection:
 
 
 SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
+"""A single item in a selection."""
 
 
 # SELECTION ITEM DEFINITION
@@ -241,5 +273,6 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
         self._recording_id = recording_id
 
     def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        """Register a set of callbacks with this instance of the Viewer."""
         # TODO(jan): maybe allow unregister by making this a map instead
         self._callbacks.append(callbacks)
