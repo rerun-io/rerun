@@ -462,11 +462,26 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DatasetId {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<Tuid>,
+}
+impl ::prost::Name for DatasetId {
+    const NAME: &'static str = "DatasetId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DatasetId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DatasetId".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatasetEntry {
     /// Unique Dataset identifier
     #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<Tuid>,
+    pub dataset_id: ::core::option::Option<DatasetId>,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, tag = "2")]
     pub dataset_url: ::prost::alloc::string::String,

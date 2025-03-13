@@ -122,7 +122,7 @@ impl ::prost::Name for ListPartitionsRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListPartitionsResponse {
-    /// Partition metadata as arrow RecordBatch
+    /// Partitions metadata as arrow RecordBatch
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
@@ -165,7 +165,7 @@ impl ::prost::Name for CreateManifestsResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryPartitionManifestRequest {
+pub struct QueryPartitionRequest {
     /// Dataset for which we want to query manifest
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
@@ -207,29 +207,29 @@ pub struct QueryPartitionManifestRequest {
     #[prost(message, optional, tag = "12")]
     pub range: ::core::option::Option<QueryManifestRangeRelevantChunks>,
 }
-impl ::prost::Name for QueryPartitionManifestRequest {
-    const NAME: &'static str = "QueryPartitionManifestRequest";
+impl ::prost::Name for QueryPartitionRequest {
+    const NAME: &'static str = "QueryPartitionRequest";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.QueryPartitionManifestRequest".into()
+        "rerun.manifest_registry.v1alpha1.QueryPartitionRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.QueryPartitionManifestRequest".into()
+        "/rerun.manifest_registry.v1alpha1.QueryPartitionRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryPartitionManifestResponse {
+pub struct QueryPartitionResponse {
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for QueryPartitionManifestResponse {
-    const NAME: &'static str = "QueryPartitionManifestResponse";
+impl ::prost::Name for QueryPartitionResponse {
+    const NAME: &'static str = "QueryPartitionResponse";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.QueryPartitionManifestResponse".into()
+        "rerun.manifest_registry.v1alpha1.QueryPartitionResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.QueryPartitionManifestResponse".into()
+        "/rerun.manifest_registry.v1alpha1.QueryPartitionResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -299,7 +299,7 @@ impl ::prost::Name for QueryManifestRangeRelevantChunks {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunksRequest {
+pub struct GetAllChunksRequest {
     /// Partition's Dataset
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
@@ -307,30 +307,30 @@ pub struct GetChunksRequest {
     #[prost(message, optional, tag = "2")]
     pub partition_id: ::core::option::Option<PartitionId>,
 }
-impl ::prost::Name for GetChunksRequest {
-    const NAME: &'static str = "GetChunksRequest";
+impl ::prost::Name for GetAllChunksRequest {
+    const NAME: &'static str = "GetAllChunksRequest";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.GetChunksRequest".into()
+        "rerun.manifest_registry.v1alpha1.GetAllChunksRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.GetChunksRequest".into()
+        "/rerun.manifest_registry.v1alpha1.GetAllChunksRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetChunksResponse {
+pub struct GetAllChunksResponse {
     /// Chunks as arrow RecordBatch
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
 }
-impl ::prost::Name for GetChunksResponse {
-    const NAME: &'static str = "GetChunksResponse";
+impl ::prost::Name for GetAllChunksResponse {
+    const NAME: &'static str = "GetAllChunksResponse";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.GetChunksResponse".into()
+        "rerun.manifest_registry.v1alpha1.GetAllChunksResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.GetChunksResponse".into()
+        "/rerun.manifest_registry.v1alpha1.GetAllChunksResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -518,6 +518,41 @@ impl ::prost::Name for CreateIndexResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.manifest_registry.v1alpha1.CreateIndexResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListIndexesRequest {
+    /// Dataset for which we want to list indexes
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+}
+impl ::prost::Name for ListIndexesRequest {
+    const NAME: &'static str = "ListIndexesRequest";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.ListIndexesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.ListIndexesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListIndexesResponse {
+    /// Indexes metadata as arrow RecordBatch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Scan parameters
+    #[prost(message, optional, tag = "2")]
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+}
+impl ::prost::Name for ListIndexesResponse {
+    const NAME: &'static str = "ListIndexesResponse";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.ListIndexesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.ListIndexesResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -888,12 +923,12 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Query Dataset manifest
-        pub async fn query_partition_manifest(
+        /// Query specific partition manifest
+        pub async fn query_partition(
             &mut self,
-            request: impl tonic::IntoRequest<super::QueryPartitionManifestRequest>,
+            request: impl tonic::IntoRequest<super::QueryPartitionRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::QueryPartitionManifestResponse>>,
+            tonic::Response<tonic::codec::Streaming<super::QueryPartitionResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -901,21 +936,21 @@ pub mod manifest_registry_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/QueryPartitionManifest",
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/QueryPartition",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "QueryPartitionManifest",
+                "QueryPartition",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
         /// Get all chunks for a single partition
-        pub async fn get_chunks(
+        pub async fn get_all_chunks(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetChunksRequest>,
+            request: impl tonic::IntoRequest<super::GetAllChunksRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::GetChunksResponse>>,
+            tonic::Response<tonic::codec::Streaming<super::GetAllChunksResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -923,12 +958,12 @@ pub mod manifest_registry_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetChunks",
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetAllChunks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "GetChunks",
+                "GetAllChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -975,6 +1010,26 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// List indexes for the Dataset
+        pub async fn list_indexes(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListIndexes",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
+                "ListIndexes",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Reindex the Dataset for the given index
         pub async fn re_index(
             &mut self,
@@ -1000,7 +1055,7 @@ pub mod manifest_registry_service_client {
         /// - 'timepoint' -  represents the points in time where index query matches.
         /// What time points are matched depends on the type of index that is queried.
         /// For example: for vector search it might be timepoints where top-K matches
-        /// are found within *each* resource in the indexed entry. For inverted index
+        /// are found within *each* partition in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
         /// - 'data' - the data that is returned for the matched timepoints
         pub async fn search_index(
@@ -1059,26 +1114,26 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::CreateManifestsRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateManifestsResponse>, tonic::Status>;
-        /// Server streaming response type for the QueryPartitionManifest method.
-        type QueryPartitionManifestStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::QueryPartitionManifestResponse, tonic::Status>,
+        /// Server streaming response type for the QueryPartition method.
+        type QueryPartitionStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::QueryPartitionResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Query Dataset manifest
-        async fn query_partition_manifest(
+        /// Query specific partition manifest
+        async fn query_partition(
             &self,
-            request: tonic::Request<super::QueryPartitionManifestRequest>,
-        ) -> std::result::Result<tonic::Response<Self::QueryPartitionManifestStream>, tonic::Status>;
-        /// Server streaming response type for the GetChunks method.
-        type GetChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::GetChunksResponse, tonic::Status>,
+            request: tonic::Request<super::QueryPartitionRequest>,
+        ) -> std::result::Result<tonic::Response<Self::QueryPartitionStream>, tonic::Status>;
+        /// Server streaming response type for the GetAllChunks method.
+        type GetAllChunksStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetAllChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Get all chunks for a single partition
-        async fn get_chunks(
+        async fn get_all_chunks(
             &self,
-            request: tonic::Request<super::GetChunksRequest>,
-        ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+            request: tonic::Request<super::GetAllChunksRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetAllChunksStream>, tonic::Status>;
         /// Server streaming response type for the GetChunksRange method.
         type GetChunksRangeStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::GetChunksRangeResponse, tonic::Status>,
@@ -1095,6 +1150,11 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
+        /// List indexes for the Dataset
+        async fn list_indexes(
+            &self,
+            request: tonic::Request<super::ListIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>;
         /// Reindex the Dataset for the given index
         async fn re_index(
             &self,
@@ -1111,7 +1171,7 @@ pub mod manifest_registry_service_server {
         /// - 'timepoint' -  represents the points in time where index query matches.
         /// What time points are matched depends on the type of index that is queried.
         /// For example: for vector search it might be timepoints where top-K matches
-        /// are found within *each* resource in the indexed entry. For inverted index
+        /// are found within *each* partition in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
         /// - 'data' - the data that is returned for the matched timepoints
         async fn search_index(
@@ -1390,29 +1450,26 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/QueryPartitionManifest" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/QueryPartition" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryPartitionManifestSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
+                    struct QueryPartitionSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::QueryPartitionManifestRequest,
-                    > for QueryPartitionManifestSvc<T> {
-                        type Response = super::QueryPartitionManifestResponse;
-                        type ResponseStream = T::QueryPartitionManifestStream;
+                    > tonic::server::ServerStreamingService<super::QueryPartitionRequest>
+                    for QueryPartitionSvc<T> {
+                        type Response = super::QueryPartitionResponse;
+                        type ResponseStream = T::QueryPartitionStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::QueryPartitionManifestRequest>,
+                            request: tonic::Request<super::QueryPartitionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::query_partition_manifest(
+                                <T as ManifestRegistryService>::query_partition(
                                         &inner,
                                         request,
                                     )
@@ -1427,7 +1484,7 @@ pub mod manifest_registry_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = QueryPartitionManifestSvc(inner);
+                        let method = QueryPartitionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1443,26 +1500,29 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetChunks" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetAllChunks" => {
                     #[allow(non_camel_case_types)]
-                    struct GetChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    struct GetAllChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::GetChunksRequest>
-                    for GetChunksSvc<T> {
-                        type Response = super::GetChunksResponse;
-                        type ResponseStream = T::GetChunksStream;
+                    > tonic::server::ServerStreamingService<super::GetAllChunksRequest>
+                    for GetAllChunksSvc<T> {
+                        type Response = super::GetAllChunksResponse;
+                        type ResponseStream = T::GetAllChunksStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetChunksRequest>,
+                            request: tonic::Request<super::GetAllChunksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::get_chunks(&inner, request)
+                                <T as ManifestRegistryService>::get_all_chunks(
+                                        &inner,
+                                        request,
+                                    )
                                     .await
                             };
                             Box::pin(fut)
@@ -1474,7 +1534,7 @@ pub mod manifest_registry_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = GetChunksSvc(inner);
+                        let method = GetAllChunksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1574,6 +1634,55 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = CreateIndexSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListIndexes" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListIndexesSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<
+                        T: ManifestRegistryService,
+                    > tonic::server::UnaryService<super::ListIndexesRequest>
+                    for ListIndexesSvc<T> {
+                        type Response = super::ListIndexesResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListIndexesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ManifestRegistryService>::list_indexes(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListIndexesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
