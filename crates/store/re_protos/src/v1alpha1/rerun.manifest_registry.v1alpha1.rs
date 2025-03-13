@@ -40,7 +40,7 @@ impl ::prost::Name for PartitionId {
 pub struct RegisterPartitionsRequest {
     /// Dataset entry
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partitions to add
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<Partition>,
@@ -74,7 +74,7 @@ impl ::prost::Name for RegisterPartitionsResponse {
 pub struct UnregisterPartitionsRequest {
     /// Dataset from which we want to remove partitions
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partitions to remove
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<PartitionId>,
@@ -105,7 +105,7 @@ impl ::prost::Name for UnregisterPartitionsResponse {
 pub struct ListPartitionsRequest {
     /// Dataset for which we want to list partitions
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Scan parameters
     #[prost(message, optional, tag = "2")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
@@ -140,7 +140,7 @@ impl ::prost::Name for ListPartitionsResponse {
 pub struct CreateManifestsRequest {
     /// Dataset for which we want to create manifests
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
 }
 impl ::prost::Name for CreateManifestsRequest {
     const NAME: &'static str = "CreateManifestsRequest";
@@ -168,7 +168,7 @@ impl ::prost::Name for CreateManifestsResponse {
 pub struct QueryPartitionRequest {
     /// Dataset for which we want to query manifest
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// What partition are we querying the manifest for?
     #[prost(message, optional, tag = "2")]
     pub partition_id: ::core::option::Option<PartitionId>,
@@ -302,7 +302,7 @@ impl ::prost::Name for QueryManifestRangeRelevantChunks {
 pub struct GetAllChunksRequest {
     /// Partition's Dataset
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partition for which we want to get chunks
     #[prost(message, optional, tag = "2")]
     pub partition_id: ::core::option::Option<PartitionId>,
@@ -337,7 +337,7 @@ impl ::prost::Name for GetAllChunksResponse {
 pub struct GetChunksRangeRequest {
     /// Partition's Dataset
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partition for which we want to get chunks
     #[prost(message, optional, tag = "2")]
     pub partition_id: ::core::option::Option<PartitionId>,
@@ -377,7 +377,7 @@ impl ::prost::Name for GetChunksRangeResponse {
 pub struct CreateIndexRequest {
     /// Dataset for which we want to create index
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// what kind of index do we want to create and what are
     /// its index specific properties
     #[prost(message, optional, tag = "2")]
@@ -524,7 +524,7 @@ impl ::prost::Name for CreateIndexResponse {
 pub struct ListIndexesRequest {
     /// Dataset for which we want to list indexes
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
 }
 impl ::prost::Name for ListIndexesRequest {
     const NAME: &'static str = "ListIndexesRequest";
@@ -559,7 +559,7 @@ impl ::prost::Name for ListIndexesResponse {
 pub struct ReIndexRequest {
     /// Dataset for which we want to reindex
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// which column do we want to reindex
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
@@ -590,7 +590,7 @@ impl ::prost::Name for ReIndexResponse {
 pub struct SearchIndexRequest {
     /// Dataset for which we want to search index
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetEntry>,
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,

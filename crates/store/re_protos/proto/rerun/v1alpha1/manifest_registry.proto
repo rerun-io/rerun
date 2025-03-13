@@ -70,7 +70,7 @@ enum PartitionType {
 
 message RegisterPartitionsRequest {
   // Dataset entry
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partitions to add
   repeated Partition partitions = 2;
@@ -82,7 +82,7 @@ message RegisterPartitionsResponse {
 
 message UnregisterPartitionsRequest {
   // Dataset from which we want to remove partitions
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partitions to remove
   repeated PartitionId partition_ids = 2;
@@ -92,7 +92,7 @@ message UnregisterPartitionsResponse {}
 
 message ListPartitionsRequest {
   // Dataset for which we want to list partitions
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
@@ -105,14 +105,14 @@ message ListPartitionsResponse {
 
 message CreateManifestsRequest {
   // Dataset for which we want to create manifests
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 }
 
 message CreateManifestsResponse {}
 
 message QueryPartitionRequest {
   // Dataset for which we want to query manifest
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // What partition are we querying the manifest for?
   PartitionId partition_id = 2;
@@ -202,7 +202,7 @@ message QueryManifestRangeRelevantChunks {
 
 message GetAllChunksRequest {
   // Partition's Dataset
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partition for which we want to get chunks
   PartitionId partition_id = 2;
@@ -215,7 +215,7 @@ message GetAllChunksResponse {
 
 message GetChunksRangeRequest {
   // Partition's Dataset
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partition for which we want to get chunks
   PartitionId partition_id = 2;
@@ -232,7 +232,7 @@ message GetChunksRangeResponse {
 
 message CreateIndexRequest {
   // Dataset for which we want to create index
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // what kind of index do we want to create and what are
   // its index specific properties
@@ -296,7 +296,7 @@ message CreateIndexResponse {
 
 message ListIndexesRequest {
   // Dataset for which we want to list indexes
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 }
 
 message ListIndexesResponse {
@@ -308,7 +308,7 @@ message ListIndexesResponse {
 
 message ReIndexRequest {
   // Dataset for which we want to reindex
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
   // which column do we want to reindex
   IndexColumn column = 2;
 }
@@ -317,7 +317,7 @@ message ReIndexResponse {}
 
 message SearchIndexRequest {
   // Dataset for which we want to search index
-  rerun.common.v1alpha1.DatasetEntry entry = 1;
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
   // Index column that is queried
   IndexColumn column = 2;
   // Query data - type of data is index specific. Caller must ensure
