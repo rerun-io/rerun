@@ -52,7 +52,6 @@ else:
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
-# CALLBACK DEFINITION
 # If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
 class ViewerCallbacks:
     """
@@ -81,7 +80,6 @@ class ViewerCallbacks:
         pass
 
 
-# SELECTION ITEM DEFINITION
 @dataclass
 class EntitySelection:
     """
@@ -138,7 +136,6 @@ SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerS
 """A single item in a selection."""
 
 
-# SELECTION ITEM DEFINITION
 def _selection_item_from_json(json: Any) -> SelectionItem:
     if json["type"] == "entity":
         return EntitySelection(entity_path=json["entity_path"])
@@ -207,7 +204,6 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
             elif not isinstance(content, str) and "event" in content:
-                # CALLBACK DEFINITION
                 # Event names here come from `widget.ts`.
                 if content["event"] == "selectionchange":
                     selection = [_selection_item_from_json(item) for item in content["payload"]]

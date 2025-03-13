@@ -112,7 +112,6 @@ export interface AppOptions extends WebViewerOptions {
   enable_history?: boolean;
 }
 
-// SELECTION ITEM DEFINITION
 /** Selected an (entire) entity. */
 export type EntityItem = { type: "entity"; entity_path: string };
 
@@ -132,7 +131,6 @@ export type ContainerItem = { type: "container"; container_id: string };
 /** A single item in a selection. */
 export type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
 
-// CALLBACK DEFINITION
 interface Callbacks {
   on_selectionchange: (selection: SelectionItem[]) => void;
   on_timelinechange: (timeline: string, time: number) => void;
@@ -150,7 +148,6 @@ interface WebViewerEvents {
   fullscreen: boolean;
   ready: void;
 
-  // CALLBACK DEFINITION
   selectionchange: [SelectionItem[]];
   timelinechange: [timeline_name: string, time: number];
   timeupdate: number;
@@ -236,7 +233,6 @@ export class WebViewer {
       }
       : undefined;
 
-    // CALLBACK DEFINITION
     const callbacks = {
       on_selectionchange: (items: SelectionItem[]) => {
         this.#dispatch_event("selectionchange", items);

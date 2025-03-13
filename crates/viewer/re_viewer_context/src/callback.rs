@@ -4,15 +4,6 @@ use crate::ItemContext;
 use re_log_types::{TimeReal, Timeline};
 use std::rc::Rc;
 
-// ======================================================================
-// When changing or adding callbacks, grep for the following term:
-//   CALLBACK DEFINITION
-//
-// When changing or adding selection items, grep for the following term:
-//   SELECTION ITEM DEFINITION
-// ======================================================================
-
-// SELECTION ITEM DEFINITION
 /// A single item in a selection.
 #[derive(Debug, serde::Serialize)]
 #[serde(tag = "type")]
@@ -71,7 +62,6 @@ impl CallbackSelectionItem {
     }
 }
 
-// CALLBACK DEFINITION
 #[derive(Clone)]
 pub struct Callbacks {
     /// Fired when the selection changes.

@@ -50,7 +50,6 @@ class ViewerWidget {
     );
     model.on("change:_recording_id", this.on_set_recording_id);
 
-    // CALLBACK DEFINITION
     // The entire object passed to `model.send` must be JSON-serializable.
     // The shape is:
     //   {

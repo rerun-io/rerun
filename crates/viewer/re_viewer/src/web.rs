@@ -585,7 +585,6 @@ pub struct AppOptions {
     persist: Option<bool>,
 }
 
-// CALLBACK DEFINITION
 // Keep in sync with `index.ts`.
 #[derive(Clone, Deserialize)]
 pub struct Callbacks {
@@ -684,7 +683,6 @@ fn create_app(
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
 
-        // CALLBACK DEFINITION
         callbacks: callbacks.clone().map(|opts| re_viewer_context::Callbacks {
             on_selection_change: Rc::new(move |selection| {
                 // Express the collection as a flat list of items.
