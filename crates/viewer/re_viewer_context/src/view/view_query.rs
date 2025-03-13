@@ -36,8 +36,8 @@ impl OverridePath {
 pub struct PropertyOverrides {
     /// An alternative store and entity path to use for the specified component.
     ///
-    /// Note that this does *not* take into account any special components that tree propagate like
-    /// `Visible`, `Interactive` or transform components.
+    /// Note that this does *not* take into account tree propagation of any special components
+    /// like `Visible`, `Interactive` or transform components.
     // TODO(jleibs): Consider something like `tinymap` for this.
     // TODO(andreas): Should be a `Cow` to not do as many clones.
     pub component_overrides: IntMap<ComponentName, OverridePath>,
