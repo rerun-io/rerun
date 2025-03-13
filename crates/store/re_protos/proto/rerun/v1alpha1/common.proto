@@ -210,9 +210,13 @@ message Tuid {
     fixed64 inc = 2;
 }
 
+message DatasetId {
+  Tuid id = 1;
+}
+
 message DatasetEntry {
     // Unique Dataset identifier
-    Tuid dataset_id = 1;
+    DatasetId dataset_id = 1;
 
     // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     string dataset_url = 2;

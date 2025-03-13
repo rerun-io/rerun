@@ -22,7 +22,7 @@ service ManifestRegistryService {
         returns (stream QueryPartitionManifestResponse) {}
 
     // Get all chunks for a single partition
-    rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
+    rpc GetAllChunks(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
 
     // Get partition chunks that contain data for the specified time range
     rpc GetChunksRange(GetChunksRangeRequest) returns (stream GetChunksRangeResponse) {}
@@ -30,6 +30,9 @@ service ManifestRegistryService {
     // Create index for the Dataset. All the partitions and data matching the given
     // index column will be indexed
     rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+
+    // List indexes for the Dataset
+    rpc ListIndexes(ListIndedesRequest) returns (ListIndexesResponse) {}
 
     // Reindex the Dataset for the given index
     rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
@@ -97,7 +100,7 @@ message ListPartitionsRequest {
 }
 
 message ListPartitionsResponse {
-    // Partition metadata as arrow RecordBatch
+    // Partitions metadata as arrow RecordBatch
     rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -198,7 +201,7 @@ message QueryManifestRangeRelevantChunks {
     repeated string fuzzy_descriptors = 4;
 }
 
-message GetChunksRequest {
+message GetAllChunksRequest {
     // Partition's Dataset
     rerun.common.v1alpha1.DatasetEntry entry = 1;
 
@@ -206,9 +209,9 @@ message GetChunksRequest {
     PartitionId partition_id = 2;
 }
 
-message GetChunksResponse {
+message GetAllChunksResponse {
     // Chunks as arrow RecordBatch
-    rerun.common.v1alpha1.DataframePart data = 1;
+    rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message GetChunksRangeRequest {
@@ -290,6 +293,18 @@ message BTreeIndex {
 
 message CreateIndexResponse {
     uint64 indexed_rows = 1;
+}
+
+message ListIndexRequest {
+    // Dataset for which we want to list indexes
+    rerun.common.v1alpha1.DatasetEntry entry = 1;
+}
+
+message ListIndexesResponse {
+    // Indexes metadata as arrow RecordBatch
+    rerun.common.v1alpha1.DataframePart data = 1;
+    // Scan parameters
+    rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
 message ReIndexRequest {
