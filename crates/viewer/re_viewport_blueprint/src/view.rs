@@ -554,7 +554,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashSet::from_iter([MyLabel::name()]),
+                    std::iter::once(MyLabel::name()).collect(),
                 )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: HashSet::default(),
@@ -567,7 +567,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashSet::from_iter([Visible::name()]),
+                    std::iter::once(Visible::name()).collect(),
                 )]),
                 expected_hidden: [
                     "parent/skipped/grandchild".into(),
@@ -592,10 +592,10 @@ mod tests {
                     ),
                 ],
                 expected_overrides: HashMap::from([
-                    ("parent".into(), [Visible::name()].into_iter().collect()),
+                    ("parent".into(), std::iter::once(Visible::name()).collect()),
                     (
                         "parent/skipped".into(),
-                        HashSet::from_iter([Visible::name()]),
+                        std::iter::once(Visible::name()).collect(),
                     ),
                 ]),
                 expected_hidden: ["parent".into(), "parent/child".into()]
@@ -636,10 +636,13 @@ mod tests {
                     ),
                 ],
                 expected_overrides: HashMap::from([
-                    ("parent".into(), [Interactive::name()].into_iter().collect()),
+                    (
+                        "parent".into(),
+                        std::iter::once(Interactive::name()).collect(),
+                    ),
                     (
                         "parent/skipped".into(),
-                        HashSet::from_iter([Interactive::name()]),
+                        std::iter::once(Interactive::name()).collect(),
                     ),
                 ]),
                 expected_hidden: HashSet::default(),
@@ -692,7 +695,7 @@ mod tests {
                     .cloned()
                     .unwrap_or_default();
 
-                for (component_name, override_path) in component_overrides.iter() {
+                for (component_name, override_path) in component_overrides {
                     assert_eq!(
                         override_path.store_kind,
                         StoreKind::Blueprint,
