@@ -18,7 +18,7 @@ use std::rc::Rc;
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum SelectionItem {
-    /// Selected a single entity.
+    /// Selected an (entire) entity.
     ///
     /// Examples:
     /// * A full point cloud.

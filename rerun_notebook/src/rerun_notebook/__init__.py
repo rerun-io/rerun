@@ -85,7 +85,7 @@ class ViewerCallbacks:
 @dataclass
 class EntitySelection:
     """
-    Selected a single entity.
+    Selected an (entire) entity.
 
     Examples:
     * A full point cloud.

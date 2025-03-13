@@ -113,7 +113,7 @@ export interface AppOptions extends WebViewerOptions {
 }
 
 // SELECTION ITEM DEFINITION
-/** Selected a single entity. */
+/** Selected an (entire) entity. */
 export type EntityItem = { type: "entity"; entity_path: string };
 
 /** Selected a single instance of an entity. */
