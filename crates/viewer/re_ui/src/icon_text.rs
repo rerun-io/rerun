@@ -1,8 +1,10 @@
-use crate::{icon_text, icons, Icon};
-use egui::{Context, ModifierNames, Modifiers, WidgetText};
 use std::fmt::Debug;
 use std::iter::once;
 use std::{fmt, vec};
+
+use egui::{Context, ModifierNames, Modifiers, WidgetText};
+
+use crate::{icon_text, icons, Icon};
 
 #[derive(Clone)]
 pub enum IconTextItem {
