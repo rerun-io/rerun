@@ -50,11 +50,9 @@ pub mod log_msg {
     }
 }
 
-pub mod manifest {
-    pub mod registry {
-        pub mod v1alpha1 {
-            pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
-        }
+pub mod manifest_registry {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
     }
 }
 
