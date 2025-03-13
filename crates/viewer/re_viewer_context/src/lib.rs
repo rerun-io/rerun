@@ -43,7 +43,7 @@ pub use self::{
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
-    callback::{Callbacks, SelectionItem},
+    callback::{CallbackSelectionItem, Callbacks},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,

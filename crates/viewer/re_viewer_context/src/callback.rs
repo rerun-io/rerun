@@ -17,7 +17,7 @@ use std::rc::Rc;
 #[derive(Debug, serde::Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum SelectionItem {
+pub enum CallbackSelectionItem {
     /// Selected an (entire) entity.
     ///
     /// Examples:
@@ -25,7 +25,7 @@ pub enum SelectionItem {
     /// * A mesh.
     Entity { entity_path: String },
 
-    /// Selected a single instance of an entity.
+    /// Selected an instance within an entity.
     ///
     /// Examples:
     /// * A single point in a point cloud.
@@ -41,7 +41,7 @@ pub enum SelectionItem {
     Container { container_id: String },
 }
 
-impl SelectionItem {
+impl CallbackSelectionItem {
     // TODO(jan): output more things, including parts of context for data results
     //            and other things not currently available here (e.g. mouse pos)
     pub fn new(item: &Item, _context: &Option<ItemContext>) -> Option<Self> {
@@ -75,7 +75,7 @@ impl SelectionItem {
 #[derive(Clone)]
 pub struct Callbacks {
     /// Fired when the selection changes.
-    pub on_selection_change: Rc<dyn Fn(Vec<SelectionItem>)>,
+    pub on_selection_change: Rc<dyn Fn(Vec<CallbackSelectionItem>)>,
 
     /// Fired when a different timeline is selected.
     pub on_timeline_change: Rc<dyn Fn(Timeline, TimeReal)>,
@@ -97,7 +97,7 @@ impl Callbacks {
         (self.on_selection_change)(
             items
                 .iter()
-                .filter_map(|(item, context)| SelectionItem::new(item, context))
+                .filter_map(|(item, context)| CallbackSelectionItem::new(item, context))
                 .collect(),
         );
     }

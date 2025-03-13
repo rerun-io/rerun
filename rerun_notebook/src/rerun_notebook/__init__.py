@@ -101,7 +101,7 @@ class EntitySelection:
 @dataclass
 class InstanceSelection:
     """
-    Selected a single instance of an entity.
+    Selected an instance within an entity.
 
     Examples:
     * A single point in a point cloud.
