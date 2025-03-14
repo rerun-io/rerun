@@ -126,6 +126,8 @@ def main() -> None:
         dir = os.path.join(os.path.dirname(__file__), "all")
         for file in glob.glob(dir + "/**", recursive=True):
             name = os.path.basename(file)
+            if name == "__init__.py":
+                continue
             name, extension = os.path.splitext(name)
             if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs":
                 subdir = os.path.relpath(os.path.dirname(file), dir)
