@@ -1,7 +1,7 @@
 import os
 from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypedDict
 
 import pyarrow as pa
 
@@ -1043,8 +1043,12 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
+class RecordingProperties(TypedDict, total=False):
+    name: Optional[str]
+    started: Optional[int]
+
 def set_properties(
-    properties: dict[str, str],
+    properties: RecordingProperties,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
     """Set the properties of the recording."""
