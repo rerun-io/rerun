@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Optional, TypedDict
 
 import rerun_bindings as bindings
@@ -6,12 +7,7 @@ import rerun_bindings as bindings
 from .recording_stream import RecordingStream
 
 
-class RecordingProperties(TypedDict, total=False):
-    name: Optional[str]
-    started: Optional[int]
-
-
-def set_properties(properties: RecordingProperties, recording: RecordingStream | None = None) -> None:
+def set_properties(properties: bindings.RecordingProperties, recording: RecordingStream | None = None) -> None:
     """
     Set the properties of the recording.
 
@@ -20,7 +16,12 @@ def set_properties(properties: RecordingProperties, recording: RecordingStream |
     Parameters
     ----------
     properties : RecordingProperties
-        The name of the recording.
+        The properties of the recording.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
 
@@ -37,6 +38,11 @@ def set_name(name: str, recording: RecordingStream | None = None) -> None:
     ----------
     name : str
         The name of the recording.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
 

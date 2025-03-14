@@ -289,6 +289,7 @@ mod tests {
             include_indicator_columns: false,
             include_semantically_empty_columns: true,
             include_tombstone_columns: true,
+            include_properties_entity: false,
             filtered_index: Some(IndexColumnSelector {
                 timeline: Some(Timeline {
                     name: "log_time".to_owned(),

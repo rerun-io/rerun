@@ -14,7 +14,6 @@ import numpy as np
 from typing_extensions import deprecated
 
 from rerun import bindings
-from rerun._properties import RecordingProperties
 from rerun.memory import MemoryRecording
 from rerun.time import reset_time
 
@@ -764,7 +763,7 @@ class RecordingStream:
             recording=self,
         )
 
-    def set_properties(self, properties: RecordingProperties) -> None:
+    def set_properties(self, properties: bindings.RecordingProperties) -> None:
         """
         Set the properties of the recording.
 
