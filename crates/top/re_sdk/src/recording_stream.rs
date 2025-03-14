@@ -124,7 +124,7 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<ChunkBatcherConfig>,
 
     // Optional user-defined recording properties.
-    properties: RecordingProperties,
+    properties: Option<RecordingProperties>,
 }
 
 impl RecordingStreamBuilder {
@@ -154,7 +154,9 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
 
-            properties: RecordingProperties::new().with_started(Time::now().nanos_since_epoch()),
+            properties: Some(
+                RecordingProperties::new().with_started(Time::now().nanos_since_epoch()),
+            ),
         }
     }
 
@@ -201,7 +203,11 @@ impl RecordingStreamBuilder {
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_name(mut self, name: impl Into<String>) -> Self {
-        self.properties = self.properties.with_name(name.into());
+        self.properties = if let Some(props) = self.properties.take() {
+            Some(props.with_name(name.into()))
+        } else {
+            Some(RecordingProperties::new().with_name(name.into()))
+        };
         self
     }
 
@@ -209,7 +215,19 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn recording_started(mut self, time: impl Into<Time>) -> Self {
         let started = Timestamp::from(time.into().nanos_since_epoch());
-        self.properties = self.properties.with_started(started);
+
+        self.properties = if let Some(props) = self.properties.take() {
+            Some(props.with_started(started))
+        } else {
+            Some(RecordingProperties::new().with_started(started))
+        };
+        self
+    }
+
+    /// Disables sending the [`RecordingProperties`] chunk.
+    #[inline]
+    pub fn disable_properties(mut self) -> Self {
+        self.properties = None;
         self
     }
 
@@ -615,7 +633,14 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(self) -> (bool, StoreInfo, RecordingProperties, ChunkBatcherConfig) {
+    pub fn into_args(
+        self,
+    ) -> (
+        bool,
+        StoreInfo,
+        Option<RecordingProperties>,
+        ChunkBatcherConfig,
+    ) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -759,7 +784,7 @@ impl Drop for RecordingStream {
 
 struct RecordingStreamInner {
     info: StoreInfo,
-    properties: RecordingProperties,
+    properties: Option<RecordingProperties>,
     tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
@@ -811,7 +836,7 @@ impl Drop for RecordingStreamInner {
 impl RecordingStreamInner {
     fn new(
         info: StoreInfo,
-        properties: RecordingProperties,
+        properties: Option<RecordingProperties>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -850,16 +875,18 @@ impl RecordingStreamInner {
                 })?
         };
 
-        // We pre-populate the batcher with a chunk the contains the recording
-        // properties, so that these get automatically sent to the sink.
+        if let Some(properties) = properties.as_ref() {
+            // We pre-populate the batcher with a chunk the contains the recording
+            // properties, so that these get automatically sent to the sink.
 
-        re_log::debug!(properties = ?properties, "adding recording properties to batcher");
+            re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-        let properties_chunk = Chunk::builder(EntityPath::partition_properties())
-            .with_archetype(RowId::new(), TimePoint::default(), &properties)
-            .build()?;
+            let properties_chunk = Chunk::builder(EntityPath::partition_properties())
+                .with_archetype(RowId::new(), TimePoint::default(), properties)
+                .build()?;
 
-        batcher.push_chunk(properties_chunk);
+            batcher.push_chunk(properties_chunk);
+        }
 
         Ok(Self {
             info,
@@ -920,7 +947,7 @@ impl RecordingStream {
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         info: StoreInfo,
-        properties: RecordingProperties,
+        properties: Option<RecordingProperties>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -2455,9 +2482,12 @@ mod tests {
             _ => panic!("expected ArrowMsg"),
         };
 
-        // 3rd, 4th and 5th messages are all the single-row batched chunks themselves, which were
-        // sent as a result of the implicit flush when swapping the underlying sink from buffered
-        // to in-memory.
+        // 3rd, 4th, 5th, 6th, and 7th messages are all the single-row batched chunks themselves,
+        // which were sent as a result of the implicit flush when swapping the underlying sink
+        // from buffered to in-memory. Note that these messages contain the 2 recording property
+        // chunks.
+        assert_next_row();
+        assert_next_row();
         assert_next_row();
         assert_next_row();
         assert_next_row();
