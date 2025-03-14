@@ -287,6 +287,9 @@ def tests(results: list[Result]) -> None:
     results.append(run_cargo("test", "--all-targets --all-features --no-run"))
     results.append(run_cargo("nextest", "run --all-targets --all-features"))
 
+    if not results[-1].success:
+        print('Looks like the rust tests failed. See the "Upload test results" step for more details.')
+
     # Cargo nextest doesn't support doc tests yet, run those separately.
     results.append(run_cargo("test", "--all-features --doc"))
 
@@ -295,6 +298,9 @@ def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
     results.append(run_cargo("test", "--all-targets --no-run"))
     results.append(run_cargo("nextest", "run --all-targets"))
+
+    if not results[-1].success:
+        print('Looks like the rust tests failed. See the "Upload test results" step for more details.')
 
 
 if __name__ == "__main__":
