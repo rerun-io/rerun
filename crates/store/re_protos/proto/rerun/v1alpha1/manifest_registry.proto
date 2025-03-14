@@ -9,10 +9,10 @@ service ManifestRegistryService {
   rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
 
   // Unregister partitions from the Dataset
-  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (UnregisterPartitionsResponse) {}
+  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (stream UnregisterPartitionsResponse) {}
 
   // List partitions in the Dataset
-  rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {}
+  rpc ListPartitions(ListPartitionsRequest) returns (stream ListPartitionsResponse) {}
 
   // Create manifests for all partitions in the Dataset
   rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
@@ -32,7 +32,7 @@ service ManifestRegistryService {
   rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (CreatePartitionIndexesResponse) {}
 
   // List indexes for the Dataset
-  rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (ListPartitionIndexesResponse) {}
+  rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (stream ListPartitionIndexesResponse) {}
 
   // Do a full text, vector or scalar search. Currently only an Indexed search
   // is supported, user must first call `CreatePartitionIndexes` for the relevant column.
