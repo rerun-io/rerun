@@ -88,7 +88,7 @@ impl BlueprintTree {
                     list_item::CustomContent::new(|ui, _| {
                         let title_response = self
                             .filter_state
-                            .ui(ui, egui::RichText::new("Blueprint").strong());
+                            .section_title_ui(ui, egui::RichText::new("Blueprint").strong());
 
                         if let Some(title_response) = title_response {
                             title_response.on_hover_text(

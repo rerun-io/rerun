@@ -208,14 +208,32 @@ norecursedirs = ".* venv* target* build"
 
 [tool.mypy]
 files = [
+  "docs/snippets",
   "rerun_py/rerun_sdk/rerun",
   "rerun_py/rerun_bindings",
   "rerun_py/tests",
+  "rerun_notebook/src/rerun_notebook",
   "examples/python",
   "scripts",
   "tests/python",
 ]
-exclude = ["examples/python/objectron", "examples/python/ros_node"]
+exclude = [
+  # snippets that are not runnable
+  "docs/snippets/all/concepts/how_helix_was_logged",
+  "docs/snippets/all/concepts/static/log_static",
+  "docs/snippets/all/concepts/static/log_static_10x",
+  "docs/snippets/all/concepts/static/log_temporal_10x",
+  "docs/snippets/all/concepts/static/send_static",
+  "docs/snippets/all/concepts/static/send_static_10x",
+  "docs/snippets/all/migration/log_line",
+  "docs/snippets/all/tutorials/custom-application-id",
+  "docs/snippets/all/tutorials/custom-recording-id",
+  "docs/snippets/all/tutorials/timelines_example",
+
+  # hopeless examples
+  "examples/python/objectron",
+  "examples/python/ros_node",
+]
 namespace_packages = true
 show_error_codes = true
 strict = true

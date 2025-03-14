@@ -17,8 +17,8 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget, icon_text, icons, list_item, ContextExt as _, DesignTokens, Help, ModifiersText,
-    UiExt as _,
+    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
+    DesignTokens, Help, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -447,7 +447,7 @@ impl TimePanel {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
-                    self.filter_state.ui(
+                    self.filter_state.section_title_ui(
                         ui,
                         egui::RichText::new(if self.source == TimePanelSource::Blueprint {
                             "Blueprint Streams"
@@ -1358,28 +1358,35 @@ fn paint_range_highlight(
     }
 }
 
+fn help(ctx: &egui::Context) -> Help {
+    Help::new("Timeline")
+        .control("Play/Pause", "Space")
+        .control(
+            "Move time cursor",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+        )
+        .control(
+            "Select time segment",
+            icon_text!(icons::SHIFT, "+", "drag time scale"),
+        )
+        .control(
+            "Pan",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
+        )
+        .control(
+            "Zoom",
+            icon_text!(
+                modifiers_text(Modifiers::COMMAND, ctx),
+                maybe_plus(ctx),
+                icons::SCROLL
+            ),
+        )
+        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+}
+
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        Help::new("Timeline")
-            .control("Play/Pause", icon_text!("Space"))
-            .control(
-                "Move time cursor",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag time scale"),
-            )
-            .control(
-                "Select time segment",
-                icon_text!(icons::SHIFT, "+ drag time scale"),
-            )
-            .control(
-                "Pan",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag event canvas"),
-            )
-            .control(
-                "Zoom",
-                icon_text!(ModifiersText(Modifiers::COMMAND, ui.ctx()), icons::SCROLL),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
-            .ui(ui);
+        help(ui.ctx()).ui(ui);
     });
 }
 
@@ -1790,4 +1797,9 @@ fn time_marker_ui(
         time_area_response
             .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

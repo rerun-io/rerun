@@ -23,7 +23,7 @@ class Boxes3DExt:
         rotations: datatypes.RotationAxisAngleArrayLike | datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
-        fill_mode: components.FillMode | None = None,
+        fill_mode: components.FillModeLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,

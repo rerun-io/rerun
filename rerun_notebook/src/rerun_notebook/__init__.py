@@ -6,6 +6,7 @@ import os
 import pathlib
 import time
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import anywidget
@@ -42,7 +43,7 @@ if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
 
     bound_addr = serve_assets(background=True)
-    ESM_MOD = f"http://localhost:{bound_addr[1]}/widget.js"
+    ESM_MOD: str | pathlib.Path = f"http://localhost:{bound_addr[1]}/widget.js"
 elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
@@ -51,7 +52,101 @@ else:
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
-class Viewer(anywidget.AnyWidget):
+# If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
+class ViewerCallbacks:
+    """
+    Base class for Viewer callback definitions.
+
+    You should inherit from this class, override the callback methods you need,
+    and then pass an instance to `Viewer.register_callbacks`.
+    """
+
+    def on_selection_change(self, selection: list[SelectionItem]) -> None:
+        """Fired when the selection changes."""
+
+    def on_timeline_change(self, timeline: str, time: float) -> None:
+        """Fired when a different timeline is selected."""
+
+    def on_time_update(self, time: float) -> None:
+        """Fired when the timepoint changes."""
+
+
+@dataclass
+class EntitySelection:
+    """
+    Selected an (entire) entity.
+
+    Examples:
+    * A full point cloud.
+    * A mesh.
+
+    """
+
+    @property
+    def kind(self) -> Literal["entity"]:
+        return "entity"
+
+    entity_path: str
+
+
+@dataclass
+class InstanceSelection:
+    """
+    Selected an instance within an entity.
+
+    Examples:
+    * A single point in a point cloud.
+
+    """
+
+    @property
+    def kind(self) -> Literal["instance"]:
+        return "instance"
+
+    entity_path: str
+    instance_id: int
+
+
+@dataclass
+class ViewSelection:
+    """Selected a view."""
+
+    @property
+    def kind(self) -> Literal["view"]:
+        return "view"
+
+    view_id: str
+
+
+@dataclass
+class ContainerSelection:
+    """Selected a container."""
+
+    @property
+    def kind(self) -> Literal["container"]:
+        return "container"
+
+    container_id: str
+
+
+SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
+"""A single item in a selection."""
+
+
+def _selection_item_from_json(json: Any) -> SelectionItem:
+    if json["type"] == "entity":
+        return EntitySelection(entity_path=json["entity_path"])
+    if json["type"] == "instance":
+        return InstanceSelection(entity_path=json["entity_path"], instance_id=json["instance_id"])
+    if json["type"] == "view":
+        return ViewSelection(view_id=json["view_id"])
+    if json["type"] == "container":
+        return ContainerSelection(container_id=json["container_id"])
+    else:
+        raise NotImplementedError(f"selection item kind {json[type]} is not handled")
+
+
+class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
 
@@ -77,6 +172,8 @@ class Viewer(anywidget.AnyWidget):
     ).tag(sync=True)
     _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
+    _callbacks: list[ViewerCallbacks] = []
+
     def __init__(
         self,
         *,
@@ -93,12 +190,31 @@ class Viewer(anywidget.AnyWidget):
         self._url = url
         self._data_queue = []
 
+        from ipywidgets import widgets
+
+        self._output = widgets.Output()
+
         if panel_states:
             self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
                 self._on_ready()
+            elif not isinstance(content, str) and "event" in content:
+                # Event names here come from `widget.ts`.
+                if content["event"] == "selectionchange":
+                    selection = [_selection_item_from_json(item) for item in content["payload"]]
+                    for callback in self._callbacks:
+                        callback.on_selection_change(selection)
+                elif content["event"] == "timelinechange":
+                    timeline = content["payload"]["timeline"]
+                    time = content["payload"]["time"]
+                    for callback in self._callbacks:
+                        callback.on_timeline_change(timeline, time)
+                elif content["event"] == "timeupdate":
+                    time = content["payload"]
+                    for callback in self._callbacks:
+                        callback.on_time_update(time)
 
         self.on_msg(handle_msg)
 
@@ -117,7 +233,7 @@ class Viewer(anywidget.AnyWidget):
 
         self.send({"type": "rrd"}, buffers=[data])
 
-    def block_until_ready(self, timeout=5.0) -> None:
+    def block_until_ready(self, timeout: float = 5.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
@@ -148,3 +264,8 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
 
     def set_active_recording(self, recording_id: str) -> None:
         self._recording_id = recording_id
+
+    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        """Register a set of callbacks with this instance of the Viewer."""
+        # TODO(jan): maybe allow unregister by making this a map instead
+        self._callbacks.append(callbacks)

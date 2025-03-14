@@ -70,9 +70,13 @@ features = [
 
 # These entries won't run at all.
 #
+# NOTE: Non-runnable python snippets will have to also be added the `rerun_py/pyproject.toml`
+# file as mypy excluded.
+#
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"__init__" = ["py"] # That init file is to make mypy happy.
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",

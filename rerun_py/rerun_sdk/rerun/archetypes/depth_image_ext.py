@@ -7,7 +7,7 @@ import numpy.typing as npt
 
 from rerun.datatypes.range1d import Range1DLike
 
-from ..components import Colormap, ImageFormat
+from ..components import ColormapLike, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class DepthImageExt:
         image: ImageLike,
         *,
         meter: Float32Like | None = None,
-        colormap: Colormap | None = None,
+        colormap: ColormapLike | None = None,
         depth_range: Range1DLike | None = None,
         point_fill_ratio: Float32Like | None = None,
         draw_order: Float32Like | None = None,
