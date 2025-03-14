@@ -121,7 +121,7 @@ pub fn help(egui_ctx: &egui::Context) -> Help {
             icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
         )
         .control(
-            "Zooooom",
+            "Zoom",
             shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
