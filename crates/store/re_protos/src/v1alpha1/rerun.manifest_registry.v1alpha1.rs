@@ -1159,7 +1159,7 @@ pub mod manifest_registry_service_client {
         /// list of embeddings), then each instance of the batch is a separate row in the
         /// resulting RecordBatch
         /// - 'instance_id' - this is a simple element index in the batch array. For example
-        /// if indexed column is a list of embeddings [a,b,c] (where a.len() == b.len() == c.len())
+        /// if indexed column is a list of embeddings \[a,b,c\] (where each embedding is of same length)
         /// then 'instance_id' of embedding 'a' is 0, 'instance_id' of 'b' is 1, etc.
         pub async fn search_dataset(
             &mut self,
@@ -1284,7 +1284,7 @@ pub mod manifest_registry_service_server {
         /// list of embeddings), then each instance of the batch is a separate row in the
         /// resulting RecordBatch
         /// - 'instance_id' - this is a simple element index in the batch array. For example
-        /// if indexed column is a list of embeddings [a,b,c] (where a.len() == b.len() == c.len())
+        /// if indexed column is a list of embeddings \[a,b,c\] (where each embedding is of same length)
         /// then 'instance_id' of embedding 'a' is 0, 'instance_id' of 'b' is 1, etc.
         async fn search_dataset(
             &self,
