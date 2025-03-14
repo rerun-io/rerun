@@ -281,7 +281,9 @@ def docs_slow(results: list[Result]) -> None:
     results.append(run_cargo("doc", "--no-deps --all-features -p rerun"))
     results.append(run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"))
 
+
 test_failure_message = 'See the "Upload test results" step for a link to the snapshot test artifact.'
+
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
