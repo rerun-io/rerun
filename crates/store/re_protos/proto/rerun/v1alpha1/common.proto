@@ -17,7 +17,7 @@ message RerunChunk {
   EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
-  bytes payload = 2;
+  optional bytes payload = 2;
 }
 
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
@@ -39,7 +39,7 @@ message TimeRange {
 
 // arrow IPC serialized schema
 message Schema {
-  bytes arrow_schema = 1;
+  optional bytes arrow_schema = 1;
 }
 
 message Query {
@@ -214,6 +214,7 @@ message Tuid {
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   Tuid entry_id = 1;
+
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   string dataset_url = 2;
 }
@@ -232,46 +233,58 @@ message DataframePart {
 // TODO(zehiko, cmc): This should be available for every endpoint that queries data in
 // one way or another.
 message ScanParameters {
-  // List of columns to project. If empty, all columns will be projected. If non-existent
-  // is specified, an error will be returned.
+  // List of columns to project. If empty, all columns will be projected.
   repeated string columns = 1;
+
+  ProjectionBehaviour on_missing_columns = 2;
+
   // An arbitrary filter expression that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.filter(filter)
   // ```
-  string filter = 2;
+  optional string filter = 3;
 
   // An arbitrary offset that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.limit(_, limit_offset)
   // ```
-  int64 limit_offset = 3;
+  optional int64 limit_offset = 4;
 
   // An arbitrary limit that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.limit(limit_len, _)
   // ```
-  int64 limit_len = 4;
+  optional int64 limit_len = 5;
 
   // An arbitrary order clause that will be passed to the Lance scanner as-is.
   //
   // ```text
   // scanner.order_by(…)
   // ```
-  ScanParametersOrderClause order_by = 5;
+  ScanParametersOrderClause order_by = 6;
 
   // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-  bool explain_plan = 6;
+  bool explain_plan = 7;
 
   // If set, the final `scanner.filter` will be dumped to the server's log.
-  bool explain_filter = 7;
+  bool explain_filter = 8;
+}
+
+enum ProjectionBehaviour {
+  PROJECTION_BEHAVIOR_UNSPECIFIED = 0;
+
+  // Error out when trying to project a missing column.
+  PROJECTION_BEHAVIOR_ERROR = 1;
+
+  // Ignore missing columns.
+  PROJECTION_BEHAVIOR_IGNORE = 2;
 }
 
 message ScanParametersOrderClause {
-  bool ascending = 1;
-  bool nulls_first = 2;
-  string column_name = 3;
+  bool descending = 1;
+  bool nulls_last = 2;
+  optional string column_name = 3;
 }

@@ -65,6 +65,17 @@ service StorageNodeService {
   rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest) returns (UnregisterAllRecordingsResponse) {}
 }
 
+// ---------------- Common response message ------------------
+
+// DataframePart is arrow IPC encoded RecordBatch
+message DataframePart {
+  // encoder version used to encode the data
+  rerun.common.v1alpha1.EncoderVersion encoder_version = 1;
+
+  // Data payload is Arrow IPC encoded RecordBatch
+  bytes payload = 2;
+}
+
 // ---------------- GetChunksRange ------------------
 
 // GetChunksRange is a streaming API that allows to fetch chunks within a time range
@@ -351,6 +362,52 @@ message QueryManifestRangeRelevantChunks {
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
   repeated string fuzzy_descriptors = 4;
+}
+
+// Generic parameters that will influence the behavior of the Lance scanner.
+//
+// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+// one way or another.
+message ScanParameters {
+  // An arbitrary filter expression that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.filter(filter)
+  // ```
+  string filter = 1;
+
+  // An arbitrary offset that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(_, limit_offset)
+  // ```
+  int64 limit_offset = 2;
+
+  // An arbitrary limit that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(limit_len, _)
+  // ```
+  int64 limit_len = 3;
+
+  // An arbitrary order clause that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.order_by(…)
+  // ```
+  ScanParametersOrderClause order_by = 4;
+
+  // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+  bool explain_plan = 5;
+
+  // If set, the final `scanner.filter` will be dumped to the server's log.
+  bool explain_filter = 6;
+}
+
+message ScanParametersOrderClause {
+  bool ascending = 1;
+  bool nulls_first = 2;
+  string column_name = 3;
 }
 
 // ---------------- GetRecordingSchema ------------------

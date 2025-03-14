@@ -102,6 +102,29 @@ impl ::prost::Name for FindCollectionsResponse {
         "/rerun.remote_store.v1alpha1.FindCollectionsResponse".into()
     }
 }
+/// DataframePart is arrow IPC encoded RecordBatch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DataframePart {
+    /// encoder version used to encode the data
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::EncoderVersion",
+        tag = "1"
+    )]
+    pub encoder_version: i32,
+    /// Data payload is Arrow IPC encoded RecordBatch
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for DataframePart {
+    const NAME: &'static str = "DataframePart";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.DataframePart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.DataframePart".into()
+    }
+}
 /// GetChunksRange is a streaming API that allows to fetch chunks within a time range
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksRangeRequest {
@@ -694,6 +717,76 @@ impl ::prost::Name for QueryManifestRangeRelevantChunks {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v1alpha1.QueryManifestRangeRelevantChunks".into()
+    }
+}
+/// Generic parameters that will influence the behavior of the Lance scanner.
+///
+/// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+/// one way or another.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParameters {
+    /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.filter(filter)
+    /// ```
+    #[prost(string, tag = "1")]
+    pub filter: ::prost::alloc::string::String,
+    /// An arbitrary offset that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(_, limit_offset)
+    /// ```
+    #[prost(int64, tag = "2")]
+    pub limit_offset: i64,
+    /// An arbitrary limit that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(limit_len, _)
+    /// ```
+    #[prost(int64, tag = "3")]
+    pub limit_len: i64,
+    /// An arbitrary order clause that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.order_by(…)
+    /// ```
+    #[prost(message, optional, tag = "4")]
+    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+    #[prost(bool, tag = "5")]
+    pub explain_plan: bool,
+    /// If set, the final `scanner.filter` will be dumped to the server's log.
+    #[prost(bool, tag = "6")]
+    pub explain_filter: bool,
+}
+impl ::prost::Name for ScanParameters {
+    const NAME: &'static str = "ScanParameters";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.ScanParameters".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.ScanParameters".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParametersOrderClause {
+    #[prost(bool, tag = "1")]
+    pub ascending: bool,
+    #[prost(bool, tag = "2")]
+    pub nulls_first: bool,
+    #[prost(string, tag = "3")]
+    pub column_name: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ScanParametersOrderClause {
+    const NAME: &'static str = "ScanParametersOrderClause";
+    const PACKAGE: &'static str = "rerun.remote_store.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v1alpha1.ScanParametersOrderClause".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

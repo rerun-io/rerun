@@ -524,15 +524,15 @@ pub struct ScanParameters {
     /// ```text
     /// scanner.limit(_, limit_offset)
     /// ```
-    #[prost(int64, tag = "3")]
-    pub limit_offset: i64,
+    #[prost(int64, optional, tag = "3")]
+    pub limit_offset: ::core::option::Option<i64>,
     /// An arbitrary limit that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.limit(limit_len, _)
     /// ```
-    #[prost(int64, tag = "4")]
-    pub limit_len: i64,
+    #[prost(int64, optional, tag = "4")]
+    pub limit_len: ::core::option::Option<i64>,
     /// An arbitrary order clause that will be passed to the Lance scanner as-is.
     ///
     /// ```text

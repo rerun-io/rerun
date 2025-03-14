@@ -1,6 +1,7 @@
-use re_protos::common::v1alpha1::{DataframePart, RerunChunk};
+use re_protos::common::v1alpha1::RerunChunk;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
+use re_protos::remote_store::v1alpha1::DataframePart;
 
 use crate::codec::arrow::write_arrow_to_bytes;
 use crate::codec::CodecError;
