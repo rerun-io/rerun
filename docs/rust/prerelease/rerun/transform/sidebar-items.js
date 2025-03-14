@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Angle","Rotation3D","Scale3D","Transform3D"],"struct":["RotationAxisAngle","TranslationAndMat3x3","TranslationRotationScale3D"]};

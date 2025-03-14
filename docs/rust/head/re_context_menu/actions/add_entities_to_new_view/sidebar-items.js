@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_view_for_selected_entities","recommended_views_for_selection"],"struct":["AddEntitiesToNewViewAction"]};

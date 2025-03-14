@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["next_free_shader_location","vertex_buffer_layouts"]};

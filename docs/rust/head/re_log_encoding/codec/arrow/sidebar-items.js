@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DESERIALIZE_WITH_ARROW_1","SERIALIZE_WITH_ARROW_1"],"fn":["decode_arrow","encode_arrow","read_arrow_from_bytes","write_arrow_to_bytes"],"struct":["Payload"]};

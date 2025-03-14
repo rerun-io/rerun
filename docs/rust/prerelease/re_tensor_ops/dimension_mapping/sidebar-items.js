@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["find_width_height_dim_indices","is_name_like_height","is_name_like_width","longest_and_second_longest_dim_indices"],"struct":["DimensionMapping","DimensionSelector"]};

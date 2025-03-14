@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["tuid_arrow_fields"]};

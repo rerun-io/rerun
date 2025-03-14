@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CollapseExpandAllAction"],"fn":["blueprint_collapse_scope"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["arrow_sizes","primitive_sizes","smallvec_sizes","std_sizes","tuple_sizes"],"trait":["SizeBytes"]};

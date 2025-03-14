@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["join4"],"struct":["Points3DPart"]};

@@ -1,0 +1,4640 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/0.15.0/common/blueprint_apis/">
+      
+      
+        <link rel="prev" href="../interfaces/">
+      
+      
+        <link rel="next" href="../blueprint_archetypes/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>APIs - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun.blueprint" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              APIs
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeline_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timeline functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1_12" id="__nav_1_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Blueprint
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_12">
+            <span class="md-nav__icon md-icon"></span>
+            Blueprint
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint" class="md-nav__link">
+    blueprint
+  </a>
+  
+    <nav class="md-nav" aria-label="blueprint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BlueprintPart" class="md-nav__link">
+    BlueprintPart
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.ContainerLike" class="md-nav__link">
+    ContainerLike
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Blueprint" class="md-nav__link">
+    Blueprint
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Container" class="md-nav__link">
+    Container
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Horizontal" class="md-nav__link">
+    Horizontal
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Vertical" class="md-nav__link">
+    Vertical
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Grid" class="md-nav__link">
+    Grid
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Tabs" class="md-nav__link">
+    Tabs
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.SpaceView" class="md-nav__link">
+    SpaceView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BarChartView" class="md-nav__link">
+    BarChartView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Spatial2DView" class="md-nav__link">
+    Spatial2DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Spatial3DView" class="md-nav__link">
+    Spatial3DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TensorView" class="md-nav__link">
+    TensorView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TextDocumentView" class="md-nav__link">
+    TextDocumentView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TextLogView" class="md-nav__link">
+    TextLogView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TimeSeriesView" class="md-nav__link">
+    TimeSeriesView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BlueprintPanel" class="md-nav__link">
+    BlueprintPanel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.SelectionPanel" class="md-nav__link">
+    SelectionPanel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TimePanel" class="md-nav__link">
+    TimePanel
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other_classes_and_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint" class="md-nav__link">
+    blueprint
+  </a>
+  
+    <nav class="md-nav" aria-label="blueprint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BlueprintPart" class="md-nav__link">
+    BlueprintPart
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.ContainerLike" class="md-nav__link">
+    ContainerLike
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Blueprint" class="md-nav__link">
+    Blueprint
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Container" class="md-nav__link">
+    Container
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Horizontal" class="md-nav__link">
+    Horizontal
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Vertical" class="md-nav__link">
+    Vertical
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Grid" class="md-nav__link">
+    Grid
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Tabs" class="md-nav__link">
+    Tabs
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.SpaceView" class="md-nav__link">
+    SpaceView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BarChartView" class="md-nav__link">
+    BarChartView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Spatial2DView" class="md-nav__link">
+    Spatial2DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.Spatial3DView" class="md-nav__link">
+    Spatial3DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TensorView" class="md-nav__link">
+    TensorView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TextDocumentView" class="md-nav__link">
+    TextDocumentView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TextLogView" class="md-nav__link">
+    TextLogView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TimeSeriesView" class="md-nav__link">
+    TimeSeriesView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.BlueprintPanel" class="md-nav__link">
+    BlueprintPanel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.SelectionPanel" class="md-nav__link">
+    SelectionPanel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.TimePanel" class="md-nav__link">
+    TimePanel
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>APIs</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun.blueprint" class="doc doc-heading">
+          <code>rerun.blueprint</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h4 id="rerun.blueprint.BlueprintPart" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">BlueprintPart</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">ContainerLike</span><span class="p">,</span> <span class="n">BlueprintPanel</span><span class="p">,</span> <span class="n">SelectionPanel</span><span class="p">,</span> <span class="n">TimePanel</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>The types that make up a blueprint.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h4 id="rerun.blueprint.ContainerLike" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">ContainerLike</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">Container</span><span class="p">,</span> <span class="n">SpaceView</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>A type that can be converted to a container.</p>
+<p>These types all implement a <code>to_container()</code> method that wraps them in the necessary
+helper classes.</p>
+  </div>
+
+</div>
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Blueprint</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p>The top-level description of the viewer blueprint.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Blueprint.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">parts</span><span class="p">,</span> <span class="n">auto_layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_space_views</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new blueprint from the given parts.</p>
+<p>Each <a class="autorefs autorefs-internal" href="#rerun.blueprint.BlueprintPart">BlueprintPart</a> can be one of the following:</p>
+<ul>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.ContainerLike">ContainerLike</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.BlueprintPanel">BlueprintPanel</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.SelectionPanel">SelectionPanel</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.TimePanel">TimePanel</a></li>
+</ul>
+<p>It is an error to provide more than one of instance of any of the panel types.</p>
+<p>Blueprints only have a single top-level "root" container that defines the viewport.
+If you provide multiple <code>ContainerLike</code> instances, they will be combined under a single
+root <code>Tab</code> container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*parts</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The parts of the blueprint.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.BlueprintPart" href="#rerun.blueprint.BlueprintPart">BlueprintPart</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>auto_layout</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether to automatically layout the viewport. If <code>True</code>, the container layout will be
+reset whenever a new space view is added to the viewport. Defaults to <code>False</code>.
+Defaults to <code>False</code> unless no Containers or SpaceViews are provided, in which case it defaults to <code>True</code>.
+If you want to create a completely empty Blueprint, you must explicitly set this to <code>False</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>auto_space_views</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether to automatically add space views to the viewport. If <code>True</code>, the viewport will
+automatically add space views based on content in the data store.
+Defaults to <code>False</code> unless no Containers or SpaceViews are provided, in which case it defaults to <code>True</code>.
+If you want to create a completely empty Blueprint, you must explicitly set this to <code>False</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>collapse_panels</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether to collapse the panels in the viewer. Defaults to <code>False</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Blueprint.connect" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="n">application_id</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">addr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">make_active</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Connect to a remote Rerun Viewer on the given ip:port and send this blueprint.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>application_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The application ID to use for this blueprint. This must match the application ID used
+when initiating rerun for any data logging you wish to associate with this blueprint.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>addr</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The ip:port to connect to</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>make_active</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Immediately make this the active blueprint for the associated <code>app_id</code>.
+Note that setting this to <code>false</code> does not mean the blueprint may not still end
+up becoming active. In particular, if <code>make_default</code> is true and there is no other
+currently active blueprint.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>True</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>make_default</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Make this the default blueprint for the <code>app_id</code>.
+The default blueprint will be used as the template when the user resets the
+blueprint for the app. It will also become the active blueprint if no other
+blueprint is currently active.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>True</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Blueprint.save" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">application_id</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Save this blueprint to a file. Rerun recommends the <code>.rbl</code> suffix.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>application_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The application ID to use for this blueprint. This must match the application ID used
+when initiating rerun for any data logging you wish to associate with this blueprint.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>path</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The path to save the blueprint to. Defaults to <code>&lt;application_id&gt;.rbl</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Blueprint.spawn" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">spawn</span><span class="p">(</span><span class="n">application_id</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">9876</span><span class="p">,</span> <span class="n">memory_limit</span><span class="o">=</span><span class="s1">&#39;75%&#39;</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Spawn a Rerun viewer with this blueprint.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>application_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The application ID to use for this blueprint. This must match the application ID used
+when initiating rerun for any data logging you wish to associate with this blueprint.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>port</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The port to listen on.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>9876</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>memory_limit</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>An upper limit on how much memory the Rerun Viewer should use.
+When this limit is reached, Rerun will drop the oldest data.
+Example: <code>16GB</code> or <code>50%</code> (of system total).</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;75%&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Blueprint.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Conform with the <code>BlueprintLike</code> interface.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Container</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p>Base class for all container types.</p>
+<p>Consider using one of the subclasses instead of this class directly:</p>
+<ul>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Horizontal">rerun.blueprint.Horizontal</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Vertical">rerun.blueprint.Vertical</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Grid">rerun.blueprint.Grid</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Tabs">rerun.blueprint.Tabs</a></li>
+</ul>
+<p>These are ergonomic helpers on top of <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.ContainerBlueprint">rerun.blueprint.archetypes.ContainerBlueprint</a>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Container.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">column_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*args</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>All positional arguments are forwarded to the <code>contents</code> parameter for convenience.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the container. Each item in the iterable must be a <code>SpaceView</code> or a <code>Container</code>.
+This can only be used if no positional arguments are provided.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a>]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>kind</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The kind of the container. This must correspond to a known container kind.
+Prefer to use one of the subclasses of <code>Container</code> which will populate this for you.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.container_kind.ContainerKindLike">ContainerKindLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>column_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
+column should take up. The column with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.
+This is only applicable to <code>Horizontal</code> or <code>Grid</code> containers.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.ColumnShareArrayLike">ColumnShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>row_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
+row should take up. The row with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.
+This is only applicable to <code>Vertical</code> or <code>Grid</code> containers.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.RowShareArrayLike">RowShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>grid_columns</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The number of columns in the grid. This is only applicable to <code>Grid</code> containers.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>active_tab</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The active tab in the container. This is only applicable to <code>Tabs</code> containers.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the container</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Container.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Container.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this container to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Container.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Horizontal" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Horizontal</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a></code></p>
+
+  
+      <p>A horizontal container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Horizontal.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">column_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new horizontal container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*args</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>All positional arguments are forwarded to the <code>contents</code> parameter for convenience.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the container. Each item in the iterable must be a <code>SpaceView</code> or a <code>Container</code>.
+This can only be used if no positional arguments are provided.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a>]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>column_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
+column should take up. The column with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.ColumnShareArrayLike">ColumnShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the container</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Horizontal.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Horizontal.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this container to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Horizontal.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Vertical" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vertical</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a></code></p>
+
+  
+      <p>A vertical container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Vertical.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new vertical container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*args</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>All positional arguments are forwarded to the <code>contents</code> parameter for convenience.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the container. Each item in the iterable must be a <code>SpaceView</code> or a <code>Container</code>.
+This can only be used if no positional arguments are provided.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a>]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>row_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
+row should take up. The row with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.RowShareArrayLike">RowShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the container</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Vertical.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Vertical.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this container to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Vertical.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Grid" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Grid</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a></code></p>
+
+  
+      <p>A grid container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Grid.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">column_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_shares</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new grid container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*args</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>All positional arguments are forwarded to the <code>contents</code> parameter for convenience.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the container. Each item in the iterable must be a <code>SpaceView</code> or a <code>Container</code>.
+This can only be used if no positional arguments are provided.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a>]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>column_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
+column should take up. The column with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.ColumnShareArrayLike">ColumnShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>row_shares</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
+row should take up. The row with index <code>i</code> will take up the fraction <code>shares[i] / total_shares</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<span title="rerun.blueprint.components.RowShareArrayLike">RowShareArrayLike</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>grid_columns</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The number of columns in the grid.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the container</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Grid.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Grid.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this container to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Grid.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Tabs" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Tabs</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a></code></p>
+
+  
+      <p>A tab container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Tabs.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new tab container.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>*args</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>All positional arguments are forwarded to the <code>contents</code> parameter for convenience.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>()</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the container. Each item in the iterable must be a <code>SpaceView</code> or a <code>Container</code>.
+This can only be used if no positional arguments are provided.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun.blueprint.api.Container" href="#rerun.blueprint.Container">Container</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a>]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>active_tab</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The index or name of the active tab.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the container</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Tabs.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Tabs.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this container to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Tabs.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.SpaceView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">SpaceView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p>Base class for all space view types.</p>
+<p>Consider using one of the subclasses instead of this class directly:</p>
+<ul>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.BarChartView">rerun.blueprint.BarChartView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Spatial2DView">rerun.blueprint.Spatial2DView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.Spatial3DView">rerun.blueprint.Spatial3DView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.TensorView">rerun.blueprint.TensorView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.TextDocumentView">rerun.blueprint.TextDocumentView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.TextLogView">rerun.blueprint.TextLogView</a></li>
+<li><a class="autorefs autorefs-internal" href="#rerun.blueprint.TimeSeriesView">rerun.blueprint.TimeSeriesView</a></li>
+</ul>
+<p>These are ergonomic helpers on top of <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewBlueprint">rerun.blueprint.archetypes.SpaceViewBlueprint</a>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SpaceView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">class_identifier</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">contents</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new space view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the space view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>class_identifier</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The class of the space view to add. This must correspond to a known space view class.
+Prefer to use one of the subclasses of <code>SpaceView</code> which will populate this for you.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this space view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SpaceView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SpaceView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SpaceView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.BarChartView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">BarChartView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A bar chart view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BarChartView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new bar chart view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BarChartView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BarChartView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BarChartView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Spatial2DView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Spatial2DView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A Spatial 2D view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial2DView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new spatial 2D view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial2DView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial2DView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial2DView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.Spatial3DView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Spatial3DView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A Spatial 3D view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial3DView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new spatial 3D view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial3DView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial3DView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.Spatial3DView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.TensorView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A tensor view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TensorView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new tensor view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TensorView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TensorView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TensorView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.TextDocumentView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TextDocumentView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A text document view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextDocumentView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new text document view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextDocumentView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextDocumentView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextDocumentView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.TextLogView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TextLogView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A text log view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextLogView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new text log view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextLogView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextLogView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TextLogView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.TimeSeriesView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TimeSeriesView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p>A time series view.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimeSeriesView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new time series view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view. All other entities will be transformed
+to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the space view specified as a query expression. This is either a single expression,
+or a list of multiple expressions. See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimeSeriesView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimeSeriesView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimeSeriesView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.BlueprintPanel" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">BlueprintPanel</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.api.Panel">Panel</span></code></p>
+
+  
+      <p>The state of the blueprint panel.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BlueprintPanel.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new blueprint panel.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>expanded</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether the panel is expanded or not.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.BlueprintPanel.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.SelectionPanel" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">SelectionPanel</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.api.Panel">Panel</span></code></p>
+
+  
+      <p>The state of the selection panel.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SelectionPanel.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new selection panel.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>expanded</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether the panel is expanded or not.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.SelectionPanel.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.TimePanel" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TimePanel</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.api.Panel">Panel</span></code></p>
+
+  
+      <p>The state of the time panel.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimePanel.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a new time panel.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>expanded</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether the panel is expanded or not.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.TimePanel.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

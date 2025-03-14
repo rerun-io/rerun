@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["rerun_bindings",[["impl PyClassNewTextSignature&lt;<a class=\"struct\" href=\"rerun_bindings/dataframe/struct.PyComponentColumnSelector.html\" title=\"struct rerun_bindings::dataframe::PyComponentColumnSelector\">PyComponentColumnSelector</a>&gt; for PyClassImplCollector&lt;<a class=\"struct\" href=\"rerun_bindings/dataframe/struct.PyComponentColumnSelector.html\" title=\"struct rerun_bindings::dataframe::PyComponentColumnSelector\">PyComponentColumnSelector</a>&gt;"],["impl PyClassNewTextSignature&lt;<a class=\"struct\" href=\"rerun_bindings/dataframe/struct.PyIndexColumnSelector.html\" title=\"struct rerun_bindings::dataframe::PyIndexColumnSelector\">PyIndexColumnSelector</a>&gt; for PyClassImplCollector&lt;<a class=\"struct\" href=\"rerun_bindings/dataframe/struct.PyIndexColumnSelector.html\" title=\"struct rerun_bindings::dataframe::PyIndexColumnSelector\">PyIndexColumnSelector</a>&gt;"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[908]}

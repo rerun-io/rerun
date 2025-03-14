@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["slice_as_array_list_native","slice_as_array_native","slice_as_buffer_native","slice_as_native"],"macro":["impl_array_list_native_type","impl_array_native_type","impl_buffer_native_type","impl_native_type"],"struct":["ChunkComponentIter","ChunkComponentIterItem","ChunkIndicesIter"],"trait":["ChunkComponentSlicer"]};

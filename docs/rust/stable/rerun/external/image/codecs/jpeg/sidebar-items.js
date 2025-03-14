@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PixelDensityUnit"],"struct":["JpegDecoder","JpegEncoder","PixelDensity"]};
