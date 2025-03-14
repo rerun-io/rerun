@@ -23,7 +23,8 @@ service ManifestRegistryService {
   // Get all chunks for a single partition
   rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
 
-  // Get chunks based on a specific query
+  // Get chunks based on a specific query. This call is similar to `QueryDataset` but
+  // instead of returning a dataframe with relevant chunk IDs, it returns the actual chunks.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Create index for partitions in the Dataset. Index can be created for all or specific
