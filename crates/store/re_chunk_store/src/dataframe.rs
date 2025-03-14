@@ -598,7 +598,7 @@ impl ChunkStore {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            include_properties_entity: include_properties,
+            include_properties_entity,
             filtered_index: _,
             filtered_index_range: _,
             filtered_index_values: _,
@@ -628,8 +628,10 @@ impl ChunkStore {
 
             let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
 
-            let passes_properties_check =
-                || *include_properties || column.entity_path != EntityPath::partition_properties();
+            let passes_properties_check = || {
+                *include_properties_entity
+                    || column.entity_path != EntityPath::partition_properties()
+            };
 
             is_part_of_view_contents()
                 && passes_semantically_empty_check()

@@ -37,7 +37,7 @@ def test_load_recording() -> None:
         recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**")
+        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
