@@ -215,7 +215,7 @@ message GetChunksRequest {
   // Dataset for which we want to get chunks
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Cclient can specify from which partitions to get chunks. If left unspecified (empty list),
+  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
   // data from all partition (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
 
