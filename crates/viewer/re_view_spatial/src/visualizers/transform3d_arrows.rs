@@ -92,7 +92,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(transform_info) =
                 transforms.transform_info_for_entity(data_result.entity_path.hash())

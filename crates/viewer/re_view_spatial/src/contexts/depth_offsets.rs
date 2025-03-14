@@ -77,7 +77,7 @@ fn collect_draw_order_per_visualizer(
     >,
 ) {
     let latest_at_query = ctx.current_query();
-    for data_result in query.iter_visible_data_results(ctx, visualizer_identifier) {
+    for data_result in query.iter_visible_data_results(visualizer_identifier) {
         let query_shadowed_components = false;
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,

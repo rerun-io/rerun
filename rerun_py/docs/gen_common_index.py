@@ -155,8 +155,11 @@ SECTION_TABLE: Final[list[Section]] = [
     # These are tables but don't need their own pages since they refer to types that
     # were added in the pages up above
     Section(
-        title="Clearing Entities",
-        class_list=["archetypes.Clear"],
+        title="General",
+        class_list=[
+            "archetypes.Clear",
+            "archetypes.EntityBehavior",
+        ],
         gen_page=False,
     ),
     Section(

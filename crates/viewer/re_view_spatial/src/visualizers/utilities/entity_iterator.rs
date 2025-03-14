@@ -105,7 +105,7 @@ where
 
     let system_identifier = System::identifier();
 
-    for data_result in query.iter_visible_data_results(ctx, system_identifier) {
+    for data_result in query.iter_visible_data_results(system_identifier) {
         let Some(transform_info) =
             transforms.transform_info_for_entity(data_result.entity_path.hash())
         else {

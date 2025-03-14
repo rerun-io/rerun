@@ -57,7 +57,7 @@ impl VisualizerSystem for EdgesVisualizer {
         const SOURCE: &str = "first";
         const TARGET: &str = "second";
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
                     ctx,

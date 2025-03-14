@@ -18,7 +18,6 @@ include "./components/force_strength.fbs";
 include "./components/grid_columns.fbs";
 include "./components/grid_spacing.fbs";
 include "./components/included_content.fbs";
-include "./components/interactive.fbs";
 include "./components/lock_range_during_zoom.fbs";
 include "./components/map_provider.fbs";
 include "./components/near_clip_plane.fbs";

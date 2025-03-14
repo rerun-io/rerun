@@ -20,7 +20,6 @@
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/grid_spacing.hpp"
 #include "blueprint/components/included_content.hpp"
-#include "blueprint/components/interactive.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
 #include "blueprint/components/map_provider.hpp"
 #include "blueprint/components/near_clip_plane.hpp"

@@ -266,7 +266,6 @@ impl AppState {
                             store_context,
                             view_class_registry,
                             &blueprint_query,
-                            view.id,
                             &visualizable_entities,
                         ),
                     )

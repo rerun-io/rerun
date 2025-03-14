@@ -37,6 +37,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
 * [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+* [`Interactive`](components/interactive.md): Whether the entity can be interacted with.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LatLon`](components/lat_lon.md): A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 * [`Length`](components/length.md): Length, or one-dimensional size.

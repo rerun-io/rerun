@@ -22,7 +22,6 @@ pub use re_types::blueprint::components::ForceStrength;
 pub use re_types::blueprint::components::GridColumns;
 pub use re_types::blueprint::components::GridSpacing;
 pub use re_types::blueprint::components::IncludedContent;
-pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::MapProvider;
 pub use re_types::blueprint::components::NearClipPlane;
@@ -65,7 +64,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<GridSpacing>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
-        && validate_component::<Interactive>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<MapProvider>(blueprint)
         && validate_component::<NearClipPlane>(blueprint)

@@ -101,7 +101,7 @@ pub fn picking(
             continue;
         };
 
-        if !data_result.is_interactive(ctx) {
+        if !data_result.is_interactive() {
             continue;
         }
 
