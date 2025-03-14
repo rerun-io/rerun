@@ -17,6 +17,7 @@ message RerunChunk {
   EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
+  // TODO(zehiko) make this optional (#9285)
   bytes payload = 2;
 }
 
@@ -39,6 +40,7 @@ message TimeRange {
 
 // arrow IPC serialized schema
 message Schema {
+  // TODO(zehiko) make this optional (#9285)
   bytes arrow_schema = 1;
 }
 
@@ -210,10 +212,77 @@ message Tuid {
   fixed64 inc = 2;
 }
 
+// Entry point for all ManifestRegistryService APIs
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   Tuid entry_id = 1;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   optional string dataset_url = 2;
+}
+
+// DataframePart is arrow IPC encoded RecordBatch
+message DataframePart {
+  // encoder version used to encode the data
+  EncoderVersion encoder_version = 1;
+
+  // Data payload is Arrow IPC encoded RecordBatch
+  optional bytes payload = 2;
+}
+
+// Generic parameters that will influence the behavior of the Lance scanner.
+//
+// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+// one way or another.
+message ScanParameters {
+  // List of columns to project. If empty, all columns will be projected.
+  repeated string columns = 1;
+
+  IfMissingBehavior on_missing_columns = 2;
+
+  // An arbitrary filter expression that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.filter(filter)
+  // ```
+  optional string filter = 3;
+
+  // An arbitrary offset that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(_, limit_offset)
+  // ```
+  optional int64 limit_offset = 4;
+
+  // An arbitrary limit that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(limit_len, _)
+  // ```
+  optional int64 limit_len = 5;
+
+  // An arbitrary order clause that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.order_by(…)
+  // ```
+  ScanParametersOrderClause order_by = 6;
+
+  // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+  bool explain_plan = 7;
+
+  // If set, the final `scanner.filter` will be dumped to the server's log.
+  bool explain_filter = 8;
+}
+
+enum IfMissingBehavior {
+  IF_MISSING_BEHAVIOR_UNSPECIFIED = 0;
+  IF_MISSING_BEHAVIOR_SKIP = 1;
+  IF_MISSING_BEHAVIOR_ERROR = 2;
+}
+
+message ScanParametersOrderClause {
+  bool descending = 1;
+  bool nulls_last = 2;
+  optional string column_name = 3;
 }

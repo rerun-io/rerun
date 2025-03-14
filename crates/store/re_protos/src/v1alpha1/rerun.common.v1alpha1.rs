@@ -8,6 +8,7 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
+    /// TODO(zehiko) make this optional (#9285)
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
@@ -75,6 +76,7 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
+    /// TODO(zehiko) make this optional (#9285)
     #[prost(bytes = "vec", tag = "1")]
     pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
 }
@@ -462,6 +464,7 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+/// Entry point for all ManifestRegistryService APIs
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
@@ -479,6 +482,101 @@ impl ::prost::Name for DatasetHandle {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.DatasetHandle".into()
+    }
+}
+/// DataframePart is arrow IPC encoded RecordBatch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DataframePart {
+    /// encoder version used to encode the data
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// Data payload is Arrow IPC encoded RecordBatch
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+}
+impl ::prost::Name for DataframePart {
+    const NAME: &'static str = "DataframePart";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DataframePart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DataframePart".into()
+    }
+}
+/// Generic parameters that will influence the behavior of the Lance scanner.
+///
+/// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+/// one way or another.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParameters {
+    /// List of columns to project. If empty, all columns will be projected.
+    #[prost(string, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(enumeration = "IfMissingBehavior", tag = "2")]
+    pub on_missing_columns: i32,
+    /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.filter(filter)
+    /// ```
+    #[prost(string, optional, tag = "3")]
+    pub filter: ::core::option::Option<::prost::alloc::string::String>,
+    /// An arbitrary offset that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(_, limit_offset)
+    /// ```
+    #[prost(int64, optional, tag = "4")]
+    pub limit_offset: ::core::option::Option<i64>,
+    /// An arbitrary limit that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(limit_len, _)
+    /// ```
+    #[prost(int64, optional, tag = "5")]
+    pub limit_len: ::core::option::Option<i64>,
+    /// An arbitrary order clause that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.order_by(…)
+    /// ```
+    #[prost(message, optional, tag = "6")]
+    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+    #[prost(bool, tag = "7")]
+    pub explain_plan: bool,
+    /// If set, the final `scanner.filter` will be dumped to the server's log.
+    #[prost(bool, tag = "8")]
+    pub explain_filter: bool,
+}
+impl ::prost::Name for ScanParameters {
+    const NAME: &'static str = "ScanParameters";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParameters".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParameters".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParametersOrderClause {
+    #[prost(bool, tag = "1")]
+    pub descending: bool,
+    #[prost(bool, tag = "2")]
+    pub nulls_last: bool,
+    #[prost(string, optional, tag = "3")]
+    pub column_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ScanParametersOrderClause {
+    const NAME: &'static str = "ScanParametersOrderClause";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
     }
 }
 /// supported encoder versions for encoding data
@@ -564,6 +662,35 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum IfMissingBehavior {
+    Unspecified = 0,
+    Skip = 1,
+    Error = 2,
+}
+impl IfMissingBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "IF_MISSING_BEHAVIOR_UNSPECIFIED",
+            Self::Skip => "IF_MISSING_BEHAVIOR_SKIP",
+            Self::Error => "IF_MISSING_BEHAVIOR_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "IF_MISSING_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_MISSING_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_MISSING_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }

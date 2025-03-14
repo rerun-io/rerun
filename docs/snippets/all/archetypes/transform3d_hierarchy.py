@@ -1,4 +1,4 @@
-"""Logs a transforms transform hierarchy."""
+"""Logs a transform hierarchy."""
 
 import numpy as np
 import rerun as rr
@@ -26,7 +26,7 @@ rr.log("sun/planet/moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 
 d_planet = 6.0
 d_moon = 3.0
 angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
-circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
+circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
 rr.log("sun/planet_path", rr.LineStrips3D(circle * d_planet))
 rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 

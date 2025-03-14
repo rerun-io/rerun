@@ -36,6 +36,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
+
+    #[path = "./rerun.manifest_registry.v1alpha1.rs"]
+    pub mod rerun_manifest_registry_v1alpha1;
 }
 
 pub mod common {
@@ -47,6 +50,12 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+    }
+}
+
+pub mod manifest_registry {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
     }
 }
 

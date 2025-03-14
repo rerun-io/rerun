@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
 use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimesPerTimeline};
@@ -7,6 +6,7 @@ use re_log_types::{
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
 
+use crate::Callbacks;
 use crate::NeedsRepaint;
 
 /// The time range we are currently zoomed in on.
@@ -140,24 +140,6 @@ impl Default for LastFrame {
     }
 }
 
-// Keep in sync with the `TimelineOptions` interface in `rerun_js/web-viewer/index.ts`
-#[derive(Clone)]
-pub struct TimelineCallbacks {
-    /// Fired when the a different timeline is selected.
-    pub on_timelinechange: Rc<dyn Fn(Timeline, TimeReal)>,
-
-    /// Fired when the timepoint changes.
-    ///
-    /// Does not fire when `on_seek` is called.
-    pub on_timeupdate: Rc<dyn Fn(TimeReal)>,
-
-    /// Fired when the timeline is paused.
-    pub on_pause: Rc<dyn Fn()>,
-
-    /// Fired when the timeline is played.
-    pub on_play: Rc<dyn Fn()>,
-}
-
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
@@ -210,7 +192,7 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
-        callbacks: Option<&TimelineCallbacks>,
+        callbacks: Option<&Callbacks>,
     ) -> NeedsRepaint {
         self.select_a_valid_timeline(times_per_timeline);
 
@@ -301,7 +283,7 @@ impl TimeControl {
     }
 
     /// Handle updating last frame state and trigger callbacks on changes.
-    pub fn handle_callbacks(&mut self, callbacks: &TimelineCallbacks) {
+    pub fn handle_callbacks(&mut self, callbacks: &Callbacks) {
         if self.last_frame.playing != self.playing {
             self.last_frame.playing = self.playing;
 
@@ -319,7 +301,7 @@ impl TimeControl {
                 .time_for_timeline(*self.timeline.name())
                 .unwrap_or(TimeReal::MIN);
 
-            (callbacks.on_timelinechange)(*self.timeline, time);
+            (callbacks.on_timeline_change)(*self.timeline, time);
         }
 
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
@@ -327,7 +309,7 @@ impl TimeControl {
             if state.prev.time != state.current.time {
                 state.prev.time = state.current.time;
 
-                (callbacks.on_timeupdate)(state.current.time);
+                (callbacks.on_time_update)(state.current.time);
             }
         }
     }

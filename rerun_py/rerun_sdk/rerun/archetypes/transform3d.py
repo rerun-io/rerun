@@ -101,7 +101,7 @@ class Transform3D(Transform3DExt, Archetype):
     d_planet = 6.0
     d_moon = 3.0
     angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
-    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
+    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
     rr.log("sun/planet_path", rr.LineStrips3D(circle * d_planet))
     rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
