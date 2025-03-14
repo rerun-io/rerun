@@ -1034,17 +1034,22 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Do a full text, vector or scalar search. For optimal performance, user
-        /// should first create an index on the relevant column(s) through `CreateIndex`.
-        ///
-        /// The response is a RecordBatch with 3 columns:
+        /// Do a full text, vector or scalar search. Currently only an Indexed search
+        /// is supported, user must first call `CreateIndex` for the relevant column.
+        /// TODO(zehiko) add support for "brute force" search.
+        /// The response is a RecordBatch with 4 columns:
         /// - 'partition_id' - which partition the data is from
         /// - 'timepoint' -  represents the points in time where index query matches.
         /// What time points are matched depends on the type of index that is queried.
         /// For example: for vector search it might be timepoints where top-K matches
         /// are found within *each* partition in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
-        /// - 'data' - the data that is returned for the matched timepoints
+        /// - instance column - if index column contains a batch of values (for example a
+        /// list of embeddings), then each instance of the batch is a separate row in the
+        /// resulting RecordBatch
+        /// - 'instance_id' - this is a simple element index in the batch array. For example
+        /// if indexed column is a list of embeddings [a,b,c] (where a.len() == b.len() == c.len())
+        /// then 'instance_id' of embedding 'a' is 0, 'instance_id' of 'b' is 1, etc.
         pub async fn search_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::SearchDatasetRequest>,
@@ -1152,17 +1157,22 @@ pub mod manifest_registry_service_server {
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Do a full text, vector or scalar search. For optimal performance, user
-        /// should first create an index on the relevant column(s) through `CreateIndex`.
-        ///
-        /// The response is a RecordBatch with 3 columns:
+        /// Do a full text, vector or scalar search. Currently only an Indexed search
+        /// is supported, user must first call `CreateIndex` for the relevant column.
+        /// TODO(zehiko) add support for "brute force" search.
+        /// The response is a RecordBatch with 4 columns:
         /// - 'partition_id' - which partition the data is from
         /// - 'timepoint' -  represents the points in time where index query matches.
         /// What time points are matched depends on the type of index that is queried.
         /// For example: for vector search it might be timepoints where top-K matches
         /// are found within *each* partition in the indexed entry. For inverted index
         /// it might be timepoints where the query string is found in the indexed column
-        /// - 'data' - the data that is returned for the matched timepoints
+        /// - instance column - if index column contains a batch of values (for example a
+        /// list of embeddings), then each instance of the batch is a separate row in the
+        /// resulting RecordBatch
+        /// - 'instance_id' - this is a simple element index in the batch array. For example
+        /// if indexed column is a list of embeddings [a,b,c] (where a.len() == b.len() == c.len())
+        /// then 'instance_id' of embedding 'a' is 0, 'instance_id' of 'b' is 1, etc.
         async fn search_dataset(
             &self,
             request: tonic::Request<super::SearchDatasetRequest>,
