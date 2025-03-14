@@ -513,7 +513,7 @@ pub struct ScanParameters {
     /// List of columns to project. If empty, all columns will be projected.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(enumeration = "ProjectionBehavior", tag = "2")]
+    #[prost(enumeration = "IfMissingBehavior", tag = "2")]
     pub on_missing_columns: i32,
     /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
     ///
@@ -668,31 +668,29 @@ impl StoreKind {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum ProjectionBehavior {
+pub enum IfMissingBehavior {
     Unspecified = 0,
-    /// Error out when trying to project a missing column.
-    Error = 1,
-    /// Ignore missing columns.
-    Ignore = 2,
+    Skip = 1,
+    Error = 2,
 }
-impl ProjectionBehavior {
+impl IfMissingBehavior {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "PROJECTION_BEHAVIOR_UNSPECIFIED",
-            Self::Error => "PROJECTION_BEHAVIOR_ERROR",
-            Self::Ignore => "PROJECTION_BEHAVIOR_IGNORE",
+            Self::Unspecified => "IF_MISSING_BEHAVIOR_UNSPECIFIED",
+            Self::Skip => "IF_MISSING_BEHAVIOR_SKIP",
+            Self::Error => "IF_MISSING_BEHAVIOR_ERROR",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "PROJECTION_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
-            "PROJECTION_BEHAVIOR_ERROR" => Some(Self::Error),
-            "PROJECTION_BEHAVIOR_IGNORE" => Some(Self::Ignore),
+            "IF_MISSING_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_MISSING_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_MISSING_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }

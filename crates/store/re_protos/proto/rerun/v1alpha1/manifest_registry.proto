@@ -89,18 +89,12 @@ message UnregisterPartitionsRequest {
   repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
 
   // What to do if partition is not found
-  UnknownPartitionBehavior on_unknown_partition = 3;
+  rerun.common.v1alpha1.IfMissingBehavior on_unknown_partition = 3;
 }
 
 message UnregisterPartitionsResponse {
   // returns a list of partitions that were actually removed
   rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-enum UnknownPartitionBehavior {
-  UNKNOWN_PARTITION_BEHAVIOR_UNSPECIFIED = 0;
-  UNKNOWN_PARTITION_BEHAVIOR_IGNORE = 1;
-  UNKNOWN_PARTITION_BEHAVIOR_ERROR = 2;
 }
 
 message ListPartitionsRequest {
@@ -126,7 +120,7 @@ message CreatePartitionManifestsRequest {
 
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
-  CreateDuplicateBehavior on_already_created = 3;
+  IfDuplicateBehavior on_duplicate = 3;
 }
 
 message CreatePartitionManifestsResponse {
@@ -254,7 +248,7 @@ message CreatePartitionIndexesRequest {
   rerun.common.v1alpha1.IndexColumnSelector time_index = 5;
 
   // Specify behavior when index for a partition was already created
-  CreateDuplicateBehavior on_already_created = 6;
+  IfDuplicateBehavior on_duplicate = 6;
 }
 
 // used to define which column we want to index
@@ -314,16 +308,6 @@ message ListPartitionIndexesResponse {
   // Indexes metadata as arrow RecordBatch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
-
-message ReIndexRequest {
-  // Dataset for which we want to reindex
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // which column do we want to reindex
-  IndexColumn column = 2;
-}
-
-message ReIndexResponse {}
 
 message SearchDatasetRequest {
   // Dataset for which we want to search index
@@ -412,13 +396,13 @@ message Query {
 }
 
 // Specify how the relevant creation call behaves
-// in case of previously created items
-enum CreateDuplicateBehavior {
-  CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
+// in case of previously created (duplicate) items
+enum IfDuplicateBehavior {
+  IF_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
   // Overwrite the existing item
-  CREATE_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
+  IF_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
   // Skip if the item already exists
-  CREATE_DUPLICATE_BEHAVIOR_SKIP = 2;
+  IF_DUPLICATE_BEHAVIOR_SKIP = 2;
   // Return an error if the item already exists
-  CREATE_DUPLICATE_BEHAVIOR_ERROR = 3;
+  IF_DUPLICATE_BEHAVIOR_ERROR = 3;
 }

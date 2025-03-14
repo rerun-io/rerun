@@ -238,7 +238,7 @@ message ScanParameters {
   // List of columns to project. If empty, all columns will be projected.
   repeated string columns = 1;
 
-  ProjectionBehavior on_missing_columns = 2;
+  IfMissingBehavior on_missing_columns = 2;
 
   // An arbitrary filter expression that will be passed to the Lance scanner as-is.
   //
@@ -275,14 +275,10 @@ message ScanParameters {
   bool explain_filter = 8;
 }
 
-enum ProjectionBehavior {
-  PROJECTION_BEHAVIOR_UNSPECIFIED = 0;
-
-  // Error out when trying to project a missing column.
-  PROJECTION_BEHAVIOR_ERROR = 1;
-
-  // Ignore missing columns.
-  PROJECTION_BEHAVIOR_IGNORE = 2;
+enum IfMissingBehavior {
+  IF_MISSING_BEHAVIOR_UNSPECIFIED = 0;
+  IF_MISSING_BEHAVIOR_SKIP = 1;
+  IF_MISSING_BEHAVIOR_ERROR = 2;
 }
 
 message ScanParametersOrderClause {

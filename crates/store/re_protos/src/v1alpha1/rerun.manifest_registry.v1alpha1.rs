@@ -64,7 +64,10 @@ pub struct UnregisterPartitionsRequest {
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
     /// What to do if partition is not found
-    #[prost(enumeration = "UnknownPartitionBehavior", tag = "3")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::IfMissingBehavior",
+        tag = "3"
+    )]
     pub on_unknown_partition: i32,
 }
 impl ::prost::Name for UnregisterPartitionsRequest {
@@ -139,8 +142,8 @@ pub struct CreatePartitionManifestsRequest {
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
     /// Define what happens if create is called multiple times for the same
     /// Dataset / partitions
-    #[prost(enumeration = "CreateDuplicateBehavior", tag = "3")]
-    pub on_already_created: i32,
+    #[prost(enumeration = "IfDuplicateBehavior", tag = "3")]
+    pub on_duplicate: i32,
 }
 impl ::prost::Name for CreatePartitionManifestsRequest {
     const NAME: &'static str = "CreatePartitionManifestsRequest";
@@ -377,8 +380,8 @@ pub struct CreatePartitionIndexesRequest {
     #[prost(message, optional, tag = "5")]
     pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// Specify behavior when index for a partition was already created
-    #[prost(enumeration = "CreateDuplicateBehavior", tag = "6")]
-    pub on_already_created: i32,
+    #[prost(enumeration = "IfDuplicateBehavior", tag = "6")]
+    pub on_duplicate: i32,
 }
 impl ::prost::Name for CreatePartitionIndexesRequest {
     const NAME: &'static str = "CreatePartitionIndexesRequest";
@@ -535,37 +538,6 @@ impl ::prost::Name for ListPartitionIndexesResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.manifest_registry.v1alpha1.ListPartitionIndexesResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {
-    /// Dataset for which we want to reindex
-    #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    /// which column do we want to reindex
-    #[prost(message, optional, tag = "2")]
-    pub column: ::core::option::Option<IndexColumn>,
-}
-impl ::prost::Name for ReIndexRequest {
-    const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.ReIndexRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.ReIndexRequest".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexResponse {}
-impl ::prost::Name for ReIndexResponse {
-    const NAME: &'static str = "ReIndexResponse";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.ReIndexResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.ReIndexResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -775,35 +747,6 @@ impl PartitionType {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum UnknownPartitionBehavior {
-    Unspecified = 0,
-    Ignore = 1,
-    Error = 2,
-}
-impl UnknownPartitionBehavior {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "UNKNOWN_PARTITION_BEHAVIOR_UNSPECIFIED",
-            Self::Ignore => "UNKNOWN_PARTITION_BEHAVIOR_IGNORE",
-            Self::Error => "UNKNOWN_PARTITION_BEHAVIOR_ERROR",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "UNKNOWN_PARTITION_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
-            "UNKNOWN_PARTITION_BEHAVIOR_IGNORE" => Some(Self::Ignore),
-            "UNKNOWN_PARTITION_BEHAVIOR_ERROR" => Some(Self::Error),
-            _ => None,
-        }
-    }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
 pub enum VectorDistanceMetric {
     Unspecified = 0,
     L2 = 1,
@@ -838,10 +781,10 @@ impl VectorDistanceMetric {
     }
 }
 /// Specify how the relevant creation call behaves
-/// in case of previously created items
+/// in case of previously created (duplicate) items
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum CreateDuplicateBehavior {
+pub enum IfDuplicateBehavior {
     Unspecified = 0,
     /// Overwrite the existing item
     Overwrite = 1,
@@ -850,26 +793,26 @@ pub enum CreateDuplicateBehavior {
     /// Return an error if the item already exists
     Error = 3,
 }
-impl CreateDuplicateBehavior {
+impl IfDuplicateBehavior {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED",
-            Self::Overwrite => "CREATE_DUPLICATE_BEHAVIOR_OVERWRITE",
-            Self::Skip => "CREATE_DUPLICATE_BEHAVIOR_SKIP",
-            Self::Error => "CREATE_DUPLICATE_BEHAVIOR_ERROR",
+            Self::Unspecified => "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED",
+            Self::Overwrite => "IF_DUPLICATE_BEHAVIOR_OVERWRITE",
+            Self::Skip => "IF_DUPLICATE_BEHAVIOR_SKIP",
+            Self::Error => "IF_DUPLICATE_BEHAVIOR_ERROR",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
-            "CREATE_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
-            "CREATE_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
-            "CREATE_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
+            "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
+            "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }
