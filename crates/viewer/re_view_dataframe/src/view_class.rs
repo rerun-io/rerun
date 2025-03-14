@@ -1,5 +1,9 @@
 use std::any::Any;
 
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
+    visualizer_system::EmptySystem,
+};
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
@@ -8,11 +12,6 @@ use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
     Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-};
-
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
 };
 
 #[derive(Default)]
@@ -50,7 +49,7 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Dataframe view")
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
             .markdown(
@@ -204,3 +203,8 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
 }
 
 re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| DataframeView.help(ctx));
+}

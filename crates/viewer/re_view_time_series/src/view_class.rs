@@ -1,7 +1,9 @@
 use egui::ahash::{HashMap, HashSet};
-
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
+use crate::line_visualizer_system::SeriesLineSystem;
+use crate::point_visualizer_system::SeriesPointSystem;
+use crate::PlotSeriesKind;
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimestampFormat};
@@ -15,7 +17,7 @@ use re_types::{
     datatypes::TimeRange,
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
@@ -31,11 +33,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
-
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
-
 // ---
 
 #[derive(Clone)]
@@ -107,29 +104,21 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                icon_text!(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
             .control(
                 "Move time cursor",
@@ -144,9 +133,7 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    ModifiersText(egui::Modifiers::ALT, egui_ctx),
-                    "+",
-                    icons::LEFT_MOUSE_CLICK,
+                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend"
                 ),
             )
@@ -854,3 +841,8 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
 }
 
 re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}
