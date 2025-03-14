@@ -28,7 +28,8 @@ pub use query::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
 };
 pub use results_ext::{
-    HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,
+    HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
+    RangeResultsExt,
 };
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,

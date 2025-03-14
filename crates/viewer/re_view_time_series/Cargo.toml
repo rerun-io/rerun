@@ -21,14 +21,14 @@ all-features = true
 [dependencies]
 re_chunk_store.workspace = true
 re_format.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
-re_view.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["egui_plot"] }
 re_ui.workspace = true
+re_view.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
