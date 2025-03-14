@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{components, Component as _, Loggable as _, RowId};
+use re_types::{components, Component as _, ComponentName, Loggable as _, RowId};
 use re_view::{clamped_or_nothing, HybridRangeResults, RangeResultsExt as _};
 use re_viewer_context::{auto_color_egui, QueryContext, TypedComponentFallbackProvider};
 
@@ -103,19 +103,6 @@ pub fn collect_scalars(
                 }
             });
     }
-}
-
-pub fn all_scalars_indices<'a>(
-    query: &'a RangeQuery,
-    all_scalar_chunks: &'a [re_chunk_store::Chunk],
-) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
-    all_scalar_chunks
-        .iter()
-        .flat_map(|chunk| {
-            chunk.iter_component_indices(query.timeline(), &components::Scalar::name())
-        })
-        // That is just so we can satisfy the `range_zip` contract later on.
-        .map(|index| (index, ()))
 }
 
 /// Collects colors for the series into pre-allocated plot points.
@@ -239,4 +226,88 @@ pub fn collect_series_name(
     }
 
     series_names
+}
+
+/// Collects radius_ui for the series into pre-allocated plot points.
+pub fn collect_radius_ui(
+    query: &RangeQuery,
+    results: &re_view::HybridRangeResults<'_>,
+    all_scalar_chunks: &[re_chunk_store::Chunk],
+    points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
+    radius_component_name: ComponentName,
+    radius_multiplier: f32,
+) {
+    re_tracing::profile_function!();
+
+    let num_series = points_per_series.len();
+
+    {
+        let all_radius_chunks = results.get_optional_chunks(&radius_component_name);
+
+        if all_radius_chunks.len() == 1 && all_radius_chunks[0].is_static() {
+            re_tracing::profile_scope!("override/default fast path");
+
+            if let Some(radius) = all_radius_chunks[0]
+                .iter_slices::<f32>(radius_component_name)
+                .next()
+            {
+                for (points, radius) in points_per_series
+                    .iter_mut()
+                    .zip(clamped_or_nothing(radius, num_series))
+                {
+                    let radius = radius * radius_multiplier;
+                    for point in points {
+                        point.attrs.radius_ui = radius;
+                    }
+                }
+            }
+        } else {
+            re_tracing::profile_scope!("standard path");
+
+            let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(query.timeline(), &radius_component_name),
+                    chunk.iter_slices::<f32>(radius_component_name)
+                )
+            });
+
+            let all_frames =
+                re_query::range_zip_1x1(all_scalars_indices(query, all_scalar_chunks), all_radii)
+                    .enumerate();
+
+            // Simplified path for single series.
+            if num_series == 1 {
+                let points = &mut *points_per_series[0];
+                all_frames.for_each(|(i, (_index, _scalars, radius))| {
+                    if let Some(stroke_width) = radius.and_then(|radius| radius.first().copied()) {
+                        points[i].attrs.radius_ui = stroke_width * radius_multiplier;
+                    }
+                });
+            } else {
+                all_frames.for_each(|(i, (_index, _scalars, radius))| {
+                    if let Some(radii) = radius {
+                        for (points, stroke_width) in points_per_series
+                            .iter_mut()
+                            .zip(clamped_or_nothing(radii, num_series))
+                        {
+                            points[i].attrs.radius_ui = stroke_width * radius_multiplier;
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
+pub fn all_scalars_indices<'a>(
+    query: &'a RangeQuery,
+    all_scalar_chunks: &'a [re_chunk_store::Chunk],
+) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
+    all_scalar_chunks
+        .iter()
+        .flat_map(|chunk| {
+            chunk.iter_component_indices(query.timeline(), &components::Scalar::name())
+        })
+        // That is just so we can satisfy the `range_zip` contract later on.
+        .map(|index| (index, ()))
 }

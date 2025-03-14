@@ -4,13 +4,12 @@ use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
 use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
-use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Component as _, Loggable as _,
+    Archetype as _, Component as _,
 };
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data, RangeResultsExt as _};
+use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
@@ -19,8 +18,8 @@ use re_viewer_context::{
 };
 
 use crate::series_query::{
-    all_scalars_indices, allocate_plot_points, collect_colors, collect_scalars,
-    collect_series_name, collect_series_visibility, determine_num_series,
+    allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
+    collect_series_visibility, determine_num_series,
 };
 use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
 use crate::view_class::TimeSeriesViewState;
@@ -181,10 +180,6 @@ impl SeriesLineSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
-        let fallback_color: Color = self.fallback_for(&query_ctx);
-        let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
-
         let time_offset = ctx
             .view_state
             .downcast_ref::<TimeSeriesViewState>()
@@ -223,6 +218,9 @@ impl SeriesLineSystem {
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+            // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
+            let fallback_color: Color = self.fallback_for(&query_ctx);
+            let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
             let default_point = PlotPoint {
                 time: 0,
                 value: 0.0,
@@ -245,7 +243,14 @@ impl SeriesLineSystem {
                 &all_scalar_chunks,
                 &mut points_per_series,
             );
-            collect_stroke_width(&query, &results, &all_scalar_chunks, &mut points_per_series);
+            collect_radius_ui(
+                &query,
+                &results,
+                &all_scalar_chunks,
+                &mut points_per_series,
+                StrokeWidth::name(),
+                0.5,
+            );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -335,79 +340,6 @@ impl SeriesLineSystem {
                     aggregator,
                     all_series,
                 );
-            }
-        }
-    }
-}
-
-fn collect_stroke_width(
-    query: &RangeQuery,
-    results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &[re_chunk_store::Chunk],
-    points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
-) {
-    re_tracing::profile_function!();
-
-    let num_series = points_per_series.len();
-
-    debug_assert_eq!(StrokeWidth::arrow_datatype(), ArrowDatatype::Float32);
-
-    {
-        let all_stroke_width_chunks = results.get_optional_chunks(&StrokeWidth::name());
-
-        if all_stroke_width_chunks.len() == 1 && all_stroke_width_chunks[0].is_static() {
-            re_tracing::profile_scope!("override/default fast path");
-
-            if let Some(stroke_widths) = all_stroke_width_chunks[0]
-                .iter_slices::<f32>(StrokeWidth::name())
-                .next()
-            {
-                for (points, stroke_width) in points_per_series
-                    .iter_mut()
-                    .zip(clamped_or_nothing(stroke_widths, num_series))
-                {
-                    for point in points {
-                        point.attrs.radius_ui = stroke_width * 0.5;
-                    }
-                }
-            }
-        } else {
-            re_tracing::profile_scope!("standard path");
-
-            let all_stroke_widths = all_stroke_width_chunks.iter().flat_map(|chunk| {
-                itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &StrokeWidth::name()),
-                    chunk.iter_slices::<f32>(StrokeWidth::name())
-                )
-            });
-
-            let all_frames = re_query::range_zip_1x1(
-                all_scalars_indices(query, all_scalar_chunks),
-                all_stroke_widths,
-            )
-            .enumerate();
-
-            // Simplified path for single series.
-            if num_series == 1 {
-                let points = &mut *points_per_series[0];
-                all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
-                    if let Some(stroke_width) =
-                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().copied())
-                    {
-                        points[i].attrs.radius_ui = stroke_width * 0.5;
-                    }
-                });
-            } else {
-                all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
-                    if let Some(stroke_widths) = stroke_widths {
-                        for (points, stroke_width) in points_per_series
-                            .iter_mut()
-                            .zip(clamped_or_nothing(stroke_widths, num_series))
-                        {
-                            points[i].attrs.radius_ui = stroke_width * 0.5;
-                        }
-                    }
-                });
             }
         }
     }
