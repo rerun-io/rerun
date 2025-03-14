@@ -85,6 +85,11 @@ fn collect_snippets_recursively(
         let snippet = snippet?;
         let meta = snippet.metadata()?;
         let path = snippet.path();
+
+        if path.file_name().is_some_and(|p| p == "__init__.py") {
+            continue;
+        }
+
         // Compare snippet outputs sometimes leaves orphaned rrd files.
         if path.extension().is_some_and(|p| p == "rrd") {
             continue;
