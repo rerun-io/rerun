@@ -254,7 +254,7 @@ message ListManifestsRequest {
   // Generic parameters that will influence the behavior of the Lance scanner.
   //
   // TODO(zehiko, cmc): actually support those.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+  ScanParameters scan_parameters = 2;
 }
 
 message ListManifestsResponse {
@@ -313,7 +313,7 @@ message QueryManifestRequest {
   QueryManifestRangeRelevantChunks range = 12;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 13;
+  ScanParameters scan_parameters = 13;
 }
 
 message QueryManifestResponse {
