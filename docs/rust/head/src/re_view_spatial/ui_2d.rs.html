@@ -453,7 +453,8 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape, Vec2};
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape, Vec2};
 <span class="kw">use </span>re_math::IsoTransform;
 
 <span class="kw">use </span>re_entity_db::EntityPath;
@@ -463,7 +464,7 @@
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components <span class="kw">as </span>blueprint_components,
 };
-<span class="kw">use </span>re_ui::{icon_text, icons, ContextExt <span class="kw">as _</span>, Help, ModifiersText, MouseButtonText};
+<span class="kw">use </span>re_ui::{icon_text, icons, shortcut_with_icon, ContextExt <span class="kw">as _</span>, Help, MouseButtonText};
 <span class="kw">use </span>re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 <span class="kw">use </span>re_viewer_context::{
     gpu_bridge, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -568,20 +569,16 @@
     )
 }
 
-<span class="kw">pub fn </span>help(egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'static</span>&gt; {
+<span class="kw">pub fn </span>help(egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
     Help::new(<span class="string">"2D view"</span>)
         .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/spatial2d_view"</span>)
         .control(
             <span class="string">"Pan"</span>,
-            <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN2D_BUTTON), <span class="string">"+ drag"</span>),
+            <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN2D_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
         )
         .control(
             <span class="string">"Zoom"</span>,
-            <span class="macro">icon_text!</span>(
-                ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                <span class="string">"+"</span>,
-                icons::SCROLL
-            ),
+            shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
         )
         .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
 }
@@ -907,5 +904,10 @@
         }
     }
     shapes
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }
 </code></pre></div></section></main></body></html>

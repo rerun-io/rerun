@@ -843,7 +843,13 @@
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
 <a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>egui::{text_selection::LabelSelectionState, NumExt <span class="kw">as _</span>, Ui};
 
 <span class="kw">use </span>re_chunk::TimelineName;
@@ -856,9 +862,9 @@
 <span class="kw">use </span>re_ui::{ContextExt <span class="kw">as _</span>, DesignTokens};
 <span class="kw">use </span>re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender <span class="kw">as _</span>, ViewClassExt <span class="kw">as _</span>, ViewClassRegistry,
-    ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
+    StoreContext, StoreHub, SystemCommand, SystemCommandSender <span class="kw">as _</span>, ViewClassExt <span class="kw">as _</span>,
+    ViewClassRegistry, ViewStates, ViewerContext,
 };
 <span class="kw">use </span>re_viewport::ViewportUi;
 <span class="kw">use </span>re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -1002,7 +1008,7 @@
         command_sender: <span class="kw-2">&amp;</span>CommandSender,
         welcome_screen_state: <span class="kw-2">&amp;</span>WelcomeScreenState,
         is_history_enabled: bool,
-        timeline_callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>re_viewer_context::TimelineCallbacks&gt;,
+        callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>re_viewer_context::Callbacks&gt;,
     ) {
         <span class="macro">re_tracing::profile_function!</span>();
 
@@ -1052,7 +1058,7 @@
             </span><span class="kw">return</span>;
         }
 
-        selection_state.on_frame_start(
+        <span class="kw">let </span>selection_change = selection_state.on_frame_start(
             |item| {
                 <span class="kw">if let </span>re_viewer_context::Item::StoreId(store_id) = item {
                     <span class="kw">if </span>store_id.is_empty_recording() {
@@ -1066,6 +1072,12 @@
                 store_context.recording.store_id().clone(),
             )),
         );
+
+        <span class="kw">if let </span>SelectionChange::SelectionChanged(selection) = selection_change {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(callbacks) = callbacks {
+                callbacks.on_selection_change(selection);
+            }
+        }
 
         <span class="comment">// The root container cannot be dragged.
         </span><span class="kw">let </span>drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
@@ -1147,7 +1159,7 @@
 
         <span class="comment">// We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        </span>move_time(<span class="kw-2">&amp;</span>ctx, recording, rx, timeline_callbacks);
+        </span>move_time(<span class="kw-2">&amp;</span>ctx, recording, rx, callbacks);
 
         <span class="comment">// Update the viewport. May spawn new views and handle queued requests (like screenshots).
         </span>viewport_ui.on_frame_start(<span class="kw-2">&amp;</span>ctx);
@@ -1490,7 +1502,7 @@
     ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
     recording: <span class="kw-2">&amp;</span>EntityDb,
     rx: <span class="kw-2">&amp;</span>ReceiveSet&lt;LogMsg&gt;,
-    timeline_callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>re_viewer_context::TimelineCallbacks&gt;,
+    callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>re_viewer_context::Callbacks&gt;,
 ) {
     <span class="kw">let </span>dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -1505,7 +1517,7 @@
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        timeline_callbacks,
+        callbacks,
     );
 
     <span class="kw">let </span>blueprint_needs_repaint = <span class="kw">if </span>ctx.app_options().inspect_blueprint_timeline {

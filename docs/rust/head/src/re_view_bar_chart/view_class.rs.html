@@ -266,10 +266,7 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::HashMap;
+<a href="#268" id="268">268</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::HashMap;
 <span class="kw">use </span>re_log_types::EntityPath;
 <span class="kw">use </span>re_types::{
     blueprint::{archetypes::PlotLegend, components::Corner2D},
@@ -277,7 +274,7 @@
     datatypes::TensorBuffer,
     View <span class="kw">as _</span>, ViewClassIdentifier,
 };
-<span class="kw">use </span>re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText};
+<span class="kw">use </span>re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText};
 <span class="kw">use </span>re_view::{
     controls::{<span class="self">self</span>, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
     suggest_view_for_each_entity, view_property_ui,
@@ -313,29 +310,21 @@
         Box::&lt;()&gt;::default()
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Bar chart view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/bar_chart_view"</span>)
-            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+ drag"</span>))
+            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+"</span>, <span class="string">"drag"</span>))
             .control(
                 <span class="string">"Zoom"</span>,
-                <span class="macro">icon_text!</span>(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 <span class="string">"Zoom only x-axis"</span>,
-                <span class="macro">icon_text!</span>(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 <span class="string">"Zoom to selection"</span>,
-                <span class="macro">icon_text!</span>(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), <span class="string">"+ drag"</span>),
+                <span class="macro">icon_text!</span>(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
             )
             .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
     }
@@ -540,4 +529,9 @@
 }
 
 <span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(BarChartView =&gt; [Corner2D]);
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| BarChartView.help(ctx));
+}
 </code></pre></div></section></main></body></html>

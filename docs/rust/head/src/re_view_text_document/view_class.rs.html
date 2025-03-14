@@ -199,7 +199,12 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::Label;
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::Label;
 
 <span class="kw">use </span>egui::Sense;
 <span class="kw">use </span>re_types::View <span class="kw">as _</span>;
@@ -262,7 +267,7 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_TEXT
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Text document view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/text_document_view"</span>)
             .markdown(<span class="string">"Supports raw text and markdown."</span>)
@@ -399,5 +404,10 @@
             text_document.text_entries.len()
         ));
     }
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
 }
 </code></pre></div></section></main></body></html>

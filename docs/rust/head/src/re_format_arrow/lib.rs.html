@@ -474,7 +474,22 @@
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a></pre></div><pre class="rust"><code><span class="doccomment">//! Formatting for tables of Arrow arrays
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a></pre></div><pre class="rust"><code><span class="doccomment">//! Formatting for tables of Arrow arrays
 
 </span><span class="kw">use </span>std::fmt::Formatter;
 
@@ -484,7 +499,7 @@
     util::display::{ArrayFormatter, FormatOptions},
 };
 <span class="kw">use </span>comfy_table::{presets, Cell, Row, Table};
-<span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
+<span class="kw">use </span>itertools::{Either, Itertools <span class="kw">as _</span>};
 
 <span class="kw">use </span>re_arrow_util::ArrowArrayDowncastRef <span class="kw">as _</span>;
 <span class="kw">use </span>re_tuid::Tuid;
@@ -694,7 +709,7 @@
     ///
     /// This is particularly useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
     ///
-    /// Setting this to `true` will also disable all per-column metadata.
+    /// Setting this to `true` will also disable all per-column metadata (`include_column_metadata=false`).
     </span><span class="kw">pub </span>transposed: bool,
 
     <span class="doccomment">/// If specified, displays the dataframe with the given fixed width.
@@ -704,6 +719,9 @@
 
     <span class="doccomment">/// If `true`, displays the dataframe's metadata too.
     </span><span class="kw">pub </span>include_metadata: bool,
+
+    <span class="doccomment">/// If `true`, displays the individual columns' metadata too.
+    </span><span class="kw">pub </span>include_column_metadata: bool,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>RecordBatchFormatOpts {
@@ -712,6 +730,7 @@
             transposed: <span class="bool-val">false</span>,
             width: <span class="prelude-val">None</span>,
             include_metadata: <span class="bool-val">true</span>,
+            include_column_metadata: <span class="bool-val">true</span>,
         }
     }
 }
@@ -750,6 +769,7 @@
             transposed: <span class="bool-val">false</span>,
             width,
             include_metadata: <span class="bool-val">true</span>,
+            include_column_metadata: <span class="bool-val">true</span>,
         },
     )
 }
@@ -764,6 +784,7 @@
         transposed: <span class="kw">_</span>,
         width,
         include_metadata,
+        include_column_metadata: <span class="kw">_</span>,
     } = opts;
 
     <span class="kw">let </span>(num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
@@ -813,6 +834,7 @@
         transposed,
         width,
         include_metadata: <span class="kw">_</span>,
+        include_column_metadata,
     } = opts;
 
     <span class="kw">let </span><span class="kw-2">mut </span>table = Table::new();
@@ -887,25 +909,33 @@
 
         columns.first().map_or(<span class="number">0</span>, |list_array| list_array.len())
     } <span class="kw">else </span>{
-        <span class="kw">let </span>header = fields.iter().map(|field| {
-            <span class="kw">if </span>field.metadata().is_empty() {
-                Cell::new(<span class="macro">format!</span>(
-                    <span class="string">"{}\n---\ntype: \"{}\""</span>, <span class="comment">// NOLINT
-                    </span>trim_name(field.name()),
-                    DisplayDatatype(field.data_type()),
-                ))
-            } <span class="kw">else </span>{
-                Cell::new(<span class="macro">format!</span>(
-                    <span class="string">"{}\n---\ntype: \"{}\"\n{}"</span>, <span class="comment">// NOLINT
-                    </span>trim_name(field.name()),
-                    DisplayDatatype(field.data_type()),
-                    DisplayMetadata {
-                        prefix: <span class="string">""</span>,
-                        metadata: field.metadata().clone().into_iter().collect()
-                    },
-                ))
-            }
-        });
+        <span class="kw">let </span>header = <span class="kw">if </span>include_column_metadata {
+            Either::Left(fields.iter().map(|field| {
+                <span class="kw">if </span>field.metadata().is_empty() {
+                    Cell::new(<span class="macro">format!</span>(
+                        <span class="string">"{}\n---\ntype: \"{}\""</span>, <span class="comment">// NOLINT
+                        </span>trim_name(field.name()),
+                        DisplayDatatype(field.data_type()),
+                    ))
+                } <span class="kw">else </span>{
+                    Cell::new(<span class="macro">format!</span>(
+                        <span class="string">"{}\n---\ntype: \"{}\"\n{}"</span>, <span class="comment">// NOLINT
+                        </span>trim_name(field.name()),
+                        DisplayDatatype(field.data_type()),
+                        DisplayMetadata {
+                            prefix: <span class="string">""</span>,
+                            metadata: field.metadata().clone().into_iter().collect()
+                        },
+                    ))
+                }
+            }))
+        } <span class="kw">else </span>{
+            Either::Right(
+                fields
+                    .iter()
+                    .map(|field| Cell::new(trim_name(field.name()).to_owned())),
+            )
+        };
 
         table.set_header(header);
 

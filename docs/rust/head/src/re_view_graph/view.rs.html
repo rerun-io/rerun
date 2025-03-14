@@ -233,7 +233,12 @@
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_types::EntityPath;
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_types::EntityPath;
 <span class="kw">use </span>re_types::{
     blueprint::{
         <span class="self">self</span>,
@@ -244,7 +249,7 @@
     },
     ViewClassIdentifier,
 };
-<span class="kw">use </span>re_ui::{<span class="self">self</span>, icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt <span class="kw">as _</span>};
+<span class="kw">use </span>re_ui::{<span class="self">self</span>, icon_text, icons, shortcut_with_icon, Help, MouseButtonText, UiExt <span class="kw">as _</span>};
 <span class="kw">use </span>re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -281,16 +286,16 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_GRAPH
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Graph view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/graph_view"</span>)
             .control(
                 <span class="string">"Pan"</span>,
-                <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN2D_BUTTON), <span class="string">"+ drag"</span>),
+                <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN2D_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
             )
             .control(
                 <span class="string">"Zoom"</span>,
-                <span class="macro">icon_text!</span>(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
     }
@@ -467,5 +472,10 @@
 
         <span class="prelude-val">Ok</span>(())
     }
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| GraphView.help(ctx));
 }
 </code></pre></div></section></main></body></html>

@@ -996,7 +996,14 @@
 <a href="#995" id="995">995</a>
 <a href="#996" id="996">996</a>
 <a href="#997" id="997">997</a>
-<a href="#998" id="998">998</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{emath::RectTransform, NumExt <span class="kw">as _</span>};
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{emath::RectTransform, NumExt <span class="kw">as _</span>};
 <span class="kw">use </span>glam::{Affine3A, Quat, Vec3};
 <span class="kw">use </span>web_time::Instant;
 
@@ -1014,7 +1021,9 @@
     components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
-<span class="kw">use </span>re_ui::{icon_text, icons, ContextExt <span class="kw">as _</span>, Help, ModifiersText, MouseButtonText};
+<span class="kw">use </span>re_ui::{
+    icon_text, icons, modifiers_text, shortcut_with_icon, ContextExt <span class="kw">as _</span>, Help, MouseButtonText,
+};
 <span class="kw">use </span>re_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
@@ -1384,33 +1393,33 @@
 
 <span class="comment">// ----------------------------------------------------------------------------
 
-</span><span class="kw">pub fn </span>help(egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'static</span>&gt; {
+</span><span class="kw">pub fn </span>help(egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
     Help::new(<span class="string">"3D view"</span>)
         .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/spatial3d_view"</span>)
         .control(
             <span class="string">"Pan"</span>,
-            <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN3D_BUTTON), <span class="string">"+ drag"</span>),
+            <span class="macro">icon_text!</span>(MouseButtonText(DRAG_PAN3D_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
         )
         .control(<span class="string">"Zoom"</span>, <span class="macro">icon_text!</span>(icons::SCROLL))
         .control(
             <span class="string">"Rotate"</span>,
-            <span class="macro">icon_text!</span>(MouseButtonText(ROTATE3D_BUTTON), <span class="string">"+ drag"</span>),
+            <span class="macro">icon_text!</span>(MouseButtonText(ROTATE3D_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
         )
         .control(
             <span class="string">"Roll"</span>,
-            <span class="macro">icon_text!</span>(
+            shortcut_with_icon(
+                egui_ctx,
+                ROLL_MOUSE_MODIFIER,
                 MouseButtonText(ROLL_MOUSE_ALT),
-                <span class="string">"+"</span>,
-                ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
             ),
         )
-        .control(<span class="string">"Navigate"</span>, <span class="macro">icon_text!</span>(<span class="string">"WASD / QE"</span>))
+        .control(<span class="string">"Navigate"</span>, <span class="macro">icon_text!</span>(<span class="string">"WASD"</span>, <span class="string">"/"</span>, <span class="string">"QE"</span>))
         .control(
             <span class="string">"Slow down / speed up"</span>,
             <span class="macro">icon_text!</span>(
-                ModifiersText(RuntimeModifiers::slow_down(<span class="kw-2">&amp;</span>egui_ctx.os()), egui_ctx),
+                modifiers_text(RuntimeModifiers::slow_down(<span class="kw-2">&amp;</span>egui_ctx.os()), egui_ctx),
                 <span class="string">"/"</span>,
-                ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
+                modifiers_text(SPEED_UP_3D_MODIFIER, egui_ctx)
             ),
         )
         .control(
@@ -1993,5 +2002,10 @@
         Quat::from_affine3(<span class="kw-2">&amp;</span>Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
         eye_up,
     )
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }
 </code></pre></div></section></main></body></html>

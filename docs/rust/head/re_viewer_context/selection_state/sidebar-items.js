@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["HoverHighlight","ItemContext","SelectionHighlight"],"fn":["either_none_or_same"],"struct":["ApplicationSelectionState","InteractionHighlight","ItemCollection"]};
+window.SIDEBAR_ITEMS = {"enum":["HoverHighlight","ItemContext","SelectionChange","SelectionHighlight"],"fn":["either_none_or_same"],"struct":["ApplicationSelectionState","InteractionHighlight","ItemCollection"]};

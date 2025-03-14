@@ -7,7 +7,7 @@
     source: <a class="enum" href="enum.TimePanelSource.html" title="enum re_time_panel::time_panel::TimePanelSource">TimePanelSource</a>,
     filter_state: <a class="struct" href="../../re_ui/filter_widget/struct.FilterState.html" title="struct re_ui::filter_widget::FilterState">FilterState</a>,
     filter_state_app_id: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../re_log_types/struct.ApplicationId.html" title="struct re_log_types::ApplicationId">ApplicationId</a>&gt;,
-    range_selection_anchor_item: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>&gt;,
+    range_selection_anchor_item: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Item&gt;,
     pub time_edit_string: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A panel that shows entity names to the left, time on the top.</p>
 <p>This includes the timeline controls and streams view.</p>
@@ -20,7 +20,7 @@
 </div><span id="structfield.filter_state_app_id" class="structfield section-header"><a href="#structfield.filter_state_app_id" class="anchor field">§</a><code>filter_state_app_id: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../re_log_types/struct.ApplicationId.html" title="struct re_log_types::ApplicationId">ApplicationId</a>&gt;</code></span><div class="docblock"><p>The store id the filter widget relates to.</p>
 <p>Used to invalidate the filter state (aka deactivate it) when the user switches to a
 recording with a different application id.</p>
-</div><span id="structfield.range_selection_anchor_item" class="structfield section-header"><a href="#structfield.range_selection_anchor_item" class="anchor field">§</a><code>range_selection_anchor_item: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>&gt;</code></span><div class="docblock"><p>Range selection anchor item.</p>
+</div><span id="structfield.range_selection_anchor_item" class="structfield section-header"><a href="#structfield.range_selection_anchor_item" class="anchor field">§</a><code>range_selection_anchor_item: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Item&gt;</code></span><div class="docblock"><p>Range selection anchor item.</p>
 <p>This is the item we used as a starting point for range selection. It is set and remembered
 everytime the user clicks on an item <em>without</em> holding shift.</p>
 </div><span id="structfield.time_edit_string" class="structfield section-header"><a href="#structfield.time_edit_string" class="anchor field">§</a><code>time_edit_string: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;</code></span><div class="docblock"><p>If the timestamp is being edited, the current value.</p>
@@ -31,49 +31,49 @@ e.g., testing context.</p>
 </div></details><section id="method.new_blueprint_panel" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#180-185">Source</a><h4 class="code-header">pub fn <a href="#method.new_blueprint_panel" class="fn">new_blueprint_panel</a>() -&gt; Self</h4></section><details class="toggle method-toggle" open><summary><section id="method.activate_filter" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#188-190">Source</a><h4 class="code-header">pub fn <a href="#method.activate_filter" class="fn">activate_filter</a>(&amp;mut self, query: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>)</h4></section></summary><div class="docblock"><p>Activates the search filter (for e.g. test purposes).</p>
 </div></details><section id="method.show_panel" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#193-286">Source</a><h4 class="code-header">pub fn <a href="#method.show_panel" class="fn">show_panel</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    rec_cfg: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.RecordingConfig.html" title="struct re_viewer_context::viewer_context::RecordingConfig">RecordingConfig</a>,
+    rec_cfg: &amp;RecordingConfig,
     ui: &amp;mut Ui,
     state: <a class="enum" href="../../re_types/blueprint/components/panel_state/enum.PanelState.html" title="enum re_types::blueprint::components::panel_state::PanelState">PanelState</a>,
     panel_frame: Frame,
 )</h4></section><section id="method.show_expanded_with_header" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#288-330">Source</a><h4 class="code-header">pub fn <a href="#method.show_expanded_with_header" class="fn">show_expanded_with_header</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl_after: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl_after: &amp;mut TimeControl,
     ui: &amp;mut Ui,
 )</h4></section><section id="method.collapsed_ui" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#333-387">Source</a><h4 class="code-header">fn <a href="#method.collapsed_ui" class="fn">collapsed_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
 )</h4></section><section id="method.expanded_ui" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#389-583">Source</a><h4 class="code-header">fn <a href="#method.expanded_ui" class="fn">expanded_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
 )</h4></section><section id="method.tree_ui" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#587-635">Source</a><h4 class="code-header">fn <a href="#method.tree_ui" class="fn">tree_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     ui: &amp;mut Ui,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.show_entity" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#639-797">Source</a><h4 class="code-header">fn <a href="#method.show_entity" class="fn">show_entity</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     streams_tree_data: &amp;<a class="struct" href="../streams_tree_data/struct.StreamsTreeData.html" title="struct re_time_panel::streams_tree_data::StreamsTreeData">StreamsTreeData</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     entity_data: &amp;<a class="struct" href="../streams_tree_data/struct.EntityData.html" title="struct re_time_panel::streams_tree_data::EntityData">EntityData</a>,
@@ -81,11 +81,11 @@ e.g., testing context.</p>
 )</h4></section></summary><div class="docblock"><p>Display the list item for an entity.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.show_entity_contents" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#801-983">Source</a><h4 class="code-header">fn <a href="#method.show_entity_contents" class="fn">show_entity_contents</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     streams_tree_data: &amp;<a class="struct" href="../streams_tree_data/struct.StreamsTreeData.html" title="struct re_time_panel::streams_tree_data::StreamsTreeData">StreamsTreeData</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     entity_data: &amp;<a class="struct" href="../streams_tree_data/struct.EntityData.html" title="struct re_time_panel::streams_tree_data::EntityData">EntityData</a>,
@@ -93,49 +93,49 @@ e.g., testing context.</p>
 )</h4></section></summary><div class="docblock"><p>Display the contents of an entity, i.e. its sub-entities and its components.</p>
 </div></details><section id="method.handle_interactions_for_item" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#986-1011">Source</a><h4 class="code-header">fn <a href="#method.handle_interactions_for_item" class="fn">handle_interactions_for_item</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     streams_tree_data: &amp;<a class="struct" href="../streams_tree_data/struct.StreamsTreeData.html" title="struct re_time_panel::streams_tree_data::StreamsTreeData">StreamsTreeData</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    item: <a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>,
+    item: Item,
     response: &amp;Response,
     is_draggable: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.bool.html">bool</a>,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.handle_range_selection" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1014-1064">Source</a><h4 class="code-header">fn <a href="#method.handle_range_selection" class="fn">handle_range_selection</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     streams_tree_data: &amp;<a class="struct" href="../streams_tree_data/struct.StreamsTreeData.html" title="struct re_time_panel::streams_tree_data::StreamsTreeData">StreamsTreeData</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    item: <a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>,
+    item: Item,
     response: &amp;Response,
 )</h4></section></summary><div class="docblock"><p>Handle setting/extending the selection based on shift-clicking.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.items_in_range" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1071-1125">Source</a><h4 class="code-header">fn <a href="#method.items_in_range" class="fn">items_in_range</a>(
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     streams_tree_data: &amp;<a class="struct" href="../streams_tree_data/struct.StreamsTreeData.html" title="struct re_time_panel::streams_tree_data::StreamsTreeData">StreamsTreeData</a>,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    collapse_scope: <a class="enum" href="../../re_viewer_context/collapsed_id/enum.CollapseScope.html" title="enum re_viewer_context::collapsed_id::CollapseScope">CollapseScope</a>,
-    anchor_item: &amp;<a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>,
-    shift_clicked_item: &amp;<a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>,
-) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item">Item</a>&gt;</h4></section></summary><div class="docblock"><p>Selects a range of items in the streams tree.</p>
-<p>This method selects all <a href="../../re_viewer_context/global_context/item/enum.Item.html" title="enum re_viewer_context::global_context::item::Item"><code>Item</code></a>s displayed between the provided shift-clicked item and the
+    collapse_scope: CollapseScope,
+    anchor_item: &amp;Item,
+    shift_clicked_item: &amp;Item,
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Item&gt;</h4></section></summary><div class="docblock"><p>Selects a range of items in the streams tree.</p>
+<p>This method selects all [<code>Item</code>]s displayed between the provided shift-clicked item and the
 existing last-clicked item (if any). It takes into account the collapsed state, so only
 actually visible items may be selected.</p>
 </div></details><section id="method.top_row_ui" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1127-1176">Source</a><h4 class="code-header">fn <a href="#method.top_row_ui" class="fn">top_row_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
-)</h4></section><section id="method.collapse_scope" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1178-1192">Source</a><h4 class="code-header">fn <a href="#method.collapse_scope" class="fn">collapse_scope</a>(&amp;self) -&gt; <a class="enum" href="../../re_viewer_context/collapsed_id/enum.CollapseScope.html" title="enum re_viewer_context::collapsed_id::CollapseScope">CollapseScope</a></h4></section><section id="method.collapsed_time_marker_and_time" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1194-1272">Source</a><h4 class="code-header">fn <a href="#method.collapsed_time_marker_and_time" class="fn">collapsed_time_marker_and_time</a>(
+    time_ctrl: &amp;mut TimeControl,
+)</h4></section><section id="method.collapse_scope" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1178-1192">Source</a><h4 class="code-header">fn <a href="#method.collapse_scope" class="fn">collapse_scope</a>(&amp;self) -&gt; CollapseScope</h4></section><section id="method.collapsed_time_marker_and_time" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1194-1272">Source</a><h4 class="code-header">fn <a href="#method.collapsed_time_marker_and_time" class="fn">collapsed_time_marker_and_time</a>(
     &amp;mut self,
     ui: &amp;mut Ui,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     entity_db: &amp;<a class="struct" href="../../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
 )</h4></section><section id="method.current_time_ui" class="method"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#1274-1308">Source</a><h4 class="code-header">fn <a href="#method.current_time_ui" class="fn">current_time_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
 )</h4></section></div></details></div><h2 id="trait-implementations" class="section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-Default-for-TimePanel" class="impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#152-169">Source</a><a href="#impl-Default-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/default/trait.Default.html" title="trait core::default::Default">Default</a> for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.default" class="method trait-impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#153-168">Source</a><a href="#method.default" class="anchor">§</a><h4 class="code-header">fn <a href="https://doc.rust-lang.org/1.84.0/core/default/trait.Default.html#tymethod.default" class="fn">default</a>() -&gt; Self</h4></section></summary><div class='docblock'>Returns the “default value” for a type. <a href="https://doc.rust-lang.org/1.84.0/core/default/trait.Default.html#tymethod.default">Read more</a></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Deserialize%3C'de%3E-for-TimePanel" class="impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#105">Source</a><a href="#impl-Deserialize%3C'de%3E-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl&lt;'de&gt; <a class="trait" href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserialize.html" title="trait serde::de::Deserialize">Deserialize</a>&lt;'de&gt; for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::time_panel::TimePanel">TimePanel</a><div class="where">where
     <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::time_panel::TimePanel">TimePanel</a>: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/default/trait.Default.html" title="trait core::default::Default">Default</a>,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.deserialize" class="method trait-impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#105">Source</a><a href="#method.deserialize" class="anchor">§</a><h4 class="code-header">fn <a href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserialize.html#tymethod.deserialize" class="fn">deserialize</a>&lt;__D&gt;(__deserializer: __D) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self, __D::<a class="associatedtype" href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserializer.html#associatedtype.Error" title="type serde::de::Deserializer::Error">Error</a>&gt;<div class="where">where
     __D: <a class="trait" href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,</div></h4></section></summary><div class='docblock'>Deserialize this value from the given Serde deserializer. <a href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserialize.html#tymethod.deserialize">Read more</a></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Serialize-for-TimePanel" class="impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#105">Source</a><a href="#impl-Serialize-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="https://docs.rs/serde/1.0.214/serde/ser/trait.Serialize.html" title="trait serde::ser::Serialize">Serialize</a> for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.serialize" class="method trait-impl"><a class="src rightside" href="../../src/re_time_panel/time_panel.rs.html#105">Source</a><a href="#method.serialize" class="anchor">§</a><h4 class="code-header">fn <a href="https://docs.rs/serde/1.0.214/serde/ser/trait.Serialize.html#tymethod.serialize" class="fn">serialize</a>&lt;__S&gt;(&amp;self, __serializer: __S) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;__S::<a class="associatedtype" href="https://docs.rs/serde/1.0.214/serde/ser/trait.Serializer.html#associatedtype.Ok" title="type serde::ser::Serializer::Ok">Ok</a>, __S::<a class="associatedtype" href="https://docs.rs/serde/1.0.214/serde/ser/trait.Serializer.html#associatedtype.Error" title="type serde::ser::Serializer::Error">Error</a>&gt;<div class="where">where
@@ -255,7 +255,7 @@ builds.</div></details></div></details><details class="toggle implementors-toggl
     T: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/panic/unwind_safe/trait.RefUnwindSafe.html" title="trait core::panic::unwind_safe::RefUnwindSafe">RefUnwindSafe</a> + <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,</div></h3></section><section id="impl-DeserializeOwned-for-T" class="impl"><a class="src rightside" href="https://docs.rs/serde/1.0.214/src/serde/de/mod.rs.html#614">Source</a><a href="#impl-DeserializeOwned-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; <a class="trait" href="https://docs.rs/serde/1.0.214/serde/de/trait.DeserializeOwned.html" title="trait serde::de::DeserializeOwned">DeserializeOwned</a> for T<div class="where">where
     T: for&lt;'de&gt; <a class="trait" href="https://docs.rs/serde/1.0.214/serde/de/trait.Deserialize.html" title="trait serde::de::Deserialize">Deserialize</a>&lt;'de&gt;,</div></h3></section><section id="impl-ErasedDestructor-for-T" class="impl"><a href="#impl-ErasedDestructor-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; ErasedDestructor for T<div class="where">where
     T: 'static,</div></h3></section><section id="impl-MaybeSendSync-for-T" class="impl"><a href="#impl-MaybeSendSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; MaybeSendSync for T</h3></section><section id="impl-Ungil-for-T" class="impl"><a href="#impl-Ungil-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; Ungil for T<div class="where">where
-    T: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T" class="impl"><a class="src rightside" href="../../src/re_viewer_context/async_runtime_handle.rs.html#8">Source</a><a href="#impl-WasmNotSend-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; <a class="trait" href="../../re_viewer_context/async_runtime_handle/trait.WasmNotSend.html" title="trait re_viewer_context::async_runtime_handle::WasmNotSend">WasmNotSend</a> for T<div class="where">where
+    T: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T" class="impl"><a href="#impl-WasmNotSend-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSend for T<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T-1" class="impl"><a href="#impl-WasmNotSend-for-T-1" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSend for T<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSendSync-for-T" class="impl"><a href="#impl-WasmNotSendSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSendSync for T<div class="where">where
     T: WasmNotSend + WasmNotSync,</div></h3></section><section id="impl-WasmNotSync-for-T" class="impl"><a href="#impl-WasmNotSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSync for T<div class="where">where

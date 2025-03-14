@@ -2460,53 +2460,7 @@
 <a href="#2459" id="2459">2459</a>
 <a href="#2460" id="2460">2460</a>
 <a href="#2461" id="2461">2461</a>
-<a href="#2462" id="2462">2462</a>
-<a href="#2463" id="2463">2463</a>
-<a href="#2464" id="2464">2464</a>
-<a href="#2465" id="2465">2465</a>
-<a href="#2466" id="2466">2466</a>
-<a href="#2467" id="2467">2467</a>
-<a href="#2468" id="2468">2468</a>
-<a href="#2469" id="2469">2469</a>
-<a href="#2470" id="2470">2470</a>
-<a href="#2471" id="2471">2471</a>
-<a href="#2472" id="2472">2472</a>
-<a href="#2473" id="2473">2473</a>
-<a href="#2474" id="2474">2474</a>
-<a href="#2475" id="2475">2475</a>
-<a href="#2476" id="2476">2476</a>
-<a href="#2477" id="2477">2477</a>
-<a href="#2478" id="2478">2478</a>
-<a href="#2479" id="2479">2479</a>
-<a href="#2480" id="2480">2480</a>
-<a href="#2481" id="2481">2481</a>
-<a href="#2482" id="2482">2482</a>
-<a href="#2483" id="2483">2483</a>
-<a href="#2484" id="2484">2484</a>
-<a href="#2485" id="2485">2485</a>
-<a href="#2486" id="2486">2486</a>
-<a href="#2487" id="2487">2487</a>
-<a href="#2488" id="2488">2488</a>
-<a href="#2489" id="2489">2489</a>
-<a href="#2490" id="2490">2490</a>
-<a href="#2491" id="2491">2491</a>
-<a href="#2492" id="2492">2492</a>
-<a href="#2493" id="2493">2493</a>
-<a href="#2494" id="2494">2494</a>
-<a href="#2495" id="2495">2495</a>
-<a href="#2496" id="2496">2496</a>
-<a href="#2497" id="2497">2497</a>
-<a href="#2498" id="2498">2498</a>
-<a href="#2499" id="2499">2499</a>
-<a href="#2500" id="2500">2500</a>
-<a href="#2501" id="2501">2501</a>
-<a href="#2502" id="2502">2502</a>
-<a href="#2503" id="2503">2503</a>
-<a href="#2504" id="2504">2504</a>
-<a href="#2505" id="2505">2505</a>
-<a href="#2506" id="2506">2506</a>
-<a href="#2507" id="2507">2507</a>
-<a href="#2508" id="2508">2508</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#2462" id="2462">2462</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
@@ -2522,7 +2476,7 @@
 <span class="kw">use </span>re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, Callbacks, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
     SystemCommandSender <span class="kw">as _</span>, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
@@ -2591,12 +2545,8 @@
     /// This also can be changed in the viewer's option menu.
     </span><span class="kw">pub </span>video_decoder_hw_acceleration: <span class="prelude-ty">Option</span>&lt;re_video::decode::DecodeHardwareAcceleration&gt;,
 
-    <span class="doccomment">/// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    </span><span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-    </span><span class="kw">pub </span>timeline_options: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::web::TimelineOptions&gt;,
+    <span class="doccomment">/// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
+    </span><span class="kw">pub </span>callbacks: <span class="prelude-ty">Option</span>&lt;Callbacks&gt;,
 
     <span class="doccomment">/// Fullscreen is handled by JS on web.
     ///
@@ -2647,8 +2597,7 @@
             force_wgpu_backend: <span class="prelude-val">None</span>,
             video_decoder_hw_acceleration: <span class="prelude-val">None</span>,
 
-            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-            </span>timeline_options: Default::default(),
+            callbacks: Default::default(),
 
             <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
             </span>fullscreen_options: Default::default(),
@@ -2740,11 +2689,8 @@
 
     reflection: re_types_core::reflection::Reflection,
 
-    <span class="doccomment">/// Interaction between JS and timeline.
-    ///
-    /// This field isn't used directly, but is propagated to all recording configs
-    /// when they are created.
-    </span><span class="kw">pub </span>timeline_callbacks: <span class="prelude-ty">Option</span>&lt;re_viewer_context::TimelineCallbacks&gt;,
+    <span class="doccomment">/// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
+    </span><span class="kw">pub </span>callbacks: <span class="prelude-ty">Option</span>&lt;Callbacks&gt;,
 
     <span class="doccomment">/// The async runtime that should be used for all asynchronous operations.
     ///
@@ -2880,45 +2826,7 @@
             Default::default()
         });
 
-        <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-        </span><span class="kw">let </span>timeline_callbacks = {
-            <span class="kw">use </span><span class="kw">crate</span>::web_tools::string_from_js_value;
-            <span class="kw">use </span>std::rc::Rc;
-            <span class="kw">use </span>wasm_bindgen::JsValue;
-
-            startup_options.timeline_options.clone().map(|opts| {
-                re_viewer_context::TimelineCallbacks {
-                    on_timelinechange: Rc::new(<span class="kw">move </span>|timeline, time| {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = opts.on_timelinechange.call2(
-                            <span class="kw-2">&amp;</span>JsValue::from_str(timeline.name().as_str()),
-                            <span class="kw-2">&amp;</span>JsValue::from_f64(time.as_f64()),
-                        ) {
-                            <span class="macro">re_log::error!</span>(<span class="string">"{}"</span>, string_from_js_value(err));
-                        };
-                    }),
-                    on_timeupdate: Rc::new(<span class="kw">move </span>|time| {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                            opts.on_timeupdate.call1(<span class="kw-2">&amp;</span>JsValue::from_f64(time.as_f64()))
-                        {
-                            <span class="macro">re_log::error!</span>(<span class="string">"{}"</span>, string_from_js_value(err));
-                        }
-                    }),
-                    on_play: Rc::new(<span class="kw">move </span>|| {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = opts.on_play.call0() {
-                            <span class="macro">re_log::error!</span>(<span class="string">"{}"</span>, string_from_js_value(err));
-                        }
-                    }),
-                    on_pause: Rc::new(<span class="kw">move </span>|| {
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = opts.on_pause.call0() {
-                            <span class="macro">re_log::error!</span>(<span class="string">"{}"</span>, string_from_js_value(err));
-                        }
-                    }),
-                }
-            })
-        };
-
-        <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-        </span><span class="kw">let </span>timeline_callbacks = <span class="prelude-val">None</span>;
+        <span class="kw">let </span>callbacks = startup_options.callbacks.clone();
 
         <span class="self">Self </span>{
             main_thread_token,
@@ -2970,7 +2878,7 @@
 
             reflection,
 
-            timeline_callbacks,
+            callbacks,
             async_runtime: tokio_runtime,
         }
     }
@@ -3864,7 +3772,7 @@
                                 opacity: <span class="self">self</span>.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            <span class="self">self</span>.timeline_callbacks.as_ref(),
+                            <span class="self">self</span>.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
                     }

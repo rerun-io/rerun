@@ -1791,7 +1791,19 @@
 <a href="#1790" id="1790">1790</a>
 <a href="#1791" id="1791">1791</a>
 <a href="#1792" id="1792">1792</a>
-<a href="#1793" id="1793">1793</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>egui::emath::Rangef;
 <span class="kw">use </span>egui::{
@@ -1810,8 +1822,8 @@
 <span class="kw">use </span>re_types_core::ComponentName;
 <span class="kw">use </span>re_ui::filter_widget::format_matching_text;
 <span class="kw">use </span>re_ui::{
-    filter_widget, icon_text, icons, list_item, ContextExt <span class="kw">as _</span>, DesignTokens, Help, ModifiersText,
-    UiExt <span class="kw">as _</span>,
+    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt <span class="kw">as _</span>,
+    DesignTokens, Help, UiExt <span class="kw">as _</span>,
 };
 <span class="kw">use </span>re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -2240,7 +2252,7 @@
                 ui.spacing_mut().item_spacing.y = <span class="number">0.0</span>;
 
                 ui.full_span_scope(<span class="number">0.0</span>..=time_x_left, |ui| {
-                    <span class="self">self</span>.filter_state.ui(
+                    <span class="self">self</span>.filter_state.section_title_ui(
                         ui,
                         egui::RichText::new(<span class="kw">if </span><span class="self">self</span>.source == TimePanelSource::Blueprint {
                             <span class="string">"Blueprint Streams"
@@ -3151,28 +3163,35 @@
     }
 }
 
+<span class="kw">fn </span>help(ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
+    Help::new(<span class="string">"Timeline"</span>)
+        .control(<span class="string">"Play/Pause"</span>, <span class="string">"Space"</span>)
+        .control(
+            <span class="string">"Move time cursor"</span>,
+            <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+"</span>, <span class="string">"drag time scale"</span>),
+        )
+        .control(
+            <span class="string">"Select time segment"</span>,
+            <span class="macro">icon_text!</span>(icons::SHIFT, <span class="string">"+"</span>, <span class="string">"drag time scale"</span>),
+        )
+        .control(
+            <span class="string">"Pan"</span>,
+            <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+"</span>, <span class="string">"drag event canvas"</span>),
+        )
+        .control(
+            <span class="string">"Zoom"</span>,
+            <span class="macro">icon_text!</span>(
+                modifiers_text(Modifiers::COMMAND, ctx),
+                maybe_plus(ctx),
+                icons::SCROLL
+            ),
+        )
+        .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
+}
+
 <span class="kw">fn </span>help_button(ui: <span class="kw-2">&amp;mut </span>egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        Help::new(<span class="string">"Timeline"</span>)
-            .control(<span class="string">"Play/Pause"</span>, <span class="macro">icon_text!</span>(<span class="string">"Space"</span>))
-            .control(
-                <span class="string">"Move time cursor"</span>,
-                <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+ drag time scale"</span>),
-            )
-            .control(
-                <span class="string">"Select time segment"</span>,
-                <span class="macro">icon_text!</span>(icons::SHIFT, <span class="string">"+ drag time scale"</span>),
-            )
-            .control(
-                <span class="string">"Pan"</span>,
-                <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+ drag event canvas"</span>),
-            )
-            .control(
-                <span class="string">"Zoom"</span>,
-                <span class="macro">icon_text!</span>(ModifiersText(Modifiers::COMMAND, ui.ctx()), icons::SCROLL),
-            )
-            .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
-            .ui(ui);
+        help(ui.ctx()).ui(ui);
     });
 }
 
@@ -3583,5 +3602,10 @@
         time_area_response
             .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }
 </code></pre></div></section></main></body></html>

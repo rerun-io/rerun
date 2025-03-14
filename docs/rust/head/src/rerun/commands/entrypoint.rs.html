@@ -1106,7 +1106,9 @@
 <a href="#1105" id="1105">1105</a>
 <a href="#1106" id="1106">1106</a>
 <a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 
 <span class="kw">use </span>clap::{CommandFactory <span class="kw">as _</span>, Subcommand};
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
@@ -1783,6 +1785,8 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
             </span>},
             force_wgpu_backend: args.renderer.clone(),
             video_decoder_hw_acceleration,
+
+            callbacks: <span class="prelude-val">None</span>,
 
             panel_state_overrides: Default::default(),
         }

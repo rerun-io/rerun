@@ -173,7 +173,9 @@
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a></pre></div><pre class="rust"><code><span class="doccomment">//! Rerun Viewer context
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a></pre></div><pre class="rust"><code><span class="doccomment">//! Rerun Viewer context
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
@@ -182,6 +184,7 @@
 <span class="kw">mod </span>blueprint_helpers;
 <span class="kw">mod </span>blueprint_id;
 <span class="kw">mod </span>cache;
+<span class="kw">mod </span>callback;
 <span class="kw">mod </span>collapsed_id;
 <span class="kw">mod </span>component_fallbacks;
 <span class="kw">mod </span>contents;
@@ -217,6 +220,7 @@
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
+    callback::{CallbackSelectionItem, Callbacks},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
@@ -237,12 +241,12 @@
     query_range::QueryRange,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemContext, SelectionHighlight,
+        ItemContext, SelectionChange, SelectionHighlight,
     },
     store_context::StoreContext,
     store_hub::StoreHub,
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeView, TimelineCallbacks},
+    time_control::{Looping, PlayState, TimeControl, TimeView},
     time_drag_value::TimeDragValue,
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,

@@ -6,7 +6,7 @@
 <p>From a query model standpoint, the <a href="store/struct.ChunkStore.html" title="struct re_chunk_store::store::ChunkStore"><code>ChunkStore</code></a> <em>always</em> operates one chunk at a time:</p>
 <ul>
 <li>The contents of a chunk (i.e. its columns) are immutable past insertion, by virtue of
-[<code>ChunkId</code>]s being unique and non-reusable.</li>
+<a href="../re_types_core/id/struct.ChunkId.html" title="struct re_types_core::id::ChunkId"><code>ChunkId</code></a>s being unique and non-reusable.</li>
 <li>Similarly, garbage collection always removes <em>all the data</em> associated with a chunk in one go:
 there cannot be orphaned columns. When a chunk is gone, all data associated with it is gone too.</li>
 </ul>
@@ -32,7 +32,7 @@ field below.</p>
 When that happens, it is guaranteed that <a href="events/struct.ChunkStoreDiff.html#structfield.chunk" title="field re_chunk_store::events::ChunkStoreDiff::chunk"><code>ChunkStoreDiff::chunk</code></a> will be present in the
 set of source chunks below, since it was compacted on arrival.</p>
 <p>A corollary to that is that the destination <a href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk"><code>Chunk</code></a> must have never been seen before,
-i.e. it’s [<code>ChunkId</code>] must have never been seen before.</p>
+i.e. it’s <a href="../re_types_core/id/struct.ChunkId.html" title="struct re_types_core::id::ChunkId"><code>ChunkId</code></a> must have never been seen before.</p>
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-ChunkStoreDiff" class="impl"><a class="src rightside" href="../src/re_chunk_store/events.rs.html#164-198">Source</a><a href="#impl-ChunkStoreDiff" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="events/struct.ChunkStoreDiff.html" title="struct re_chunk_store::events::ChunkStoreDiff">ChunkStoreDiff</a></h3></section></summary><div class="impl-items"><section id="method.addition" class="method"><a class="src rightside" href="../src/re_chunk_store/events.rs.html#166-172">Source</a><h4 class="code-header">pub fn <a href="#method.addition" class="fn">addition</a>(
     chunk: <a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk">Chunk</a>&gt;,
     compacted: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="events/struct.ChunkCompactionReport.html" title="struct re_chunk_store::events::ChunkCompactionReport">ChunkCompactionReport</a>&gt;,

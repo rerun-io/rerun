@@ -695,7 +695,12 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{epaint::TextShape, Align2, NumExt <span class="kw">as _</span>, Vec2};
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{epaint::TextShape, Align2, NumExt <span class="kw">as _</span>, Vec2};
 <span class="kw">use </span>ndarray::Axis;
 
 <span class="kw">use </span>re_data_ui::tensor_summary_ui_grid_contents;
@@ -761,7 +766,7 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_TENSOR
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Tensor view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/tensor_view"</span>)
             .markdown(
@@ -1392,4 +1397,9 @@ Set the displayed dimensions in a selection panel."</span>,
 
 <span class="comment">// Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
 </span><span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(TensorView =&gt; [Colormap]);
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
+}
 </code></pre></div></section></main></body></html>

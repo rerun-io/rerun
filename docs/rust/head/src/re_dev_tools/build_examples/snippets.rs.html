@@ -191,7 +191,12 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fs::create_dir_all;
 <span class="kw">use </span>std::fs::read_to_string;
 <span class="kw">use </span>std::path::Path;
@@ -278,6 +283,11 @@
         <span class="kw">let </span>snippet = snippet<span class="question-mark">?</span>;
         <span class="kw">let </span>meta = snippet.metadata()<span class="question-mark">?</span>;
         <span class="kw">let </span>path = snippet.path();
+
+        <span class="kw">if </span>path.file_name().is_some_and(|p| p == <span class="string">"__init__.py"</span>) {
+            <span class="kw">continue</span>;
+        }
+
         <span class="comment">// Compare snippet outputs sometimes leaves orphaned rrd files.
         </span><span class="kw">if </span>path.extension().is_some_and(|p| p == <span class="string">"rrd"</span>) {
             <span class="kw">continue</span>;

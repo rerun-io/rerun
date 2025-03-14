@@ -819,26 +819,7 @@
 <a href="#818" id="818">818</a>
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
-<span class="kw">use </span>std::rc::Rc;
+<a href="#821" id="821">821</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>re_chunk::TimelineName;
 <span class="kw">use </span>re_entity_db::{TimeCounts, TimesPerTimeline};
@@ -846,6 +827,7 @@
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
 
+<span class="kw">use </span><span class="kw">crate</span>::Callbacks;
 <span class="kw">use </span><span class="kw">crate</span>::NeedsRepaint;
 
 <span class="doccomment">/// The time range we are currently zoomed in on.
@@ -979,24 +961,6 @@
     }
 }
 
-<span class="comment">// Keep in sync with the `TimelineOptions` interface in `rerun_js/web-viewer/index.ts`
-</span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>TimelineCallbacks {
-    <span class="doccomment">/// Fired when the a different timeline is selected.
-    </span><span class="kw">pub </span>on_timelinechange: Rc&lt;<span class="kw">dyn </span>Fn(Timeline, TimeReal)&gt;,
-
-    <span class="doccomment">/// Fired when the timepoint changes.
-    ///
-    /// Does not fire when `on_seek` is called.
-    </span><span class="kw">pub </span>on_timeupdate: Rc&lt;<span class="kw">dyn </span>Fn(TimeReal)&gt;,
-
-    <span class="doccomment">/// Fired when the timeline is paused.
-    </span><span class="kw">pub </span>on_pause: Rc&lt;<span class="kw">dyn </span>Fn()&gt;,
-
-    <span class="doccomment">/// Fired when the timeline is played.
-    </span><span class="kw">pub </span>on_play: Rc&lt;<span class="kw">dyn </span>Fn()&gt;,
-}
-
 <span class="doccomment">/// Controls the global view and progress of the time.
 </span><span class="attr">#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
@@ -1049,7 +1013,7 @@
         times_per_timeline: <span class="kw-2">&amp;</span>TimesPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
-        callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TimelineCallbacks&gt;,
+        callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Callbacks&gt;,
     ) -&gt; NeedsRepaint {
         <span class="self">self</span>.select_a_valid_timeline(times_per_timeline);
 
@@ -1140,7 +1104,7 @@
     }
 
     <span class="doccomment">/// Handle updating last frame state and trigger callbacks on changes.
-    </span><span class="kw">pub fn </span>handle_callbacks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, callbacks: <span class="kw-2">&amp;</span>TimelineCallbacks) {
+    </span><span class="kw">pub fn </span>handle_callbacks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, callbacks: <span class="kw-2">&amp;</span>Callbacks) {
         <span class="kw">if </span><span class="self">self</span>.last_frame.playing != <span class="self">self</span>.playing {
             <span class="self">self</span>.last_frame.playing = <span class="self">self</span>.playing;
 
@@ -1158,7 +1122,7 @@
                 </span>.time_for_timeline(<span class="kw-2">*</span><span class="self">self</span>.timeline.name())
                 .unwrap_or(TimeReal::MIN);
 
-            (callbacks.on_timelinechange)(<span class="kw-2">*</span><span class="self">self</span>.timeline, time);
+            (callbacks.on_timeline_change)(<span class="kw-2">*</span><span class="self">self</span>.timeline, time);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.states.get_mut(<span class="self">self</span>.timeline.name()) {
@@ -1166,7 +1130,7 @@
             </span><span class="kw">if </span>state.prev.time != state.current.time {
                 state.prev.time = state.current.time;
 
-                (callbacks.on_timeupdate)(state.current.time);
+                (callbacks.on_time_update)(state.current.time);
             }
         }
     }

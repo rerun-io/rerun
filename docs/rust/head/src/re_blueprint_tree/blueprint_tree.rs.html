@@ -1344,7 +1344,7 @@
                     list_item::CustomContent::new(|ui, <span class="kw">_</span>| {
                         <span class="kw">let </span>title_response = <span class="self">self
                             </span>.filter_state
-                            .ui(ui, egui::RichText::new(<span class="string">"Blueprint"</span>).strong());
+                            .section_title_ui(ui, egui::RichText::new(<span class="string">"Blueprint"</span>).strong());
 
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(title_response) = title_response {
                             title_response.on_hover_text(

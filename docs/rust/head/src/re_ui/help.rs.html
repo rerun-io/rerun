@@ -184,36 +184,38 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::icon_text::{IconText, IconTextItem};
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::icon_text::{IconText, IconTextItem};
 <span class="kw">use crate</span>::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt <span class="kw">as _</span>};
-<span class="kw">use </span>egui::{OpenUrl, RichText, Sense, TextBuffer <span class="kw">as _</span>, Ui, UiBuilder};
+<span class="kw">use </span>egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 <span class="doccomment">/// A help popup where you can show markdown text and controls as a table.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>Help&lt;<span class="lifetime">'a</span>&gt; {
+</span><span class="kw">pub struct </span>Help {
     title: String,
     docs_link: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    sections: Vec&lt;HelpSection&lt;<span class="lifetime">'a</span>&gt;&gt;,
+    sections: Vec&lt;HelpSection&gt;,
 }
 
 <span class="doccomment">/// A single section, separated by a [`egui::Separator`].
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">enum </span>HelpSection&lt;<span class="lifetime">'a</span>&gt; {
+</span><span class="kw">enum </span>HelpSection {
     Markdown(String),
-    Controls(Vec&lt;ControlRow&lt;<span class="lifetime">'a</span>&gt;&gt;),
+    Controls(Vec&lt;ControlRow&gt;),
 }
 
 <span class="doccomment">/// A single row in the controls table.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>ControlRow&lt;<span class="lifetime">'a</span>&gt; {
+</span><span class="kw">pub struct </span>ControlRow {
     text: String,
-    items: IconText&lt;<span class="lifetime">'a</span>&gt;,
+    items: IconText,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ControlRow&lt;<span class="lifetime">'a</span>&gt; {
+<span class="kw">impl </span>ControlRow {
     <span class="doccomment">/// Create a new control row.
     </span><span class="attr">#[allow(clippy::needless_pass_by_value)]
-    </span><span class="kw">pub fn </span>new(text: <span class="kw">impl </span>ToString, items: IconText&lt;<span class="lifetime">'a</span>&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(text: <span class="kw">impl </span>ToString, items: IconText) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             text: text.to_string(),
             items,
@@ -221,7 +223,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Help&lt;<span class="lifetime">'a</span>&gt; {
+<span class="kw">impl </span>Help {
+    <span class="kw">pub fn </span>title(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="self">self</span>.title.as_str()
+    }
+
     <span class="doccomment">/// Create a new help popup.
     </span><span class="attr">#[allow(clippy::needless_pass_by_value)]
     </span><span class="kw">pub fn </span>new(title: <span class="kw">impl </span>ToString) -&gt; <span class="self">Self </span>{
@@ -251,20 +257,28 @@
 
     <span class="doccomment">/// Add a controls section.
     </span><span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>controls(<span class="kw-2">mut </span><span class="self">self</span>, controls: Vec&lt;ControlRow&lt;<span class="lifetime">'a</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>controls(<span class="kw-2">mut </span><span class="self">self</span>, controls: Vec&lt;ControlRow&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.sections.push(HelpSection::Controls(controls));
         <span class="self">self
     </span>}
 
     <span class="doccomment">/// Add a single control row to the last controls section.
+    ///
+    /// Split any + or / into an extra `IconTextItem`, like this:
+    /// ```rust
+    /// re_ui::Help::new("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
+    /// ```
     </span><span class="attr">#[allow(clippy::needless_pass_by_value)]
     #[inline]
-    </span><span class="kw">pub fn </span>control(<span class="kw-2">mut </span><span class="self">self</span>, label: <span class="kw">impl </span>ToString, items: IconText&lt;<span class="lifetime">'a</span>&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>control(<span class="kw-2">mut </span><span class="self">self</span>, label: <span class="kw">impl </span>ToString, items: <span class="kw">impl </span>Into&lt;IconText&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(HelpSection::Controls(controls)) = <span class="self">self</span>.sections.last_mut() {
-            controls.push(ControlRow::new(label, items));
+            controls.push(ControlRow::new(label, items.into()));
         } <span class="kw">else </span>{
             <span class="self">self</span>.sections
-                .push(HelpSection::Controls(<span class="macro">vec!</span>[ControlRow::new(label, items)]));
+                .push(HelpSection::Controls(<span class="macro">vec!</span>[ControlRow::new(
+                    label,
+                    items.into(),
+                )]));
         }
         <span class="self">self
     </span>}
@@ -289,7 +303,7 @@
     }
 
     <span class="doccomment">/// Show the help popup. Usually you want to show this in [`egui::Response::on_hover_ui`].
-    </span><span class="kw">pub fn </span>ui(<span class="kw-2">&amp;</span><span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>Ui) {
+    </span><span class="kw">pub fn </span>ui(<span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>Ui) {
         egui::Sides::new().show(
             ui,
             |ui| {
@@ -323,11 +337,11 @@
             },
         );
 
-        <span class="kw">for </span>section <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.sections {
+        <span class="kw">for </span>section <span class="kw">in </span><span class="self">self</span>.sections {
             <span class="self">Self</span>::separator(ui);
             <span class="kw">match </span>section {
                 HelpSection::Markdown(md) =&gt; {
-                    ui.markdown_ui(md);
+                    ui.markdown_ui(<span class="kw-2">&amp;</span>md);
                 }
                 HelpSection::Controls(controls) =&gt; {
                     <span class="kw">for </span>row <span class="kw">in </span>controls {
@@ -337,28 +351,18 @@
                                 ui.strong(RichText::new(<span class="kw-2">&amp;</span>row.text).size(<span class="number">11.0</span>));
                             },
                             |ui| {
+                                <span class="kw">let </span>color = design_tokens().color(ColorToken::gray(Scale::S700));
                                 ui.set_height(DesignTokens::small_icon_size().y);
-                                <span class="kw">for </span>item <span class="kw">in </span>row.items.<span class="number">0</span>.iter().rev() {
+                                ui.spacing_mut().item_spacing.x = <span class="number">2.0</span>;
+                                ui.style_mut().override_text_style = <span class="prelude-val">Some</span>(TextStyle::Monospace);
+                                ui.visuals_mut().override_text_color = <span class="prelude-val">Some</span>(color);
+                                <span class="kw">for </span>item <span class="kw">in </span>row.items.<span class="number">0</span>.into_iter().rev() {
                                     <span class="kw">match </span>item {
                                         IconTextItem::Icon(icon) =&gt; {
-                                            ui.small_icon(
-                                                icon,
-                                                <span class="prelude-val">Some</span>(
-                                                    design_tokens()
-                                                        .color(ColorToken::gray(Scale::S700)),
-                                                ),
-                                            );
+                                            ui.small_icon(<span class="kw-2">&amp;</span>icon, <span class="prelude-val">Some</span>(color));
                                         }
                                         IconTextItem::Text(text) =&gt; {
-                                            ui.label(
-                                                RichText::new(text.as_str())
-                                                    .monospace()
-                                                    .size(<span class="number">11.0</span>)
-                                                    .color(
-                                                        design_tokens()
-                                                            .color(ColorToken::gray(Scale::S700)),
-                                                    ),
-                                            );
+                                            ui.label(text);
                                         }
                                     }
                                 }

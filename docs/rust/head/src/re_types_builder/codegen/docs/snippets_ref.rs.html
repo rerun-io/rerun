@@ -642,7 +642,11 @@
 <a href="#641" id="641">641</a>
 <a href="#642" id="642">642</a>
 <a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a></pre></div><pre class="rust"><code><span class="doccomment">//! Generate the snippets reference.
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a></pre></div><pre class="rust"><code><span class="doccomment">//! Generate the snippets reference.
 
 </span><span class="kw">use </span>std::{
     cmp::Ordering,
@@ -1041,6 +1045,10 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
         <span class="kw">let </span>snippet = snippet<span class="question-mark">?</span>;
         <span class="kw">let </span>meta = snippet.metadata()<span class="question-mark">?</span>;
         <span class="kw">let </span>path = snippet.path();
+
+        <span class="kw">if </span>path.file_name().is_some_and(|name| name == <span class="string">"__init__.py"</span>) {
+            <span class="kw">continue</span>;
+        }
 
         <span class="kw">let </span>name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         <span class="kw">let </span>name_qualified = path.strip_prefix(snippet_root_path)<span class="question-mark">?</span>.with_extension(<span class="string">""</span>);

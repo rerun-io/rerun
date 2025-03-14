@@ -204,8 +204,16 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
 
+<span class="kw">use crate</span>::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
+    visualizer_system::EmptySystem,
+};
 <span class="kw">use </span>re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 <span class="kw">use </span>re_dataframe::QueryEngine;
 <span class="kw">use </span>re_log_types::EntityPath;
@@ -214,11 +222,6 @@
 <span class="kw">use </span>re_viewer_context::{
     Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt <span class="kw">as _</span>, ViewSystemExecutionError, ViewerContext,
-};
-
-<span class="kw">use crate</span>::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
 };
 
 <span class="attr">#[derive(Default)]
@@ -256,7 +259,7 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_DATAFRAME
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, _egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Dataframe view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/dataframe_view"</span>)
             .markdown(
@@ -410,4 +413,9 @@ Configure in the selection panel:
 }
 
 <span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(DataframeView =&gt; []);
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| DataframeView.help(ctx));
+}
 </code></pre></div></section></main></body></html>

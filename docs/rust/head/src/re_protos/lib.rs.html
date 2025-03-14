@@ -288,7 +288,16 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crate contains generated types for the remote store gRPC service API.
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crate contains generated types for the remote store gRPC service API.
 //! Generation is done using the `re_protos_builder` crate.
 //!
 //! We want clear separation between 'internal' types and gRPC types and don't want
@@ -323,6 +332,9 @@
 
     <span class="attr">#[path = <span class="string">"./rerun.sdk_comms.v1alpha1.rs"</span>]
     </span><span class="kw">pub mod </span>rerun_sdk_comms_v1alpha1;
+
+    <span class="attr">#[path = <span class="string">"./rerun.manifest_registry.v1alpha1.rs"</span>]
+    </span><span class="kw">pub mod </span>rerun_manifest_registry_v1alpha1;
 }
 
 <span class="kw">pub mod </span>common {
@@ -334,6 +346,12 @@
 <span class="kw">pub mod </span>log_msg {
     <span class="kw">pub mod </span>v1alpha1 {
         <span class="kw">pub use </span><span class="kw">crate</span>::v1alpha1::rerun_log_msg_v1alpha1::<span class="kw-2">*</span>;
+    }
+}
+
+<span class="kw">pub mod </span>manifest_registry {
+    <span class="kw">pub mod </span>v1alpha1 {
+        <span class="kw">pub use </span><span class="kw">crate</span>::v1alpha1::rerun_manifest_registry_v1alpha1::<span class="kw-2">*</span>;
     }
 }
 

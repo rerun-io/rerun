@@ -846,18 +846,12 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::{HashMap, HashSet};
-
+<a href="#848" id="848">848</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::{HashMap, HashSet};
 <span class="kw">use </span>egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
+<span class="kw">use </span><span class="kw">crate</span>::line_visualizer_system::SeriesLineSystem;
+<span class="kw">use </span><span class="kw">crate</span>::point_visualizer_system::SeriesPointSystem;
+<span class="kw">use </span><span class="kw">crate</span>::PlotSeriesKind;
 <span class="kw">use </span>re_chunk_store::TimeType;
 <span class="kw">use </span>re_format::next_grid_tick_magnitude_ns;
 <span class="kw">use </span>re_log_types::{EntityPath, TimeInt, TimestampFormat};
@@ -871,7 +865,7 @@
     datatypes::TimeRange,
     ComponentBatch <span class="kw">as _</span>, View <span class="kw">as _</span>, ViewClassIdentifier,
 };
-<span class="kw">use </span>re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt <span class="kw">as _</span>};
+<span class="kw">use </span>re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt <span class="kw">as _</span>};
 <span class="kw">use </span>re_view::controls::{
     ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
@@ -887,11 +881,6 @@
 };
 <span class="kw">use </span>re_viewport_blueprint::ViewProperty;
 <span class="kw">use </span>smallvec::SmallVec;
-
-<span class="kw">use </span><span class="kw">crate</span>::line_visualizer_system::SeriesLineSystem;
-<span class="kw">use </span><span class="kw">crate</span>::point_visualizer_system::SeriesPointSystem;
-<span class="kw">use </span><span class="kw">crate</span>::PlotSeriesKind;
-
 <span class="comment">// ---
 
 </span><span class="attr">#[derive(Clone)]
@@ -963,29 +952,21 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_TIMESERIES
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Time series view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/time_series_view"</span>)
-            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+ drag"</span>))
+            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+"</span>, <span class="string">"drag"</span>))
             .control(
                 <span class="string">"Zoom"</span>,
-                <span class="macro">icon_text!</span>(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 <span class="string">"Zoom only x-axis"</span>,
-                <span class="macro">icon_text!</span>(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 <span class="string">"Zoom to selection"</span>,
-                <span class="macro">icon_text!</span>(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), <span class="string">"+ drag"</span>),
+                <span class="macro">icon_text!</span>(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), <span class="string">"+"</span>, <span class="string">"drag"</span>),
             )
             .control(
                 <span class="string">"Move time cursor"</span>,
@@ -1000,9 +981,7 @@
             .control(
                 <span class="string">"Hide/show other series"</span>,
                 <span class="macro">icon_text!</span>(
-                    ModifiersText(egui::Modifiers::ALT, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::LEFT_MOUSE_CLICK,
+                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     <span class="string">"legend"
                 </span>),
             )
@@ -1710,4 +1689,9 @@
 }
 
 <span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(TimeSeriesView =&gt; [Corner2D, Range1D]);
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}
 </code></pre></div></section></main></body></html>

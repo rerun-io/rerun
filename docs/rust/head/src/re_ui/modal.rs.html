@@ -322,7 +322,20 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a></pre></div><pre class="rust"><code><span class="kw">use </span>eframe::emath::NumExt <span class="kw">as _</span>;
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a></pre></div><pre class="rust"><code><span class="kw">use </span>eframe::emath::NumExt <span class="kw">as _</span>;
 
 <span class="kw">use crate</span>::{DesignTokens, UiExt <span class="kw">as _</span>};
 
@@ -409,6 +422,7 @@
     min_height: <span class="prelude-ty">Option</span>&lt;f32&gt;,
     default_height: <span class="prelude-ty">Option</span>&lt;f32&gt;,
     full_span_content: bool,
+    set_side_margins: bool,
     scrollable: egui::Vec2b,
 }
 
@@ -421,6 +435,7 @@
             min_height: <span class="prelude-val">None</span>,
             default_height: <span class="prelude-val">None</span>,
             full_span_content: <span class="bool-val">false</span>,
+            set_side_margins: <span class="bool-val">true</span>,
             scrollable: <span class="bool-val">false</span>.into(),
         }
     }
@@ -456,6 +471,17 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>full_span_content(<span class="kw-2">mut </span><span class="self">self</span>, full_span_content: bool) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.full_span_content = full_span_content;
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Configure whether the side margin should be set.
+    ///
+    /// In general, the side margin should be set for a better layout. It may be useful to not set
+    /// them if the client code wants to setup a custom scroll area, which should be outside of the
+    /// side margins.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>set_side_margin(<span class="kw-2">mut </span><span class="self">self</span>, set_side_margins: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.set_side_margins = set_side_margins;
         <span class="self">self
     </span>}
 
@@ -527,7 +553,7 @@
                     // (if any). Otherwise, the scroll bar is not snug with the right border and
                     // may interfere with the action buttons of `ListItem`s.
                     </span>view_padding_frame(<span class="kw-2">&amp;</span>ViewPaddingFrameParams {
-                        left_and_right: <span class="bool-val">true</span>,
+                        left_and_right: <span class="self">self</span>.set_side_margins,
                         top: <span class="bool-val">false</span>,
                         bottom: <span class="bool-val">false</span>,
                     })

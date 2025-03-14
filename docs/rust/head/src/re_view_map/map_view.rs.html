@@ -628,7 +628,8 @@
 <a href="#627" id="627">627</a>
 <a href="#628" id="628">628</a>
 <a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{Context, Modifiers, NumExt <span class="kw">as _</span>, Rect, Response};
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{Context, Modifiers, NumExt <span class="kw">as _</span>, Rect, Response};
 <span class="kw">use </span>re_view::AnnotationSceneContext;
 <span class="kw">use </span>walkers::{HttpTiles, Map, MapMemory, Tiles};
 
@@ -644,7 +645,7 @@
     },
     View <span class="kw">as _</span>, ViewClassIdentifier,
 };
-<span class="kw">use </span>re_ui::{icon_text, icons, list_item, Help, ModifiersText};
+<span class="kw">use </span>re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
 <span class="kw">use </span>re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem <span class="kw">as _</span>, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -732,17 +733,13 @@
         <span class="kw-2">&amp;</span>re_ui::icons::VIEW_MAP
     }
 
-    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>, egui_ctx: <span class="kw-2">&amp;</span>egui::Context) -&gt; Help {
         Help::new(<span class="string">"Map view"</span>)
             .docs_link(<span class="string">"https://rerun.io/docs/reference/types/views/map_view"</span>)
-            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+ drag"</span>))
+            .control(<span class="string">"Pan"</span>, <span class="macro">icon_text!</span>(icons::LEFT_MOUSE_CLICK, <span class="string">"+"</span>, <span class="string">"drag"</span>))
             .control(
                 <span class="string">"Zoom"</span>,
-                <span class="macro">icon_text!</span>(
-                    ModifiersText(Modifiers::COMMAND, egui_ctx),
-                    <span class="string">"+"</span>,
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
             )
             .control(<span class="string">"Reset view"</span>, <span class="macro">icon_text!</span>(<span class="string">"double"</span>, icons::LEFT_MOUSE_CLICK))
     }
@@ -1257,5 +1254,10 @@
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         </span><span class="kw-2">*</span>last_gpu_picking_result
     }
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }
 </code></pre></div></section></main></body></html>
