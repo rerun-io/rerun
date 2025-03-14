@@ -17,9 +17,9 @@ boolean
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Interactive`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Interactive.html)
- * 🐍 [Python API docs for `Interactive`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Interactive)
- * 🦀 [Rust API docs for `Interactive`](https://docs.rs/rerun/latest/rerun/components/struct.Interactive.html)
+ * 🌊 [C++ API docs for `Interactive`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Interactive.html?speculative-link)
+ * 🐍 [Python API docs for `Interactive`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Interactive)
+ * 🦀 [Rust API docs for `Interactive`](https://docs.rs/rerun/latest/rerun/components/struct.Interactive.html?speculative-link)
 
 
 ## Used by

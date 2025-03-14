@@ -259,11 +259,11 @@ rr.send_blueprint(
             "hidden_subtree": [rrb.components.Visible(False)],
             "hidden_subtree/child0": [rrb.components.Visible(False)],
             "hidden_subtree/child1": [rrb.components.Visible(False)],
-            # ...
+            # …
             "non_interactive_subtree": [rrb.components.Interactive(False)],
             "non_interactive_subtree/child0": [rrb.components.Interactive(False)],
             "non_interactive_subtree/child1": [rrb.components.Interactive(False)],
-            # ...
+            # …
         }
     ),
 )
