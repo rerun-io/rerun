@@ -21,6 +21,9 @@ def job(name: str) -> Iterator[tuple[str, bytes]]:
 
     blueprint = rrb.Blueprint(rrb.TextLogView(name="My Logs", origin="test"))
 
+    # We need to force start times to be equal.
+    rr.set_properties({"started": 0})
+
     rr.send_blueprint(blueprint)
 
     for i in range(100):

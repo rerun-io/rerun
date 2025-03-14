@@ -150,6 +150,7 @@ Configure in the selection panel:
             include_semantically_empty_columns: false,
             include_indicator_columns: false,
             include_tombstone_columns: false,
+            include_properties_entity: true,
         };
 
         let view_columns = query_engine

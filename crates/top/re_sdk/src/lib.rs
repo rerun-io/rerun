@@ -58,8 +58,8 @@ pub fn default_flush_timeout() -> Option<std::time::Duration> {
 pub use re_log_types::{
     entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
-
 pub use re_memory::MemoryLimit;
+pub use re_types::archetypes::RecordingProperties;
 
 pub use global::cleanup_if_forked_child;
 

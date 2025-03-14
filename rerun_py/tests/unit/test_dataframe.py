@@ -21,17 +21,17 @@ def test_load_recording() -> None:
         with rr.RecordingStream("rerun_example_test_recording") as rec:
             rec.save(rrd)
             rec.set_index("my_index", sequence=1)
-            rec.log("/content/log", rr.TextLog("Hello"))
+            rec.log("log", rr.TextLog("Hello"))
 
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**")
+        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
         # my_index, log_time, log_tick, text
-        assert table.num_columns == 5
+        assert table.num_columns == 4
         assert table.num_rows == 1
 
         recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
@@ -42,7 +42,7 @@ def test_load_recording() -> None:
         table = pa.Table.from_batches(batches, batches.schema)
 
         # my_index, log_time, log_tick, text
-        assert table.num_columns == 5
+        assert table.num_columns == 4
         assert table.num_rows == 1
 
 
@@ -54,10 +54,10 @@ class TestDataframe:
             with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
                 rec.save(rrd)
                 rec.set_index("my_index", sequence=1)
-                rec.log("/content/points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
+                rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
                 rec.set_index("my_index", sequence=7)
-                rec.log("/content/points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
-                rec.log("/content/static_text", rr.TextLog("Hello"), static=True)
+                rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+                rec.log("static_text", rr.TextLog("Hello"), static=True)
 
             self.recording = rr.dataframe.load_recording(rrd)
 
@@ -101,7 +101,7 @@ class TestDataframe:
 
         # log_tick, log_time, my_index
         assert len(schema.index_columns()) == 3
-        # Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
+        # RecordingPropertiesIndicator, Timestamp, Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
         assert len(schema.component_columns()) == 8
 
         # Index columns
@@ -110,10 +110,10 @@ class TestDataframe:
         assert schema.index_columns()[2].name == "my_index"
 
         # Default property columns
-        assert schema.component_columns()[0].entity_path == "/__recording_properties"
+        assert schema.component_columns()[0].entity_path == "/__partition_properties"
         assert schema.component_columns()[0].component_name == "rerun.components.RecordingPropertiesIndicator"
         assert schema.component_columns()[0].is_static is True
-        assert schema.component_columns()[1].entity_path == "/__recording_properties"
+        assert schema.component_columns()[1].entity_path == "/__partition_properties"
         assert schema.component_columns()[1].component_name == "rerun.components.Timestamp"
         assert schema.component_columns()[1].is_static is True
 
@@ -138,7 +138,7 @@ class TestDataframe:
         assert schema.component_columns()[7].is_static is True
 
     def test_schema_view(self) -> None:
-        schema = self.recording.view(index="my_index", contents="/content/points").schema()
+        schema = self.recording.view(index="my_index", contents="points", include_properties_entity=False).schema()
 
         assert len(schema.index_columns()) == 3
         # Position3D, Color
@@ -155,7 +155,7 @@ class TestDataframe:
         # Force radius to be included
         schema = self.recording.view(
             index="my_index",
-            contents="/content/points",
+            contents="points",
             include_semantically_empty_columns=True,
         ).schema()
 
@@ -165,12 +165,12 @@ class TestDataframe:
         assert schema.component_columns()[2].component_name == "rerun.components.Radius"
 
     def test_full_view(self) -> None:
-        view = self.recording.view(index="my_index", contents="/**")
+        view = self.recording.view(index="my_index", contents="/**", include_properties_entity=False)
 
         table = view.select().read_all()
 
-        # my_index, log_time, log_tick, properties.started, points, colors, text
-        assert table.num_columns == 7
+        # my_index, log_time, log_tick, points, colors, text
+        assert table.num_columns == 6
         assert table.num_rows == 2
 
         table = view.select(
@@ -198,16 +198,16 @@ class TestDataframe:
         ]
 
         for expr in filter_expressions:
-            view = self.recording.view(index="my_index", contents=expr)
+            view = self.recording.view(index="my_index", contents=expr, include_properties_entity=False)
 
             table = view.select().read_all()
 
-            # my_index, log_time, properties.started, log_tick, points, colors
-            assert table.num_columns == 6
+            # my_index, log_time, log_tick, points, colors
+            assert table.num_columns == 5
             assert table.num_rows == 2
 
     def test_select_columns(self) -> None:
-        view = self.recording.view(index="my_index", contents="/content/points")
+        view = self.recording.view(index="my_index", contents="points")
         index_col_selectors: list[AnyColumn] = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
         selectors: list[ComponentLike] = [
@@ -239,7 +239,7 @@ class TestDataframe:
                 assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
 
     def test_index_values(self) -> None:
-        view = self.recording.view(index="my_index", contents="/content/points")
+        view = self.recording.view(index="my_index", contents="points")
         view = view.filter_index_values([1, 7, 9])
 
         batches = view.select()
@@ -310,7 +310,7 @@ class TestDataframe:
             view.filter_index_values(pa.array([1.0, 2.0], type=pa.float64()))
 
     def test_using_index_values(self) -> None:
-        view = self.recording.view(index="my_index", contents="/content/points")
+        view = self.recording.view(index="my_index", contents="points")
         view = view.using_index_values([0, 5, 9])
 
         table = view.select().read_all().combine_chunks()
@@ -342,7 +342,7 @@ class TestDataframe:
         assert table.column("/points:Position3D")[2].values.equals(self.expected_pos1)
 
     def test_filter_is_not_null(self) -> None:
-        view = self.recording.view(index="my_index", contents="/content/points")
+        view = self.recording.view(index="my_index", contents="points")
 
         color = rr.dataframe.ComponentColumnSelector("points", rr.components.Color)
 
@@ -392,7 +392,7 @@ class TestDataframe:
             assert table.num_rows == 0
 
     def test_roundtrip_send(self) -> None:
-        df = self.recording.view(index="my_index", contents="/content/**").select().read_all()
+        df = self.recording.view(index="my_index", contents="/**", include_properties_entity=False).select().read_all()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
@@ -403,7 +403,11 @@ class TestDataframe:
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 
-        df_round_trip = round_trip_recording.view(index="my_index", contents="/content/**").select().read_all()
+        df_round_trip = (
+            round_trip_recording.view(index="my_index", contents="/**", include_properties_entity=False)
+            .select()
+            .read_all()
+        )
 
         print("df:")
         print(df)

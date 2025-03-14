@@ -71,7 +71,7 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
-const RESERVED_NAMESPACE_PREFIX: &str = "__";
+pub(crate) const RESERVED_NAMESPACE_PREFIX: &str = "__";
 const PARTITION_PROPERTIES_PATH: &str = "partition_properties";
 
 /// The unique identifier of an entity, e.g. `camera/3/points`

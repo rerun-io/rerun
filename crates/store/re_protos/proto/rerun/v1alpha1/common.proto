@@ -101,6 +101,9 @@ message Query {
 
   // Specifies how null values should be filled in the returned dataframe.
   SparseFillStrategy sparse_fill_strategy = 11;
+
+  // Whether the view_contents should ignore columns from the recording properties entity.
+  bool include_properties_entity = 12;
 }
 
 message ColumnSelection {

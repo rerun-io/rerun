@@ -763,6 +763,21 @@ class RecordingStream:
             recording=self,
         )
 
+    def set_properties(self, properties: dict[str, str]) -> None:
+        """
+        Set the properties of the recording.
+
+        These are builtin properties of the Rerun Viewer.
+
+        Parameters
+        ----------
+        properties : RecordingProperties
+            The name of the recording.
+
+        """
+
+        bindings.set_properties(properties, recording=self.to_native())
+
     def set_name(self, name: str) -> None:
         """
         Set the name of the recording.

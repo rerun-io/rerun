@@ -319,6 +319,12 @@ namespace rerun {
         return status;
     }
 
+    Error RecordingStream::try_set_properties(archetypes::RecordingProperties& properties) const {
+        rr_error status = {};
+        this->log_static(PARTITION_PROPERTIES_ENTITY_PATH, properties);
+        return status;
+    }
+
     Error RecordingStream::try_set_name(std::string_view name) const {
         rr_error status = {};
         this->log_static(
