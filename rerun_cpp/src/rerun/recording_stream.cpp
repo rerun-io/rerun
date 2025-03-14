@@ -1,4 +1,5 @@
 #include "recording_stream.hpp"
+#include "archetypes.hpp"
 #include "c/rerun.h"
 #include "component_batch.hpp"
 #include "config.hpp"
@@ -10,6 +11,8 @@
 #include <cassert>
 #include <string> // to_string
 #include <vector>
+
+static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
 
 namespace rerun {
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
@@ -313,6 +316,21 @@ namespace rerun {
             &status
         );
 
+        return status;
+    }
+
+    Error RecordingStream::try_set_properties(archetypes::RecordingProperties& properties) const {
+        rr_error status = {};
+        this->log_static(PARTITION_PROPERTIES_ENTITY_PATH, properties);
+        return status;
+    }
+
+    Error RecordingStream::try_set_name(std::string_view name) const {
+        rr_error status = {};
+        this->log_static(
+            PARTITION_PROPERTIES_ENTITY_PATH,
+            rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
+        );
         return status;
     }
 

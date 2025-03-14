@@ -310,7 +310,7 @@ mod tests {
     use re_chunk::RowId;
     use re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
     use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
 
     use super::*;
@@ -353,7 +353,6 @@ mod tests {
                     application_id: ApplicationId("test".to_owned()),
                     store_id: StoreId::random(StoreKind::Recording),
                     cloned_from: None,
-                    started: Time::now(),
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),

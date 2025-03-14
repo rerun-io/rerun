@@ -371,9 +371,7 @@ mod tests {
     use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{
-        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-    };
+    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     // TODO(#3741): remove this once we are all in on arrow-rs
     pub fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
@@ -410,7 +408,6 @@ mod tests {
                     application_id: ApplicationId("test".to_owned()),
                     store_id: store_id.clone(),
                     cloned_from: None,
-                    started: Time::now(),
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),

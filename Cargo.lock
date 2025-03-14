@@ -6621,7 +6621,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_smart_channel",
- "re_types_core",
+ "re_types",
  "re_uri",
  "re_web_viewer_server",
  "similar-asserts",

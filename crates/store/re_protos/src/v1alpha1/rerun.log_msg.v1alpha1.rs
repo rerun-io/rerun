@@ -114,9 +114,6 @@ pub struct StoreInfo {
     /// Unique ID of the recording.
     #[prost(message, optional, tag = "2")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
-    /// When the recording started.
-    #[prost(message, optional, tag = "4")]
-    pub started: ::core::option::Option<super::super::common::v1alpha1::Time>,
     /// Where the recording came from.
     #[prost(message, optional, tag = "5")]
     pub store_source: ::core::option::Option<StoreSource>,

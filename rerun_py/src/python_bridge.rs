@@ -178,6 +178,10 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
+    // properties
+    m.add_function(wrap_pyfunction!(set_properties, m)?)?;
+    m.add_function(wrap_pyfunction!(set_name, m)?)?;
+
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
 
@@ -1365,6 +1369,57 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
             .collect_vec(),
     );
     Ok(path.to_string())
+}
+
+// --- Properties ---
+
+#[derive(FromPyObject)]
+#[pyo3(from_item_all)]
+struct RecordingProperties {
+    name: Option<String>,
+    started: Option<i64>,
+}
+
+// Set the name of a recording.
+#[pyfunction]
+#[pyo3(signature = (properties, recording=None))]
+fn set_properties(
+    properties: RecordingProperties,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    if properties.name.is_none() && properties.started.is_none() {
+        re_log::warn!("None of the provided properties match the recording properties.");
+        return Ok(());
+    }
+
+    let mut prop_archetype = re_sdk::RecordingProperties::new();
+
+    if let Some(name) = properties.name {
+        prop_archetype = prop_archetype.with_name(name);
+    }
+    if let Some(started) = properties.started {
+        prop_archetype = prop_archetype.with_started(started);
+    }
+
+    recording
+        .set_properties(&prop_archetype)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Set the name of a recording.
+#[pyfunction]
+#[pyo3(signature = (name, recording=None))]
+fn set_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+    recording
+        .set_name(name)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Helpers ---

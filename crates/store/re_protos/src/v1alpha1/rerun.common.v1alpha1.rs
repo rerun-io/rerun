@@ -151,6 +151,9 @@ pub struct Query {
     /// Specifies how null values should be filled in the returned dataframe.
     #[prost(enumeration = "SparseFillStrategy", tag = "11")]
     pub sparse_fill_strategy: i32,
+    /// Whether the view_contents should ignore columns from the recording properties entity.
+    #[prost(bool, tag = "12")]
+    pub include_properties_entity: bool,
 }
 impl ::prost::Name for Query {
     const NAME: &'static str = "Query";

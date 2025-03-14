@@ -21,6 +21,9 @@ def job(name: str) -> Iterator[tuple[str, bytes]]:
 
     blueprint = rrb.Blueprint(rrb.TextLogView(name="My Logs", origin="test"))
 
+    # We need to force start times to be equal.
+    rr.set_properties({"started": 0})
+
     rr.send_blueprint(blueprint)
 
     for i in range(100):
@@ -61,10 +64,12 @@ def test_binary_stream() -> None:
             with open(f"{tmpdir}/output_{name}.rrd", "a+b") as f:
                 f.write(data)
 
-        subprocess.run(
-            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
-            check=True,
+        process = subprocess.run(
+            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"], capture_output=True
         )
+        if process.returncode != 0:
+            print(process.stderr.decode("utf-8"))
+            raise Exception("Rerun failed")
 
     # Restore the previous value of RERUN_FLUSH_NUM_ROWS
     if prev_flush_num_rows is not None:

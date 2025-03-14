@@ -3,7 +3,7 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
@@ -138,6 +138,15 @@ impl EntityDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
+    }
+
+    pub fn property<C: re_types_core::Component>(&self) -> Option<C> {
+        self.latest_at_component::<C>(
+            &EntityPath::partition_properties(),
+            // TODO(grtlr): Does `log_time` make sense here?
+            &LatestAtQuery::latest(*Timeline::log_tick().name()),
+        )
+        .map(|(_, value)| value)
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -555,12 +564,6 @@ impl EntityDb {
             .map(|event| event.chunk.entity_path().clone())
             .collect();
         tree.on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
-    }
-
-    /// Key used for sorting recordings in the UI.
-    pub fn sort_key(&self) -> impl Ord + '_ {
-        self.store_info()
-            .map(|info| (info.application_id.0.as_str(), info.started))
     }
 
     /// Export the contents of the current database to a sequence of messages.

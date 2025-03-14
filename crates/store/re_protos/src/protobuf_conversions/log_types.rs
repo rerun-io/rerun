@@ -387,7 +387,6 @@ impl From<re_log_types::StoreInfo> for crate::log_msg::v1alpha1::StoreInfo {
         Self {
             application_id: Some(value.application_id.into()),
             store_id: Some(value.store_id.into()),
-            started: Some(value.started.into()),
             store_source: Some(value.store_source.into()),
             store_version: value
                 .store_version
@@ -417,13 +416,6 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
                 "store_id",
             ))?
             .into();
-        let started: re_log_types::Time = value
-            .started
-            .ok_or(missing_field!(
-                crate::log_msg::v1alpha1::StoreInfo,
-                "started"
-            ))?
-            .into();
         let store_source: re_log_types::StoreSource = value
             .store_source
             .ok_or(missing_field!(
@@ -439,7 +431,6 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             application_id,
             store_id,
             cloned_from: None,
-            started,
             store_source,
             store_version,
         })
@@ -645,7 +636,6 @@ mod tests {
                 "test_recording".to_owned(),
             ),
             cloned_from: None,
-            started: re_log_types::Time::now(),
             store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                 major: 3,
                 minor: 8,
@@ -670,7 +660,6 @@ mod tests {
                     "test_recording".to_owned(),
                 ),
                 cloned_from: None,
-                started: re_log_types::Time::now(),
                 store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                     major: 3,
                     minor: 8,

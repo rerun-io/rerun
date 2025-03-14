@@ -9,13 +9,12 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
-    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
 use re_protos::{
     common::v1alpha1::{IndexColumnSelector, RecordingId},
     remote_store::v1alpha1::{
         CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
-        CATALOG_START_TIME_FIELD_NAME,
     },
 };
 
@@ -328,26 +327,10 @@ pub fn store_info_from_catalog_chunk(
         }))?
         .value(0);
 
-    let data = record_batch
-        .column_by_name(CATALOG_START_TIME_FIELD_NAME)
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("no {CATALOG_START_TIME_FIELD_NAME} field found"),
-        }))?;
-    let start_time = data
-        .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!(
-                "{CATALOG_START_TIME_FIELD_NAME} must be a Timestamp array: {:?}",
-                record_batch.schema_ref()
-            ),
-        }))?
-        .value(0);
-
     Ok(StoreInfo {
         application_id: ApplicationId::from(app_id),
         store_id: store_id.clone(),
         cloned_from: None,
-        started: Time::from_ns_since_epoch(start_time),
         store_source: StoreSource::Unknown,
         store_version: None,
     })

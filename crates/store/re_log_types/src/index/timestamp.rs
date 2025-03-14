@@ -1,3 +1,4 @@
+use crate::external::re_types_core;
 use std::str::FromStr as _;
 
 use super::{Duration, TimestampFormat};
@@ -34,6 +35,15 @@ impl Timestamp {
     #[inline]
     pub fn ns_since_epoch(self) -> i64 {
         self.0
+    }
+}
+
+// ------------------------------------------
+// Rerun types converters
+
+impl From<re_types_core::datatypes::TimeInt> for Timestamp {
+    fn from(time_int: re_types_core::datatypes::TimeInt) -> Self {
+        Self(time_int.0)
     }
 }
 

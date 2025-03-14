@@ -357,11 +357,6 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    pub started: Time,
-
     pub store_source: StoreSource,
 
     /// The Rerun version used to encoded the RRD data.
@@ -716,7 +711,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            started: _,
             store_source,
             store_version,
         } = self;

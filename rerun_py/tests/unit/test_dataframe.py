@@ -26,7 +26,7 @@ def test_load_recording() -> None:
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**")
+        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
@@ -37,7 +37,7 @@ def test_load_recording() -> None:
         recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**")
+        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
@@ -101,36 +101,44 @@ class TestDataframe:
 
         # log_tick, log_time, my_index
         assert len(schema.index_columns()) == 3
-        # Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
-        assert len(schema.component_columns()) == 6
+        # RecordingPropertiesIndicator, Timestamp, Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
+        assert len(schema.component_columns()) == 8
 
+        # Index columns
         assert schema.index_columns()[0].name == "log_tick"
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
-        assert schema.component_columns()[0].entity_path == "/points"
-        assert schema.component_columns()[0].component_name == "rerun.components.Points3DIndicator"
-        assert schema.component_columns()[0].is_static is False
-        assert schema.component_columns()[1].entity_path == "/points"
-        assert schema.component_columns()[1].component_name == "rerun.components.Color"
-        assert schema.component_columns()[1].is_static is False
+
+        # Default property columns
+        assert schema.component_columns()[0].entity_path == "/__partition_properties"
+        assert schema.component_columns()[0].component_name == "rerun.components.RecordingPropertiesIndicator"
+        assert schema.component_columns()[0].is_static is True
+        assert schema.component_columns()[1].entity_path == "/__partition_properties"
+        assert schema.component_columns()[1].component_name == "rerun.components.Timestamp"
+        assert schema.component_columns()[1].is_static is True
+
+        # Content columns
         assert schema.component_columns()[2].entity_path == "/points"
-        assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[2].component_name == "rerun.components.Points3DIndicator"
         assert schema.component_columns()[2].is_static is False
         assert schema.component_columns()[3].entity_path == "/points"
-        assert schema.component_columns()[3].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[3].component_name == "rerun.components.Color"
         assert schema.component_columns()[3].is_static is False
-        assert schema.component_columns()[4].entity_path == "/static_text"
-        assert schema.component_columns()[4].component_name == "rerun.components.TextLogIndicator"
-        assert schema.component_columns()[4].is_static is True
-        assert schema.component_columns()[5].entity_path == "/static_text"
-        assert schema.component_columns()[5].component_name == "rerun.components.Text"
-        assert schema.component_columns()[5].is_static is True
-        assert schema.index_columns()[0].name == "log_tick"
-        assert schema.index_columns()[1].name == "log_time"
-        assert schema.index_columns()[2].name == "my_index"
+        assert schema.component_columns()[4].entity_path == "/points"
+        assert schema.component_columns()[4].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[4].is_static is False
+        assert schema.component_columns()[5].entity_path == "/points"
+        assert schema.component_columns()[5].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[5].is_static is False
+        assert schema.component_columns()[6].entity_path == "/static_text"
+        assert schema.component_columns()[6].component_name == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[6].is_static is True
+        assert schema.component_columns()[7].entity_path == "/static_text"
+        assert schema.component_columns()[7].component_name == "rerun.components.Text"
+        assert schema.component_columns()[7].is_static is True
 
     def test_schema_view(self) -> None:
-        schema = self.recording.view(index="my_index", contents="points").schema()
+        schema = self.recording.view(index="my_index", contents="points", include_properties_entity=False).schema()
 
         assert len(schema.index_columns()) == 3
         # Position3D, Color
@@ -157,7 +165,7 @@ class TestDataframe:
         assert schema.component_columns()[2].component_name == "rerun.components.Radius"
 
     def test_full_view(self) -> None:
-        view = self.recording.view(index="my_index", contents="/**")
+        view = self.recording.view(index="my_index", contents="/**", include_properties_entity=False)
 
         table = view.select().read_all()
 
@@ -190,7 +198,7 @@ class TestDataframe:
         ]
 
         for expr in filter_expressions:
-            view = self.recording.view(index="my_index", contents=expr)
+            view = self.recording.view(index="my_index", contents=expr, include_properties_entity=False)
 
             table = view.select().read_all()
 
@@ -384,7 +392,7 @@ class TestDataframe:
             assert table.num_rows == 0
 
     def test_roundtrip_send(self) -> None:
-        df = self.recording.view(index="my_index", contents="/**").select().read_all()
+        df = self.recording.view(index="my_index", contents="/**", include_properties_entity=False).select().read_all()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
@@ -395,7 +403,11 @@ class TestDataframe:
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 
-        df_round_trip = round_trip_recording.view(index="my_index", contents="/**").select().read_all()
+        df_round_trip = (
+            round_trip_recording.view(index="my_index", contents="/**", include_properties_entity=False)
+            .select()
+            .read_all()
+        )
 
         print("df:")
         print(df)
