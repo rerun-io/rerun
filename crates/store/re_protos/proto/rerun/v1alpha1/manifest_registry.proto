@@ -21,17 +21,17 @@ service ManifestRegistryService {
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
   // Get all chunks for a single partition
-  rpc FetchPartition(GetAllChunksRequest) returns (stream GetAllChunksResponse) {}
+  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
 
-  // Get partition chunks that contain data for the specified time range
-  rpc GetChunksRange(GetChunksRangeRequest) returns (stream GetChunksRangeResponse) {}
+  // Get chunks based on a specific query
+  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Create index for partitions in the Dataset. Index can be created for all or specific
   // partitions
   rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (CreatePartitionIndexesResponse) {}
 
   // List indexes for the Dataset
-  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
+  rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (ListPartitionIndexesResponse) {}
 
   // Do a full text, vector or scalar search. Currently only an Indexed search
   // is supported, user must first call `CreatePartitionIndexes` for the relevant column.
@@ -86,9 +86,21 @@ message UnregisterPartitionsRequest {
 
   // Partitions to remove
   repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
+
+  // What to do if partition is not found
+  UnknownPartitionBehavior on_unknown_partition = 3;
 }
 
-message UnregisterPartitionsResponse {}
+message UnregisterPartitionsResponse {
+  // returns a list of partitions that were actually removed
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+enum UnknownPartitionBehavior {
+  UNKNOWN_PARTITION_BEHAVIOR_UNSPECIFIED = 0;
+  UNKNOWN_PARTITION_BEHAVIOR_IGNORE = 1;
+  UNKNOWN_PARTITION_BEHAVIOR_ERROR = 2;
+}
 
 message ListPartitionsRequest {
   // Dataset for which we want to list partitions
@@ -113,14 +125,7 @@ message CreatePartitionManifestsRequest {
 
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
-  ManifestCreationBehaviour on_already_created = 3;
-}
-
-enum ManifestCreationBehaviour {
-  MANIFEST_CREATION_BEHAVIOUR_UNSPECIFIED = 0;
-  MANIFEST_CREATION_BEHAVIOUR_OVERWRITE = 1;
-  MANIFEST_CREATION_BEHAVIOUR_SKIP = 1;
-  MANIFEST_CREATION_BEHAVIOUR_ERROR = 2;
+  CreateDuplicateBehavior on_already_created = 3;
 }
 
 message CreatePartitionManifestsResponse {
@@ -131,38 +136,18 @@ message QueryDatasetRequest {
   // Dataset client wants to query
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Optionally the client can specify what partitions are queried
-  repeated rerun.common.v1alpha1.Tuid partition_id = 2;
+  // Client can specify what partitions are queried. If left unspecified (empty list),
+  // all partitions will be queried.
+  repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
+
+  // Client can specify specific chunk ids to include. If left unspecified (empty list),
+  // all chunks that match other query parameters will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
 
-  // If true, `columns` will contain the entire schema.
-  bool columns_always_include_everything = 4;
-
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 5;
-
-  // If true, `columns` always includes `byte_offset` and `byte_size`.
-  bool columns_always_include_byte_offsets = 6;
-
-  // If true, `columns` always includes `entity_path`.
-  bool columns_always_include_entity_paths = 7;
-
-  // If true, `columns` always includes all static component-level indexes.
-  bool columns_always_include_static_indexes = 8;
-
-  // If true, `columns` always includes all temporal chunk-level indexes.
-  bool columns_always_include_global_indexes = 9;
-
-  // If true, `columns` always includes all component-level indexes.
-  bool columns_always_include_component_indexes = 10;
-
-  // If specified, will perform a latest-at query with the given parameters.
-  QueryManifestLatestAtRelevantChunks latest_at = 11;
-
-  // If specified, will perform a range query with the given parameters.
-  QueryManifestRangeRelevantChunks range = 12;
+  Query query = 5;
 }
 
 message QueryDatasetResponse {
@@ -188,7 +173,7 @@ message QueryManifestLatestAtRelevantChunks {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated string fuzzy_descriptors = 4;
+  repeated ComponentDescriptor fuzzy_descriptors = 4;
 }
 
 message QueryManifestRangeRelevantChunks {
@@ -210,7 +195,7 @@ message QueryManifestRangeRelevantChunks {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated string fuzzy_descriptors = 4;
+  repeated ComponentDescriptor fuzzy_descriptors = 4;
 }
 
 message FetchPartitionRequest {
@@ -226,21 +211,23 @@ message FetchPartitionResponse {
   rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
-message GetChunksRangeRequest {
-  // Partition's Dataset
+message GetChunksRequest {
+  // Dataset for which we want to get chunks
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Partition for which we want to get chunks
-  rerun.common.v1alpha1.Tuid partition_id = 2;
+  // Cclient can specify from which partitions to get chunks. If left unspecified (empty list),
+  // data from all partition (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.Tuid partition_ids = 2;
 
-  // Timeline for which we specify the time range
-  rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
+  // Client can specify chunk ids to include. If left unspecified (empty list),
+  // all chunks (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Time range for which we want to fetch the chunks
-  rerun.common.v1alpha1.TimeRange time_range = 4;
+  // Query details
+  Query query = 4;
 }
 
-message GetChunksRangeResponse {
+message GetChunksResponse {
   rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
@@ -265,15 +252,8 @@ message CreatePartitionIndexesRequest {
   // across all the timelines
   rerun.common.v1alpha1.IndexColumnSelector time_index = 5;
 
-  // Specify behaviour when index for a partition was already created
-  IndexCreationBehaviour on_already_created = 6;
-}
-
-enum IndexCreationBehaviour {
-  INDEX_CREATION_BEHAVIOUR_UNSPECIFIED = 0;
-  INDEX_CREATION_BEHAVIOUR_OVERWRITE = 1;
-  INDEX_CREATION_BEHAVIOUR_SKIP = 2;
-  INDEX_CREATION_BEHAVIOUR_ERROR = 3;
+  // Specify behavior when index for a partition was already created
+  CreateDuplicateBehavior on_already_created = 6;
 }
 
 // used to define which column we want to index
@@ -281,14 +261,8 @@ message IndexColumn {
   // The path of the entity.
   rerun.common.v1alpha1.EntityPath entity_path = 1;
 
-  // Optional name of the `Archetype` associated with this data.
-  optional string archetype_name = 2;
-
-  // Optional name of the field within `Archetype` associated with this data.
-  optional string archetype_field_name = 3;
-
-  // Semantic name associated with this data.
-  optional string component_name = 4;
+  // Component details
+  ComponentDescriptor component = 2;
 }
 
 message IndexProperties {
@@ -327,17 +301,17 @@ message CreatePartitionIndexesResponse {
   optional uint64 indexed_rows = 1;
 }
 
-message ListIndexesRequest {
+message ListPartitionIndexesRequest {
   // Dataset for which we want to list indexes
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-}
-
-message ListIndexesResponse {
-  // Indexes metadata as arrow RecordBatch
-  rerun.common.v1alpha1.DataframePart data = 1;
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message ListPartitionIndexesResponse {
+  // Indexes metadata as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message ReIndexRequest {
@@ -389,9 +363,61 @@ message InvertedIndexQuery {
 }
 
 message VectorIndexQuery {
-  uint32 top_k = 1;
+  optional uint32 top_k = 1;
 }
 
 message BTreeIndexQuery {
   // TODO(zehiko) add properties as needed
+}
+
+message ComponentDescriptor {
+  // Optional name of the `Archetype` associated with this data.
+  optional string archetype_name = 1;
+
+  // Optional name of the field within `Archetype` associated with this data.
+  optional string archetype_field_name = 2;
+
+  // Semantic name associated with this data.
+  optional string component_name = 3;
+}
+
+message Query {
+  // If true, `columns` will contain the entire schema.
+  bool columns_always_include_everything = 4;
+
+  // If true, `columns` always includes `chunk_id`,
+  bool columns_always_include_chunk_ids = 5;
+
+  // If true, `columns` always includes `byte_offset` and `byte_size`.
+  bool columns_always_include_byte_offsets = 6;
+
+  // If true, `columns` always includes `entity_path`.
+  bool columns_always_include_entity_paths = 7;
+
+  // If true, `columns` always includes all static component-level indexes.
+  bool columns_always_include_static_indexes = 8;
+
+  // If true, `columns` always includes all temporal chunk-level indexes.
+  bool columns_always_include_global_indexes = 9;
+
+  // If true, `columns` always includes all component-level indexes.
+  bool columns_always_include_component_indexes = 10;
+
+  // If specified, will perform a latest-at query with the given parameters.
+  QueryManifestLatestAtRelevantChunks latest_at = 11;
+
+  // If specified, will perform a range query with the given parameters.
+  QueryManifestRangeRelevantChunks range = 12;
+}
+
+// Specify how the relevant creation call behaves
+// in case of previously created items
+enum CreateDuplicateBehavior {
+  CREATE_BEHAVIOR_UNSPECIFIED = 0;
+  // Overwrite the existing item
+  CREATE_BEHAVIOR_OVERWRITE = 1;
+  // Skip if the item already exists
+  CREATE_BEHAVIOR_SKIP = 2;
+  // Return an error if the item already exists
+  CREATE_BEHAVIOR_ERROR = 3;
 }

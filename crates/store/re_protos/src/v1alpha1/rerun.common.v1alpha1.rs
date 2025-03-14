@@ -8,8 +8,8 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for RerunChunk {
     const NAME: &'static str = "RerunChunk";
@@ -75,8 +75,8 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    #[prost(bytes = "vec", tag = "1")]
-    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "1")]
+    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
@@ -469,8 +469,8 @@ pub struct DatasetHandle {
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<Tuid>,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
-    #[prost(string, tag = "2")]
-    pub dataset_url: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "2")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for DatasetHandle {
     const NAME: &'static str = "DatasetHandle";
@@ -489,8 +489,8 @@ pub struct DataframePart {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for DataframePart {
     const NAME: &'static str = "DataframePart";
@@ -508,43 +508,44 @@ impl ::prost::Name for DataframePart {
 /// one way or another.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanParameters {
-    /// List of columns to project. If empty, all columns will be projected. If non-existent
-    /// is specified, an error will be returned.
+    /// List of columns to project. If empty, all columns will be projected.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(enumeration = "ProjectionBehavior", tag = "2")]
+    pub on_missing_columns: i32,
     /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.filter(filter)
     /// ```
-    #[prost(string, tag = "2")]
-    pub filter: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "3")]
+    pub filter: ::core::option::Option<::prost::alloc::string::String>,
     /// An arbitrary offset that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.limit(_, limit_offset)
     /// ```
-    #[prost(int64, optional, tag = "3")]
+    #[prost(int64, optional, tag = "4")]
     pub limit_offset: ::core::option::Option<i64>,
     /// An arbitrary limit that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.limit(limit_len, _)
     /// ```
-    #[prost(int64, optional, tag = "4")]
+    #[prost(int64, optional, tag = "5")]
     pub limit_len: ::core::option::Option<i64>,
     /// An arbitrary order clause that will be passed to the Lance scanner as-is.
     ///
     /// ```text
     /// scanner.order_by(…)
     /// ```
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "6")]
     pub order_by: ::core::option::Option<ScanParametersOrderClause>,
     /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "7")]
     pub explain_plan: bool,
     /// If set, the final `scanner.filter` will be dumped to the server's log.
-    #[prost(bool, tag = "7")]
+    #[prost(bool, tag = "8")]
     pub explain_filter: bool,
 }
 impl ::prost::Name for ScanParameters {
@@ -560,11 +561,11 @@ impl ::prost::Name for ScanParameters {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanParametersOrderClause {
     #[prost(bool, tag = "1")]
-    pub ascending: bool,
+    pub descending: bool,
     #[prost(bool, tag = "2")]
-    pub nulls_first: bool,
-    #[prost(string, tag = "3")]
-    pub column_name: ::prost::alloc::string::String,
+    pub nulls_last: bool,
+    #[prost(string, optional, tag = "3")]
+    pub column_name: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ScanParametersOrderClause {
     const NAME: &'static str = "ScanParametersOrderClause";
@@ -659,6 +660,37 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ProjectionBehavior {
+    Unspecified = 0,
+    /// Error out when trying to project a missing column.
+    Error = 1,
+    /// Ignore missing columns.
+    Ignore = 2,
+}
+impl ProjectionBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "PROJECTION_BEHAVIOR_UNSPECIFIED",
+            Self::Error => "PROJECTION_BEHAVIOR_ERROR",
+            Self::Ignore => "PROJECTION_BEHAVIOR_IGNORE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PROJECTION_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "PROJECTION_BEHAVIOR_ERROR" => Some(Self::Error),
+            "PROJECTION_BEHAVIOR_IGNORE" => Some(Self::Ignore),
             _ => None,
         }
     }

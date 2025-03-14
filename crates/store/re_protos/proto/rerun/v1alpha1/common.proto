@@ -216,7 +216,7 @@ message DatasetHandle {
   Tuid entry_id = 1;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
-  string dataset_url = 2;
+  optional string dataset_url = 2;
 }
 
 // DataframePart is arrow IPC encoded RecordBatch
@@ -225,7 +225,7 @@ message DataframePart {
   EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
-  bytes payload = 2;
+  optional bytes payload = 2;
 }
 
 // Generic parameters that will influence the behavior of the Lance scanner.
@@ -236,7 +236,7 @@ message ScanParameters {
   // List of columns to project. If empty, all columns will be projected.
   repeated string columns = 1;
 
-  ProjectionBehaviour on_missing_columns = 2;
+  ProjectionBehavior on_missing_columns = 2;
 
   // An arbitrary filter expression that will be passed to the Lance scanner as-is.
   //
@@ -273,7 +273,7 @@ message ScanParameters {
   bool explain_filter = 8;
 }
 
-enum ProjectionBehaviour {
+enum ProjectionBehavior {
   PROJECTION_BEHAVIOR_UNSPECIFIED = 0;
 
   // Error out when trying to project a missing column.
