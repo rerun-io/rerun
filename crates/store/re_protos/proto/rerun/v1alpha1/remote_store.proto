@@ -195,7 +195,7 @@ message SearchIndexRequest {
   // to provide the right type. For vector search this should
   // be a vector of appropriate size, for inverted index this should be a string.
   // Query data is represented as a unit (single row) RecordBatch with 1 column.
-  rerun.common.v1alpha1.DataframePart query = 3;
+  DataframePart query = 3;
   // Index type specific properties
   IndexQueryProperties properties = 4;
   // max number of rows to be returned
@@ -203,7 +203,7 @@ message SearchIndexRequest {
 }
 
 message SearchIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 message IndexQueryProperties {
@@ -258,7 +258,7 @@ message ListManifestsRequest {
 }
 
 message ListManifestsResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 // ---------------- QueryManifest ------------------
@@ -317,7 +317,7 @@ message QueryManifestRequest {
 }
 
 message QueryManifestResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 message QueryManifestLatestAtRelevantChunks {
@@ -444,11 +444,11 @@ message RegisterRecordingDescription {
 
   // (optional) any additional metadata that should be associated with the recording
   // You can associate any arbtrirary number of columns with a specific recording
-  rerun.common.v1alpha1.DataframePart metadata = 4;
+  DataframePart metadata = 4;
 }
 
 message RegisterRecordingsResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 // ---------------- Unregister from catalog ------------------
@@ -473,7 +473,7 @@ message UpdateCatalogRequest {
   // which catalog entry do we want to update
   CatalogEntry entry = 1;
   // Properties that we want to update
-  rerun.common.v1alpha1.DataframePart metadata = 2;
+  DataframePart metadata = 2;
 }
 
 message UpdateCatalogResponse {}
@@ -490,7 +490,7 @@ message QueryRequest {
 }
 
 message QueryResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 // ----------------- QueryCatalog -----------------
@@ -506,7 +506,7 @@ message QueryCatalogRequest {
 }
 
 message QueryCatalogResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  DataframePart data = 1;
 }
 
 message ColumnProjection {

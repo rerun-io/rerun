@@ -395,7 +395,7 @@ pub struct SearchIndexRequest {
     /// be a vector of appropriate size, for inverted index this should be a string.
     /// Query data is represented as a unit (single row) RecordBatch with 1 column.
     #[prost(message, optional, tag = "3")]
-    pub query: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub query: ::core::option::Option<DataframePart>,
     /// Index type specific properties
     #[prost(message, optional, tag = "4")]
     pub properties: ::core::option::Option<IndexQueryProperties>,
@@ -416,7 +416,7 @@ impl ::prost::Name for SearchIndexRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SearchIndexResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for SearchIndexResponse {
     const NAME: &'static str = "SearchIndexResponse";
@@ -565,7 +565,7 @@ impl ::prost::Name for ListManifestsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListManifestsResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for ListManifestsResponse {
     const NAME: &'static str = "ListManifestsResponse";
@@ -641,7 +641,7 @@ impl ::prost::Name for QueryManifestRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryManifestResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for QueryManifestResponse {
     const NAME: &'static str = "QueryManifestResponse";
@@ -855,7 +855,7 @@ pub struct RegisterRecordingDescription {
     /// (optional) any additional metadata that should be associated with the recording
     /// You can associate any arbtrirary number of columns with a specific recording
     #[prost(message, optional, tag = "4")]
-    pub metadata: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub metadata: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for RegisterRecordingDescription {
     const NAME: &'static str = "RegisterRecordingDescription";
@@ -870,7 +870,7 @@ impl ::prost::Name for RegisterRecordingDescription {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for RegisterRecordingsResponse {
     const NAME: &'static str = "RegisterRecordingsResponse";
@@ -948,7 +948,7 @@ pub struct UpdateCatalogRequest {
     pub entry: ::core::option::Option<CatalogEntry>,
     /// Properties that we want to update
     #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub metadata: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for UpdateCatalogRequest {
     const NAME: &'static str = "UpdateCatalogRequest";
@@ -997,7 +997,7 @@ impl ::prost::Name for QueryRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for QueryResponse {
     const NAME: &'static str = "QueryResponse";
@@ -1035,7 +1035,7 @@ impl ::prost::Name for QueryCatalogRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub data: ::core::option::Option<DataframePart>,
 }
 impl ::prost::Name for QueryCatalogResponse {
     const NAME: &'static str = "QueryCatalogResponse";

@@ -8,8 +8,9 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", optional, tag = "2")]
-    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+    /// TODO(zehiko) make this optional (#9285)
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for RerunChunk {
     const NAME: &'static str = "RerunChunk";
@@ -75,8 +76,9 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    #[prost(bytes = "vec", optional, tag = "1")]
-    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+    /// TODO(zehiko) make this optional (#9285)
+    #[prost(bytes = "vec", tag = "1")]
+    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
