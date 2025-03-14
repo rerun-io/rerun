@@ -14,7 +14,7 @@ use re_types::{
     },
     View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText};
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -102,17 +102,13 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(Modifiers::COMMAND, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
@@ -627,4 +623,9 @@ fn picking_gpu(
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         *last_gpu_picking_result
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }
