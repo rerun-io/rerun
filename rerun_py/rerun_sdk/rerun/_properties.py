@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, TypedDict
-
 import rerun_bindings as bindings
 
 from .recording_stream import RecordingStream
