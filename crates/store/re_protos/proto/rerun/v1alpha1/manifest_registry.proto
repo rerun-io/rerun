@@ -6,7 +6,7 @@ import "rerun/v1alpha1/common.proto";
 
 service ManifestRegistryService {
   // Register new partitions with the Dataset
-  rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
+  rpc RegisterPartitions(RegisterPartitionsRequest) returns (stream RegisterPartitionsResponse) {}
 
   // Unregister partitions from the Dataset
   rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (stream UnregisterPartitionsResponse) {}
@@ -15,7 +15,7 @@ service ManifestRegistryService {
   rpc ListPartitions(ListPartitionsRequest) returns (stream ListPartitionsResponse) {}
 
   // Create manifests for all partitions in the Dataset
-  rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
+  rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (stream CreatePartitionManifestsResponse) {}
 
   // Query Dataset and return a dataframe containing relevant chunk IDs
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
@@ -29,7 +29,7 @@ service ManifestRegistryService {
 
   // Create index for partitions in the Dataset. Index can be created for all or specific
   // partitions
-  rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (CreatePartitionIndexesResponse) {}
+  rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (stream CreatePartitionIndexesResponse) {}
 
   // List indexes for the Dataset
   rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (stream ListPartitionIndexesResponse) {}

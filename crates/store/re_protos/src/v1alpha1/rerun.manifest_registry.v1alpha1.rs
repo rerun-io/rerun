@@ -900,8 +900,10 @@ pub mod manifest_registry_service_client {
         pub async fn register_partitions(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterPartitionsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterPartitionsResponse>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::RegisterPartitionsResponse>>,
+            tonic::Status,
+        > {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -914,7 +916,7 @@ pub mod manifest_registry_service_client {
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
                 "RegisterPartitions",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
         }
         /// Unregister partitions from the Dataset
         pub async fn unregister_partitions(
@@ -965,7 +967,7 @@ pub mod manifest_registry_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreatePartitionManifestsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionManifestsResponse>,
+            tonic::Response<tonic::codec::Streaming<super::CreatePartitionManifestsResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -980,7 +982,7 @@ pub mod manifest_registry_service_client {
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
                 "CreatePartitionManifests",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
         }
         /// Query Dataset and return a dataframe containing relevant chunk IDs
         pub async fn query_dataset(
@@ -1055,7 +1057,7 @@ pub mod manifest_registry_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreatePartitionIndexesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionIndexesResponse>,
+            tonic::Response<tonic::codec::Streaming<super::CreatePartitionIndexesResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1070,7 +1072,7 @@ pub mod manifest_registry_service_client {
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
                 "CreatePartitionIndexes",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
         }
         /// List indexes for the Dataset
         pub async fn list_partition_indexes(
@@ -1146,11 +1148,16 @@ pub mod manifest_registry_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with ManifestRegistryServiceServer.
     #[async_trait]
     pub trait ManifestRegistryService: std::marker::Send + std::marker::Sync + 'static {
+        /// Server streaming response type for the RegisterPartitions method.
+        type RegisterPartitionsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::RegisterPartitionsResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
         /// Register new partitions with the Dataset
         async fn register_partitions(
             &self,
             request: tonic::Request<super::RegisterPartitionsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterPartitionsResponse>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<Self::RegisterPartitionsStream>, tonic::Status>;
         /// Server streaming response type for the UnregisterPartitions method.
         type UnregisterPartitionsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::UnregisterPartitionsResponse, tonic::Status>,
@@ -1171,14 +1178,16 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::ListPartitionsRequest>,
         ) -> std::result::Result<tonic::Response<Self::ListPartitionsStream>, tonic::Status>;
+        /// Server streaming response type for the CreatePartitionManifests method.
+        type CreatePartitionManifestsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::CreatePartitionManifestsResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
         /// Create manifests for all partitions in the Dataset
         async fn create_partition_manifests(
             &self,
             request: tonic::Request<super::CreatePartitionManifestsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionManifestsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<Self::CreatePartitionManifestsStream>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -1210,15 +1219,17 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Server streaming response type for the CreatePartitionIndexes method.
+        type CreatePartitionIndexesStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::CreatePartitionIndexesResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
         /// Create index for partitions in the Dataset. Index can be created for all or specific
         /// partitions
         async fn create_partition_indexes(
             &self,
             request: tonic::Request<super::CreatePartitionIndexesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionIndexesResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<Self::CreatePartitionIndexesStream>, tonic::Status>;
         /// Server streaming response type for the ListPartitionIndexes method.
         type ListPartitionIndexesStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::ListPartitionIndexesResponse, tonic::Status>,
@@ -1333,11 +1344,13 @@ pub mod manifest_registry_service_server {
                     struct RegisterPartitionsSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::RegisterPartitionsRequest>
-                    for RegisterPartitionsSvc<T> {
+                    > tonic::server::ServerStreamingService<
+                        super::RegisterPartitionsRequest,
+                    > for RegisterPartitionsSvc<T> {
                         type Response = super::RegisterPartitionsResponse;
+                        type ResponseStream = T::RegisterPartitionsStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
@@ -1372,7 +1385,7 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -1487,11 +1500,13 @@ pub mod manifest_registry_service_server {
                     );
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::CreatePartitionManifestsRequest>
-                    for CreatePartitionManifestsSvc<T> {
+                    > tonic::server::ServerStreamingService<
+                        super::CreatePartitionManifestsRequest,
+                    > for CreatePartitionManifestsSvc<T> {
                         type Response = super::CreatePartitionManifestsResponse;
+                        type ResponseStream = T::CreatePartitionManifestsStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
@@ -1528,7 +1543,7 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -1687,11 +1702,13 @@ pub mod manifest_registry_service_server {
                     );
                     impl<
                         T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::CreatePartitionIndexesRequest>
-                    for CreatePartitionIndexesSvc<T> {
+                    > tonic::server::ServerStreamingService<
+                        super::CreatePartitionIndexesRequest,
+                    > for CreatePartitionIndexesSvc<T> {
                         type Response = super::CreatePartitionIndexesResponse;
+                        type ResponseStream = T::CreatePartitionIndexesStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
@@ -1726,7 +1743,7 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
