@@ -317,7 +317,7 @@ pub struct GetChunksRequest {
     /// Dataset for which we want to get chunks
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    /// Cclient can specify from which partitions to get chunks. If left unspecified (empty list),
+    /// Client can specify from which partitions to get chunks. If left unspecified (empty list),
     /// data from all partition (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
@@ -842,13 +842,13 @@ impl VectorDistanceMetric {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum CreateDuplicateBehavior {
-    CreateBehaviorUnspecified = 0,
+    Unspecified = 0,
     /// Overwrite the existing item
-    CreateBehaviorOverwrite = 1,
+    Overwrite = 1,
     /// Skip if the item already exists
-    CreateBehaviorSkip = 2,
+    Skip = 2,
     /// Return an error if the item already exists
-    CreateBehaviorError = 3,
+    Error = 3,
 }
 impl CreateDuplicateBehavior {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -857,19 +857,19 @@ impl CreateDuplicateBehavior {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::CreateBehaviorUnspecified => "CREATE_BEHAVIOR_UNSPECIFIED",
-            Self::CreateBehaviorOverwrite => "CREATE_BEHAVIOR_OVERWRITE",
-            Self::CreateBehaviorSkip => "CREATE_BEHAVIOR_SKIP",
-            Self::CreateBehaviorError => "CREATE_BEHAVIOR_ERROR",
+            Self::Unspecified => "CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED",
+            Self::Overwrite => "CREATE_DUPLICATE_BEHAVIOR_OVERWRITE",
+            Self::Skip => "CREATE_DUPLICATE_BEHAVIOR_SKIP",
+            Self::Error => "CREATE_DUPLICATE_BEHAVIOR_ERROR",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "CREATE_BEHAVIOR_UNSPECIFIED" => Some(Self::CreateBehaviorUnspecified),
-            "CREATE_BEHAVIOR_OVERWRITE" => Some(Self::CreateBehaviorOverwrite),
-            "CREATE_BEHAVIOR_SKIP" => Some(Self::CreateBehaviorSkip),
-            "CREATE_BEHAVIOR_ERROR" => Some(Self::CreateBehaviorError),
+            "CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "CREATE_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
+            "CREATE_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "CREATE_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }
@@ -1079,7 +1079,8 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Get chunks based on a specific query
+        /// Get chunks based on a specific query. This call is similar to `QueryDataset` but
+        /// instead of returning a dataframe with relevant chunk IDs, it returns the actual chunks.
         pub async fn get_chunks(
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
@@ -1244,7 +1245,8 @@ pub mod manifest_registry_service_server {
                 Item = std::result::Result<super::GetChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Get chunks based on a specific query
+        /// Get chunks based on a specific query. This call is similar to `QueryDataset` but
+        /// instead of returning a dataframe with relevant chunk IDs, it returns the actual chunks.
         async fn get_chunks(
             &self,
             request: tonic::Request<super::GetChunksRequest>,

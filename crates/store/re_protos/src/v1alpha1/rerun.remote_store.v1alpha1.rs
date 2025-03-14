@@ -550,7 +550,7 @@ pub struct ListManifestsRequest {
     ///
     /// TODO(zehiko, cmc): actually support those.
     #[prost(message, optional, tag = "2")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    pub scan_parameters: ::core::option::Option<ScanParameters>,
 }
 impl ::prost::Name for ListManifestsRequest {
     const NAME: &'static str = "ListManifestsRequest";
@@ -626,7 +626,7 @@ pub struct QueryManifestRequest {
     pub range: ::core::option::Option<QueryManifestRangeRelevantChunks>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "13")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    pub scan_parameters: ::core::option::Option<ScanParameters>,
 }
 impl ::prost::Name for QueryManifestRequest {
     const NAME: &'static str = "QueryManifestRequest";
