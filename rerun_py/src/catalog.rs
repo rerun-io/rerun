@@ -5,7 +5,7 @@ use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 
 use re_protos::catalog::v1alpha1::{
     catalog_service_client::CatalogServiceClient, CreateDatasetEntryRequest, DatasetEntry,
-    DeleteDatasetEntryRequest, EntryDetails, EntryFilter, EntryKey, FindEntriesRequest,
+    DeleteDatasetEntryRequest, EntryDetails, EntryFilter, FindEntriesRequest,
 };
 use re_protos::common::v1alpha1::Tuid;
 
@@ -43,6 +43,7 @@ pub fn connect(addr: String) -> PyResult<PyCatalogClient> {
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(name = "EntryId")]
+#[derive(Clone)]
 pub struct PyEntryId {
     id: Tuid,
 }
@@ -97,7 +98,7 @@ impl PyCatalogClient {
     }
 
     // TODO: Create and return entry objects
-    fn list_entries(&mut self) -> PyResult<Vec<String>> {
+    fn list_entries(&mut self) -> PyResult<Vec<PyEntryId>> {
         self.runtime.block_on(async {
             let resp = self
                 .client
@@ -111,25 +112,23 @@ impl PyCatalogClient {
             resp.entries
                 .into_iter()
                 .map(|entry| {
-                    entry
-                        .name
-                        .ok_or(PyRuntimeError::new_err("No name in details"))
+                    Ok(PyEntryId {
+                        id: entry
+                            .id
+                            .map(Into::into)
+                            .ok_or(PyRuntimeError::new_err("No id in details"))?,
+                    })
                 })
                 .collect()
         })
     }
 
     // TODO: Create and return entry objects
-    fn delete_dataset(&mut self, name: &str) -> PyResult<()> {
+    fn delete_dataset(&mut self, id: PyEntryId) -> PyResult<()> {
         self.runtime.block_on(async {
             let _resp = self
                 .client
-                .delete_dataset_entry(DeleteDatasetEntryRequest {
-                    key: Some(EntryKey {
-                        name: Some(name.to_owned()),
-                        ..Default::default()
-                    }),
-                })
+                .delete_dataset_entry(DeleteDatasetEntryRequest { id: Some(id.id) })
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();

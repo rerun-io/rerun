@@ -40,7 +40,7 @@ message CreateDatasetEntryResponse {
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
-    EntryKey key = 1;
+    rerun.common.v1alpha1.Tuid id = 1;
 }
 
 message ReadDatasetEntryResponse {
@@ -50,7 +50,7 @@ message ReadDatasetEntryResponse {
 // DeleteDatasetEntry
 
 message DeleteDatasetEntryRequest {
-    EntryKey key = 1;
+    rerun.common.v1alpha1.Tuid id = 1;
 }
 
 message DeleteDatasetEntryResponse {}
@@ -96,13 +96,4 @@ message DatasetEntry {
 
     // Read-only
     rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
-}
-
-
-// EntryKey is used to access an entry by either id or name.
-// All APIs that require specifying an entry should use this
-// message.
-message EntryKey {
-    optional rerun.common.v1alpha1.Tuid id = 1;
-    optional string name = 2;
 }

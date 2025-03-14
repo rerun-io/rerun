@@ -59,10 +59,10 @@ impl ::prost::Name for CreateDatasetEntryResponse {
         "/rerun.catalog.v1alpha1.CreateDatasetEntryResponse".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ReadDatasetEntryRequest {
     #[prost(message, optional, tag = "1")]
-    pub key: ::core::option::Option<EntryKey>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
 }
 impl ::prost::Name for ReadDatasetEntryRequest {
     const NAME: &'static str = "ReadDatasetEntryRequest";
@@ -89,10 +89,10 @@ impl ::prost::Name for ReadDatasetEntryResponse {
         "/rerun.catalog.v1alpha1.ReadDatasetEntryResponse".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteDatasetEntryRequest {
     #[prost(message, optional, tag = "1")]
-    pub key: ::core::option::Option<EntryKey>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
 }
 impl ::prost::Name for DeleteDatasetEntryRequest {
     const NAME: &'static str = "DeleteDatasetEntryRequest";
@@ -179,26 +179,6 @@ impl ::prost::Name for DatasetEntry {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.catalog.v1alpha1.DatasetEntry".into()
-    }
-}
-/// EntryKey is used to access an entry by either id or name.
-/// All APIs that require specifying an entry should use this
-/// message.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EntryKey {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
-    #[prost(string, optional, tag = "2")]
-    pub name: ::core::option::Option<::prost::alloc::string::String>,
-}
-impl ::prost::Name for EntryKey {
-    const NAME: &'static str = "EntryKey";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.EntryKey".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.EntryKey".into()
     }
 }
 /// What type of entry. This has strong implication on which APIs are available for this entry.
