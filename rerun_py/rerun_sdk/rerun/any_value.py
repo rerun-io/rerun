@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 import pyarrow as pa
+from pyarrow import ArrowInvalid
 
 from rerun._baseclasses import ComponentDescriptor
 
@@ -85,13 +86,13 @@ class AnyBatchValue(ComponentBatchLike):
                     if not isinstance(value, (str, bytes)):
                         try:
                             self.pa_array = pa.array(value, type=pa_type)
-                        except TypeError:
+                        except (ArrowInvalid, TypeError):
                             pass
                     if self.pa_array is None:
                         try:
                             pa_scalar = pa.scalar(value, type=pa_type)
                             self.pa_array = pa.array([pa_scalar], type=pa_type)
-                        except TypeError:
+                        except (ArrowInvalid, TypeError):
                             pass
                     if self.pa_array is None:
                         # Fall back - use numpy
@@ -108,14 +109,14 @@ class AnyBatchValue(ComponentBatchLike):
                             try:
                                 self.pa_array = pa.array(value)
                                 ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
-                            except TypeError:
+                            except (ArrowInvalid, TypeError):
                                 pass
                         if self.pa_array is None:
                             try:
                                 pa_scalar = pa.scalar(value)
                                 self.pa_array = pa.array([pa_scalar])
                                 ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
-                            except TypeError:
+                            except (ArrowInvalid, TypeError):
                                 pass
                         if self.pa_array is None:
                             # Fall back - use numpy which handles a wide variety of lists, tuples,
