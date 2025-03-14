@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 import pytest
 import rerun as rr
 from rerun.error_utils import RerunWarning
@@ -98,3 +99,34 @@ def test_none_any_value() -> None:
 
         assert len(batches) == 1
         assert len(warnings) == 1  # no new warnings
+
+
+def test_iterable_any_value() -> None:
+    SHORT_TEXT = "short"
+    LONG_TEXT = "longer_text"
+
+    SHORT_BYTES = b"ABCD"
+    LONG_BYTES = b"ABCDEFGH"
+
+    values = rr.AnyValues(str_values=SHORT_TEXT, bytes_values=SHORT_BYTES)
+    batches = list(values.as_component_batches())
+
+    assert len(batches) == 2
+    assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT], type=pa.string())
+    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES], type=pa.binary())
+
+    # Issue #8781 - ensure subsequent calls do not truncate data
+    values = rr.AnyValues(str_values=LONG_TEXT, bytes_values=LONG_BYTES)
+    batches = list(values.as_component_batches())
+
+    assert len(batches) == 2
+    assert batches[0].as_arrow_array() == pa.array([LONG_TEXT], type=pa.string())
+    assert batches[1].as_arrow_array() == pa.array([LONG_BYTES], type=pa.binary())
+
+    # Ensure iterables of these types are handled as arrays
+    values = rr.AnyValues(str_values=[SHORT_TEXT, LONG_TEXT], bytes_values=[SHORT_BYTES, LONG_BYTES])
+    batches = list(values.as_component_batches())
+
+    assert len(batches) == 2
+    assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT, LONG_TEXT], type=pa.string())
+    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.binary())
