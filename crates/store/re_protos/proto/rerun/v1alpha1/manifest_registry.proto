@@ -414,11 +414,11 @@ message Query {
 // Specify how the relevant creation call behaves
 // in case of previously created items
 enum CreateDuplicateBehavior {
-  CREATE_BEHAVIOR_UNSPECIFIED = 0;
+  CREATE_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
   // Overwrite the existing item
-  CREATE_BEHAVIOR_OVERWRITE = 1;
+  CREATE_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
   // Skip if the item already exists
-  CREATE_BEHAVIOR_SKIP = 2;
+  CREATE_DUPLICATE_BEHAVIOR_SKIP = 2;
   // Return an error if the item already exists
-  CREATE_BEHAVIOR_ERROR = 3;
+  CREATE_DUPLICATE_BEHAVIOR_ERROR = 3;
 }
