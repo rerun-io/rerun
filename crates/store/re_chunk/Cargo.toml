@@ -61,6 +61,4 @@ crossbeam.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
-criterion.workspace = true
-mimalloc.workspace = true
 similar-asserts.workspace = true

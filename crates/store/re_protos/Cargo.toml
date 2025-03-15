@@ -39,7 +39,6 @@ tonic = { workspace = true, default-features = false, features = [
   "codegen",
   "prost",
 ] }
-tonic-web-wasm-client.workspace = true
 
 [lints]
 workspace = true

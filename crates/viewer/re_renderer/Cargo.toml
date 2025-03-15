@@ -26,7 +26,7 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 ignored = ["profiling"] # Needed to hook up wgpu, see below at dependency setup.
 
 
@@ -91,13 +91,8 @@ notify.workspace = true
 
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { workspace = true, features = [
-  "js",
-] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
-js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys.workspace = true
-wasm-bindgen.workspace = true
 
 
 [dev-dependencies]
