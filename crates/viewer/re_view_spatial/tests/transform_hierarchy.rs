@@ -127,7 +127,7 @@ pub fn test_transform_hierarchy() {
                 builder.with_archetype(
                     RowId::new(),
                     [(timeline_step, 0)],
-                    &re_types::archetypes::Asset3D::from_file(&obj_path).unwrap(),
+                    &re_types::archetypes::Asset3D::from_file_path(&obj_path).unwrap(),
                 )
             });
         }

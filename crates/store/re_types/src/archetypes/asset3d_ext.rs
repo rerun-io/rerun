@@ -12,9 +12,25 @@ impl Asset3D {
     /// from the data at render-time. If it can't, rendering will fail with an error.
     ///
     /// Returns an error if the file cannot be read.
+    #[deprecated = "Use `Asset3D::from_file_path` instead"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_file(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+        Self::from_file_path(filepath)
+    }
+
+    /// Creates a new [`Asset3D`] from the file contents at `path`.
+    ///
+    /// The [`MediaType`] will first be guessed from the file extension, then from the file
+    /// contents if needed.
+    ///
+    /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
+    /// from the data at render-time. If it can't, rendering will fail with an error.
+    ///
+    /// Returns an error if the file cannot be read.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         let filepath = filepath.as_ref();
         let contents = std::fs::read(filepath)?;
         Ok(Self::from_file_contents(
