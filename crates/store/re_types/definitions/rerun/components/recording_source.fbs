@@ -1,0 +1,50 @@
+namespace rerun.components;
+
+/// What kind of source a recording comes from.
+struct RecordingSourceExtraKind (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+    kind: rerun.datatypes.SourceKind (order: 100);
+}
+
+/// The version of the recording source (Rerun version).
+table RecordingSourceVersion (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  version: rerun.datatypes.SemVerBits (order: 100);
+}
+
+/// A recording which came from a file.
+table RecordingSourceExtraRust (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  compiler: rerun.datatypes.RustSdkSource (order: 100);
+}
+
+/// A recording which came from a file.
+table RecordingSourceExtraFile (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  file_kind: rerun.datatypes.FileSource (order: 100);
+}
+
+
+/// A recording which came from a file.
+table RecordingSourceExtraPython (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  version: rerun.datatypes.SemVer (order: 100);
+}
+
+// A recording which came from a file.
+table RecordingSourceExtraOther (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  version: rerun.datatypes.Utf8 (order: 100);
+}
