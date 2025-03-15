@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.set_properties(
         &rerun::archetypes::RecordingProperties::new()
-            .with_started(0)
+            .with_start_time(0)
             .with_name("My recording (initial)"),
     )?;
 

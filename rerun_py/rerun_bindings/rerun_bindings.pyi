@@ -1045,7 +1045,7 @@ def set_time_timestamp_nanos_since_epoch(
 
 class RecordingProperties(TypedDict, total=False):
     name: Optional[str]
-    started: Optional[int]
+    started_time: Optional[int]
 
 def set_properties(
     properties: RecordingProperties,

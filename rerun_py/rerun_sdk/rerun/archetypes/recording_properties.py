@@ -26,14 +26,14 @@ class RecordingProperties(Archetype):
     """**Archetype**: A list of properties associated with a recording."""
 
     def __init__(
-        self: Any, *, started: datatypes.TimeIntLike | None = None, name: datatypes.Utf8Like | None = None
+        self: Any, *, start_time: datatypes.TimeIntLike | None = None, name: datatypes.Utf8Like | None = None
     ) -> None:
         """
         Create a new instance of the RecordingProperties archetype.
 
         Parameters
         ----------
-        started:
+        start_time:
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
@@ -44,14 +44,14 @@ class RecordingProperties(Archetype):
 
         # You can define your own __init__ function as a member of RecordingPropertiesExt in recording_properties_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(started=started, name=name)
+            self.__attrs_init__(start_time=start_time, name=name)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            started=None,
+            start_time=None,
             name=None,
         )
 
@@ -67,7 +67,7 @@ class RecordingProperties(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        started: datatypes.TimeIntLike | None = None,
+        start_time: datatypes.TimeIntLike | None = None,
         name: datatypes.Utf8Like | None = None,
     ) -> RecordingProperties:
         """
@@ -77,7 +77,7 @@ class RecordingProperties(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        started:
+        start_time:
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
@@ -89,7 +89,7 @@ class RecordingProperties(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "started": started,
+                "start_time": start_time,
                 "name": name,
             }
 
@@ -111,7 +111,7 @@ class RecordingProperties(Archetype):
     def columns(
         cls,
         *,
-        started: datatypes.TimeIntArrayLike | None = None,
+        start_time: datatypes.TimeIntArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -124,7 +124,7 @@ class RecordingProperties(Archetype):
 
         Parameters
         ----------
-        started:
+        start_time:
             When the recording started.
 
             Should be an absolute time, i.e. relative to Unix Epoch.
@@ -136,7 +136,7 @@ class RecordingProperties(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                started=started,
+                start_time=start_time,
                 name=name,
             )
 
@@ -144,7 +144,7 @@ class RecordingProperties(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"started": started, "name": name}
+        kwargs = {"start_time": start_time, "name": name}
         columns = []
 
         for batch in batches:
@@ -174,7 +174,7 @@ class RecordingProperties(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
-    started: components.TimestampBatch | None = field(
+    start_time: components.TimestampBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=components.TimestampBatch._converter,  # type: ignore[misc]

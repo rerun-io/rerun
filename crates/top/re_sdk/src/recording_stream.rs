@@ -155,7 +155,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
 
             properties: Some(
-                RecordingProperties::new().with_started(Time::now().nanos_since_epoch()),
+                RecordingProperties::new().with_start_time(Time::now().nanos_since_epoch()),
             ),
         }
     }
@@ -217,9 +217,9 @@ impl RecordingStreamBuilder {
         let started = Timestamp::from(time.into().nanos_since_epoch());
 
         self.properties = if let Some(props) = self.properties.take() {
-            Some(props.with_started(started))
+            Some(props.with_start_time(started))
         } else {
-            Some(RecordingProperties::new().with_started(started))
+            Some(RecordingProperties::new().with_start_time(started))
         };
         self
     }

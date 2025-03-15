@@ -1377,7 +1377,7 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 #[pyo3(from_item_all)]
 struct RecordingProperties {
     name: Option<String>,
-    started: Option<i64>,
+    start_time: Option<i64>,
 }
 
 // Set the name of a recording.
@@ -1391,7 +1391,7 @@ fn set_properties(
         return Ok(());
     };
 
-    if properties.name.is_none() && properties.started.is_none() {
+    if properties.name.is_none() && properties.start_time.is_none() {
         re_log::warn!("None of the provided properties match the recording properties.");
         return Ok(());
     }
@@ -1401,8 +1401,8 @@ fn set_properties(
     if let Some(name) = properties.name {
         prop_archetype = prop_archetype.with_name(name);
     }
-    if let Some(started) = properties.started {
-        prop_archetype = prop_archetype.with_started(started);
+    if let Some(started) = properties.start_time {
+        prop_archetype = prop_archetype.with_start_time(started);
     }
 
     recording

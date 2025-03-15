@@ -22,7 +22,7 @@ namespace rerun::archetypes {
         /// When the recording started.
         ///
         /// Should be an absolute time, i.e. relative to Unix Epoch.
-        std::optional<ComponentBatch> started;
+        std::optional<ComponentBatch> start_time;
 
         /// A user-chosen name for the recording.
         std::optional<ComponentBatch> name;
@@ -36,9 +36,9 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.RecordingProperties";
 
-        /// `ComponentDescriptor` for the `started` field.
-        static constexpr auto Descriptor_started = ComponentDescriptor(
-            ArchetypeName, "started",
+        /// `ComponentDescriptor` for the `start_time` field.
+        static constexpr auto Descriptor_start_time = ComponentDescriptor(
+            ArchetypeName, "start_time",
             Loggable<rerun::components::Timestamp>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `name` field.
@@ -64,19 +64,21 @@ namespace rerun::archetypes {
         /// When the recording started.
         ///
         /// Should be an absolute time, i.e. relative to Unix Epoch.
-        RecordingProperties with_started(const rerun::components::Timestamp& _started) && {
-            started = ComponentBatch::from_loggable(_started, Descriptor_started).value_or_throw();
+        RecordingProperties with_start_time(const rerun::components::Timestamp& _start_time) && {
+            start_time =
+                ComponentBatch::from_loggable(_start_time, Descriptor_start_time).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `started` in a single component batch.
+        /// This method makes it possible to pack multiple `start_time` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_started` should
+        /// This only makes sense when used in conjunction with `columns`. `with_start_time` should
         /// be used when logging a single row's worth of data.
-        RecordingProperties with_many_started(
-            const Collection<rerun::components::Timestamp>& _started
+        RecordingProperties with_many_start_time(
+            const Collection<rerun::components::Timestamp>& _start_time
         ) && {
-            started = ComponentBatch::from_loggable(_started, Descriptor_started).value_or_throw();
+            start_time =
+                ComponentBatch::from_loggable(_start_time, Descriptor_start_time).value_or_throw();
             return std::move(*this);
         }
 

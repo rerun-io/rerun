@@ -7,7 +7,7 @@ int main() {
     rec.spawn().exit_on_failure();
 
     auto properties =
-        rerun::archetypes::RecordingProperties().with_started(0).with_name("My recording (initial)"
+        rerun::archetypes::RecordingProperties().with_start_time(0).with_name("My recording (initial)"
         );
     rec.set_properties(properties);
 

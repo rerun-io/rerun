@@ -12,7 +12,7 @@ table RecordingProperties (
   /// When the recording started.
   ///
   /// Should be an absolute time, i.e. relative to Unix Epoch.
-  started: rerun.components.Timestamp ("attr.rerun.component_optional", nullable, order: 1000);
+  start_time: rerun.components.Timestamp ("attr.rerun.component_optional", nullable, order: 1000);
 
   /// A user-chosen name for the recording.
   name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 2000);

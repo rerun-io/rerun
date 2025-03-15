@@ -1828,8 +1828,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "started", display_name :
-                    "Started", component_name : "rerun.components.Timestamp".into(),
+                    ArchetypeFieldReflection { name : "start_time", display_name :
+                    "Start time", component_name : "rerun.components.Timestamp".into(),
                     docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
                     is_required : false, }, ArchetypeFieldReflection { name : "name",

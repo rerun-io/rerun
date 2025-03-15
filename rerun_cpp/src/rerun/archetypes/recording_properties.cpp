@@ -8,8 +8,9 @@
 namespace rerun::archetypes {
     RecordingProperties RecordingProperties::clear_fields() {
         auto archetype = RecordingProperties();
-        archetype.started = ComponentBatch::empty<rerun::components::Timestamp>(Descriptor_started)
-                                .value_or_throw();
+        archetype.start_time =
+            ComponentBatch::empty<rerun::components::Timestamp>(Descriptor_start_time)
+                .value_or_throw();
         archetype.name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
         return archetype;
@@ -18,8 +19,8 @@ namespace rerun::archetypes {
     Collection<ComponentColumn> RecordingProperties::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(3);
-        if (started.has_value()) {
-            columns.push_back(started.value().partitioned(lengths_).value_or_throw());
+        if (start_time.has_value()) {
+            columns.push_back(start_time.value().partitioned(lengths_).value_or_throw());
         }
         if (name.has_value()) {
             columns.push_back(name.value().partitioned(lengths_).value_or_throw());
@@ -32,8 +33,8 @@ namespace rerun::archetypes {
     }
 
     Collection<ComponentColumn> RecordingProperties::columns() {
-        if (started.has_value()) {
-            return columns(std::vector<uint32_t>(started.value().length(), 1));
+        if (start_time.has_value()) {
+            return columns(std::vector<uint32_t>(start_time.value().length(), 1));
         }
         if (name.has_value()) {
             return columns(std::vector<uint32_t>(name.value().length(), 1));
@@ -51,8 +52,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        if (archetype.started.has_value()) {
-            cells.push_back(archetype.started.value());
+        if (archetype.start_time.has_value()) {
+            cells.push_back(archetype.start_time.value());
         }
         if (archetype.name.has_value()) {
             cells.push_back(archetype.name.value());
