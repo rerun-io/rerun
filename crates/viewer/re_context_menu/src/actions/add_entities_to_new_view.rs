@@ -51,7 +51,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                         let btn = egui::Button::image_and_text(class.icon(), class.display_name());
                         if ui.add(btn).clicked() {
                             create_view_for_selected_entities(ctx, *identifier);
-                            ui.close_menu();
+                            ui.close();
                         }
                     }
                 };

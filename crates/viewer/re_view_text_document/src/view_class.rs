@@ -128,7 +128,7 @@ impl ViewClass for TextDocumentView {
                 let inner_ui_builder = egui::UiBuilder::new()
                     .layout(egui::Layout::top_down(egui::Align::LEFT))
                     .sense(Sense::click());
-                ui.allocate_new_ui(inner_ui_builder, |ui| {
+                ui.scope_builder(inner_ui_builder, |ui| {
                     egui::ScrollArea::both()
                         .auto_shrink([false, false])
                         .show(ui, |ui| text_document_ui(ui, state, text_document));

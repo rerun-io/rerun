@@ -57,7 +57,7 @@ fn run_modal_test(
         .build_ui(|ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
 
-            modal_handler.ui(ui.ctx(), &mut make_modal, |ui, _| content_ui(ui));
+            modal_handler.ui(ui.ctx(), &mut make_modal, |ui| content_ui(ui));
         });
 
     harness.run();
