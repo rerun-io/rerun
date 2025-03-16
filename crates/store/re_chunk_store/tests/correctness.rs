@@ -349,7 +349,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     );
     assert_eq!(
         store.entity_min_time(&timeline_log_time, &entity_path),
-        Some(TimeInt::try_from(now).unwrap())
+        Some(TimeInt::from(now))
     );
     assert!(store
         .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
@@ -376,7 +376,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     );
     assert_eq!(
         store.entity_min_time(&timeline_log_time, &entity_path),
-        Some(TimeInt::try_from(now).unwrap())
+        Some(TimeInt::from(now))
     );
     assert!(store
         .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
@@ -403,7 +403,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     );
     assert_eq!(
         store.entity_min_time(&timeline_log_time, &entity_path),
-        Some(TimeInt::try_from(now_minus_one).unwrap())
+        Some(TimeInt::from(now_minus_one))
     );
     assert!(store
         .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
