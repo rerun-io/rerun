@@ -26,7 +26,7 @@ Use one of these instead:
 * `set_time` with `std::time::SystemTime`
 
 
-### 🌊 C++: deprecated `RecordingStream::set_time`
+### 🌊 C++
 We've deprecated the following functions, with the following replacements:
 * `set_time` -> `set_time_duration` or `set_time_timestamp`
 * `set_time_seconds` -> `set_time_duration_secs` or `set_time_timestamp_seconds_since_epoch`
@@ -35,7 +35,7 @@ We've deprecated the following functions, with the following replacements:
 `TimeColumn` also has deprecated functions.
 
 
-### 🐍 Python: replaced `rr.set_time_*` function with a single `rr.set_time`
+### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
 We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
 `set_time` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
 
