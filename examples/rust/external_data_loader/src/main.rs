@@ -115,7 +115,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             let Some((timeline_name, time)) = time_str.split_once('=') else {
                 continue;
             };
-            timepoint.insert_index(
+            timepoint.insert_cell(
                 timeline_name,
                 TimeCell::from_duration_nanos(time.parse::<i64>()?),
             );
@@ -125,7 +125,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             let Some((seqline_name, seq)) = seq_str.split_once('=') else {
                 continue;
             };
-            timepoint.insert_index(
+            timepoint.insert_cell(
                 seqline_name,
                 rerun::TimeCell::from_sequence(seq.parse::<i64>()?),
             );

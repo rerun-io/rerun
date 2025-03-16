@@ -26,7 +26,7 @@ impl TimePoint {
     }
 
     #[inline]
-    pub fn insert_index(
+    pub fn insert_cell(
         &mut self,
         timeline_name: impl Into<TimelineName>,
         cell: impl Into<TimeCell>,
@@ -55,7 +55,7 @@ impl TimePoint {
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) {
         let cell = TimeCell::new(timeline.typ(), TimeInt::saturated_temporal(time).as_i64());
-        self.insert_index(*timeline.name(), cell);
+        self.insert_cell(*timeline.name(), cell);
     }
 
     #[must_use]
@@ -65,7 +65,7 @@ impl TimePoint {
         timeline_name: impl Into<TimelineName>,
         cell: impl Into<TimeCell>,
     ) -> Self {
-        self.insert_index(timeline_name, cell);
+        self.insert_cell(timeline_name, cell);
         self
     }
 
