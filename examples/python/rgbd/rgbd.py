@@ -79,7 +79,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int, frames: int) -> None:
             files_with_timestamps = files_with_timestamps[:frames]
 
         for time, f in files_with_timestamps:
-            rr.set_time("time", datetime=time.timestamp())
+            rr.set_time("time", timestamp=time.timestamp())
 
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)

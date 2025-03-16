@@ -770,7 +770,7 @@ class RecordingStream:
     def set_time(self, timeline: str, *, duration: int | float | timedelta | np.timedelta64) -> None: ...
 
     @overload
-    def set_time(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
+    def set_time(self, timeline: str, *, timestamp: int | float | datetime | np.datetime64) -> None: ...
 
     def set_time(
         self,
@@ -778,7 +778,7 @@ class RecordingStream:
         *,
         sequence: int | None = None,
         duration: int | float | timedelta | np.timedelta64 | None = None,
-        datetime: int | float | datetime | np.datetime64 | None = None,
+        timestamp: int | float | datetime | np.datetime64 | None = None,
     ) -> None:
         """
         Set the current time of a timeline for this thread.
@@ -790,7 +790,7 @@ class RecordingStream:
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `datetime`.
+        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `timestamp`.
         You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
         you must only use `duration` for that timeline going forward.
 
@@ -807,7 +807,7 @@ class RecordingStream:
             Used for relative times, like `time_since_start`.
             Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
             For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
-        datetime:
+        timestamp:
             Used for absolute time indices, like `capture_time`.
             Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
             For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
@@ -821,7 +821,7 @@ class RecordingStream:
             timeline=timeline,
             duration=duration,
             sequence=sequence,
-            datetime=datetime,
+            timestamp=timestamp,
             recording=self,
         )
 
@@ -860,7 +860,7 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_time(datetime=seconds)` or set_time(duration=seconds)` instead.
+        """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
@@ -901,7 +901,7 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_time(datetime=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
+        """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:

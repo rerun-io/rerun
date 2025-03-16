@@ -82,7 +82,7 @@ def _log_imu_data() -> None:
         comment="#",
     )
 
-    times = rr.TimeColumn("timestamp", datetime=imu_data["timestamp"])
+    times = rr.TimeColumn("timestamp", timestamp=imu_data["timestamp"])
 
     gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
     rr.send_columns("/gyroscope", times=[times], columns=rr.Scalar.columns(scalar=gyro))
@@ -101,7 +101,7 @@ def _log_image_data() -> None:
         dtype={"filename": str},
     )
 
-    rr.set_time("timestamp", datetime=times["timestamp"][0])
+    rr.set_time("timestamp", timestamp=times["timestamp"][0])
     rr.log(
         "/cam0",
         rr.Pinhole(
@@ -115,7 +115,7 @@ def _log_image_data() -> None:
 
     for _, (filename, timestamp, _) in times.iterrows():
         image_path = cwd / DATASET_NAME / "dso/cam0/images" / f"{filename}.png"
-        rr.set_time("timestamp", datetime=timestamp)
+        rr.set_time("timestamp", timestamp=timestamp)
         rr.log("/cam0/image", rr.ImageEncoded(path=image_path))
 
 
@@ -128,7 +128,7 @@ def _log_gt_imu() -> None:
         comment="#",
     )
 
-    times = rr.TimeColumn("timestamp", datetime=gt_imu["timestamp"])
+    times = rr.TimeColumn("timestamp", timestamp=gt_imu["timestamp"])
 
     translations = gt_imu[["t.x", "t.y", "t.z"]]
     quaternions = gt_imu[

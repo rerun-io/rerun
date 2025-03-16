@@ -65,7 +65,7 @@ All data logged using Rerun in the following sections is initially connected to 
 Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/concepts/timelines).
 
 ```python
-rr.set_time("timestamp", datetime=sample_data["timestamp"] * 1e-6)
+rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6)
 ```
 
 

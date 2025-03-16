@@ -66,7 +66,7 @@ def log_nuscenes_lidar(root_dir: pathlib.Path, dataset_version: str, scene_name:
         point_colors = cmap(norm(point_distances))
 
         # timestamps are in microseconds
-        rr.set_time("timestamp", datetime=sample_data["timestamp"] * 1e-6)
+        rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6)
         rr.log("world/lidar", rr.Points3D(points, colors=point_colors))
 
         current_lidar_token = sample_data["next"]

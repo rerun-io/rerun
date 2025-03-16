@@ -32,7 +32,7 @@ def set_time(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
-    datetime: int | float | datetime | np.datetime64,
+    timestamp: int | float | datetime | np.datetime64,
 ) -> None: ...
 
 
@@ -42,7 +42,7 @@ def set_time(
     recording: RecordingStream | None = None,
     sequence: int | None = None,
     duration: int | float | timedelta | np.timedelta64 | None = None,
-    datetime: int | float | datetime | np.datetime64 | None = None,
+    timestamp: int | float | datetime | np.datetime64 | None = None,
 ) -> None:
     """
     Set the current time of a timeline for this thread.
@@ -54,7 +54,7 @@ def set_time(
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
-    You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `datetime`.
+    You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `timestamp`.
     You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
     you must only use `duration` for that timeline going forward.
 
@@ -75,15 +75,15 @@ def set_time(
         Used for relative times, like `time_since_start`.
         Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
         For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
-    datetime:
+    timestamp:
         Used for absolute time indices, like `capture_time`.
         Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
         For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
 
     """
-    if sum(x is not None for x in (sequence, duration, datetime)) != 1:
+    if sum(x is not None for x in (sequence, duration, timestamp)) != 1:
         raise ValueError(
-            "set_time: Exactly one of `sequence`, `duration`, and `datetime` must be set (timeline='{timeline}')",
+            "set_time: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
         )
 
     if sequence is not None:
@@ -99,8 +99,8 @@ def set_time(
             nanos,
             recording=recording.to_native() if recording is not None else None,
         )
-    elif datetime is not None:
-        nanos = to_nanos_since_epoch(datetime)
+    elif timestamp is not None:
+        nanos = to_nanos_since_epoch(timestamp)
         bindings.set_time_timestamp_nanos_since_epoch(
             timeline,
             nanos,
@@ -123,23 +123,23 @@ def to_nanos(duration: int | float | timedelta | np.timedelta64) -> int:
         )
 
 
-def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> int:
-    if isinstance(date_time, (int, np.integer)):
-        return 1_000_000_000 * int(date_time)  # Interpret as seconds and convert to nanos
-    elif isinstance(date_time, float):
-        return round(1e9 * date_time)  # Interpret as seconds and convert to nanos
-    elif isinstance(date_time, datetime):
-        if date_time.tzinfo is None:
-            date_time = date_time.replace(tzinfo=timezone.utc)
+def to_nanos_since_epoch(timestamp: int | float | datetime | np.datetime64) -> int:
+    if isinstance(timestamp, (int, np.integer)):
+        return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
+    elif isinstance(timestamp, float):
+        return round(1e9 * timestamp)  # Interpret as seconds and convert to nanos
+    elif isinstance(timestamp, datetime):
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
         else:
-            date_time = date_time.astimezone(timezone.utc)
+            timestamp = timestamp.astimezone(timezone.utc)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
-        return round(1e9 * (date_time - epoch).total_seconds())
-    elif isinstance(date_time, np.datetime64):
-        return date_time.astype("int64")  # type: ignore[no-any-return]
+        return round(1e9 * (timestamp - epoch).total_seconds())
+    elif isinstance(timestamp, np.datetime64):
+        return timestamp.astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_time: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}",
+            f"set_time: timestamp must be an int, float, datetime, or numpy.datetime64 object, got {type(timestamp)}",
         )
 
 
@@ -184,7 +184,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(datetime=seconds)` or set_time(duration=seconds)` instead.
+    """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -232,7 +232,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(datetime=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
+    """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:

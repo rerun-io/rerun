@@ -31,7 +31,7 @@ The visualization in this example was created with just the following lines.
 
 
 ```python
-rr.set_time("timestamp", datetime=sample_data["timestamp"] * 1e-6) # Setting the time
+rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6) # Setting the time
 rr.log("world/lidar", rr.Points3D(points, colors=point_colors)) # Log the 3D data
 ```
 
