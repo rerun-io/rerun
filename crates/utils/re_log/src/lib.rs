@@ -95,6 +95,8 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
     let base_log_filter = if cfg!(debug_assertions) {
+        // We want the DEBUG level to be useful yet not too spammy.
+        // This is a good way to enforce that.
         "debug"
     } else {
         // Important to keep the default at (at least) "info",
