@@ -104,6 +104,14 @@ Either:
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
+
+### Dataloader time arguments
+The CLI API for external dataloaders has changed the following argument names:
+
+* `--sequence` -> `--time_sequence`
+* `--time` -> `--time_duration_ns` or `--time_timestamp_ns`
+
+
 ## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
 Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream?speculative-link) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
