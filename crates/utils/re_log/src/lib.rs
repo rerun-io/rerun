@@ -94,8 +94,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
 /// Web: `debug` since web console allows arbitrary filtering.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let base_log_filter = if false {
-        //cfg!(debug_assertions) {
+    let base_log_filter = if cfg!(debug_assertions) {
         "debug"
     } else {
         // Important to keep the default at (at least) "info",
