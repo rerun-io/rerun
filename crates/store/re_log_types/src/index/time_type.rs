@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{ResolvedTimeRange, Time, TimestampFormat};
+use crate::{ResolvedTimeRange, TimestampFormat};
 
-use super::{Duration, TimeInt};
+use super::TimeInt;
 
 /// The type of a [`TimeInt`] or [`crate::Timeline`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
@@ -87,7 +87,8 @@ impl TimeType {
                             nanos.try_into().ok()
                         } else {
                             // Otherwise, try to make sense of the time string depending on the timezone setting:
-                            Time::parse(s, timestamp_format)?.try_into().ok()
+                            super::Timestamp::parse_with_format(s, timestamp_format)
+                                .map(|timestamp| timestamp.into())
                         }
                     }
                 }
@@ -107,8 +108,8 @@ impl TimeType {
             TimeInt::MAX => "+∞".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
-                Self::DurationNs => Duration::from(time_int).format_seconds(),
-                Self::TimestampNs => Time::from(time_int).format(timestamp_format),
+                Self::DurationNs => super::Duration::from(time_int).format_seconds(),
+                Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
             },
         }
     }

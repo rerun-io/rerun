@@ -6,7 +6,6 @@ pub struct Duration(i64);
 impl Duration {
     pub const MAX: Self = Self(i64::MAX);
     const NANOS_PER_SEC: i64 = 1_000_000_000;
-    const NANOS_PER_MILLI: i64 = 1_000_000;
     const SEC_PER_MINUTE: i64 = 60;
     const SEC_PER_HOUR: i64 = 60 * Self::SEC_PER_MINUTE;
     const SEC_PER_DAY: i64 = 24 * Self::SEC_PER_HOUR;
@@ -17,8 +16,13 @@ impl Duration {
     }
 
     #[inline]
+    pub const fn from_micros(micros: i64) -> Self {
+        Self::from_nanos(1_000 * micros)
+    }
+
+    #[inline]
     pub const fn from_millis(millis: i64) -> Self {
-        Self(millis * Self::NANOS_PER_MILLI)
+        Self::from_nanos(1_000_000 * millis)
     }
 
     #[inline]
@@ -215,6 +219,17 @@ mod tests {
     use std::str::FromStr as _;
 
     use crate::Duration;
+
+    #[test]
+    fn test_formatting_duratuon() {
+        assert_eq!(&Duration::from_micros(42_000_000).format_seconds(), "+42s");
+        assert_eq!(&Duration::from_micros(69_000).format_seconds(), "+0.069s");
+        assert_eq!(&Duration::from_micros(69_900).format_seconds(), "+0.070s");
+        assert_eq!(
+            &Duration::from_micros(42_123_000_000).format_seconds(),
+            "+42 123s"
+        );
+    }
 
     #[test]
     fn parse_duration() {

@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
 
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{ResolvedTimeRangeF, Time, TimeReal, TimeType, TimestampFormat};
+use re_log_types::{ResolvedTimeRangeF, TimeReal, TimeType, TimestampFormat};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -76,7 +76,14 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                |ns| Time::from_ns_since_epoch(ns).format_time_compact(timestamp_format),
+                |ns| match time_type {
+                    TimeType::DurationNs => {
+                        re_log_types::Duration::from_nanos(ns).format_subsecond_as_relative()
+                    }
+                    TimeType::TimestampNs => re_log_types::Timestamp::from_ns_since_epoch(ns)
+                        .format_time_compact(timestamp_format),
+                    TimeType::Sequence => unreachable!(),
+                },
             )
         }
 

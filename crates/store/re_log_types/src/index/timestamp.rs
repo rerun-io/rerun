@@ -50,6 +50,20 @@ impl From<re_types_core::datatypes::TimeInt> for Timestamp {
 // ------------------------------------------
 // System converters
 
+impl From<super::TimeInt> for Timestamp {
+    #[inline]
+    fn from(int: super::TimeInt) -> Self {
+        Self::from_ns_since_epoch(int.as_i64())
+    }
+}
+
+impl From<Timestamp> for super::TimeInt {
+    #[inline]
+    fn from(timestamp: Timestamp) -> Self {
+        Self::saturated_temporal_i64(timestamp.ns_since_epoch())
+    }
+}
+
 impl TryFrom<std::time::SystemTime> for Timestamp {
     type Error = std::time::SystemTimeError;
 
