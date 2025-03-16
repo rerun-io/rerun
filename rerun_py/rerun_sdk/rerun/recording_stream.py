@@ -1139,7 +1139,7 @@ class RecordingStream:
     def send_columns(
         self,
         entity_path: str,
-        indexes: Iterable[TimeColumnLike],
+        times: Iterable[TimeColumnLike],
         columns: Iterable[ComponentColumn],
         strict: bool | None = None,
     ) -> None:
@@ -1161,7 +1161,7 @@ class RecordingStream:
             Path to the entity in the space hierarchy.
 
             See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
-        indexes:
+        times:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
             of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
             [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
@@ -1179,7 +1179,7 @@ class RecordingStream:
 
         from ._send_columns import send_columns
 
-        send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
+        send_columns(entity_path=entity_path, times=times, columns=columns, strict=strict, recording=self)
 
 
 class BinaryStream:

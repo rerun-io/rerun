@@ -185,7 +185,7 @@ def main() -> None:
                     value_index = slice(index, index + args.temporal_batch_size)
                     rr.send_columns(
                         f"{plot_path}/{series_path}",
-                        indexes=[cast(rr.TimeColumn, time_column)],
+                        times=[cast(rr.TimeColumn, time_column)],
                         columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),
                     )
 

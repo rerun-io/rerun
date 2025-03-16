@@ -14,7 +14,7 @@ ten_per_timestamp = np.cos(np.arange(0, N * 10) / 100.0)
 
 rr.send_columns(
     "/",
-    indexes=[rr.TimeColumn("step", sequence=timestamps)],
+    times=[rr.TimeColumn("step", sequence=timestamps)],
     columns=[
         # log one value per timestamp
         rr.AnyBatchValue.column("custom_component_single", one_per_timestamp),
