@@ -53,8 +53,9 @@ pub use self::{
 /// * `--entity-path-prefix <entity_path_prefix>` (if set)
 /// * `--static` (if `timepoint` is set to the timeless timepoint)
 /// * `--timeless` \[deprecated\] (if `timepoint` is set to the timeless timepoint)
-/// * `--time <timeline1>=<time1> <timeline2>=<time2> ...` (if `timepoint` contains temporal data)
-/// * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
+/// * `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
+/// * `--time_duration_ns <timeline1>=<duration1> <timeline2>=<duration2> ...` (if `timepoint` contains duration data) in nanos
+/// * `--time_timestamp_ns <timeline1>=<timestamp1> <timeline2>=<timestamp2> ...` (if `timepoint` contains timestamp data) in nanos since epoch
 #[derive(Debug, Clone)]
 pub struct DataLoaderSettings {
     /// The recommended [`re_log_types::ApplicationId`] to log the data to, based on the surrounding context.
@@ -145,7 +146,41 @@ impl DataLoaderSettings {
             }
 
             for (timeline, cell) in timepoint.iter() {
-                args.extend(["--times".to_owned(), format!("{timeline}={cell}")]);
+                match cell.typ() {
+                    re_log_types::TimeType::Sequence => {
+                        args.extend([
+                            "--time_sequence".to_owned(),
+                            format!("{timeline}={}", cell.value),
+                        ]);
+
+                        // for backwards compatibility:
+                        args.extend([
+                            "--sequence".to_owned(),
+                            format!("{timeline}={}", cell.value),
+                        ]);
+                    }
+                    re_log_types::TimeType::DurationNs => {
+                        args.extend([
+                            "--time_duration_ns".to_owned(),
+                            format!("{timeline}={}", cell.value),
+                        ]);
+
+                        // for backwards compatibility:
+                        args.extend(["--time".to_owned(), format!("{timeline}={}", cell.value)]);
+                    }
+                    re_log_types::TimeType::TimestampNs => {
+                        args.extend([
+                            "--time_duration_ns".to_owned(),
+                            format!("{timeline}={}", cell.value),
+                        ]);
+
+                        // for backwards compatibility:
+                        args.extend([
+                            "--sequence".to_owned(),
+                            format!("{timeline}={}", cell.value),
+                        ]);
+                    }
+                }
             }
         }
 
