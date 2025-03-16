@@ -171,9 +171,9 @@ def main() -> None:
 
     for index, sim_time in ticks:
         if args.temporal_batch_size is None:
-            rr.set_time("sim_time", timedelta=sim_time)
+            rr.set_time("sim_time", duration=sim_time)
         else:
-            time_column = rr.TimeColumn("sim_time", timedelta=sim_time)
+            time_column = rr.TimeColumn("sim_time", duration=sim_time)
 
         # Log
         for plot_idx, plot_path in enumerate(plot_paths):

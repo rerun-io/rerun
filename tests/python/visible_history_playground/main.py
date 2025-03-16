@@ -25,20 +25,20 @@ rr.log("3dworld/image/pinhole", rr.Pinhole(focal_length=20, width=100, height=10
 date_offset = int(datetime.datetime(year=2023, month=1, day=1).timestamp())
 
 for i in range(100):
-    rr.set_time("temporal_100day_span", timedelta=i * 24 * 3600)
-    rr.set_time("temporal_100s_span", timedelta=i)
-    rr.set_time("temporal_100ms_span", timedelta=i / 1000)
-    rr.set_time("temporal_100us_span", timedelta=i / 1000000)
+    rr.set_time("temporal_100day_span", duration=i * 24 * 3600)
+    rr.set_time("temporal_100s_span", duration=i)
+    rr.set_time("temporal_100ms_span", duration=i / 1000)
+    rr.set_time("temporal_100us_span", duration=i / 1000000)
 
-    rr.set_time("temporal_100day_span_date_offset", timedelta=date_offset + i * 24 * 3600)
-    rr.set_time("temporal_100s_span_date_offset", timedelta=date_offset + i)
-    rr.set_time("temporal_100ms_span_date_offset", timedelta=date_offset + i / 1000)
-    rr.set_time("temporal_100us_span_date_offset", timedelta=date_offset + i / 1000000)
+    rr.set_time("temporal_100day_span_date_offset", duration=date_offset + i * 24 * 3600)
+    rr.set_time("temporal_100s_span_date_offset", duration=date_offset + i)
+    rr.set_time("temporal_100ms_span_date_offset", duration=date_offset + i / 1000)
+    rr.set_time("temporal_100us_span_date_offset", duration=date_offset + i / 1000000)
 
-    rr.set_time("temporal_100day_span_zero_centered", timedelta=(i - 50) * 24 * 3600)
-    rr.set_time("temporal_100s_zero_centered", timedelta=i - 50)
-    rr.set_time("temporal_100ms_zero_centered", timedelta=(i - 50) / 1000)
-    rr.set_time("temporal_100us_zero_centered", timedelta=(i - 50) / 1000000)
+    rr.set_time("temporal_100day_span_zero_centered", duration=(i - 50) * 24 * 3600)
+    rr.set_time("temporal_100s_zero_centered", duration=i - 50)
+    rr.set_time("temporal_100ms_zero_centered", duration=(i - 50) / 1000)
+    rr.set_time("temporal_100us_zero_centered", duration=(i - 50) / 1000000)
 
     rr.set_time("sequence", sequence=i)
     rr.set_time("sequence_zero_centered", sequence=(i - 50))

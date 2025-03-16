@@ -87,7 +87,7 @@ def set_time_from_args() -> None:
                 continue
             timeline_name, time = parts
             # TODO(#8635): update this
-            rr.set_time(timeline_name, timedelta=1e-9 * int(time))
+            rr.set_time(timeline_name, duration=1e-9 * int(time))
 
         for time_str in args.sequence:
             parts = time_str.split("=")

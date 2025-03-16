@@ -767,7 +767,7 @@ class RecordingStream:
     def set_time(self, timeline: str, *, sequence: int) -> None: ...
 
     @overload
-    def set_time(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
+    def set_time(self, timeline: str, *, duration: int | float | timedelta | np.timedelta64) -> None: ...
 
     @overload
     def set_time(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
@@ -777,7 +777,7 @@ class RecordingStream:
         timeline: str,
         *,
         sequence: int | None = None,
-        timedelta: int | float | timedelta | np.timedelta64 | None = None,
+        duration: int | float | timedelta | np.timedelta64 | None = None,
         datetime: int | float | datetime | np.datetime64 | None = None,
     ) -> None:
         """
@@ -790,9 +790,9 @@ class RecordingStream:
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
-        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
-        you must only use `timedelta` for that timeline going forward.
+        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `datetime`.
+        You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
+        you must only use `duration` for that timeline going forward.
 
         The columnar equivalent to this function is [`rerun.TimeColumn`][].
 
@@ -803,7 +803,7 @@ class RecordingStream:
         sequence:
             Used for sequential indices, like `frame_nr`.
             Must be an integer.
-        timedelta:
+        duration:
             Used for relative times, like `time_since_start`.
             Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
             For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
@@ -819,7 +819,7 @@ class RecordingStream:
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
         set_time(  # type: ignore[call-overload]
             timeline=timeline,
-            timedelta=timedelta,
+            duration=duration,
             sequence=sequence,
             datetime=datetime,
             recording=self,
@@ -860,7 +860,7 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_time(datetime=seconds)` or set_time(timedelta=seconds)` instead.
+        """Use `set_time(datetime=seconds)` or set_time(duration=seconds)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
@@ -901,7 +901,7 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_time(datetime=1e-9 * nanos)` or set_time(timedelta=1e-9 * nanos)` instead.
+        """Use `set_time(datetime=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:

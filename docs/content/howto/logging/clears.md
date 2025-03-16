@@ -81,12 +81,12 @@ Follow the issue [here](https://github.com/rerun-io/rerun/issues/3008).
 For now the best workaround is to manually clear data when it is no longer valid.
 ```python
 # Associate the following data with `start_time` on the `time` timeline
-rr.set_time("time", timedelta=start_time)
+rr.set_time("time", duration=start_time)
 # Log the data as usual
 rr.log("short_lived", rr.Tensor(one_second_tensor))
 # Associate the following clear with `start_time + 1.0` on the `time` timeline
-rr.set_time("time", timedelta=start_time + 1.0)
+rr.set_time("time", duration=start_time + 1.0)
 rr.log("short_lived", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
 # Set the time back so other data isn't accidentally logged in the future.
-rr.set_time("time", timedelta=start_time)
+rr.set_time("time", duration=start_time)
 ```

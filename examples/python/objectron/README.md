@@ -36,7 +36,7 @@ For each processed frame, all data sent to Rerun is associated with the two [`ti
 
 ```python
 rr.set_time("frame", sequence=sample.index)
-rr.set_time("time", timedelta=sample.timestamp)
+rr.set_time("time", duration=sample.timestamp)
 ```
 
 ### Video

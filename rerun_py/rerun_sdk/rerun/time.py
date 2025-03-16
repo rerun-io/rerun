@@ -23,7 +23,7 @@ def set_time(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
-    timedelta: int | float | timedelta | np.timedelta64,
+    duration: int | float | timedelta | np.timedelta64,
 ) -> None: ...
 
 
@@ -41,7 +41,7 @@ def set_time(
     *,
     recording: RecordingStream | None = None,
     sequence: int | None = None,
-    timedelta: int | float | timedelta | np.timedelta64 | None = None,
+    duration: int | float | timedelta | np.timedelta64 | None = None,
     datetime: int | float | datetime | np.datetime64 | None = None,
 ) -> None:
     """
@@ -54,9 +54,9 @@ def set_time(
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
-    You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
-    You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
-    you must only use `timedelta` for that timeline going forward.
+    You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `datetime`.
+    You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
+    you must only use `duration` for that timeline going forward.
 
     The columnar equivalent to this function is [`rerun.TimeColumn`][].
 
@@ -71,7 +71,7 @@ def set_time(
     sequence:
         Used for sequential indices, like `frame_nr`.
         Must be an integer.
-    timedelta:
+    duration:
         Used for relative times, like `time_since_start`.
         Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
         For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
@@ -81,9 +81,9 @@ def set_time(
         For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
 
     """
-    if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+    if sum(x is not None for x in (sequence, duration, datetime)) != 1:
         raise ValueError(
-            "set_time: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
+            "set_time: Exactly one of `sequence`, `duration`, and `datetime` must be set (timeline='{timeline}')",
         )
 
     if sequence is not None:
@@ -92,8 +92,8 @@ def set_time(
             sequence,
             recording=recording.to_native() if recording is not None else None,
         )
-    elif timedelta is not None:
-        nanos = to_nanos(timedelta)
+    elif duration is not None:
+        nanos = to_nanos(duration)
         bindings.set_time_duration_nanos(
             timeline,
             nanos,
@@ -108,18 +108,18 @@ def set_time(
         )
 
 
-def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
-    if isinstance(timedelta_obj, (int, np.integer)):
-        return 1_000_000_000 * int(timedelta_obj)  # Interpret as seconds and convert to nanos
-    elif isinstance(timedelta_obj, float):
-        return round(1e9 * timedelta_obj)  # Interpret as seconds and convert to nanos
-    elif isinstance(timedelta_obj, timedelta):
-        return round(1e9 * timedelta_obj.total_seconds())
-    elif isinstance(timedelta_obj, np.timedelta64):
-        return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
+def to_nanos(duration: int | float | timedelta | np.timedelta64) -> int:
+    if isinstance(duration, (int, np.integer)):
+        return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
+    elif isinstance(duration, float):
+        return round(1e9 * duration)  # Interpret as seconds and convert to nanos
+    elif isinstance(duration, timedelta):
+        return round(1e9 * duration.total_seconds())
+    elif isinstance(duration, np.timedelta64):
+        return duration.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_time: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}",
+            f"set_time: duration must be an int, float, timedelta, or numpy.timedelta64 object, got {type(duration)}",
         )
 
 
@@ -184,7 +184,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(datetime=seconds)` or set_time(timedelta=seconds)` instead.
+    """Use `set_time(datetime=seconds)` or set_time(duration=seconds)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -232,7 +232,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(datetime=1e-9 * nanos)` or set_time(timedelta=1e-9 * nanos)` instead.
+    """Use `set_time(datetime=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:

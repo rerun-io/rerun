@@ -118,7 +118,7 @@ def log_lidar_data() -> None:
     # log all positions at once using the computed partitions
     rr.send_columns(
         "/lidar",
-        [rr.TimeColumn("time", timedelta=non_repeating_times)],
+        [rr.TimeColumn("time", duration=non_repeating_times)],
         rr.Points3D.columns(positions=positions).partition(partitions),
     )
 
@@ -137,7 +137,7 @@ def log_drone_trajectory() -> None:
 
     rr.send_columns(
         "/drone",
-        [rr.TimeColumn("time", timedelta=timestamp)],
+        [rr.TimeColumn("time", duration=timestamp)],
         rr.Points3D.columns(positions=positions),
     )
 

@@ -23,6 +23,6 @@ colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
 
 rr.send_columns(
     "arrows",
-    times=[rr.TimeColumn("time", timedelta=times)],
+    times=[rr.TimeColumn("time", duration=times)],
     columns=[*rr.Arrows3D.columns(origins=origins, vectors=vectors, colors=colors)],
 )

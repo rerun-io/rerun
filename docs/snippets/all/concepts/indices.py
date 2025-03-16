@@ -8,7 +8,7 @@ import rerun as rr
 rr.init("rerun_example_different_indices", spawn=True)
 
 rr.set_time("frame_nr", sequence=42)
-rr.set_time("elapsed", timedelta=12)  # elapsed seconds
+rr.set_time("elapsed", duration=12)  # elapsed seconds
 rr.set_time("time", datetime=1_741_017_564)  # Seconds since unix epoch
 rr.set_time("time", datetime=datetime.fromisoformat("2025-03-03T15:59:24"))
 rr.set_time("precise_time", datetime=np.datetime64(1_741_017_564_987_654_321, "ns"))  # Nanoseconds since unix epoch

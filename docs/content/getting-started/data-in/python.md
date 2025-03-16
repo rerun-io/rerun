@@ -204,7 +204,7 @@ time_offsets = np.random.rand(NUM_POINTS)
 
 for i in range(400):
     time = i * 0.01
-    rr.set_time("stable_time", timedelta=time)
+    rr.set_time("stable_time", duration=time)
 
     times = np.repeat(time, NUM_POINTS) + time_offsets
     beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]
@@ -236,7 +236,7 @@ To fix this, go back to the top of the file and add:
 
 ```python
 rr.spawn()
-rr.set_time("stable_time", timedelta=0)
+rr.set_time("stable_time", duration=0)
 ```
 
 <picture>
@@ -265,7 +265,7 @@ simply add a second loop like this:
 ```python
 for i in range(400):
     time = i * 0.01
-    rr.set_time("stable_time", timedelta=time)
+    rr.set_time("stable_time", duration=time)
     rr.log(
         "dna/structure",
         rr.Transform3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),

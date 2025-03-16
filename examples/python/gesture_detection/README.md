@@ -37,7 +37,7 @@ For each processed video frame, all data sent to Rerun is associated with the tw
 
 ```python
 rr.set_time("frame_nr", sequence=frame_idx)
-rr.set_time("frame_time", timedelta=1e-9 * frame_time_nano)
+rr.set_time("frame_time", duration=1e-9 * frame_time_nano)
 ```
 
 ### Video

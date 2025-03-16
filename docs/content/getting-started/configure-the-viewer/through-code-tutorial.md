@@ -153,7 +153,7 @@ def main() -> None:
 
             # Log the stock state over the course of the day
             for row in hist.itertuples():
-                rr.set_time("time", timedelta=row.Index)
+                rr.set_time("time", duration=row.Index)
                 rr.log(f"stocks/{symbol}/{day}", rr.Scalar(row.High))
                 if row.Index == peak:
                     rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalar(row.High))

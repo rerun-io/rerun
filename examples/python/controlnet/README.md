@@ -53,7 +53,7 @@ def controlnet_callback(
     iteration: int, timestep: float, latents: torch.Tensor, pipeline: StableDiffusionXLControlNetPipeline
 ) -> None:
     rr.set_time("iteration", sequence=iteration)
-    rr.set_time("timestep", timedelta=timestep)
+    rr.set_time("timestep", duration=timestep)
     rr.log("output", rr.Image(image))
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 ```

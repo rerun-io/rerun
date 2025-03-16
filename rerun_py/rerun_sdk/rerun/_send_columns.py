@@ -43,7 +43,7 @@ class TimeColumn(TimeColumnLike):
         self,
         timeline: str,
         *,
-        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64],
+        duration: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64],
     ) -> None: ...
 
     @overload
@@ -59,7 +59,7 @@ class TimeColumn(TimeColumnLike):
         timeline: str,
         *,
         sequence: Iterable[int] | None = None,
-        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
+        duration: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
         datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
     ):
         """
@@ -67,9 +67,9 @@ class TimeColumn(TimeColumnLike):
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
-        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
-        you must only use `timedelta` for that timeline going forward.
+        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `datetime`.
+        You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
+        you must only use `duration` for that timeline going forward.
 
         Parameters
         ----------
@@ -78,7 +78,7 @@ class TimeColumn(TimeColumnLike):
         sequence:
             Used for sequential indices, like `frame_nr`.
             Must be integers.
-        timedelta:
+        duration:
             Used for relative times, like `time_since_start`.
             Must either be in seconds, [`datetime.timedelta`][], or [`numpy.timedelta64`][].
         datetime:
@@ -86,9 +86,9 @@ class TimeColumn(TimeColumnLike):
             Must either be in seconds since Unix epoch, [`datetime.datetime`][], or [`numpy.datetime64`][].
 
         """
-        if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+        if sum(x is not None for x in (sequence, duration, datetime)) != 1:
             raise ValueError(
-                "TimeColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
+                "TimeColumn: Exactly one of `sequence`, `duration`, and `datetime` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
@@ -96,9 +96,9 @@ class TimeColumn(TimeColumnLike):
         if sequence is not None:
             self.type = pa.int64()
             self.times = sequence
-        elif timedelta is not None:
+        elif duration is not None:
             self.type = pa.duration("ns")
-            self.times = [to_nanos(td) for td in timedelta]
+            self.times = [to_nanos(duration) for duration in duration]
         elif datetime is not None:
             self.type = pa.timestamp("ns")
             self.times = [to_nanos_since_epoch(dt) for dt in datetime]

@@ -44,15 +44,15 @@ def log_some_views() -> None:
     # mixed time-full and static logs
     rr.log("hybrid", rr.Points2D([(0, 0), (1, 1), (2, 2)]), static=True)
 
-    rr.set_time("time", timedelta=1.0)
+    rr.set_time("time", duration=1.0)
     rr.log("hybrid", rr.Points2D([(0, 0), (1, 1), (2, 2)]))
-    rr.set_time("time", timedelta=1.0)
+    rr.set_time("time", duration=1.0)
     rr.log("hybrid", rr.Points2D([(0, 0), (1, 1), (2, 2)]))
-    rr.set_time("time", timedelta=1.0)
+    rr.set_time("time", duration=1.0)
     rr.log("hybrid", rr.Points2D([(0, 0), (1, 1), (2, 2)]))
 
     rr.disable_timeline("time")
-    rr.set_time("other_time", timedelta=10.0)
+    rr.set_time("other_time", duration=10.0)
     rr.log("hybrid", rr.Points2D([(0, 0), (1, 1), (2, 2)]))
 
 

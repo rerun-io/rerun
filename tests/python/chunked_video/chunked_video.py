@@ -42,7 +42,7 @@ def main() -> None:
     for file in video_files:
         print(f"Logging video {file}, start time {last_time_ns}ns")
 
-        rr.set_time("video_time", timedelta=1e-9 * last_time_ns)
+        rr.set_time("video_time", duration=1e-9 * last_time_ns)
 
         video_asset = rr.AssetVideo(path=file)
         rr.log("video", video_asset)
@@ -51,7 +51,7 @@ def main() -> None:
         rr.send_columns(
             "video",
             # Note timeline values don't have to be the same as the video timestamps.
-            times=[rr.TimeColumn("video_time", timedelta=1e-9 * (frame_timestamps_ns + last_time_ns))],
+            times=[rr.TimeColumn("video_time", duration=1e-9 * (frame_timestamps_ns + last_time_ns))],
             columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
         )
         last_time_ns += frame_timestamps_ns[-1]

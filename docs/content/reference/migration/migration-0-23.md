@@ -37,9 +37,9 @@ We've deprecated the following functions, with the following replacements:
 
 ### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
 We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
-`set_time` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
+`set_time` takes either a `sequence=`, `duration=` or `datetime=` argument.
 
-`timedelta` must be either:
+`duration` must be either:
 * seconds as `int` or `float`
 * [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta)
 * [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64)
@@ -54,7 +54,7 @@ We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_
 New: `rr.set_time("foo", sequence=42)`
 
 ##### `rr.set_time_seconds("foo", duration_seconds)`
-When using relative times (durations/timedeltas): `rr.set_time("foo", timedelta=duration_seconds)`
+When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_seconds)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
 ##### `rr.set_time_seconds("foo", seconds_since_epoch)`
@@ -63,8 +63,8 @@ You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/d
 
 ##### `rr.set_time_nanos("foo", duration_nanos)`
 Either:
-* `rr.set_time("foo", timedelta=1e-9 * duration_nanos)`
-* `rr.set_time("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+* `rr.set_time("foo", duration=1e-9 * duration_nanos)`
+* `rr.set_time("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
 
@@ -85,22 +85,22 @@ The migration is very similar to the above.
 New: `rr.TimeColumn("foo", sequence=values)`
 
 ##### `rr.TimeSecondsColumn("foo", duration_seconds)`
-New: `rr.TimeColumn("foo", timedelta=duration_seconds)`
+New: `rr.TimeColumn("foo", duration=duration_seconds)`
 
 ##### `rr.TimeSecondsColumn("foo", seconds_since_epoch)`
 New: `rr.TimeColumn("foo", datetime=seconds_since_epoch)`
 
 ##### `rr.TimeNanosColumn("foo", duration_nanos)`
 Either:
-* `rr.TimeColumn("foo", timedelta=1e-9 * duration_nanos)`
-* `rr.TimeColumn("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+* `rr.TimeColumn("foo", duration=1e-9 * duration_nanos)`
+* `rr.TimeColumn("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.TimeNanosColumn("foo", nanos_since_epoch)`
 Either:
-* `rr.TimeColumn("foo", timedelta=1e-9 * nanos_since_epoch)`
-* `rr.TimeColumn("foo", timedelta=np.timedelta64(nanos_since_epoch, 'ns'))`
+* `rr.TimeColumn("foo", duration=1e-9 * nanos_since_epoch)`
+* `rr.TimeColumn("foo", duration=np.timedelta64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
