@@ -11,7 +11,7 @@ The logging SDK always creates two timelines for you:
 * `log_tick` - a sequence timeline with the sequence number of the log call
 * `log_time` - a temporal timeline with the time of the log call
 
-You can use the `set_index` function (Python reference: [set_index](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_index)) to associate logs with other timestamps on other timelines. For example:
+You can use the `set_time` function (Python reference: [set_time](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time)) to associate logs with other timestamps on other timelines. For example:
 
 snippet: tutorials/timelines_example
 

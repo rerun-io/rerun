@@ -78,8 +78,8 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
                 break
 
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=bgr_frame.data)
-            rr.set_index("time", timedelta=bgr_frame.time)
-            rr.set_index("frame_idx", sequence=bgr_frame.idx)
+            rr.set_time("time", timedelta=bgr_frame.time)
+            rr.set_time("frame_idx", sequence=bgr_frame.idx)
 
             results = pose_landmarker.detect_for_video(mp_image, int(bgr_frame.time * 1000))
             h, w, _ = bgr_frame.data.shape

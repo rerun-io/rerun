@@ -39,7 +39,7 @@ This enables the visualization of the clock's movement over time.
 
  ```python
 for step in range(steps):
-    rr.set_index("sim_time", timedelta=t_secs)
+    rr.set_time("sim_time", timedelta=t_secs)
 
     # … calculating seconds …
     rr.log("world/seconds_pt", rr.Points3D(positions=point_s, colors=color_s))

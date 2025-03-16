@@ -3,7 +3,7 @@
 import rerun as rr
 
 rr.init("rerun_example_mesh3d_instancing", spawn=True)
-rr.set_index("frame", sequence=0)
+rr.set_time("frame", sequence=0)
 
 rr.log(
     "shape",
@@ -20,7 +20,7 @@ rr.log(
 )
 
 for i in range(100):
-    rr.set_index("frame", sequence=i)
+    rr.set_time("frame", sequence=i)
     rr.log(
         "shape",
         rr.InstancePoses3D(

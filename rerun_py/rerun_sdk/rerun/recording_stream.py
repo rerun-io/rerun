@@ -289,7 +289,7 @@ class RecordingStream:
     - Sink-related functions:
         [`rerun.connect_grpc`][], [`rerun.spawn`][], …
     - Time-related functions:
-        [`rerun.set_index`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
+        [`rerun.set_time`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
     - Log-related functions:
         [`rerun.log`][], …
 
@@ -764,15 +764,15 @@ class RecordingStream:
         )
 
     @overload
-    def set_index(self, timeline: str, *, sequence: int) -> None: ...
+    def set_time(self, timeline: str, *, sequence: int) -> None: ...
 
     @overload
-    def set_index(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
+    def set_time(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
 
     @overload
-    def set_index(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
+    def set_time(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
 
-    def set_index(
+    def set_time(
         self,
         timeline: str,
         *,
@@ -784,9 +784,9 @@ class RecordingStream:
         Set the current time of a timeline for this thread.
 
         Used for all subsequent logging on the same thread, until the next call to
-        [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+        [`rerun.set_time`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
-        For example: `set_index("frame_nr", sequence=frame_nr)`.
+        For example: `set_time("frame_nr", sequence=frame_nr)`.
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
@@ -814,10 +814,10 @@ class RecordingStream:
 
         """
 
-        from .time import set_index
+        from .time import set_time
 
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
-        set_index(  # type: ignore[call-overload]
+        set_time(  # type: ignore[call-overload]
             timeline=timeline,
             timedelta=timedelta,
             sequence=sequence,
@@ -826,7 +826,7 @@ class RecordingStream:
         )
 
     @deprecated(
-        """Use `set_index(sequence=…)` instead.
+        """Use `set_time(sequence=…)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
@@ -860,7 +860,7 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
+        """Use `set_time(datetime=seconds)` or set_time(timedelta=seconds)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
@@ -901,7 +901,7 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
+        """Use `set_time(datetime=1e-9 * nanos)` or set_time(timedelta=1e-9 * nanos)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:

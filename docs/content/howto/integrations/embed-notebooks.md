@@ -143,7 +143,7 @@ STEPS = 100
 twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
 for t in range(STEPS):
     sleep(0.05)  # delay to simulate a long-running computation
-    rr.set_index("step", sequence=t)
+    rr.set_time("step", sequence=t)
     cube = build_color_grid(10, 10, 10, twist=twists[t])
     rr.log("cube", rr.Points3D(cube.positions, colors=cube.colors, radii=0.5))
 ```

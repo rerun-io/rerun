@@ -31,7 +31,7 @@ class IndexColumn(TimeColumnLike):
     """
     A column of index (time) values.
 
-    Columnar equivalent to [`rerun.set_index`][].
+    Columnar equivalent to [`rerun.set_time`][].
     """
 
     # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.

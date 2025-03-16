@@ -22,27 +22,22 @@ Now you need to be explicit.
 Use one of these instead:
 * `set_duration_seconds`
 * `set_timestamp_seconds_since_epoch`
-* `set_index` with `std::time::Duration`
-* `set_index` with `std::time::SystemTime`
+* `set_time` with `std::time::Duration`
+* `set_time` with `std::time::SystemTime`
 
 
-### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+### 🌊 C++: deprecated `RecordingStream::set_time`
 We've deprecated the following functions, with the following replacements:
-* `set_time_sequence` -> `set_index_sequence`
-* `set_time` -> `set_index_duration` or `set_index_timestamp`
-* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
-* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+* `set_time` -> `set_time_duration` or `set_time_timestamp`
+* `set_time_seconds` -> `set_time_duration_secs` or `set_time_timestamp_seconds_since_epoch`
+* `set_time_nanos` -> `set_time_duration_nanos` or `set_time_timestamp_nanos_since_epoch`
 
 `TimeColumn` also has deprecated functions.
 
 
-### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
-We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
-
-Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.
-
-To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_index`.
-`set_index` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
+### 🐍 Python: replaced `rr.set_time_*` function with a single `rr.set_time`
+We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
+`set_time` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
 
 `timedelta` must be either:
 * seconds as `int` or `float`
@@ -56,33 +51,33 @@ To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as wel
 
 #### Migrating
 ##### `rr.set_sequence("foo", 42)`
-New: `rr.set_index("foo", sequence=42)`
+New: `rr.set_time("foo", sequence=42)`
 
 ##### `rr.set_time_seconds("foo", duration_seconds)`
-When using relative times (durations/timedeltas): `rr.set_index("foo", timedelta=duration_seconds)`
+When using relative times (durations/timedeltas): `rr.set_time("foo", timedelta=duration_seconds)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
 ##### `rr.set_time_seconds("foo", seconds_since_epoch)`
-New: `rr.set_index("foo", datetime=seconds_since_epoch)`
+New: `rr.set_time("foo", datetime=seconds_since_epoch)`
 You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 
 ##### `rr.set_time_nanos("foo", duration_nanos)`
 Either:
-* `rr.set_index("foo", timedelta=1e-9 * duration_nanos)`
-* `rr.set_index("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+* `rr.set_time("foo", timedelta=1e-9 * duration_nanos)`
+* `rr.set_time("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.set_time_nanos("foo", nanos_since_epoch)`
 Either:
-* `rr.set_index("foo", datetime=1e-9 * nanos_since_epoch)`
-* `rr.set_index("foo", datetime=np.datetime64(nanos_since_epoch, 'ns'))`
+* `rr.set_time("foo", datetime=1e-9 * nanos_since_epoch)`
+* `rr.set_time("foo", datetime=np.datetime64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
 
 ### 🐍 Python: replaced `rr.Time*Column` with `rr.IndexColumn`
-Similarly to the above new `set_index` API, there is also a new `IndexColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
+Similarly to the above new `set_time` API, there is also a new `IndexColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
 The migration is very similar to the above.
 
 #### Migration

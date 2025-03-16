@@ -181,7 +181,7 @@ from .sinks import (
 from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
-    set_index as set_index,
+    set_time as set_time,
     set_time_nanos as set_time_nanos,
     set_time_seconds as set_time_seconds,
     set_time_sequence as set_time_sequence,

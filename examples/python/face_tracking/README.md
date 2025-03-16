@@ -35,8 +35,8 @@ The visualizations in this example were created with the following Rerun code.
 For each processed video frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
 
 ```python
-rr.set_index("time", timedelta=bgr_frame.time)
-rr.set_index("frame_idx", sequence=bgr_frame.idx)
+rr.set_time("time", timedelta=bgr_frame.time)
+rr.set_time("frame_idx", sequence=bgr_frame.idx)
 ```
 
 ### Video

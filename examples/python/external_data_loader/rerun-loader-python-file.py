@@ -87,14 +87,14 @@ def set_time_from_args() -> None:
                 continue
             timeline_name, time = parts
             # TODO(#8635): update this
-            rr.set_index(timeline_name, timedelta=1e-9 * int(time))
+            rr.set_time(timeline_name, timedelta=1e-9 * int(time))
 
         for time_str in args.sequence:
             parts = time_str.split("=")
             if len(parts) != 2:
                 continue
             timeline_name, time = parts
-            rr.set_index(timeline_name, sequence=int(time))
+            rr.set_time(timeline_name, sequence=int(time))
 
 
 if __name__ == "__main__":

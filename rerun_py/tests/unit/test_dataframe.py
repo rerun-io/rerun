@@ -20,7 +20,7 @@ def test_load_recording() -> None:
 
         with rr.RecordingStream("rerun_example_test_recording") as rec:
             rec.save(rrd)
-            rec.set_index("my_index", sequence=1)
+            rec.set_time("my_index", sequence=1)
             rec.log("log", rr.TextLog("Hello"))
 
         recording = rr.dataframe.load_recording(rrd)
@@ -53,9 +53,9 @@ class TestDataframe:
 
             with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
                 rec.save(rrd)
-                rec.set_index("my_index", sequence=1)
+                rec.set_time("my_index", sequence=1)
                 rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
-                rec.set_index("my_index", sequence=7)
+                rec.set_time("my_index", sequence=7)
                 rec.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
                 rec.log("static_text", rr.TextLog("Hello"), static=True)
 

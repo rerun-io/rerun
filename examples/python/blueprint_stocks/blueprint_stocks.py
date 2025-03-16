@@ -209,7 +209,7 @@ def main() -> None:
             peak = hist.High.idxmax()
 
             for row in hist.itertuples():
-                rr.set_index("time", timedelta=row.Index)
+                rr.set_time("time", timedelta=row.Index)
                 rr.log(f"stocks/{symbol}/{day}", rr.Scalar(row.High))
                 if row.Index == peak:
                     rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalar(row.High))

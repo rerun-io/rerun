@@ -25,7 +25,7 @@ import rerun as rr  # pip install rerun-sdk
 
 
 def run_segmentation() -> None:
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
 
     # Log an image before we have set up our labels
     segmentation_img = np.zeros([128, 128], dtype="uint8")
@@ -53,7 +53,7 @@ def run_segmentation() -> None:
     rr.log("logs/seg_test_log", rr.TextLog("default colored rects, default colored points, a single point has a label"))
 
     # Log an initial segmentation map with arbitrary colors
-    rr.set_index("sim_time", timedelta=2)
+    rr.set_time("sim_time", timedelta=2)
 
     rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), static=False)
 
@@ -65,7 +65,7 @@ def run_segmentation() -> None:
     )
 
     # Log an updated segmentation map with specific colors
-    rr.set_index("sim_time", timedelta=3)
+    rr.set_time("sim_time", timedelta=3)
     rr.log(
         "seg_test",
         rr.AnnotationContext([(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]),
@@ -74,7 +74,7 @@ def run_segmentation() -> None:
     rr.log("logs/seg_test_log", rr.TextLog("points/rects with user specified colors"))
 
     # Log with a mixture of set and unset colors / labels
-    rr.set_index("sim_time", timedelta=4)
+    rr.set_time("sim_time", timedelta=4)
 
     rr.log(
         "seg_test",
@@ -152,7 +152,7 @@ def run_2d_lines() -> None:
 
     T = np.linspace(0, 5, 100)
     for n in range(2, len(T)):
-        rr.set_index("sim_time", timedelta=T[n])
+        rr.set_time("sim_time", timedelta=T[n])
         t = T[:n]
         x = np.cos(t * 5) * t
         y = np.sin(t * 5) * t
@@ -161,7 +161,7 @@ def run_2d_lines() -> None:
 
 
 def run_3d_points() -> None:
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
     rr.log("3d_points/single_point_unlabeled", rr.Points3D(np.array([10.0, 0.0, 0.0])))
     rr.log("3d_points/single_point_labeled", rr.Points3D(np.array([0.0, 0.0, 0.0]), labels="labeled point"))
     rr.log(
@@ -193,7 +193,7 @@ def raw_mesh() -> None:
 
 
 def run_rects() -> None:
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
 
     # Add an image
     img = np.zeros([1024, 1024, 3], dtype="uint8")
@@ -201,7 +201,7 @@ def run_rects() -> None:
     rr.log("rects_test/img", rr.Image(img))
 
     # 20 random rectangles
-    rr.set_index("sim_time", timedelta=2)
+    rr.set_time("sim_time", timedelta=2)
     rects_xy = np.random.rand(20, 2) * 1024
     rects_wh = np.random.rand(20, 2) * (1024 - rects_xy + 1)
     rects = np.hstack((rects_xy, rects_wh))
@@ -209,7 +209,7 @@ def run_rects() -> None:
     rr.log("rects_test/rects", rr.Boxes2D(array=rects, colors=colors, array_format=rr.Box2DFormat.XYWH))
 
     # Clear the rectangles by logging an empty set
-    rr.set_index("sim_time", timedelta=3)
+    rr.set_time("sim_time", timedelta=3)
     rr.log("rects_test/rects", rr.Boxes2D(sizes=[]))
 
 
@@ -223,7 +223,7 @@ def run_text_logs() -> None:
 
 
 def run_log_cleared() -> None:
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
     rr.log(
         "null_test/rect/0",
         rr.Boxes2D(array=[5, 5, 4, 4], array_format=rr.Box2DFormat.XYWH, labels="Rect1", colors=(255, 0, 0)),
@@ -232,18 +232,18 @@ def run_log_cleared() -> None:
         "null_test/rect/1",
         rr.Boxes2D(array=[10, 5, 4, 4], array_format=rr.Box2DFormat.XYWH, labels="Rect2", colors=(0, 255, 0)),
     )
-    rr.set_index("sim_time", timedelta=2)
+    rr.set_time("sim_time", timedelta=2)
     rr.log("null_test/rect/0", rr.Clear(recursive=False))
-    rr.set_index("sim_time", timedelta=3)
+    rr.set_time("sim_time", timedelta=3)
     rr.log("null_test/rect", rr.Clear(recursive=True))
-    rr.set_index("sim_time", timedelta=4)
+    rr.set_time("sim_time", timedelta=4)
     rr.log("null_test/rect/0", rr.Boxes2D(array=[5, 5, 4, 4], array_format=rr.Box2DFormat.XYWH))
-    rr.set_index("sim_time", timedelta=5)
+    rr.set_time("sim_time", timedelta=5)
     rr.log("null_test/rect/1", rr.Boxes2D(array=[10, 5, 4, 4], array_format=rr.Box2DFormat.XYWH))
 
 
 def run_bounding_box() -> None:
-    rr.set_index("sim_time", timedelta=0)
+    rr.set_time("sim_time", timedelta=0)
     rr.log(
         "bbox_test/bbox",
         rr.Boxes3D(
@@ -255,7 +255,7 @@ def run_bounding_box() -> None:
         ),
     )
 
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
     rr.log(
         "bbox_test/bbox",
         rr.Boxes3D(
@@ -270,7 +270,7 @@ def run_bounding_box() -> None:
 
 
 def run_extension_component() -> None:
-    rr.set_index("sim_time", timedelta=0)
+    rr.set_time("sim_time", timedelta=0)
     # Hack to establish 2D view bounds
     rr.log("extension_components", rr.Boxes2D(array=[0, 0, 128, 128], array_format=rr.Box2DFormat.XYWH))
 
@@ -280,7 +280,7 @@ def run_extension_component() -> None:
     rr.log("extension_components/point", rr.AnyValues(confidence=0.9))
 
     # Batch points with extension
-    rr.set_index("sim_time", timedelta=1)
+    rr.set_time("sim_time", timedelta=1)
     rr.log(
         "extension_components/points",
         rr.Points2D(np.array([[32, 32], [32, 96], [96, 32], [96, 96]]), colors=(0, 255, 0)),

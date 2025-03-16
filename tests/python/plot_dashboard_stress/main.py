@@ -171,7 +171,7 @@ def main() -> None:
 
     for index, sim_time in ticks:
         if args.temporal_batch_size is None:
-            rr.set_index("sim_time", timedelta=sim_time)
+            rr.set_time("sim_time", timedelta=sim_time)
         else:
             time_column = rr.IndexColumn("sim_time", timedelta=sim_time)
 

@@ -15,7 +15,7 @@ def truncated_radians(deg: float) -> float:
 
 rr.init("rerun_example_transform3d_column_updates", spawn=True)
 
-rr.set_index("tick", sequence=0)
+rr.set_time("tick", sequence=0)
 rr.log(
     "box",
     rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),

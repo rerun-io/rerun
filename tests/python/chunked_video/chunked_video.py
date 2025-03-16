@@ -42,7 +42,7 @@ def main() -> None:
     for file in video_files:
         print(f"Logging video {file}, start time {last_time_ns}ns")
 
-        rr.set_index("video_time", timedelta=1e-9 * last_time_ns)
+        rr.set_time("video_time", timedelta=1e-9 * last_time_ns)
 
         video_asset = rr.AssetVideo(path=file)
         rr.log("video", video_asset)

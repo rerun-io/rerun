@@ -12,8 +12,8 @@ rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=T
 rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 rr.log("trig/cos", rr.SeriesLine(color=[0, 0, 255], name="cos(0.01t) scaled"), static=True)
 for t in range(int(math.pi * 4 * 100.0)):
-    rr.set_index("timeline0", sequence=t)
-    rr.set_index("timeline1", timedelta=t)
+    rr.set_time("timeline0", sequence=t)
+    rr.set_time("timeline1", timedelta=t)
     rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))
     rr.log("trig/cos", rr.Scalar(math.cos(float(t) / 100.0)))
     rr.log("trig/cos_scaled", rr.Scalar(math.cos(float(t) / 100.0) * 2.0))

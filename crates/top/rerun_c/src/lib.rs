@@ -681,7 +681,7 @@ pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut C
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_index_impl(
+fn rr_recording_stream_set_time_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
     time_type: CTimeType,
@@ -694,20 +694,20 @@ fn rr_recording_stream_set_index_impl(
         // TODO(#8635): do different things for Duration and Timestamp
         CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
     };
-    stream.set_index(timeline, IndexCell::new(time_type, value));
+    stream.set_time(timeline, IndexCell::new(time_type, value));
     Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_index(
+pub extern "C" fn rr_recording_stream_set_time(
     stream: CRecordingStream,
     timeline_name: CStringView,
     time_type: CTimeType,
     value: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_index_impl(stream, timeline_name, time_type, value) {
+    if let Err(err) = rr_recording_stream_set_time_impl(stream, timeline_name, time_type, value) {
         err.write_error(error);
     }
 }

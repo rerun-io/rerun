@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 
 # These overloads ensure that mypy can catch errors that would otherwise not be caught until runtime.
 @overload
-def set_index(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
+def set_time(timeline: str, *, recording: RecordingStream | None = None, sequence: int) -> None: ...
 
 
 @overload
-def set_index(
+def set_time(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
@@ -28,7 +28,7 @@ def set_index(
 
 
 @overload
-def set_index(
+def set_time(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
@@ -36,7 +36,7 @@ def set_index(
 ) -> None: ...
 
 
-def set_index(
+def set_time(
     timeline: str,
     *,
     recording: RecordingStream | None = None,
@@ -48,9 +48,9 @@ def set_index(
     Set the current time of a timeline for this thread.
 
     Used for all subsequent logging on the same thread, until the next call to
-    [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+    [`rerun.set_time`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
-    For example: `set_index("frame_nr", sequence=frame_nr)`.
+    For example: `set_time("frame_nr", sequence=frame_nr)`.
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
@@ -83,7 +83,7 @@ def set_index(
     """
     if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
         raise ValueError(
-            "set_index: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
+            "set_time: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
         )
 
     if sequence is not None:
@@ -119,7 +119,7 @@ def to_nanos(timedelta_obj: int | float | timedelta | np.timedelta64) -> int:
         return timedelta_obj.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_index: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}",
+            f"set_time: timedelta must be an int, float, timedelta, or numpy.timedelta64 object, got {type(timedelta_obj)}",
         )
 
 
@@ -139,12 +139,12 @@ def to_nanos_since_epoch(date_time: int | float | datetime | np.datetime64) -> i
         return date_time.astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
-            f"set_index: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}",
+            f"set_time: datetime must be an int, float, datetime, or numpy.datetime64 object, got {type(date_time)}",
         )
 
 
 @deprecated(
-    """Use `set_index(sequence=…)` instead.
+    """Use `set_time(sequence=…)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
@@ -184,7 +184,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
+    """Use `set_time(datetime=seconds)` or set_time(timedelta=seconds)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -232,7 +232,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
+    """Use `set_time(datetime=1e-9 * nanos)` or set_time(timedelta=1e-9 * nanos)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:

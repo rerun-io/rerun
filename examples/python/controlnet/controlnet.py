@@ -33,8 +33,8 @@ def controlnet_callback(
     timestep: float,
     callback_kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    rr.set_index("iteration", sequence=step_index)
-    rr.set_index("timestep", timedelta=timestep)
+    rr.set_time("iteration", sequence=step_index)
+    rr.set_time("timestep", timedelta=timestep)
     latents = callback_kwargs["latents"]
 
     image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]

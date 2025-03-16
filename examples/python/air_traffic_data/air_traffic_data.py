@@ -231,7 +231,7 @@ class MeasurementLogger:
         ]
 
     def process_measurement(self, measurement: Measurement) -> None:
-        rr.set_index("unix_time", datetime=measurement.timestamp)
+        rr.set_time("unix_time", datetime=measurement.timestamp)
 
         if self._raw:
             metadata = dataclasses.asdict(measurement)
