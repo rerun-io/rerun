@@ -621,10 +621,10 @@ impl std::fmt::Display for StoreSource {
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {
     (
         Timeline::log_time(),
-        TimeInt::new_temporal(log_time.nanos_since_epoch()),
+        TimeInt::new_temporal(log_time.ns_since_epoch()),
     )
 }
 

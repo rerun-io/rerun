@@ -7,8 +7,8 @@ use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
 use re_log_types::example_components::{MyIndex, MyPoint};
 use re_log_types::{
-    build_frame_nr, build_log_time, Duration, EntityPath, Time, TimeInt, TimePoint, TimeType,
-    Timeline,
+    build_frame_nr, build_log_time, Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline,
+    Timestamp,
 };
 use re_types_core::Component as _;
 
@@ -216,12 +216,12 @@ fn write_errors() -> anyhow::Result<()> {
         let chunk = Chunk::builder(entity_path.clone())
             .with_component_batch(
                 row_id2,
-                [build_frame_nr(1), build_log_time(Time::now())],
+                [build_frame_nr(1), build_log_time(Timestamp::now())],
                 &MyPoint::from_iter(0..1),
             )
             .with_component_batch(
                 row_id1,
-                [build_frame_nr(2), build_log_time(Time::now())],
+                [build_frame_nr(2), build_log_time(Timestamp::now())],
                 &MyPoint::from_iter(0..1),
             )
             .build()?;
@@ -245,9 +245,9 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     );
 
     let entity_path = EntityPath::from("this/that");
-    let now = Time::now();
+    let now = Timestamp::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
+    let now_minus_1s_nanos = now_minus_1s.ns_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
     let num_instances = 3;
@@ -325,7 +325,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::log_time();
 
-    let now = Time::now();
+    let now = Timestamp::now();
     let now_plus_one = now + Duration::from_secs(1.0);
     let now_minus_one = now - Duration::from_secs(1.0);
 
