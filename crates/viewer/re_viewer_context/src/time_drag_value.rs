@@ -89,7 +89,7 @@ impl TimeDragValue {
             }
 
             TimeType::DurationNs | TimeType::TimestampNs => {
-                // TODO(@abey79): distinguish the two types?
+                // TODO(abey79): distinguish the two types?
                 self.temporal_drag_value_ui(
                     ui,
                     time,
