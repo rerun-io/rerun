@@ -126,13 +126,6 @@ impl From<crate::Duration> for TimeReal {
     }
 }
 
-impl From<TimeReal> for crate::Time {
-    #[inline]
-    fn from(int: TimeReal) -> Self {
-        Self::from_ns_since_epoch(int.round().as_i64())
-    }
-}
-
 impl From<TimeReal> for crate::Duration {
     #[inline]
     fn from(int: TimeReal) -> Self {

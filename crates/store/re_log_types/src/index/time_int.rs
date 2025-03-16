@@ -189,13 +189,6 @@ impl TryFrom<TimeInt> for NonMinI64 {
     }
 }
 
-impl From<TimeInt> for Time {
-    #[inline]
-    fn from(int: TimeInt) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
-    }
-}
-
 impl From<TimeInt> for Duration {
     #[inline]
     fn from(int: TimeInt) -> Self {
