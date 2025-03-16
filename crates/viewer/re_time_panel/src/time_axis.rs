@@ -63,7 +63,9 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     // This is partially an optimization, and partially something that "feels right".
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
-        TimeType::Time => TimeInt::from_milliseconds(100.try_into().unwrap()).as_i64() as _,
+        TimeType::DurationNs | TimeType::TimestampNs => {
+            TimeInt::from_milliseconds(100.try_into().unwrap()).as_i64() as _
+        }
     };
     // Collect all gaps larger than our minimum gap size.
     let mut gap_sizes =

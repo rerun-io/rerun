@@ -4,7 +4,9 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
+use re_log_types::{
+    ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
+};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -418,14 +420,14 @@ fn entity_tree_stats_ui(
                 let typ = db.timeline_type(timeline);
 
                 data_rate = Some(match typ {
-                    re_log_types::TimeType::Time => {
+                    TimeType::Sequence => {
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
+                    }
+
+                    TimeType::DurationNs | TimeType::TimestampNs => {
                         let bytes_per_second = 1e9 * bytes_per_time;
 
                         format!("{}/s in '{}'", format_bytes(bytes_per_second), timeline)
-                    }
-
-                    re_log_types::TimeType::Sequence => {
-                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
                     }
                 });
             }

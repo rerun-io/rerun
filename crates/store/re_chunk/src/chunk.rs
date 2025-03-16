@@ -957,7 +957,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -983,7 +983,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1021,7 +1021,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1050,7 +1050,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }

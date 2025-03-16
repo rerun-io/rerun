@@ -145,21 +145,7 @@ impl DataLoaderSettings {
             }
 
             for (timeline, cell) in timepoint.iter() {
-                // TODO(#8635): update this
-                match cell.typ() {
-                    re_log_types::TimeType::Time => {
-                        args.extend([
-                            "--time".to_owned(),
-                            format!("{}={}", timeline, cell.as_i64()),
-                        ]);
-                    }
-                    re_log_types::TimeType::Sequence => {
-                        args.extend([
-                            "--sequence".to_owned(),
-                            format!("{}={}", timeline, cell.as_i64()),
-                        ]);
-                    }
-                }
+                args.extend(["--times".to_owned(), format!("{timeline}={cell}")]);
             }
         }
 

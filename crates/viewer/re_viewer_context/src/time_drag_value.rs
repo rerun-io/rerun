@@ -88,7 +88,8 @@ impl TimeDragValue {
                 self.sequence_drag_value_ui(ui, time, absolute, low_bound_override)
             }
 
-            TimeType::Time => {
+            TimeType::DurationNs | TimeType::TimestampNs => {
+                // TODO(@abey79): distinguish the two types?
                 self.temporal_drag_value_ui(
                     ui,
                     time,
@@ -182,7 +183,8 @@ impl TimeDragValue {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time.format(TimeInt::new_temporal(base_time), timestamp_format)
+                    // TODO: is this the correct TimeType?
+                    TimeType::DurationNs.format(TimeInt::new_temporal(base_time), timestamp_format)
                 ))
             })
         } else {
