@@ -1,6 +1,6 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{TimeCell, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
+use rerun::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE;
 
 // The Rerun Viewer will always pass at least these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
