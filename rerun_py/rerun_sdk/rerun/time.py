@@ -58,7 +58,7 @@ def set_time(
     You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
     you must only use `timedelta` for that timeline going forward.
 
-    The columnar equivalent to this function is [`rerun.IndexColumn`][].
+    The columnar equivalent to this function is [`rerun.TimeColumn`][].
 
     Parameters
     ----------

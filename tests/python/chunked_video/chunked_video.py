@@ -51,7 +51,7 @@ def main() -> None:
         rr.send_columns(
             "video",
             # Note timeline values don't have to be the same as the video timestamps.
-            indexes=[rr.IndexColumn("video_time", timedelta=1e-9 * (frame_timestamps_ns + last_time_ns))],
+            indexes=[rr.TimeColumn("video_time", timedelta=1e-9 * (frame_timestamps_ns + last_time_ns))],
             columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
         )
         last_time_ns += frame_timestamps_ns[-1]

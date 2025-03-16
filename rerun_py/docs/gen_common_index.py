@@ -121,7 +121,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "send_columns",
         ],
         class_list=[
-            "IndexColumn",
+            "TimeColumn",
             "TimeNanosColumn",
             "TimeSecondsColumn",
             "TimeSequenceColumn",

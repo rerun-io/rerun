@@ -173,7 +173,7 @@ def main() -> None:
         if args.temporal_batch_size is None:
             rr.set_time("sim_time", timedelta=sim_time)
         else:
-            time_column = rr.IndexColumn("sim_time", timedelta=sim_time)
+            time_column = rr.TimeColumn("sim_time", timedelta=sim_time)
 
         # Log
         for plot_idx, plot_path in enumerate(plot_paths):
@@ -185,7 +185,7 @@ def main() -> None:
                     value_index = slice(index, index + args.temporal_batch_size)
                     rr.send_columns(
                         f"{plot_path}/{series_path}",
-                        indexes=[cast(rr.IndexColumn, time_column)],
+                        indexes=[cast(rr.TimeColumn, time_column)],
                         columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),
                     )
 

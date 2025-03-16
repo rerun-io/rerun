@@ -52,7 +52,7 @@ from ._log import (
     new_entity_path as new_entity_path,
 )
 from ._send_columns import (
-    IndexColumn as IndexColumn,
+    TimeColumn as TimeColumn,
     TimeNanosColumn as TimeNanosColumn,
     TimeSecondsColumn as TimeSecondsColumn,
     TimeSequenceColumn as TimeSequenceColumn,

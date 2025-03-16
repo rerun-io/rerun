@@ -27,7 +27,7 @@ class TimeColumnLike(Protocol):
         ...
 
 
-class IndexColumn(TimeColumnLike):
+class TimeColumn(TimeColumnLike):
     """
     A column of index (time) values.
 
@@ -88,7 +88,7 @@ class IndexColumn(TimeColumnLike):
         """
         if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
             raise ValueError(
-                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
+                "TimeColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
@@ -112,7 +112,7 @@ class IndexColumn(TimeColumnLike):
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
@@ -146,7 +146,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
@@ -180,7 +180,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
@@ -244,7 +244,7 @@ def send_columns(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     indexes:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-        of timestamps. You usually want to use [`rerun.IndexColumn`][] for this.
+        of timestamps. You usually want to use [`rerun.TimeColumn`][] for this.
     columns:
         The columns of components to log. Each object represents a single column of data.
 
