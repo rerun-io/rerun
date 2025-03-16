@@ -314,20 +314,6 @@ namespace rerun {
         /// Used for all subsequent logging performed from this same thread, until the next call
         /// to one of the time setting methods.
         ///
-        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
-        ///
-        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_seconds, set_time_nanos, reset_time, set_time, disable_timeline
-        /// \deprecated Renamed to `set_time_sequence`.
-        [[deprecated("Renamed to `set_time_sequence`")]] void set_time_sequence(
-            std::string_view timeline_name, int64_t sequence_nr
-        ) const;
-
-        /// Set the current time of the recording, for the current calling thread.
-        ///
-        /// Used for all subsequent logging performed from this same thread, until the next call
-        /// to one of the time setting methods.
-        ///
         /// For example: `rec.set_time("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
