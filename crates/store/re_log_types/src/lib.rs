@@ -638,7 +638,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        TimeInt::saturated_nonstatic(frame_nr),
+        TimeInt::saturated_temporal(frame_nr),
     )
 }
 

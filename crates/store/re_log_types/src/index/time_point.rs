@@ -54,7 +54,7 @@ impl TimePoint {
 
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) {
-        let cell = IndexCell::new(timeline.typ(), TimeInt::saturated_nonstatic(time).as_i64());
+        let cell = IndexCell::new(timeline.typ(), TimeInt::saturated_temporal(time).as_i64());
         self.insert_index(*timeline.name(), cell);
     }
 
@@ -170,7 +170,7 @@ impl<T: TryInto<TimeInt>> FromIterator<(Timeline, T)> for TimePoint {
         Self(
             iter.into_iter()
                 .map(|(timeline, time)| {
-                    let time = TimeInt::saturated_nonstatic(time);
+                    let time = TimeInt::saturated_temporal(time);
                     (
                         *timeline.name(),
                         IndexCell::new(timeline.typ(), time.as_i64()),
@@ -188,7 +188,7 @@ impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint
             timelines
                 .into_iter()
                 .map(|(timeline, time)| {
-                    let time = TimeInt::saturated_nonstatic(time);
+                    let time = TimeInt::saturated_temporal(time);
                     (
                         *timeline.name(),
                         IndexCell::new(timeline.typ(), time.as_i64()),
