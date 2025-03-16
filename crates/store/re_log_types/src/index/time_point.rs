@@ -1,6 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
-use super::{IndexCell, NonMinI64, TimeInt, Timeline, TimelineName};
+use super::{NonMinI64, TimeCell, TimeInt, Timeline, TimelineName};
 
 /// A point in time on any number of [`Timeline`]s.
 ///
@@ -11,10 +11,10 @@ use super::{IndexCell, NonMinI64, TimeInt, Timeline, TimelineName};
 /// any temporal data of the same type.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(BTreeMap<TimelineName, IndexCell>);
+pub struct TimePoint(BTreeMap<TimelineName, TimeCell>);
 
-impl From<BTreeMap<TimelineName, IndexCell>> for TimePoint {
-    fn from(map: BTreeMap<TimelineName, IndexCell>) -> Self {
+impl From<BTreeMap<TimelineName, TimeCell>> for TimePoint {
+    fn from(map: BTreeMap<TimelineName, TimeCell>) -> Self {
         Self(map)
     }
 }
@@ -29,7 +29,7 @@ impl TimePoint {
     pub fn insert_index(
         &mut self,
         timeline_name: impl Into<TimelineName>,
-        cell: impl Into<IndexCell>,
+        cell: impl Into<TimeCell>,
     ) {
         let timeline_name = timeline_name.into();
         let cell = cell.into();
@@ -54,7 +54,7 @@ impl TimePoint {
 
     #[inline]
     pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) {
-        let cell = IndexCell::new(timeline.typ(), TimeInt::saturated_temporal(time).as_i64());
+        let cell = TimeCell::new(timeline.typ(), TimeInt::saturated_temporal(time).as_i64());
         self.insert_index(*timeline.name(), cell);
     }
 
@@ -63,7 +63,7 @@ impl TimePoint {
     pub fn with_index(
         mut self,
         timeline_name: impl Into<TimelineName>,
-        cell: impl Into<IndexCell>,
+        cell: impl Into<TimeCell>,
     ) -> Self {
         self.insert_index(timeline_name, cell);
         self
@@ -97,7 +97,7 @@ impl TimePoint {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TimelineName, &IndexCell)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TimelineName, &TimeCell)> {
         self.0.iter()
     }
 }
@@ -112,9 +112,9 @@ impl re_byte_size::SizeBytes for TimePoint {
 // ----------------------------------------------------------------------------
 
 impl IntoIterator for TimePoint {
-    type Item = (TimelineName, IndexCell);
+    type Item = (TimelineName, TimeCell);
 
-    type IntoIter = btree_map::IntoIter<TimelineName, IndexCell>;
+    type IntoIter = btree_map::IntoIter<TimelineName, TimeCell>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -123,9 +123,9 @@ impl IntoIterator for TimePoint {
 }
 
 impl<'a> IntoIterator for &'a TimePoint {
-    type Item = (&'a TimelineName, &'a IndexCell);
+    type Item = (&'a TimelineName, &'a TimeCell);
 
-    type IntoIter = btree_map::Iter<'a, TimelineName, IndexCell>;
+    type IntoIter = btree_map::Iter<'a, TimelineName, TimeCell>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -136,7 +136,7 @@ impl<'a> IntoIterator for &'a TimePoint {
 impl<Name, Cell> FromIterator<(Name, Cell)> for TimePoint
 where
     Name: Into<TimelineName>,
-    Cell: Into<IndexCell>,
+    Cell: Into<TimeCell>,
 {
     #[inline]
     fn from_iter<I: IntoIterator<Item = (Name, Cell)>>(iter: I) -> Self {
@@ -151,7 +151,7 @@ where
 impl<Name, Cell, const N: usize> From<[(Name, Cell); N]> for TimePoint
 where
     Name: Into<TimelineName>,
-    Cell: Into<IndexCell>,
+    Cell: Into<TimeCell>,
 {
     #[inline]
     fn from(timelines: [(Name, Cell); N]) -> Self {
@@ -173,7 +173,7 @@ impl<T: TryInto<TimeInt>> FromIterator<(Timeline, T)> for TimePoint {
                     let time = TimeInt::saturated_temporal(time);
                     (
                         *timeline.name(),
-                        IndexCell::new(timeline.typ(), time.as_i64()),
+                        TimeCell::new(timeline.typ(), time.as_i64()),
                     )
                 })
                 .collect(),
@@ -191,7 +191,7 @@ impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint
                     let time = TimeInt::saturated_temporal(time);
                     (
                         *timeline.name(),
-                        IndexCell::new(timeline.typ(), time.as_i64()),
+                        TimeCell::new(timeline.typ(), time.as_i64()),
                     )
                 })
                 .collect(),

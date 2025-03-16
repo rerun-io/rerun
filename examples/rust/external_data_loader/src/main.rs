@@ -1,6 +1,6 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{IndexCell, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
+use rerun::{TimeCell, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
 
 // The Rerun Viewer will always pass at least these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -117,7 +117,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             };
             timepoint.insert_index(
                 timeline_name,
-                IndexCell::from_duration_nanos(time.parse::<i64>()?),
+                TimeCell::from_duration_nanos(time.parse::<i64>()?),
             );
         }
 
@@ -127,7 +127,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             };
             timepoint.insert_index(
                 seqline_name,
-                rerun::IndexCell::from_sequence(seq.parse::<i64>()?),
+                rerun::TimeCell::from_sequence(seq.parse::<i64>()?),
             );
         }
     }

@@ -23,7 +23,7 @@ use re_sdk::{
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, IndexCell, RecordingStream, RecordingStreamBuilder, StoreKind,
+    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
     TimePoint, Timeline,
 };
 
@@ -694,7 +694,7 @@ fn rr_recording_stream_set_time_impl(
         // TODO(#8635): do different things for Duration and Timestamp
         CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
     };
-    stream.set_time(timeline, IndexCell::new(time_type, value));
+    stream.set_time(timeline, TimeCell::new(time_type, value));
     Ok(())
 }
 

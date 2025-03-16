@@ -40,6 +40,7 @@ impl LatestAtQuery {
         Self {
             timeline,
             at: TimeInt::MAX,
+            TimeCell,
         }
     }
 
