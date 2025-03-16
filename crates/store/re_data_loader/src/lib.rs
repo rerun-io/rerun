@@ -54,8 +54,8 @@ pub use self::{
 /// * `--static` (if `timepoint` is set to the timeless timepoint)
 /// * `--timeless` \[deprecated\] (if `timepoint` is set to the timeless timepoint)
 /// * `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
-/// * `--time_duration_ns <timeline1>=<duration1> <timeline2>=<duration2> ...` (if `timepoint` contains duration data) in nanos
-/// * `--time_timestamp_ns <timeline1>=<timestamp1> <timeline2>=<timestamp2> ...` (if `timepoint` contains timestamp data) in nanos since epoch
+/// * `--time_duration_nanos <timeline1>=<duration1> <timeline2>=<duration2> ...` (if `timepoint` contains duration data) in nanos
+/// * `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> ...` (if `timepoint` contains timestamp data) in nanos since epoch
 #[derive(Debug, Clone)]
 pub struct DataLoaderSettings {
     /// The recommended [`re_log_types::ApplicationId`] to log the data to, based on the surrounding context.
@@ -161,7 +161,7 @@ impl DataLoaderSettings {
                     }
                     re_log_types::TimeType::DurationNs => {
                         args.extend([
-                            "--time_duration_ns".to_owned(),
+                            "--time_duration_nanos".to_owned(),
                             format!("{timeline}={}", cell.value),
                         ]);
 
@@ -170,7 +170,7 @@ impl DataLoaderSettings {
                     }
                     re_log_types::TimeType::TimestampNs => {
                         args.extend([
-                            "--time_duration_ns".to_owned(),
+                            "--time_duration_nanos".to_owned(),
                             format!("{timeline}={}", cell.value),
                         ]);
 

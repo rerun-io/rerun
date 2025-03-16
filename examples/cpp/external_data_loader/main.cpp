@@ -21,8 +21,8 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
             }
         }
     }
-    if (args.count("time_duration_ns")) {
-        const auto times = args["time_duration_ns"].as<std::vector<std::string>>();
+    if (args.count("time_duration_nanos")) {
+        const auto times = args["time_duration_nanos"].as<std::vector<std::string>>();
         for (const auto& time_str : times) {
             auto pos = time_str.find('=');
             if (pos != std::string::npos) {
@@ -32,8 +32,8 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
             }
         }
     }
-    if (args.count("time_timestamp_ns")) {
-        const auto times = args["time_timestamp_ns"].as<std::vector<std::string>>();
+    if (args.count("time_timestamp_nanos")) {
+        const auto times = args["time_timestamp_nanos"].as<std::vector<std::string>>();
         for (const auto& time_str : times) {
             auto pos = time_str.find('=');
             if (pos != std::string::npos) {
@@ -81,8 +81,8 @@ file with Rerun (`rerun file.cpp`).
       ("entity-path-prefix", "Optional prefix for all entity paths", cxxopts::value<std::string>())
       ("static", "Optionally mark data to be logged as static", cxxopts::value<bool>()->default_value("false"))
       ("time_sequence", "Optional sequences to log at (e.g. `--time_sequence sim_frame=42`) (repeatable)", cxxopts::value<std::vector<std::string>>())
-      ("time_duration_ns", "Optional durations (nanoseconds) to log at (e.g. `--time_duration_ns sim_time=123`) (repeatable)", cxxopts::value<std::vector<std::string>>())
-      ("time_timestamp_ns", "Optional timestamps (nanos since epoch) to log at (e.g. `--time_timestamp_ns sim_time=1709203426123456789`) (repeatable)", cxxopts::value<std::vector<std::string>>())
+      ("time_duration_nanos", "Optional durations (nanoseconds) to log at (e.g. `--time_duration_nanos sim_time=123`) (repeatable)", cxxopts::value<std::vector<std::string>>())
+      ("time_timestamp_nanos", "Optional timestamps (nanos since epoch) to log at (e.g. `--time_timestamp_nanos sim_time=1709203426123456789`) (repeatable)", cxxopts::value<std::vector<std::string>>())
     ;
     // clang-format on
 

@@ -43,16 +43,16 @@ parser.add_argument(
     help="optional sequences to log at (e.g. `--time_sequence sim_frame=42`)",
 )
 parser.add_argument(
-    "--time_duration_ns",
+    "--time_duration_nanos",
     type=str,
     action="append",
-    help="optional duration(s) (in nanoseconds) to log at (e.g. `--time_duration_ns sim_time=123`) (repeatable)",
+    help="optional duration(s) (in nanoseconds) to log at (e.g. `--time_duration_nanos sim_time=123`) (repeatable)",
 )
 parser.add_argument(
-    "--time_timestamp_ns",
+    "--time_timestamp_nanos",
     type=str,
     action="append",
-    help="optional timestamp(s) (in nanoseconds since epochj) to log at (e.g. `--time_timestamp_ns sim_time=1709203426123456789`) (repeatable)",
+    help="optional timestamp(s) (in nanoseconds since epochj) to log at (e.g. `--time_timestamp_nanos sim_time=1709203426123456789`) (repeatable)",
 )
 args = parser.parse_args()
 
@@ -94,14 +94,14 @@ def set_time_from_args() -> None:
             timeline_name, sequence = parts
             rr.set_time(timeline_name, sequence=int(sequence))
 
-        for time_str in args.time_duration_ns:
+        for time_str in args.time_duration_nanos:
             parts = time_str.split("=")
             if len(parts) != 2:
                 continue
             timeline_name, nanos = parts
             rr.set_time(timeline_name, duration=1e-9 * int(nanos))
 
-        for time_str in args.time_timestamp_ns:
+        for time_str in args.time_timestamp_nanos:
             parts = time_str.split("=")
             if len(parts) != 2:
                 continue

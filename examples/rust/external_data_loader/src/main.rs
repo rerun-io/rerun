@@ -49,13 +49,13 @@ struct Args {
     #[argh(option)]
     time_sequence: Vec<String>,
 
-    /// optional duration(s) (in nanoseconds) to log at (e.g. `--time_duration_ns sim_time=123`) (repeatable)
+    /// optional duration(s) (in nanoseconds) to log at (e.g. `--time_duration_nanos sim_time=123`) (repeatable)
     #[argh(option)]
-    time_duration_ns: Vec<String>,
+    time_duration_nanos: Vec<String>,
 
-    /// optional timestamp(s) (in nanoseconds since epochj) to log at (e.g. `--time_timestamp_ns sim_time=1709203426123456789`) (repeatable)
+    /// optional timestamp(s) (in nanoseconds since epochj) to log at (e.g. `--time_timestamp_nanos sim_time=1709203426123456789`) (repeatable)
     #[argh(option)]
-    time_timestamp_ns: Vec<String>,
+    time_timestamp_nanos: Vec<String>,
 }
 
 fn extension(path: &std::path::Path) -> String {
@@ -125,7 +125,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
         );
     }
 
-    for duration_ns_str in &args.time_duration_ns {
+    for duration_ns_str in &args.time_duration_nanos {
         let Some((seqline_name, duration_nd)) = duration_ns_str.split_once('=') else {
             continue;
         };
@@ -135,7 +135,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
         );
     }
 
-    for timestamp_ns_str in &args.time_timestamp_ns {
+    for timestamp_ns_str in &args.time_timestamp_nanos {
         let Some((seqline_name, timestamp_nd)) = timestamp_ns_str.split_once('=') else {
             continue;
         };

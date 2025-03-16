@@ -70,13 +70,13 @@ When the Viewer and/or SDK executes an external loader, it will pass to it a set
 
     The data is expected to be logged at these specific sequence times.
 
-* `--time_duration_ns <timeline1>=<duration1> <timeline2>=<duration2> …` (optional)
+* `--time_duration_nanos <timeline1>=<duration1> <timeline2>=<duration2> …` (optional)
 
     The data is expected to be logged at these specific duration times.
 
     The timestamps are expected to be in nanoseconds: use `rr.set_time_duration_nanos` (Python) / `RecordingStream::set_time_duration_nanos` (C++, Rust) appropriately.
 
-* `--time_timestamp_ns <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
+* `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
 
     The data is expected to be logged at these specific timestamp times.
 

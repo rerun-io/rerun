@@ -109,7 +109,7 @@ The former is subject to (double-precision) floating point precision loss (still
 The CLI API for external dataloaders has changed the following argument names:
 
 * `--sequence` -> `--time_sequence`
-* `--time` -> `--time_duration_ns` or `--time_timestamp_ns`
+* `--time` -> `--time_duration_nanos` or `--time_timestamp_nanos`
 
 
 ## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
