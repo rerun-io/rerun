@@ -321,7 +321,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     let wrong_entity_path = EntityPath::from("this/that/other");
 
     let point = MyPoint::new(1.0, 1.0);
-    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::DurationNs);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::log_time();
 

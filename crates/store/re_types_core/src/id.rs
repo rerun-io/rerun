@@ -140,7 +140,7 @@ crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the
 ///
 /// In pseudo-code:
 /// ```text
-/// rr.set_index("frame", sequence=10)
+/// rr.set_time("frame", sequence=10)
 ///
 /// rr.log("my_entity", point1, row_id=#1)
 /// rr.log("my_entity", point2, row_id=#0)

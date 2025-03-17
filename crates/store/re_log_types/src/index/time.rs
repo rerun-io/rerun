@@ -34,6 +34,10 @@ impl Time {
         Self::from_ns_since_epoch((secs * 1e9).round() as _)
     }
 
+    pub fn as_seconds_since_epoch(&self) -> f64 {
+        1e-9 * self.nanos_since_epoch() as f64
+    }
+
     /// If true, this time is likely relative to unix epoch.
     pub fn is_timestamp(&self) -> bool {
         let nanos_since_epoch = self.nanos_since_epoch();

@@ -14,7 +14,7 @@ static void execute(Point3DInput input) {
     rerun::RecordingStream rec("rerun_example_benchmark_points3d_many_individual");
 
     for (size_t i = 0; i < NUM_POINTS; ++i) {
-        rec.set_index_sequence("my_timeline", static_cast<int64_t>(i));
+        rec.set_time_sequence("my_timeline", static_cast<int64_t>(i));
         rec.log(
             "large_batch",
             rerun::Points3D(input.positions[i])

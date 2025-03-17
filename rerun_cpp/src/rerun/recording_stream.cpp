@@ -142,13 +142,13 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_index_sequence(std::string_view timeline_name, int64_t sequence_nr)
+    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr)
         const {
         if (!is_enabled()) {
             return;
         }
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_SEQUENCE,
@@ -158,10 +158,10 @@ namespace rerun {
         Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_index_duration_nanos(std::string_view timeline_name, int64_t nanos)
+    void RecordingStream::set_time_duration_nanos(std::string_view timeline_name, int64_t nanos)
         const {
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_DURATION,
@@ -171,11 +171,11 @@ namespace rerun {
         Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_index_timestamp_nanos_since_epoch(
+    void RecordingStream::set_time_timestamp_nanos_since_epoch(
         std::string_view timeline_name, int64_t nanos
     ) const {
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_TIMESTAMP,

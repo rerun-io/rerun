@@ -17,7 +17,7 @@ use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::sink::CallbackSink;
-use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, IndexCell};
+use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
@@ -1059,7 +1059,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_sequence(sequence));
+    recording.set_time(timeline, TimeCell::from_sequence(sequence));
 }
 
 /// Set the current duration for this thread in nanoseconds.
@@ -1069,7 +1069,7 @@ fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyReco
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_duration_nanos(nanos));
+    recording.set_time(timeline, TimeCell::from_duration_nanos(nanos));
 }
 
 /// Set the current time for this thread in nanoseconds.
@@ -1083,7 +1083,7 @@ fn set_time_timestamp_nanos_since_epoch(
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_timestamp_nanos_since_epoch(nanos));
+    recording.set_time(timeline, TimeCell::from_timestamp_nanos_since_epoch(nanos));
 }
 
 /// Clear time information for the specified timeline on this thread.

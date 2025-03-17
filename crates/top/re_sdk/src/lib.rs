@@ -105,9 +105,9 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{Time, TimeCell, TimeInt, TimePoint, TimeType, Timeline};
 }
-pub use time::{IndexCell, Time, TimePoint, Timeline};
+pub use time::{Time, TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,

@@ -23,7 +23,7 @@ use re_sdk::{
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, IndexCell, RecordingStream, RecordingStreamBuilder, StoreKind,
+    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
     TimePoint, Timeline,
 };
 
@@ -255,8 +255,8 @@ impl TryFrom<CTimeline> for Timeline {
         let name = timeline.name.as_str("timeline.name")?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
-            // TODO(#8635): differentiate between duration and timestamp
-            CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+            CTimeType::Duration => TimeType::DurationNs,
+            CTimeType::Timestamp => TimeType::TimestampNs,
         };
         Ok(Self::new(name, typ))
     }
@@ -681,7 +681,7 @@ pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut C
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_set_index_impl(
+fn rr_recording_stream_set_time_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
     time_type: CTimeType,
@@ -691,23 +691,23 @@ fn rr_recording_stream_set_index_impl(
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
-        // TODO(#8635): do different things for Duration and Timestamp
-        CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+        CTimeType::Duration => TimeType::DurationNs,
+        CTimeType::Timestamp => TimeType::TimestampNs,
     };
-    stream.set_index(timeline, IndexCell::new(time_type, value));
+    stream.set_time(timeline, TimeCell::new(time_type, value));
     Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_index(
+pub extern "C" fn rr_recording_stream_set_time(
     stream: CRecordingStream,
     timeline_name: CStringView,
     time_type: CTimeType,
     value: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_index_impl(stream, timeline_name, time_type, value) {
+    if let Err(err) = rr_recording_stream_set_time_impl(stream, timeline_name, time_type, value) {
         err.write_error(error);
     }
 }

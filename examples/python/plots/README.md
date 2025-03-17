@@ -56,7 +56,7 @@ def log_parabola() -> None:
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         # … existing code …
 
@@ -81,7 +81,7 @@ def log_trig() -> None:
     rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 100.0)):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
         rr.log("trig/sin", rr.Scalar(sin_of_t))
@@ -104,7 +104,7 @@ def log_classification() -> None:
     rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), static=True)
 
     for t in range(0, 1000, 2):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         # … existing code …
         rr.log("classification/line", rr.Scalar(f_of_t))

@@ -363,12 +363,13 @@ impl ViewClass for TimeSeriesView {
 
         // …then use that as an offset to avoid nasty precision issues with
         // large times (nanos since epoch does not fit into a f64).
-        let time_offset = if timeline.typ() == TimeType::Time {
-            // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
-            // we need to round to a whole day:
-            round_ns_to_start_of_day(min_time)
-        } else {
-            min_time
+        let time_offset = match timeline.typ() {
+            TimeType::Sequence => min_time,
+            TimeType::TimestampNs | TimeType::DurationNs => {
+                // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
+                // we need to round to a whole day:
+                round_ns_to_start_of_day(min_time)
+            }
         };
         state.time_offset = time_offset;
 
@@ -426,9 +427,12 @@ impl ViewClass for TimeSeriesView {
             plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 
-        if timeline.typ() == TimeType::Time {
-            let canvas_size = ui.available_size();
-            plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+        match timeline.typ() {
+            TimeType::Sequence => {}
+            TimeType::DurationNs | TimeType::TimestampNs => {
+                let canvas_size = ui.available_size();
+                plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+            }
         }
 
         let mut is_resetting = false;
@@ -725,11 +729,12 @@ fn add_series_to_plot(
 }
 
 fn format_time(time_type: TimeType, time_int: i64, timestamp_format: TimestampFormat) -> String {
-    if time_type == TimeType::Time {
-        let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        time.format_time_compact(timestamp_format)
-    } else {
-        time_type.format(TimeInt::new_temporal(time_int), timestamp_format)
+    match time_type {
+        TimeType::DurationNs | TimeType::TimestampNs => {
+            let time = re_log_types::Time::from_ns_since_epoch(time_int);
+            time.format_time_compact(timestamp_format)
+        }
+        TimeType::Sequence => time_type.format(TimeInt::new_temporal(time_int), timestamp_format),
     }
 }
 

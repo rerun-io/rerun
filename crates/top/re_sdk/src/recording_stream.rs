@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath,
-    IndexCell, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint,
-    Timeline, TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt, TimePoint, Timeline,
+    TimelineName,
 };
 use re_types::archetypes::RecordingProperties;
 use re_types::components::Timestamp;
@@ -1032,7 +1032,7 @@ impl RecordingStream {
     /// arrays will act as a single logical row.
     ///
     /// Note that this API ignores any stateful index/time set on the log stream via the
-    /// [`Self::set_index`]/[`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// [`Self::set_time`]/[`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     pub fn send_columns(
         &self,
@@ -1295,7 +1295,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
+                    now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
 
                     now
                 })
@@ -1535,11 +1535,11 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert_index(TimelineName::log_tick(), IndexCell::from_sequence(tick));
+                now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, cell) in now {
-                    row.timepoint.insert_index(timeline, cell);
+                    row.timepoint.insert_cell(timeline, cell);
                 }
             }
 
@@ -2044,7 +2044,7 @@ impl ThreadInfo {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
+    fn set_thread_time(rid: &StoreId, timeline: TimelineName, cell: TimeCell) {
         Self::with(|ti| ti.set_time(rid, timeline, cell));
     }
 
@@ -2072,15 +2072,15 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert_index(TimelineName::log_time(), IndexCell::timestamp_now());
+        timepoint.insert_cell(TimelineName::log_time(), TimeCell::timestamp_now());
         timepoint
     }
 
-    fn set_time(&mut self, rid: &StoreId, timeline: TimelineName, cell: IndexCell) {
+    fn set_time(&mut self, rid: &StoreId, timeline: TimelineName, cell: TimeCell) {
         self.timepoints
             .entry(rid.clone())
             .or_default()
-            .insert_index(timeline, cell);
+            .insert_cell(timeline, cell);
     }
 
     fn unset_time(&mut self, rid: &StoreId, timeline: &TimelineName) {
@@ -2116,7 +2116,7 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
-    /// - [`Self::set_index`]
+    /// - [`Self::set_time`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
@@ -2145,9 +2145,9 @@ impl RecordingStream {
     /// ```no_run
     /// # mod rerun { pub use re_sdk::*; }
     /// # let rec: rerun::RecordingStream = unimplemented!();
-    /// rec.set_index("frame_nr", rerun::IndexCell::from_sequence(42));
-    /// rec.set_index("duration", std::time::Duration::from_millis(123));
-    /// rec.set_index("capture_time", std::time::SystemTime::now());
+    /// rec.set_time("frame_nr", rerun::TimeCell::from_sequence(42));
+    /// rec.set_time("duration", std::time::Duration::from_millis(123));
+    /// rec.set_time("capture_time", std::time::SystemTime::now());
     /// ```
     ///
     /// See also:
@@ -2156,26 +2156,26 @@ impl RecordingStream {
     /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_index(&self, timeline: impl Into<TimelineName>, value: impl TryInto<IndexCell>) {
+    pub fn set_time(&self, timeline: impl Into<TimelineName>, value: impl TryInto<TimeCell>) {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
             if let Ok(value) = value.try_into() {
                 ThreadInfo::set_thread_time(&inner.info.store_id, timeline, value);
             } else {
                 re_log::warn_once!(
-                    "set_index({timeline}): Failed to convert the given value to an IndexCell"
+                    "set_time({timeline}): Failed to convert the given value to an TimeCell"
                 );
             }
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to set_index() ignored");
+            re_log::warn_once!("Recording disabled - call to set_time() ignored");
         }
     }
 
     /// Set the current time of the recording, for the current calling thread.
     ///
-    /// Short for `set_index(timeline, rerun::IndexCell::from_sequence(sequence))`.
+    /// Short for `set_time(timeline, rerun::TimeCell::from_sequence(sequence))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
@@ -2186,19 +2186,19 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
-    /// - [`Self::set_index`]
+    /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_duration_seconds`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
-        self.set_index(timeline, IndexCell::from_sequence(sequence.into()));
+        self.set_time(timeline, TimeCell::from_sequence(sequence.into()));
     }
 
     /// Set the current time of the recording, for the current calling thread.
     ///
-    /// Short for `set_index(timeline, std::time::Duration::from_secs_f64(secs))`..
+    /// Short for `set_time(timeline, std::time::Duration::from_secs_f64(secs))`..
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
@@ -2209,7 +2209,7 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
-    /// - [`Self::set_index`]
+    /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_timestamp_seconds_since_epoch`]
     /// - [`Self::set_time_sequence`]
@@ -2217,12 +2217,12 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     #[inline]
     pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
-        self.set_index(timeline, std::time::Duration::from_secs_f64(secs.into()));
+        self.set_time(timeline, std::time::Duration::from_secs_f64(secs.into()));
     }
 
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
     ///
-    /// Short for `self.set_index(timeline, rerun::IndexCell::from_timestamp_seconds_since_epoch(secs))`.
+    /// Short for `self.set_time(timeline, rerun::TimeCell::from_timestamp_seconds_since_epoch(secs))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
@@ -2233,7 +2233,7 @@ impl RecordingStream {
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
-    /// - [`Self::set_index`]
+    /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_duration_seconds`]
     /// - [`Self::set_time_sequence`]
@@ -2245,9 +2245,9 @@ impl RecordingStream {
         timeline: impl Into<TimelineName>,
         secs: impl Into<f64>,
     ) {
-        self.set_index(
+        self.set_time(
             timeline,
-            IndexCell::from_timestamp_seconds_since_epoch(secs.into()),
+            TimeCell::from_timestamp_seconds_since_epoch(secs.into()),
         );
     }
 
@@ -2294,7 +2294,7 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     #[deprecated(
         since = "0.23.0",
-        note = "Use `set_index` with either `rerun::IndexCell::from_duration_nanos` or `rerun::IndexCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
+        note = "Use `set_time` with either `rerun::TimeCell::from_duration_nanos` or `rerun::TimeCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
     )]
     #[inline]
     pub fn set_time_nanos(
@@ -2302,9 +2302,9 @@ impl RecordingStream {
         timeline: impl Into<TimelineName>,
         nanos_since_epoch: impl Into<i64>,
     ) {
-        self.set_index(
+        self.set_time(
             timeline,
-            IndexCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
+            TimeCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
         );
     }
 

@@ -34,7 +34,7 @@ Rerun assigns a frame to each piece of logged data, and these timestamps are ass
 
  ```python
 for n, image_uri in enumerate(args.images):
-    rr.set_index("image", sequence=n)
+    rr.set_time("image", sequence=n)
     image = load_image(image_uri)
     run_segmentation(mask_generator, image)
  ```

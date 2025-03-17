@@ -424,34 +424,33 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     rerun::RecordingStream stream("test");
 
-    SECTION("set_index_sequence does not log errors") {
-        check_logged_error([&] { stream.set_index_sequence("sequence", 1); });
+    SECTION("set_time_sequence does not log errors") {
+        check_logged_error([&] { stream.set_time_sequence("sequence", 1); });
     }
 
-    SECTION("set_index_duration does not log errors") {
+    SECTION("set_time_duration does not log errors") {
         using namespace std::chrono_literals;
-        check_logged_error([&] { stream.set_index_duration("duration", 1.0s); });
-        check_logged_error([&] { stream.set_index_duration("duration", 1000ms); });
+        check_logged_error([&] { stream.set_time_duration("duration", 1.0s); });
+        check_logged_error([&] { stream.set_time_duration("duration", 1000ms); });
     }
-    SECTION("set_index_duration_secs does not log errors") {
-        check_logged_error([&] { stream.set_index_duration_secs("duration", 1.0); });
+    SECTION("set_time_duration_secs does not log errors") {
+        check_logged_error([&] { stream.set_time_duration_secs("duration", 1.0); });
     }
-    SECTION("set_index_duration_nanos does not log errors") {
-        check_logged_error([&] { stream.set_index_duration_nanos("duration", 1); });
+    SECTION("set_time_duration_nanos does not log errors") {
+        check_logged_error([&] { stream.set_time_duration_nanos("duration", 1); });
     }
-    SECTION("set_index_timestamp_seconds_since_epoch does not log errors") {
+    SECTION("set_time_timestamp_seconds_since_epoch does not log errors") {
         check_logged_error([&] {
-            stream.set_index_timestamp_seconds_since_epoch("capture_time", 1.0);
+            stream.set_time_timestamp_seconds_since_epoch("capture_time", 1.0);
         });
     }
 
-    SECTION("set_index_timestamp_nanos_since_epoch does not log errors") {
-        check_logged_error([&] { stream.set_index_timestamp_nanos_since_epoch("capture_time", 1); }
-        );
+    SECTION("set_time_timestamp_nanos_since_epoch does not log errors") {
+        check_logged_error([&] { stream.set_time_timestamp_nanos_since_epoch("capture_time", 1); });
     }
-    SECTION("set_index_timestamp does not log errors") {
+    SECTION("set_time_timestamp does not log errors") {
         check_logged_error([&] {
-            stream.set_index_timestamp("timepoint", std::chrono::system_clock::now());
+            stream.set_time_timestamp("timepoint", std::chrono::system_clock::now());
         });
     }
 
@@ -460,12 +459,12 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     }
     SECTION("Can set time again after resetting the time") {
         check_logged_error([&] { stream.reset_time(); });
-        check_logged_error([&] { stream.set_index_duration_secs("duration", 1.0f); });
+        check_logged_error([&] { stream.set_time_duration_secs("duration", 1.0f); });
     }
 
     SECTION("Disabling timeline does not log errors") {
         check_logged_error([&] { stream.disable_timeline("doesn't exist"); });
-        check_logged_error([&] { stream.set_index_sequence("exists!", 123); });
+        check_logged_error([&] { stream.set_time_sequence("exists!", 123); });
         check_logged_error([&] { stream.disable_timeline("exists"); });
     }
 }

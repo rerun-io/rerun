@@ -250,7 +250,9 @@ impl TimeControl {
                     TimeType::Sequence => {
                         state.current.time += TimeReal::from(state.current.fps * dt);
                     }
-                    TimeType::Time => state.current.time += TimeReal::from(Duration::from_secs(dt)),
+                    TimeType::DurationNs | TimeType::TimestampNs => {
+                        state.current.time += TimeReal::from(Duration::from_secs(dt));
+                    }
                 }
 
                 if let Some(loop_range) = loop_range {
@@ -776,8 +778,8 @@ mod tests {
     fn test_default_timeline() {
         let log_time = Timeline::log_time();
         let log_tick = Timeline::log_tick();
-        let custom_timeline0 = Timeline::new("my_timeline0", TimeType::Time);
-        let custom_timeline1 = Timeline::new("my_timeline1", TimeType::Time);
+        let custom_timeline0 = Timeline::new("my_timeline0", TimeType::DurationNs);
+        let custom_timeline1 = Timeline::new("my_timeline1", TimeType::DurationNs);
 
         assert_eq!(default_timeline([]), log_time);
         assert_eq!(default_timeline([&log_tick]), log_tick);
