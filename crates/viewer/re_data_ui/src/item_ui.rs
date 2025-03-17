@@ -7,7 +7,6 @@ use re_format::format_uint;
 use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
 };
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
