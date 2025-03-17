@@ -154,7 +154,18 @@ impl TimeType {
             ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond) => {
                 Some(Self::DurationNs)
             }
-            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, _) => {
+            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, timezone) => {
+                // If the timezone is empty/None, it means we don't know the epoch.
+                // But we will assume it's UTC anyway.
+                if timezone.as_ref().is_none_or(|tz| tz.is_empty()) {
+                    re_log::debug_once!(
+                        "Got arrow timestamp array with unknown timezone. Assuming UTC"
+                    );
+                } else {
+                    // Regardless of the timezone, that actual values are in UTC (per arrow standard)
+                    // The timezone is mostly a hint on how to _display_ the time, and we currently ignore that.
+                }
+
                 Some(Self::TimestampNs)
             }
             _ => None,
