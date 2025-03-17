@@ -1046,23 +1046,14 @@ def set_time_timestamp_nanos_since_epoch(
 class RecordingProperties:
     """A helper class for setting recording properties."""
 
+    name: Optional[str]
+    start_time: Optional[int]
+
     def __init__(
         self,
         name: Optional[str] = None,
         start_time: Optional[int] = None,
-    ) -> None:
-        """
-        Create new `RecordingProperties`.
-
-        Parameters
-        ----------
-        name : `Optional[str]`
-            The name of the recording.
-
-        start_time : `Optional[int]`
-            The start time of the recording in nanoseconds.
-
-        """
+    ) -> None: ...
 
 def set_properties(
     properties: RecordingProperties,
