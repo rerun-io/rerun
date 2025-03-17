@@ -1377,10 +1377,19 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 // TODO(#9284): This should really just be the `archetypes::RecordingProperties`.
 /// A helper class for setting recording properties.
 #[derive(Clone)]
-#[pyclass]
+#[pyclass(name = "RecordingProperties")]
 struct PyRecordingProperties {
     name: Option<String>,
     start_time: Option<i64>,
+}
+
+#[pymethods]
+impl PyRecordingProperties {
+    #[new]
+    #[pyo3(signature = (name=None, start_time=None))]
+    fn new(name: Option<String>, start_time: Option<i64>) -> Self {
+        Self { name, start_time }
+    }
 }
 
 /// Set the properties of the recording.

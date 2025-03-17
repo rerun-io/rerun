@@ -1043,11 +1043,11 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
-class PyRecordingProperties:
+class RecordingProperties:
     """A helper class for setting recording properties."""
 
 def set_properties(
-    properties: PyRecordingProperties,
+    properties: RecordingProperties,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
     """Set the properties of the recording."""

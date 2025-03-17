@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import rerun_bindings as bindings
+from rerun_bindings import RecordingProperties
 
 from .recording_stream import RecordingStream
 
 
-def set_properties(properties: bindings.RecordingProperties, recording: RecordingStream | None = None) -> None:
+def set_properties(properties: RecordingProperties, recording: RecordingStream | None = None) -> None:
     """
     Set the properties of the recording.
 
