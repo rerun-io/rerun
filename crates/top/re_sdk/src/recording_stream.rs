@@ -2411,8 +2411,34 @@ mod tests {
             _ => panic!("expected SetStoreInfo"),
         }
 
-        // Third message is the batched chunk itself, which was sent as a result of the implicit
-        // flush when swapping the underlying sink from buffered to in-memory.
+        // The following flushes were sent as a result of the implicit flush when swapping the
+        // underlying sink from buffered to in-memory.
+
+        // Chunk that contains the `RecordProperties`.
+        match msgs.pop().unwrap() {
+            LogMsg::ArrowMsg(rid, msg) => {
+                assert_eq!(store_info.store_id, rid);
+
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+
+                chunk.sanity_check().unwrap();
+            }
+            _ => panic!("expected ArrowMsg"),
+        }
+
+        // Another chunk that contains `RecordProperties`.
+        match msgs.pop().unwrap() {
+            LogMsg::ArrowMsg(rid, msg) => {
+                assert_eq!(store_info.store_id, rid);
+
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+
+                chunk.sanity_check().unwrap();
+            }
+            _ => panic!("expected ArrowMsg"),
+        }
+
+        // Final message is the batched chunk itself.
         match msgs.pop().unwrap() {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
@@ -2539,6 +2565,30 @@ mod tests {
             }
 
             // MemorySinkStorage transparently handles flushing during `take()`!
+
+            // The batch that contains the `RecordingProperties`.
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(store_info.store_id, rid);
+
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+
+                    chunk.sanity_check().unwrap();
+                }
+                _ => panic!("expected ArrowMsg"),
+            }
+
+            // For the same reasons as above, another chunk that contains the `RecordingProperties`.
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(store_info.store_id, rid);
+
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+
+                    chunk.sanity_check().unwrap();
+                }
+                _ => panic!("expected ArrowMsg"),
+            }
 
             // The batched chunk itself, which was sent as a result of the explicit flush above.
             match msgs.pop().unwrap() {
