@@ -1385,6 +1385,7 @@ struct PyRecordingProperties {
 
 #[pymethods]
 impl PyRecordingProperties {
+    /// I'm a constructor
     #[new]
     #[pyo3(signature = (name=None, start_time=None))]
     fn new(name: Option<String>, start_time: Option<i64>) -> Self {

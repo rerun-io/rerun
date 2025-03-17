@@ -1046,6 +1046,13 @@ def set_time_timestamp_nanos_since_epoch(
 class RecordingProperties:
     """A helper class for setting recording properties."""
 
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        start_time: Optional[int] = None,
+    ) -> None:
+        """I'm a constructor"""
+
 def set_properties(
     properties: RecordingProperties,
     recording: Optional[PyRecordingStream] = None,
