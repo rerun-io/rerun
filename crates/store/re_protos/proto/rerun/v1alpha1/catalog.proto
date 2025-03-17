@@ -9,10 +9,10 @@ import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 
 service CatalogService {
-    rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
-    rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
-    rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
-    rpc DeleteDatasetEntry(DeleteDatasetEntryRequest) returns (DeleteDatasetEntryResponse) {}
+  rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
+  rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
+  rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+  rpc DeleteDatasetEntry(DeleteDatasetEntryRequest) returns (DeleteDatasetEntryResponse) {}
 }
 
 // ---------------- Services ------------------
@@ -20,37 +20,37 @@ service CatalogService {
 // FindEntries
 
 message FindEntriesRequest {
-    EntryFilter filter = 1;
+  EntryFilter filter = 1;
 }
 
 message FindEntriesResponse {
-    repeated EntryDetails entries = 1;
+  repeated EntryDetails entries = 1;
 }
 
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
-    DatasetEntry dataset = 1;
+  DatasetEntry dataset = 1;
 }
 
 message CreateDatasetEntryResponse {
-    DatasetEntry dataset = 1;
+  DatasetEntry dataset = 1;
 }
 
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
-    rerun.common.v1alpha1.Tuid id = 1;
+  rerun.common.v1alpha1.Tuid id = 1;
 }
 
 message ReadDatasetEntryResponse {
-    DatasetEntry dataset = 1;
+  DatasetEntry dataset = 1;
 }
 
 // DeleteDatasetEntry
 
 message DeleteDatasetEntryRequest {
-    rerun.common.v1alpha1.Tuid id = 1;
+  rerun.common.v1alpha1.Tuid id = 1;
 }
 
 message DeleteDatasetEntryResponse {}
@@ -58,42 +58,41 @@ message DeleteDatasetEntryResponse {}
 // ---------------- Common ------------------
 
 message EntryFilter {
-    optional rerun.common.v1alpha1.Tuid id = 1;
-    optional string name = 2;
-    optional EntryType entry_type = 3;
+  optional rerun.common.v1alpha1.Tuid id = 1;
+  optional string name = 2;
+  optional EntryType entry_type = 3;
 }
-
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
 enum EntryType {
-    // Always reserve unspecified as default value
-    ENTRY_TYPE_UNSPECIFIED = 0;
-    // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
-    ENTRY_TYPE_DATASET = 1;
-    ENTRY_TYPE_DATASET_VIEW = 2;
-    ENTRY_TYPE_TABLE = 3;
-    ENTRY_TYPE_TABLE_VIEW = 4;
+  // Always reserve unspecified as default value
+  ENTRY_TYPE_UNSPECIFIED = 0;
+  // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+  ENTRY_TYPE_DATASET = 1;
+  ENTRY_TYPE_DATASET_VIEW = 2;
+  ENTRY_TYPE_TABLE = 3;
+  ENTRY_TYPE_TABLE_VIEW = 4;
 }
 
 // Minimal info about an Entry for high-level catalog summary
 message EntryDetails {
-    // The EntryId is immutable
-    rerun.common.v1alpha1.Tuid id = 1;
+  // The EntryId is immutable
+  rerun.common.v1alpha1.Tuid id = 1;
 
-    // The name is a short human-readable string
-    // TODO(jleibs): Define valid name constraints
-    optional string name = 2;
+  // The name is a short human-readable string
+  // TODO(jleibs): Define valid name constraints
+  optional string name = 2;
 
-    // The type of entry
-    EntryType entry_type = 3;
+  // The type of entry
+  EntryType entry_type = 3;
 
-    google.protobuf.Timestamp created_at = 4;
-    google.protobuf.Timestamp updated_at = 5;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
 }
 
 message DatasetEntry {
-    EntryDetails details = 1;
+  EntryDetails details = 1;
 
-    // Read-only
-    rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
+  // Read-only
+  rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
 }
