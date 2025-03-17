@@ -19,16 +19,16 @@ impl TryFrom<crate::common::v1alpha1::EntityPath> for re_log_types::EntityPath {
     }
 }
 
-impl From<crate::common::v1alpha1::Time> for re_log_types::Time {
+impl From<crate::common::v1alpha1::Time> for re_log_types::Timestamp {
     fn from(value: crate::common::v1alpha1::Time) -> Self {
         Self::from_ns_since_epoch(value.nanos_since_epoch)
     }
 }
 
-impl From<re_log_types::Time> for crate::common::v1alpha1::Time {
-    fn from(value: re_log_types::Time) -> Self {
+impl From<re_log_types::Timestamp> for crate::common::v1alpha1::Time {
+    fn from(value: re_log_types::Timestamp) -> Self {
         Self {
-            nanos_since_epoch: value.nanos_since_epoch(),
+            nanos_since_epoch: value.ns_since_epoch(),
         }
     }
 }
@@ -520,9 +520,9 @@ mod tests {
 
     #[test]
     fn time_conversion() {
-        let time = re_log_types::Time::from_ns_since_epoch(123456789);
+        let time = re_log_types::Timestamp::from_ns_since_epoch(123456789);
         let proto_time: crate::common::v1alpha1::Time = time.into();
-        let time2: re_log_types::Time = proto_time.into();
+        let time2: re_log_types::Timestamp = proto_time.into();
         assert_eq!(time, time2);
     }
 

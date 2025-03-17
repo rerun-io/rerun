@@ -110,6 +110,7 @@ mod text_ext;
 mod text_log_level;
 mod text_log_level_ext;
 mod timestamp;
+mod timestamp_ext;
 mod transform_mat3x3;
 mod transform_mat3x3_ext;
 mod transform_relation;

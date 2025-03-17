@@ -53,7 +53,7 @@ impl TimeCell {
 
     /// A timestamp of the current clock time.
     pub fn timestamp_now() -> Self {
-        Self::from_timestamp_nanos_since_epoch(crate::Time::now().nanos_since_epoch())
+        crate::Timestamp::now().into()
     }
 
     #[inline]
