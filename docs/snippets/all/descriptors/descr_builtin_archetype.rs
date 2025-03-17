@@ -44,10 +44,50 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let store = stores.into_values().next().unwrap();
         let chunks = store.iter_chunks().collect::<Vec<_>>();
-        assert_eq!(2, chunks.len());
+        assert_eq!(4, chunks.len());
 
         {
             let chunk = &chunks[0];
+
+            let mut descriptors = chunk
+                .components()
+                .values()
+                .flat_map(|per_desc| per_desc.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            descriptors.sort();
+
+            let expected = vec![ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype_field_name: Some("start_time".into()),
+                component_name: "rerun.components.Timestamp".into(),
+            }];
+
+            similar_asserts::assert_eq!(expected, descriptors);
+        }
+
+        {
+            let chunk = &chunks[1];
+
+            let mut descriptors = chunk
+                .components()
+                .values()
+                .flat_map(|per_desc| per_desc.keys())
+                .cloned()
+                .collect::<Vec<_>>();
+            descriptors.sort();
+
+            let expected = vec![ComponentDescriptor {
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: "rerun.components.RecordingPropertiesIndicator".into(),
+            }];
+
+            similar_asserts::assert_eq!(expected, descriptors);
+        }
+
+        {
+            let chunk = &chunks[2];
 
             let mut descriptors = chunk
                 .components()
@@ -74,7 +114,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
         }
 
         {
-            let chunk = &chunks[1];
+            let chunk = &chunks[3];
 
             let mut descriptors = chunk
                 .components()
