@@ -53,7 +53,7 @@ class IndicatorComponentBatch:
 
 @catch_and_log_exceptions()
 def log(
-    entity_path: str | list[str],
+    entity_path: str | list[object],
     entity: AsComponents | Iterable[DescribedComponentBatch],
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
@@ -172,7 +172,7 @@ def log(
 
 
 def _log_components(
-    entity_path: str | list[str],
+    entity_path: str | list[object],
     components: list[DescribedComponentBatch],
     *,
     static: bool = False,

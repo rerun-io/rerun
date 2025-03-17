@@ -11,9 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
-    ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
+    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _,
+    ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -157,7 +157,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+        callbacks: Option<&re_viewer_context::Callbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -207,7 +207,7 @@ impl AppState {
             return;
         }
 
-        selection_state.on_frame_start(
+        let selection_change = selection_state.on_frame_start(
             |item| {
                 if let re_viewer_context::Item::StoreId(store_id) = item {
                     if store_id.is_empty_recording() {
@@ -221,6 +221,12 @@ impl AppState {
                 store_context.recording.store_id().clone(),
             )),
         );
+
+        if let SelectionChange::SelectionChanged(selection) = selection_change {
+            if let Some(callbacks) = callbacks {
+                callbacks.on_selection_change(selection);
+            }
+        }
 
         // The root container cannot be dragged.
         let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
@@ -302,7 +308,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx, timeline_callbacks);
+        move_time(&ctx, recording, rx, callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -645,7 +651,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+    callbacks: Option<&re_viewer_context::Callbacks>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -660,7 +666,7 @@ fn move_time(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        timeline_callbacks,
+        callbacks,
     );
 
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {

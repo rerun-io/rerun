@@ -6655,6 +6655,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
+ "smallvec",
  "static_assertions",
 ]
 

@@ -107,12 +107,32 @@ export interface AppOptions extends WebViewerOptions {
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
-  timeline?: TimelineOptions;
+  callbacks?: Callbacks;
   fullscreen?: FullscreenOptions;
   enable_history?: boolean;
 }
 
-interface TimelineOptions {
+/** Selected an (entire) entity. */
+export type EntityItem = { type: "entity"; entity_path: string };
+
+/** Selected an instance within an entity. */
+export type InstanceItem = {
+  type: "instance";
+  entity_path: string;
+  instance_id: number;
+};
+
+/** Selected a view. */
+export type ViewItem = { type: "view"; view_id: string };
+
+/** Selected a container. */
+export type ContainerItem = { type: "container"; container_id: string };
+
+/** A single item in a selection. */
+export type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
+
+interface Callbacks {
+  on_selectionchange: (selection: SelectionItem[]) => void;
   on_timelinechange: (timeline: string, time: number) => void;
   on_timeupdate: (time: number) => void;
   on_pause: () => void;
@@ -128,6 +148,7 @@ interface WebViewerEvents {
   fullscreen: boolean;
   ready: void;
 
+  selectionchange: [SelectionItem[]];
   timelinechange: [timeline_name: string, time: number];
   timeupdate: number;
   play: void;
@@ -139,16 +160,16 @@ interface WebViewerEvents {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? never
-    : K]: WebViewerEvents[K] extends any[]
-    ? WebViewerEvents[K]
-    : [WebViewerEvents[K]];
+  ? never
+  : K]: WebViewerEvents[K] extends any[]
+  ? WebViewerEvents[K]
+  : [WebViewerEvents[K]];
 };
 
 type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? K
-    : never]: WebViewerEvents[K];
+  ? K
+  : never]: WebViewerEvents[K];
 };
 
 type Cancel = () => void;
@@ -207,12 +228,15 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-          get_state: () => this.#fullscreen,
-          on_toggle: () => this.toggle_fullscreen(),
-        }
+        get_state: () => this.#fullscreen,
+        on_toggle: () => this.toggle_fullscreen(),
+      }
       : undefined;
 
-    const timeline = {
+    const callbacks = {
+      on_selectionchange: (items: SelectionItem[]) => {
+        this.#dispatch_event("selectionchange", items);
+      },
       on_timelinechange: (timeline: string, time: number) =>
         this.#dispatch_event("timelinechange", timeline, time),
       on_timeupdate: (time: number) => this.#dispatch_event("timeupdate", time),
@@ -220,7 +244,11 @@ export class WebViewer {
       on_play: () => this.#dispatch_event("play"),
     };
 
-    this.#handle = new WebHandle_class({ ...options, fullscreen, timeline });
+    this.#handle = new WebHandle_class({
+      ...options,
+      fullscreen,
+      callbacks,
+    });
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
@@ -566,8 +594,7 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${
-          value ? "playing" : "paused"
+        `attempted to set play state to ${value ? "playing" : "paused"
         } in a stopped web viewer`,
       );
     }
@@ -697,7 +724,7 @@ export class WebViewer {
     }
   }
 
-  #minimize = () => {};
+  #minimize = () => { };
 
   #maximize = () => {
     _minimize_current_fullscreen_viewer?.();

@@ -8,7 +8,7 @@ use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
 };
-use re_ui::{icon_text, icons, ContextExt as _, Help, ModifiersText, MouseButtonText};
+use re_ui::{icon_text, icons, shortcut_with_icon, ContextExt as _, Help, MouseButtonText};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
     gpu_bridge, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -113,20 +113,16 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help(egui_ctx: &egui::Context) -> Help<'static> {
+pub fn help(egui_ctx: &egui::Context) -> Help {
     Help::new("2D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
         .control(
             "Pan",
-            icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+            icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
         )
         .control(
             "Zoom",
-            icon_text!(
-                ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                "+",
-                icons::SCROLL
-            ),
+            shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }
@@ -452,4 +448,9 @@ fn show_projections_from_3d_space(
         }
     }
     shapes
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

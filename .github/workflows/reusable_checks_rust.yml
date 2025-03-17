@@ -107,6 +107,13 @@ jobs:
         # See tests/assets/rrd/README.md for more
         run: pixi run check-backwards-compatibility
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-ubuntu
+          path: "**/tests/snapshots"
+
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
     name: Test on ${{ matrix.name }}
@@ -160,3 +167,10 @@ jobs:
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.name }}
+          path: "**/tests/snapshots"

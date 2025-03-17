@@ -23,7 +23,7 @@ impl ViewClass for ViewClassPlaceholder {
         &re_ui::icons::VIEW_UNKNOWN
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Placeholder view").markdown("Placeholder view for unknown view class")
     }
 

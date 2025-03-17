@@ -60,7 +60,7 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         super::ui_3d::help(egui_ctx)
     }
 
