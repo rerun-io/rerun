@@ -1385,7 +1385,7 @@ struct PyRecordingProperties {
 
 #[pymethods]
 impl PyRecordingProperties {
-    /// Create new `RecordingProperties(name, start_time)`.
+    /// Create new `RecordingProperties`.
     ///
     /// Parameters
     /// ----------
@@ -1395,6 +1395,7 @@ impl PyRecordingProperties {
     /// start_time : `Optional[int]`
     ///     The start time of the recording in nanoseconds.
     #[new]
+    #[pyo3(text_signature = "(self, name = None, start_time = None)")]
     #[pyo3(signature = (name = None, start_time = None))]
     fn new(name: Option<String>, start_time: Option<i64>) -> Self {
         Self { name, start_time }
