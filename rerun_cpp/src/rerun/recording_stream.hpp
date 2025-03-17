@@ -17,6 +17,10 @@
 namespace rerun {
     struct ComponentBatch;
 
+    namespace archetypes {
+        struct RecordingProperties;
+    }
+
     enum class StoreKind {
         Recording,
         Blueprint,
@@ -859,6 +863,38 @@ namespace rerun {
             std::string_view entity_path, Collection<TimeColumn> time_columns,
             Collection<ComponentColumn> component_columns
         ) const;
+
+        /// Set the properties of a recording.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param properties The properties of the recording.
+        /// \see `try_set_recording_properties`
+        void set_properties(archetypes::RecordingProperties& properties) const {
+            try_set_properties(properties).handle();
+        }
+
+        /// Set the properties of a recording.
+        ///
+        /// \param properties The properties of the recording.
+        /// \see `set_recording_properties`
+        Error try_set_properties(archetypes::RecordingProperties& properties) const;
+
+        /// Set the name of a recording.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param name The name of the recording.
+        /// \see `try_set_recording_name`
+        void set_name(std::string_view name) const {
+            try_set_name(name).handle();
+        }
+
+        /// Set the name of a recording.
+        ///
+        /// \param name The name of the recording.
+        /// \see `set_recording_name`
+        Error try_set_name(std::string_view name) const;
 
         /// @}
 

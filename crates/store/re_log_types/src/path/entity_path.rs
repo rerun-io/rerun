@@ -71,6 +71,9 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
+pub const RESERVED_NAMESPACE_PREFIX: &str = "__";
+const PARTITION_PROPERTIES_PATH: &str = "partition_properties";
+
 /// The unique identifier of an entity, e.g. `camera/3/points`
 ///
 /// The entity path is a list of [parts][EntityPathPart] separated by slashes.
@@ -110,6 +113,13 @@ impl EntityPath {
     #[inline]
     pub fn root() -> Self {
         Self::from(vec![])
+    }
+
+    #[inline]
+    pub fn partition_properties() -> Self {
+        Self::from(vec![EntityPathPart::new(format!(
+            "{RESERVED_NAMESPACE_PREFIX}{PARTITION_PROPERTIES_PATH}"
+        ))])
     }
 
     #[inline]
@@ -547,6 +557,21 @@ impl std::fmt::Display for EntityPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_root() {
+        assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
+
+    #[test]
+    fn test_recording_properties() {
+        assert_eq!(
+            EntityPath::partition_properties(),
+            EntityPath::from(format!(
+                "{RESERVED_NAMESPACE_PREFIX}{PARTITION_PROPERTIES_PATH}"
+            ))
+        );
+    }
 
     #[test]
     fn test_incremental_walk() {

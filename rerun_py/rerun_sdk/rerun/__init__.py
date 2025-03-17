@@ -51,6 +51,11 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._properties import (
+    RecordingProperties as RecordingProperties,
+    set_name as set_name,
+    set_properties as set_properties,
+)
 from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeNanosColumn as TimeNanosColumn,

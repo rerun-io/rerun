@@ -158,10 +158,15 @@ exclude = [
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 
   # Snippets that haven't been released yet.
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
   "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
+
   "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp",
   "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
+
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.cpp",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.py",
+  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.rs",
 ]
