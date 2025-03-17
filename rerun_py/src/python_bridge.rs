@@ -1380,7 +1380,7 @@ struct RecordingProperties {
     start_time: Option<i64>,
 }
 
-// Set the name of a recording.
+/// Set the properties of the recording.
 #[pyfunction]
 #[pyo3(signature = (properties, recording=None))]
 fn set_properties(
@@ -1410,7 +1410,7 @@ fn set_properties(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-/// Set the name of a recording.
+/// Set the name of the recording.
 #[pyfunction]
 #[pyo3(signature = (name, recording=None))]
 fn set_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
