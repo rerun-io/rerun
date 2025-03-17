@@ -183,7 +183,7 @@ impl TimeDragValue {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    // TODO: is this the correct TimeType?
+                    // TODO(abey79): is this the correct TimeType? https://github.com/rerun-io/rerun/pull/9292#discussion_r1998445676
                     TimeType::DurationNs.format(TimeInt::new_temporal(base_time), timestamp_format)
                 ))
             })
