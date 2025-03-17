@@ -11,7 +11,7 @@ This is an external project that uses Rerun as a core component.
 ## External project presentation
 
 
-[Paper](https://doi.org/10.1145/3638550.3643617) | [BibTeX](#citation) | [Project Page](https://cake.wpi.edu/ARFlow/) | [Video](https://youtu.be/mml8YrCgfTk)
+[Paper](https://dl.acm.org/doi/10.1145/3638550.3643617) | [BibTeX](#citation) | [Project Page](https://cake.wpi.edu/ARFlow/) | [Video](https://youtu.be/mml8YrCgfTk)
 
 
 ARFlow is designed to lower the barrier for AR researchers to evaluate ideas in hours instead of weeks or months, following:
