@@ -1056,10 +1056,10 @@ class RecordingProperties:
 
         Parameters
         ----------
-        name : Optional[str]
+        name : `Optional[str]`
             The name of the recording.
 
-        start_time : Optional[int]
+        start_time : `Optional[int]`
             The start time of the recording in nanoseconds.
 
         """
