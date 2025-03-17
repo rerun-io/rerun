@@ -1,5 +1,7 @@
-import rerun as rr
+from __future__ import annotations
+
 import pytest
+import rerun as rr
 
 
 @pytest.mark.parametrize(
