@@ -11,7 +11,7 @@ int main() {
     rec.spawn().exit_on_failure();
 
     for (int step = 0; step < 64; ++step) {
-        rec.set_index_sequence("step", step);
+        rec.set_time_sequence("step", step);
         rec.log("scalars", rerun::Scalar(sin(static_cast<double>(step) / 10.0)));
     }
 }

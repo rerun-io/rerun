@@ -26,5 +26,5 @@ colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
 radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
 for i in range(5):
-    rr.set_index("time", timedelta=10 + i)
+    rr.set_time("time", duration=10 + i)
     rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))

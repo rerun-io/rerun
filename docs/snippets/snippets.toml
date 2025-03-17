@@ -76,6 +76,11 @@ features = [
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",
@@ -213,6 +218,11 @@ features = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = ["cpp", "rust"] # Only python
 "concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
 "concepts/different_data_per_timeline" = [

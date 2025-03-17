@@ -189,7 +189,7 @@ def rrt(
         intersects_obs = mp.intersects_obstacle(closest_node.pos, new_point)
 
         step += 1
-        rr.set_index("step", sequence=step)
+        rr.set_time("step", sequence=step)
         rr.log("map/new/close_nodes", rr.Clear(recursive=False))
         rr.log(
             "map/tree/edges",
@@ -283,7 +283,7 @@ def main() -> None:
     start_point = np.array([0.2, 0.5])
     end_point = np.array([1.8, 0.5])
 
-    rr.set_index("step", sequence=0)
+    rr.set_time("step", sequence=0)
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
     rr.log(
         "map/start",

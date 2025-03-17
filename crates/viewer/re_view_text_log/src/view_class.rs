@@ -55,7 +55,7 @@ impl ViewClass for TextView {
         &re_ui::icons::VIEW_LOG
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text log view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
             .markdown(
@@ -441,4 +441,9 @@ fn calc_row_height(entry: &Entry) -> f32 {
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
     num_rows as f32 * re_ui::DesignTokens::table_line_height()
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
 }

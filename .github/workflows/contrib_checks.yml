@@ -132,6 +132,13 @@ jobs:
       - name: Rust checks & tests
         run: pixi run rs-check --skip individual_crates docs_slow
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-ubuntu
+          path: "**/tests/snapshots"
+
   rerun-lints:
     name: Rerun lints
     runs-on: ubuntu-latest

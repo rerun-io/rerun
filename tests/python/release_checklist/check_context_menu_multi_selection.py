@@ -76,7 +76,7 @@ def blueprint() -> rrb.BlueprintLike:
 
 
 def log_some_views() -> None:
-    rr.set_index("frame_nr", sequence=0)
+    rr.set_time("frame_nr", sequence=0)
 
     rr.log(
         "boxes3d",

@@ -11,7 +11,7 @@ rr.send_blueprint(
     rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
 )
 
-rr.set_index("sim_time", timedelta=0)
+rr.set_time("sim_time", duration=0)
 
 # Planetary motion is typically in the XY plane.
 rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
@@ -33,7 +33,7 @@ rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 # Movement via transforms.
 for i in range(6 * 120):
     time = i / 120.0
-    rr.set_index("sim_time", timedelta=time)
+    rr.set_time("sim_time", duration=time)
     r_moon = time * 5.0
     r_planet = time * 2.0
 

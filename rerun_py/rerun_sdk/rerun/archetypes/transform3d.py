@@ -86,7 +86,7 @@ class Transform3D(Transform3DExt, Archetype):
         rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
     )
 
-    rr.set_index("sim_time", timedelta=0)
+    rr.set_time("sim_time", duration=0)
 
     # Planetary motion is typically in the XY plane.
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
@@ -108,7 +108,7 @@ class Transform3D(Transform3DExt, Archetype):
     # Movement via transforms.
     for i in range(6 * 120):
         time = i / 120.0
-        rr.set_index("sim_time", timedelta=time)
+        rr.set_time("sim_time", duration=time)
         r_moon = time * 5.0
         r_planet = time * 2.0
 
@@ -150,7 +150,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_row_updates", spawn=True)
 
-    rr.set_index("tick", sequence=0)
+    rr.set_time("tick", sequence=0)
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
@@ -158,7 +158,7 @@ class Transform3D(Transform3DExt, Archetype):
     )
 
     for t in range(100):
-        rr.set_index("tick", sequence=t + 1)
+        rr.set_time("tick", sequence=t + 1)
         rr.log(
             "box",
             rr.Transform3D(
@@ -191,7 +191,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_column_updates", spawn=True)
 
-    rr.set_index("tick", sequence=0)
+    rr.set_time("tick", sequence=0)
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
@@ -200,7 +200,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.send_columns(
         "box",
-        indexes=[rr.IndexColumn("tick", sequence=range(1, 101))],
+        indexes=[rr.TimeColumn("tick", sequence=range(1, 101))],
         columns=rr.Transform3D.columns(
             translation=[[0, 0, t / 10.0] for t in range(100)],
             rotation_axis_angle=[

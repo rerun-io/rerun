@@ -149,6 +149,7 @@ exclude = [
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://pyo3.rs',                                                # Temporarily down, should remove this again once it is up again.
+  'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
 
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',

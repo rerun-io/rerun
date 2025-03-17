@@ -13,5 +13,5 @@ import rerun as rr
 rr.init("rerun_example_scalar_row_updates", spawn=True)
 
 for step in range(64):
-    rr.set_index("step", sequence=step)
+    rr.set_time("step", sequence=step)
     rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))

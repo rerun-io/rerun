@@ -1,33 +1,33 @@
 use crate::icon_text::{IconText, IconTextItem};
 use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt as _};
-use egui::{OpenUrl, RichText, Sense, TextBuffer as _, Ui, UiBuilder};
+use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
-pub struct Help<'a> {
+pub struct Help {
     title: String,
     docs_link: Option<String>,
-    sections: Vec<HelpSection<'a>>,
+    sections: Vec<HelpSection>,
 }
 
 /// A single section, separated by a [`egui::Separator`].
 #[derive(Debug, Clone)]
-enum HelpSection<'a> {
+enum HelpSection {
     Markdown(String),
-    Controls(Vec<ControlRow<'a>>),
+    Controls(Vec<ControlRow>),
 }
 
 /// A single row in the controls table.
 #[derive(Debug, Clone)]
-pub struct ControlRow<'a> {
+pub struct ControlRow {
     text: String,
-    items: IconText<'a>,
+    items: IconText,
 }
 
-impl<'a> ControlRow<'a> {
+impl ControlRow {
     /// Create a new control row.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(text: impl ToString, items: IconText<'a>) -> Self {
+    pub fn new(text: impl ToString, items: IconText) -> Self {
         Self {
             text: text.to_string(),
             items,
@@ -35,7 +35,11 @@ impl<'a> ControlRow<'a> {
     }
 }
 
-impl<'a> Help<'a> {
+impl Help {
+    pub fn title(&self) -> &str {
+        self.title.as_str()
+    }
+
     /// Create a new help popup.
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(title: impl ToString) -> Self {
@@ -65,20 +69,28 @@ impl<'a> Help<'a> {
 
     /// Add a controls section.
     #[inline]
-    pub fn controls(mut self, controls: Vec<ControlRow<'a>>) -> Self {
+    pub fn controls(mut self, controls: Vec<ControlRow>) -> Self {
         self.sections.push(HelpSection::Controls(controls));
         self
     }
 
     /// Add a single control row to the last controls section.
+    ///
+    /// Split any + or / into an extra `IconTextItem`, like this:
+    /// ```rust
+    /// re_ui::Help::new("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
+    /// ```
     #[allow(clippy::needless_pass_by_value)]
     #[inline]
-    pub fn control(mut self, label: impl ToString, items: IconText<'a>) -> Self {
+    pub fn control(mut self, label: impl ToString, items: impl Into<IconText>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {
-            controls.push(ControlRow::new(label, items));
+            controls.push(ControlRow::new(label, items.into()));
         } else {
             self.sections
-                .push(HelpSection::Controls(vec![ControlRow::new(label, items)]));
+                .push(HelpSection::Controls(vec![ControlRow::new(
+                    label,
+                    items.into(),
+                )]));
         }
         self
     }
@@ -103,7 +115,7 @@ impl<'a> Help<'a> {
     }
 
     /// Show the help popup. Usually you want to show this in [`egui::Response::on_hover_ui`].
-    pub fn ui(&self, ui: &mut Ui) {
+    pub fn ui(self, ui: &mut Ui) {
         egui::Sides::new().show(
             ui,
             |ui| {
@@ -137,11 +149,11 @@ impl<'a> Help<'a> {
             },
         );
 
-        for section in &self.sections {
+        for section in self.sections {
             Self::separator(ui);
             match section {
                 HelpSection::Markdown(md) => {
-                    ui.markdown_ui(md);
+                    ui.markdown_ui(&md);
                 }
                 HelpSection::Controls(controls) => {
                     for row in controls {
@@ -151,28 +163,18 @@ impl<'a> Help<'a> {
                                 ui.strong(RichText::new(&row.text).size(11.0));
                             },
                             |ui| {
+                                let color = design_tokens().color(ColorToken::gray(Scale::S700));
                                 ui.set_height(DesignTokens::small_icon_size().y);
-                                for item in row.items.0.iter().rev() {
+                                ui.spacing_mut().item_spacing.x = 2.0;
+                                ui.style_mut().override_text_style = Some(TextStyle::Monospace);
+                                ui.visuals_mut().override_text_color = Some(color);
+                                for item in row.items.0.into_iter().rev() {
                                     match item {
                                         IconTextItem::Icon(icon) => {
-                                            ui.small_icon(
-                                                icon,
-                                                Some(
-                                                    design_tokens()
-                                                        .color(ColorToken::gray(Scale::S700)),
-                                                ),
-                                            );
+                                            ui.small_icon(&icon, Some(color));
                                         }
                                         IconTextItem::Text(text) => {
-                                            ui.label(
-                                                RichText::new(text.as_str())
-                                                    .monospace()
-                                                    .size(11.0)
-                                                    .color(
-                                                        design_tokens()
-                                                            .color(ColorToken::gray(Scale::S700)),
-                                                    ),
-                                            );
+                                            ui.label(text);
                                         }
                                     }
                                 }

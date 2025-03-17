@@ -29,15 +29,15 @@ impl ResolvedTimeRange {
     /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub fn new(min: impl TryInto<TimeInt>, max: impl TryInto<TimeInt>) -> Self {
-        let min = TimeInt::saturated_nonstatic(min);
-        let max = TimeInt::saturated_nonstatic(max);
+        let min = TimeInt::saturated_temporal(min);
+        let max = TimeInt::saturated_temporal(max);
         Self { min, max }
     }
 
     /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub fn point(time: impl TryInto<TimeInt>) -> Self {
-        let time = TimeInt::saturated_nonstatic(time);
+        let time = TimeInt::saturated_temporal(time);
         Self {
             min: time,
             max: time,
@@ -59,7 +59,7 @@ impl ResolvedTimeRange {
     /// The resulting range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub fn set_min(&mut self, time: impl TryInto<TimeInt>) {
-        let time = TimeInt::saturated_nonstatic(time);
+        let time = TimeInt::saturated_temporal(time);
         self.min = time;
     }
 
@@ -68,7 +68,7 @@ impl ResolvedTimeRange {
     /// The resulting range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub fn set_max(&mut self, time: impl TryInto<TimeInt>) {
-        let time = TimeInt::saturated_nonstatic(time);
+        let time = TimeInt::saturated_temporal(time);
         self.max = time;
     }
 

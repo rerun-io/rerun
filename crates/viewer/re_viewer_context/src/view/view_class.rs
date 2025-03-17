@@ -62,7 +62,7 @@ pub trait ViewClass: Send + Sync {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> re_ui::Help<'_>;
+    fn help(&self, egui_ctx: &egui::Context) -> re_ui::Help;
 
     /// Called once upon registration of the class
     ///

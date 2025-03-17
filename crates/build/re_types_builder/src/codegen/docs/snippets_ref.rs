@@ -398,6 +398,10 @@ fn collect_snippets_recursively<'o>(
         let meta = snippet.metadata()?;
         let path = snippet.path();
 
+        if path.file_name().is_some_and(|name| name == "__init__.py") {
+            continue;
+        }
+
         let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         let name_qualified = path.strip_prefix(snippet_root_path)?.with_extension("");
         let name_qualified = name_qualified.to_str().unwrap().replace('\\', "/");

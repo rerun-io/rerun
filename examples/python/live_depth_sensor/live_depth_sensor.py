@@ -69,7 +69,7 @@ def run_realsense(num_frames: int | None) -> None:
             if num_frames and frame_nr >= num_frames:
                 break
 
-            rr.set_index("frame_nr", sequence=frame_nr)
+            rr.set_time("frame_nr", sequence=frame_nr)
             frame_nr += 1
 
             frames = pipe.wait_for_frames()

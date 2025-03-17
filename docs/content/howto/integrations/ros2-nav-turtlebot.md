@@ -147,7 +147,7 @@ received.
 ```python
 def some_msg_callback(self, msg: Msg):
     time = Time.from_msg(msg.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 ```
 
 This timestamp will apply to all subsequent log calls on in this callback (on this thread) until the time is updated
@@ -224,7 +224,7 @@ this as a cue to look up the corresponding transform and log it.
 def odom_callback(self, odom: Odometry) -> None:
     """Update transforms when odom is updated."""
     time = Time.from_msg(odom.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 
     # Capture time-series data for the linear and angular velocities
     rr.log("odometry/vel", rr.Scalar(odom.twist.twist.linear.x))
@@ -250,7 +250,7 @@ def __init__(self) -> None:
 def cam_info_callback(self, info: CameraInfo) -> None:
     """Log a `CameraInfo` with `log_pinhole`."""
     time = Time.from_msg(info.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 
     self.model.fromCameraInfo(info)
 
@@ -276,7 +276,7 @@ def __init__(self) -> None:
 def image_callback(self, img: Image) -> None:
     """Log an `Image` with `log_image` using `cv_bridge`."""
     time = Time.from_msg(img.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 
     rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
     self.log_tf_as_transform3d("map/robot/camera", time)
@@ -301,7 +301,7 @@ After extracting the positions and colors as Numpy arrays, the entire cloud can 
 def points_callback(self, points: PointCloud2) -> None:
     """Log a `PointCloud2` with `log_points`."""
     time = Time.from_msg(points.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 
     pts = point_cloud2.read_points(points, field_names=["x", "y", "z"],
                                    skip_nans=True)
@@ -353,7 +353,7 @@ def __init__(self) -> None:
 def scan_callback(self, scan: LaserScan) -> None:
     """Log a LaserScan after transforming it to line-segments."""
     time = Time.from_msg(scan.header.stamp)
-    rr.set_index("ros_time", np.datetime64(time.nanoseconds, "ns"))
+    rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
 
     # Project the laser scan to a collection of points
     points = self.laser_proj.projectLaser(scan)

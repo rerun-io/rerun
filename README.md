@@ -37,7 +37,7 @@ rr.connect()  # Connect to a remote viewer
 # rr.save("recording.rrd")  # Stream all logs to disk
 
 # Associate subsequent data with 42 on the “frame” timeline
-rr.set_index("frame", sequence=42)
+rr.set_time("frame", sequence=42)
 
 # Log colored 3D points to the entity at `path/to/points`
 rr.log("path/to/points", rr.Points3D(positions, colors=colors))

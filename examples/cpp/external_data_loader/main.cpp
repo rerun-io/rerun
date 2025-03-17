@@ -18,7 +18,7 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
                 auto timeline_name = time_str.substr(0, pos);
                 int64_t time = std::stol(time_str.substr(pos + 1));
                 // TODO(#8635): update dataloaders
-                rec.set_index_duration_nanos(timeline_name, time);
+                rec.set_time_duration_nanos(timeline_name, time);
             }
         }
     }
@@ -30,7 +30,7 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
             if (pos != std::string::npos) {
                 auto timeline_name = sequence_str.substr(0, pos);
                 int64_t sequence = std::stol(sequence_str.substr(pos + 1));
-                rec.set_index_sequence(timeline_name, sequence);
+                rec.set_time_sequence(timeline_name, sequence);
             }
         }
     }
