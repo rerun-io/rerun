@@ -1500,13 +1500,11 @@ fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
     let locals = PyDict::new(py);
 
     py.run(
-        c_str!(
-            r#"
+        cr#"
 import multiprocessing
 # authkey is the same for child and parent processes, so this is how we know we're the same
 authkey = multiprocessing.current_process().authkey
-            "#
-        ),
+            "#,
         None,
         Some(&locals),
     )
