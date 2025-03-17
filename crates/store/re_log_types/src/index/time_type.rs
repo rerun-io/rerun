@@ -143,7 +143,7 @@ impl TimeType {
             Self::Sequence => ArrowDataType::Int64,
             Self::DurationNs => ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond),
             Self::TimestampNs => {
-                ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
+                ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, Some("UTC".into()))
             }
         }
     }
