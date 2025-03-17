@@ -24,7 +24,7 @@ The full source code for this example is available
 def log_data() -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
-    rr.set_index("stable_time", timedelta=0)
+    rr.set_time("stable_time", duration=0)
 
     NUM_POINTS = 100
 
@@ -43,7 +43,7 @@ def log_data() -> None:
     time_offsets = np.random.rand(NUM_POINTS)
     for i in range(400):
         time = i * 0.01
-        rr.set_index("stable_time", timedelta=time)
+        rr.set_time("stable_time", duration=time)
 
         times = np.repeat(time, NUM_POINTS) + time_offsets
         beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]

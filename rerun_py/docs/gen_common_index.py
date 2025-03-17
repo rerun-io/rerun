@@ -107,7 +107,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Timeline functions",
         func_list=[
-            "set_index",
+            "set_time",
             "set_time_sequence",
             "set_time_seconds",
             "set_time_nanos",
@@ -121,7 +121,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "send_columns",
         ],
         class_list=[
-            "IndexColumn",
+            "TimeColumn",
             "TimeNanosColumn",
             "TimeSecondsColumn",
             "TimeSequenceColumn",

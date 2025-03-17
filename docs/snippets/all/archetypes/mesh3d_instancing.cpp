@@ -6,7 +6,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_instancing");
     rec.spawn().exit_on_failure();
 
-    rec.set_index_sequence("frame", 0);
+    rec.set_time_sequence("frame", 0);
     rec.log(
         "shape",
         rerun::Mesh3D(
@@ -19,7 +19,7 @@ int main() {
     rec.log("shape/box", rerun::Boxes3D::from_half_sizes({{5.0f, 5.0f, 5.0f}}));
 
     for (int i = 0; i < 100; ++i) {
-        rec.set_index_sequence("frame", i);
+        rec.set_time_sequence("frame", i);
         rec.log(
             "shape",
             rerun::InstancePoses3D()

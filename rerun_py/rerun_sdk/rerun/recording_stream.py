@@ -289,7 +289,7 @@ class RecordingStream:
     - Sink-related functions:
         [`rerun.connect_grpc`][], [`rerun.spawn`][], …
     - Time-related functions:
-        [`rerun.set_index`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
+        [`rerun.set_time`][], [`rerun.disable_timeline`][], [`rerun.reset_time`][], …
     - Log-related functions:
         [`rerun.log`][], …
 
@@ -764,37 +764,37 @@ class RecordingStream:
         )
 
     @overload
-    def set_index(self, timeline: str, *, sequence: int) -> None: ...
+    def set_time(self, timeline: str, *, sequence: int) -> None: ...
 
     @overload
-    def set_index(self, timeline: str, *, timedelta: int | float | timedelta | np.timedelta64) -> None: ...
+    def set_time(self, timeline: str, *, duration: int | float | timedelta | np.timedelta64) -> None: ...
 
     @overload
-    def set_index(self, timeline: str, *, datetime: int | float | datetime | np.datetime64) -> None: ...
+    def set_time(self, timeline: str, *, timestamp: int | float | datetime | np.datetime64) -> None: ...
 
-    def set_index(
+    def set_time(
         self,
         timeline: str,
         *,
         sequence: int | None = None,
-        timedelta: int | float | timedelta | np.timedelta64 | None = None,
-        datetime: int | float | datetime | np.datetime64 | None = None,
+        duration: int | float | timedelta | np.timedelta64 | None = None,
+        timestamp: int | float | datetime | np.datetime64 | None = None,
     ) -> None:
         """
         Set the current time of a timeline for this thread.
 
         Used for all subsequent logging on the same thread, until the next call to
-        [`rerun.set_index`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+        [`rerun.set_time`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
 
-        For example: `set_index("frame_nr", sequence=frame_nr)`.
+        For example: `set_time("frame_nr", sequence=frame_nr)`.
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
-        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
-        you must only use `timedelta` for that timeline going forward.
+        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `timestamp`.
+        You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
+        you must only use `duration` for that timeline going forward.
 
-        The columnar equivalent to this function is [`rerun.IndexColumn`][].
+        The columnar equivalent to this function is [`rerun.TimeColumn`][].
 
         Parameters
         ----------
@@ -803,30 +803,30 @@ class RecordingStream:
         sequence:
             Used for sequential indices, like `frame_nr`.
             Must be an integer.
-        timedelta:
+        duration:
             Used for relative times, like `time_since_start`.
             Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
             For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
-        datetime:
+        timestamp:
             Used for absolute time indices, like `capture_time`.
             Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
             For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
 
         """
 
-        from .time import set_index
+        from .time import set_time
 
         # mypy appears to not be smart enough to understand how the above @overload make the following call valid.
-        set_index(  # type: ignore[call-overload]
+        set_time(  # type: ignore[call-overload]
             timeline=timeline,
-            timedelta=timedelta,
+            duration=duration,
             sequence=sequence,
-            datetime=datetime,
+            timestamp=timestamp,
             recording=self,
         )
 
     @deprecated(
-        """Use `set_index(sequence=…)` instead.
+        """Use `set_time(sequence=…)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
@@ -860,7 +860,7 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_index(datetime=seconds)` or set_index(timedelta=seconds)` instead.
+        """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
@@ -901,7 +901,7 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_index(datetime=1e-9 * nanos)` or set_index(timedelta=1e-9 * nanos)` instead.
+        """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:

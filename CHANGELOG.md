@@ -732,7 +732,7 @@ API usage examples:
 
   rr.send_columns(
       "scalars",
-      times=[rr.TimeSequenceColumn("step", np.arange(0, 64))],
+      indexes=[rr.TimeSequenceColumn("step", np.arange(0, 64))],
       components=[rr.components.ScalarBatch(np.sin(times / 10.0))],
   )
   ```

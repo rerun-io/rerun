@@ -27,7 +27,7 @@ int main() {
     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
 
     for (size_t i = 0; i < 5; i++) {
-        rec.set_index_duration_secs("time", 10.0 + static_cast<double>(i));
+        rec.set_time_duration_secs("time", 10.0 + static_cast<double>(i));
         rec.log(
             "points",
             rerun::Points3D(positions[i]).with_colors(colors[i]).with_radii(radii[i])

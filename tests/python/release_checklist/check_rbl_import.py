@@ -49,7 +49,7 @@ def log_plots() -> None:
         return a + t * (b - a)
 
     for t in range(int(tau * 2 * 100.0)):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
         rr.log(
