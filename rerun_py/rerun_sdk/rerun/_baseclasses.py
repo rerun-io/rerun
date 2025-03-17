@@ -222,7 +222,10 @@ class Archetype(AsComponents):
                     yield f"    {fld.name}={comp_contents}"
 
         args = ",\n".join(fields_repr())
-        return f"rr.{cls.__name__}(\n{args}\n)"
+        if args:
+            return f"rr.{cls.__name__}(\n{args}\n)"
+        else:
+            return f"rr.{cls.__name__}()"
 
     @classmethod
     def archetype_name(cls) -> str:
