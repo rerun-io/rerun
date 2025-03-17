@@ -179,6 +179,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
     // properties
+    m.add_class::<PyRecordingProperties>()?;
     m.add_function(wrap_pyfunction!(set_properties, m)?)?;
     m.add_function(wrap_pyfunction!(set_name, m)?)?;
 
@@ -1373,9 +1374,11 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 
 // --- Properties ---
 
-#[derive(FromPyObject)]
-#[pyo3(from_item_all)]
-struct RecordingProperties {
+// TODO(#9284): This should really just be the `archetypes::RecordingProperties`.
+/// A helper class for setting recording properties.
+#[derive(Clone)]
+#[pyclass]
+struct PyRecordingProperties {
     name: Option<String>,
     start_time: Option<i64>,
 }
@@ -1384,7 +1387,7 @@ struct RecordingProperties {
 #[pyfunction]
 #[pyo3(signature = (properties, recording=None))]
 fn set_properties(
-    properties: RecordingProperties,
+    properties: PyRecordingProperties,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
