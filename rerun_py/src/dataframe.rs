@@ -51,13 +51,12 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-fn py_rerun_warn(msg: &str) -> PyResult<()> {
+fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
     Python::with_gil(|py| {
         let warning_type = PyModule::import(py, "rerun")?
             .getattr("error_utils")?
             .getattr("RerunWarning")?;
-        let cstr_msg = std::ffi::CString::new(msg)?;
-        PyErr::warn(py, &warning_type, &cstr_msg, 0)?;
+        PyErr::warn(py, &warning_type, msg, 0)?;
         Ok(())
     })
 }
@@ -740,7 +739,7 @@ impl PyRecordingView {
                     && all_contents_are_static
                     && any_selected_data_is_static
                 {
-                    py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                    py_rerun_warn(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
                 let schema = query_handle.schema().clone();
