@@ -76,7 +76,6 @@ from .archetypes import (
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
-    EntityBehavior as EntityBehavior,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,

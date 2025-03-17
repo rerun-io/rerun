@@ -456,7 +456,7 @@ mod tests {
         example_components::{MyLabel, MyPoint, MyPoints},
         StoreId, StoreKind, TimePoint,
     };
-    use re_types::{archetypes::EntityBehavior, components::Interactive};
+    use re_types::{blueprint::archetypes::EntityBehavior, components::Interactive};
     use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
         test_context::TestContext, IndicatedEntities, MaybeVisualizableEntities, OverridePath,

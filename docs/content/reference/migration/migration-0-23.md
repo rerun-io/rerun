@@ -269,9 +269,9 @@ After:
 rr.send_blueprint(
     rrb.Spatial2DView(
         overrides={
-            "hidden_subtree": rr.EntityBehavior(visible=False),
-            "hidden_subtree/not_hidden": rr.EntityBehavior(visible=True),
-            "non_interactive_subtree": rr.EntityBehavior(interactive=False),
+            "hidden_subtree": rrb.EntityBehavior(visible=False),
+            "hidden_subtree/not_hidden": rrb.EntityBehavior(visible=True),
+            "non_interactive_subtree": rrb.EntityBehavior(interactive=False),
         }
     )
 )

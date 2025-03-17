@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
-use re_types::{archetypes, components, ComponentName};
+use re_types::{blueprint::archetypes as blueprint_archetypes, components, ComponentName};
 
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
@@ -125,7 +125,7 @@ impl DataResult {
 
         ctx.save_blueprint_archetype(
             &self.property_overrides.override_path,
-            &archetypes::EntityBehavior::update_fields().with_visible(new_value),
+            &blueprint_archetypes::EntityBehavior::update_fields().with_visible(new_value),
         );
     }
 
@@ -163,7 +163,7 @@ impl DataResult {
 
         ctx.save_blueprint_archetype(
             &self.property_overrides.override_path,
-            &archetypes::EntityBehavior::update_fields().with_interactive(new_value),
+            &blueprint_archetypes::EntityBehavior::update_fields().with_interactive(new_value),
         );
     }
 

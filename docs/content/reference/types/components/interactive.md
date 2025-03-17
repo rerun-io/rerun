@@ -22,6 +22,3 @@ boolean
  * 🦀 [Rust API docs for `Interactive`](https://docs.rs/rerun/latest/rerun/components/struct.Interactive.html?speculative-link)
 
 
-## Used by
-
-* [`EntityBehavior`](../archetypes/entity_behavior.md?speculative-link)

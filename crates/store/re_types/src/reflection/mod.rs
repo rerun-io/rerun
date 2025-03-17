@@ -1443,25 +1443,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.EntityBehavior"),
-            ArchetypeReflection {
-                display_name: "Entity behavior",
-                scope: None,
-                view_types: &[],
-                fields: vec![
-                    ArchetypeFieldReflection { name : "interactive", display_name :
-                    "Interactive", component_name : "rerun.components.Interactive"
-                    .into(), docstring_md :
-                    "Whether the entity can be interacted with.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `interactive` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `interactive` value or true if there is no parent.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name : "rerun.components.Visible"
-                    .into(), docstring_md :
-                    "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
             ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
@@ -2137,6 +2118,25 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.SelectedColumns".into(), docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.EntityBehavior"),
+            ArchetypeReflection {
+                display_name: "Entity behavior",
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "interactive", display_name :
+                    "Interactive", component_name : "rerun.components.Interactive"
+                    .into(), docstring_md :
+                    "Whether the entity can be interacted with.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `interactive` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `interactive` value or true if there is no parent.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
+                    "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
+                    is_required : false, },
                 ],
             },
         ),

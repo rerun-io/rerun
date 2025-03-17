@@ -4,6 +4,7 @@
 background.rs linguist-generated=true
 container_blueprint.rs linguist-generated=true
 dataframe_query.rs linguist-generated=true
+entity_behavior.rs linguist-generated=true
 force_center.rs linguist-generated=true
 force_collision_radius.rs linguist-generated=true
 force_link.rs linguist-generated=true

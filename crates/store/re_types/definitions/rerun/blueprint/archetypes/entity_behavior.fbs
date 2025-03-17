@@ -1,4 +1,4 @@
-namespace rerun.archetypes;
+namespace rerun.blueprint.archetypes;
 
 /// General visualization behavior of an entity.
 ///
@@ -7,6 +7,7 @@ namespace rerun.archetypes;
 /// \example archetypes/entity_behavior missing="cpp,rs"
 table EntityBehavior (
   "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
   "attr.docs.category": "General"
 ) {
     /// Whether the entity can be interacted with.

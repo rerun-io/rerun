@@ -12,10 +12,6 @@ the intent of the logging code and triggers the activation of the corresponding 
 
 This page lists all built-in archetypes.
 
-## General
-
-* [`EntityBehavior`](archetypes/entity_behavior.md): General visualization behavior of an entity.
-
 ## Geospatial
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
