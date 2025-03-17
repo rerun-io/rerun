@@ -26,7 +26,7 @@ rr.log("images", rr.Image.from_fields(format=format), static=True)
 # Send all images at once.
 rr.send_columns(
     "images",
-    times=[rr.TimeColumn("step", sequence=times)],
+    indexes=[rr.TimeColumn("step", sequence=times)],
     # Reshape the images so `Image` can tell that this is several blobs.
     #
     # Note that the `Image` consumes arrays of bytes, so we should ensure that we take a

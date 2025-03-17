@@ -87,7 +87,7 @@ def log_spiral() -> None:
     scalars = np.array((x, y)).T
     rr.send_columns(
         "spiral",
-        times=[rr.TimeColumn("frame_nr", sequence=times)],
+        indexes=[rr.TimeColumn("frame_nr", sequence=times)],
         columns=[*rr.Scalar.columns(scalar=scalars)],
     )
 

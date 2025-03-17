@@ -35,11 +35,11 @@ times = rr.TimeColumn("timestamp", timestamp=imu_data["timestamp"])
 
 # Extract gyroscope data (x, y, z axes) and log it to a single entity.
 gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
-rr.send_columns("/gyroscope", times=[times], columns=rr.Scalar.columns(scalar=gyro))
+rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
 
 # Extract accelerometer data (x, y, z axes) and log it to a single entity.
 accel = imu_data[["accel.x", "accel.y", "accel.z"]]
-rr.send_columns("/accelerometer", times=[times], columns=rr.Scalar.columns(scalar=accel))
+rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalar.columns(scalar=accel))
 ```
 
 ## Running

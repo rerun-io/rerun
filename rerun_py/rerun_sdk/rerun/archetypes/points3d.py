@@ -109,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        times=[rr.TimeColumn("time", duration=times)],
+        indexes=[rr.TimeColumn("time", duration=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),

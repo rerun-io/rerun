@@ -219,7 +219,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 @catch_and_log_exceptions()
 def send_columns(
     entity_path: str,
-    times: Iterable[TimeColumnLike],
+    indexes: Iterable[TimeColumnLike],
     columns: Iterable[ComponentColumn],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -242,7 +242,7 @@ def send_columns(
         Path to the entity in the space hierarchy.
 
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
-    times:
+    indexes:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
         of timestamps. You usually want to use [`rerun.TimeColumn`][] for this.
     columns:
@@ -263,7 +263,7 @@ def send_columns(
     expected_length = None
 
     timelines_args = {}
-    for t in times:
+    for t in indexes:
         timeline_name = t.timeline_name()
         time_column = t.as_arrow_array()
         if expected_length is None:
@@ -290,7 +290,7 @@ def send_columns(
 
     bindings.send_arrow_chunk(
         entity_path,
-        timelines={t.timeline_name(): t.as_arrow_array() for t in times},
+        timelines={t.timeline_name(): t.as_arrow_array() for t in indexes},
         components=columns_args,
         recording=recording.to_native() if recording is not None else None,
     )

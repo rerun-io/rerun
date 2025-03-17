@@ -41,7 +41,7 @@ def run(args: Namespace) -> None:
         rr.send_columns(
             codec,
             # Note timeline values don't have to be the same as the video timestamps.
-            times=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
+            indexes=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
             columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
         )
 

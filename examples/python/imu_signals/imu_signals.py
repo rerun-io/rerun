@@ -85,10 +85,10 @@ def _log_imu_data() -> None:
     times = rr.TimeColumn("timestamp", timestamp=imu_data["timestamp"])
 
     gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
-    rr.send_columns("/gyroscope", times=[times], columns=rr.Scalar.columns(scalar=gyro))
+    rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
 
     accel = imu_data[["accel.x", "accel.y", "accel.z"]]
-    rr.send_columns("/accelerometer", times=[times], columns=rr.Scalar.columns(scalar=accel))
+    rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalar.columns(scalar=accel))
 
 
 def _log_image_data() -> None:
@@ -141,7 +141,7 @@ def _log_gt_imu() -> None:
     ]
     rr.send_columns(
         "/cam0",
-        times=[times],
+        indexes=[times],
         columns=rr.Transform3D.columns(translation=translations, quaternion=quaternions),
     )
 

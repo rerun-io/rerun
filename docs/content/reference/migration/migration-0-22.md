@@ -233,7 +233,7 @@ radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
 rr.send_columns(
     "points",
-    times=[rr.TimeSecondsColumn("time", times)],
+    indexes=[rr.TimeSecondsColumn("time", times)],
     components=[
         rr.Points3D.indicator(),
         rr.components.Position3DBatch(positions_arr).partition([len(row) for row in positions]),
@@ -263,7 +263,7 @@ radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
 rr.send_columns(
     "points",
-    times=[rr.TimeSecondsColumn("time", times)],
+    indexes=[rr.TimeSecondsColumn("time", times)],
     columns=[
         *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
         *rr.Points3D.columns(colors=colors, radii=radii),

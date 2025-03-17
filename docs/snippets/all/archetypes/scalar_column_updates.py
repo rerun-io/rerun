@@ -16,6 +16,6 @@ scalars = np.sin(times / 10.0)
 
 rr.send_columns(
     "scalars",
-    times=[rr.TimeColumn("step", sequence=times)],
+    indexes=[rr.TimeColumn("step", sequence=times)],
     columns=rr.Scalar.columns(scalar=scalars),
 )

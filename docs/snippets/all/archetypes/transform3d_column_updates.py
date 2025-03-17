@@ -24,7 +24,7 @@ rr.log(
 
 rr.send_columns(
     "box",
-    times=[rr.TimeColumn("tick", sequence=range(1, 101))],
+    indexes=[rr.TimeColumn("tick", sequence=range(1, 101))],
     columns=rr.Transform3D.columns(
         translation=[[0, 0, t / 10.0] for t in range(100)],
         rotation_axis_angle=[
