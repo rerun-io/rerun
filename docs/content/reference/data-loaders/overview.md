@@ -66,17 +66,21 @@ When the Viewer and/or SDK executes an external loader, it will pass to it a set
 
     The data is expected to be logged as static.
 
-* `--time <timeline1>=<time1> <timeline2>=<time2> …` (optional)
+* `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
 
-    The data is expected to be logged at these specific temporal timestamps.
+    The data is expected to be logged at these specific sequence times.
 
-    The timestamps are expected to be in nanoseconds: use `rr.set_time_nanos` (Python) / `RecordingStream::set_time_nanos` (C++, Rust) appropriately.
+* `--time_duration_nanos <timeline1>=<duration1> <timeline2>=<duration2> …` (optional)
 
-    TODO(#8635): update this
+    The data is expected to be logged at these specific duration times.
 
-* `--sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
+    The timestamps are expected to be in nanoseconds: use `rr.set_time_duration_nanos` (Python) / `RecordingStream::set_time_duration_nanos` (C++, Rust) appropriately.
 
-    The data is expected to be logged at these specific sequence timestamps.
+* `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
+
+    The data is expected to be logged at these specific timestamp times.
+
+    The timestamps are expected to be in nanoseconds since Unix epoch: use `rr.set_time_timestamp_nanos` (Python) / `RecordingStream::set_time_timestamp_nanos` (C++, Rust) appropriately.
 
 Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_data_loader), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_data_loader) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_data_loader) that cover every steps in details.
 

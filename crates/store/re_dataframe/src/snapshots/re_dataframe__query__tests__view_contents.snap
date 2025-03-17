@@ -1,12 +1,12 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-expression: "TransportChunk::from(dataframe)"
+expression: DisplayRB(dataframe)
 ---
-┌────────────────────────┬────────────────────────┐
-│ frame_nr               ┆ log_time               │
-│ ---                    ┆ ---                    │
-│ type: "i64"            ┆ type: "Timestamp(ns)"  │
-│ index_name: "frame_nr" ┆ index_name: "log_time" │
-│ kind: "index"          ┆ kind: "index"          │
-╞════════════════════════╪════════════════════════╡
-└────────────────────────┴────────────────────────┘
+┌────────────────────────┬───────────────────────────────┐
+│ frame_nr               ┆ log_time                      │
+│ ---                    ┆ ---                           │
+│ type: "i64"            ┆ type: "Timestamp(ns, +00:00)" │
+│ index_name: "frame_nr" ┆ index_name: "log_time"        │
+│ kind: "index"          ┆ kind: "index"                 │
+╞════════════════════════╪═══════════════════════════════╡
+└────────────────────────┴───────────────────────────────┘

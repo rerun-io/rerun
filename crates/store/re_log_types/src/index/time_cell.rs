@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{NonMinI64, Time, TimeInt, TimeType};
+use crate::{NonMinI64, TimeInt, TimeType};
 
 pub struct OutOfRange;
 
@@ -14,7 +14,7 @@ pub struct TimeCell {
 
 impl TimeCell {
     pub const ZERO_DURATION: Self = Self {
-        typ: TimeType::Time,
+        typ: TimeType::DurationNs,
         value: NonMinI64::ZERO,
     };
 
@@ -36,13 +36,13 @@ impl TimeCell {
 
     #[inline]
     pub fn from_duration_nanos(nanos: impl TryInto<NonMinI64>) -> Self {
-        Self::new(TimeType::Time, nanos)
+        Self::new(TimeType::DurationNs, nanos)
     }
 
     /// Create a timestamp from number of nanoseconds since the unix epoch, 1970-01-01 00:00:00 UTC.
     #[inline]
     pub fn from_timestamp_nanos_since_epoch(nanos_since_epoch: impl TryInto<NonMinI64>) -> Self {
-        Self::new(TimeType::Time, nanos_since_epoch)
+        Self::new(TimeType::TimestampNs, nanos_since_epoch)
     }
 
     /// Create a timestamp from number of seconds since the unix epoch, 1970-01-01 00:00:00 UTC.
@@ -163,9 +163,10 @@ impl std::fmt::Display for TimeCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.typ {
             // NOTE: we avoid special characters here so we can put these formats in an URI
-            TimeType::Sequence => self.value.fmt(f),
-            TimeType::Time => Time::from_ns_since_epoch(self.value.get())
-                .format(crate::TimestampFormat::Utc)
+            TimeType::Sequence => write!(f, "{}", self.value),
+            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
+            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(self.value.get())
+                .format_iso()
                 .fmt(f),
         }
     }

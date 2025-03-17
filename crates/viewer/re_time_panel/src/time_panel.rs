@@ -1209,8 +1209,9 @@ impl TimePanel {
             // Only one time point - showing a slider that can't be moved is just annoying
         } else {
             let space_needed_for_current_time = match timeline.typ() {
-                re_chunk_store::TimeType::Time => 220.0,
                 re_chunk_store::TimeType::Sequence => 100.0,
+                re_chunk_store::TimeType::DurationNs => 200.0, // TODO(#8635): verify this is correct
+                re_chunk_store::TimeType::TimestampNs => 220.0,
             };
 
             let mut time_range_rect = ui.available_rect_before_wrap();
