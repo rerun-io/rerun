@@ -157,7 +157,7 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "54.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.18.2", features = ["arrow"] }
+arrow2 = { package = "re_arrow2", version = "0.19.0", features = ["arrow"] }
 async-executor = "1.0"
 async-stream = "0.3"
 backtrace = "0.3"
@@ -639,4 +639,4 @@ egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } 
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
 
-re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }
+# re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }
