@@ -7,7 +7,6 @@ use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::ffi::c_str;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
