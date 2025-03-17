@@ -9,7 +9,7 @@ def set_properties(properties: bindings.RecordingProperties, recording: Recordin
     """
     Set the properties of the recording.
 
-    These are builtin properties of the Rerun Viewer.
+    These are builtin recording properties known to the Rerun viewer.
 
     Parameters
     ----------
