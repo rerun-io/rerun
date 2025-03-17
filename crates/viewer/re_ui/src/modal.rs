@@ -271,7 +271,8 @@ impl ModalWrapper {
                     } else {
                         wrapped_content_ui(ui, &mut open)
                     }
-                });
+                })
+                .inner
             });
 
         if modal_response.should_close() {
@@ -338,10 +339,6 @@ fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
         },
         ..Default::default()
     }
-}
-
-struct PreventShrinkingState {
-    last_screen_size: egui::Vec2,
 }
 
 pub fn prevent_shrinking(ui: &mut egui::Ui) {
