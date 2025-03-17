@@ -639,4 +639,4 @@ egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } 
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
 
-re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", version = "0.18.2", rev = "84588c144d977acf5f60f3d4b804b707a97a449c" }
+re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }
