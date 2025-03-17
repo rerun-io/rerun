@@ -1051,7 +1051,7 @@ class RecordingProperties:
         name: Optional[str] = None,
         start_time: Optional[int] = None,
     ) -> None:
-        """I'm a constructor"""
+        """I'm a constructor."""
 
 def set_properties(
     properties: RecordingProperties,
