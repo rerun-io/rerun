@@ -1051,7 +1051,18 @@ class RecordingProperties:
         name: Optional[str] = None,
         start_time: Optional[int] = None,
     ) -> None:
-        """I'm a constructor."""
+        """
+        Create new `RecordingProperties`.
+
+        Parameters
+        ----------
+        name : Optional[str]
+            The name of the recording.
+
+        start_time : Optional[int]
+            The start time of the recording in nanoseconds.
+
+        """
 
 def set_properties(
     properties: RecordingProperties,
