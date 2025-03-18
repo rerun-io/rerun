@@ -10,15 +10,21 @@ use re_types::{
     Component as _, Loggable as _,
 };
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, Default)]
+    pub struct ImageTypes: u8 {
+        const IMAGE = 0b0001;
+        const ENCODED_IMAGE = 0b0010;
+        const SEGMENTATION_IMAGE = 0b0100;
+        const DEPTH_IMAGE = 0b1000;
+        const VIDEO = 0b10000;
+    }
+}
 #[derive(Debug, Clone, Default)]
 pub struct MaxDimensions {
     pub width: u32,
     pub height: u32,
-
-    pub has_image: bool,
-    pub has_encoded_image: bool,
-    pub has_depth_image: bool,
-    pub has_video: bool,
+    pub image_types: ImageTypes,
 }
 
 /// The size of the largest image and/or video at a given entity path.
@@ -92,7 +98,17 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
-                    .has_image = true;
+                    .image_types
+                    .insert(ImageTypes::IMAGE);
+            }
+            if components
+                .contains_key(&archetypes::SegmentationImage::descriptor_indicator().component_name)
+            {
+                self.max_dimensions
+                    .entry(event.diff.chunk.entity_path().clone())
+                    .or_default()
+                    .image_types
+                    .insert(ImageTypes::SEGMENTATION_IMAGE);
             }
             if components
                 .contains_key(&archetypes::DepthImage::descriptor_indicator().component_name)
@@ -100,7 +116,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
-                    .has_depth_image = true;
+                    .image_types
+                    .insert(ImageTypes::DEPTH_IMAGE);
             }
 
             // Handle `ImageEncoded`, `AssetVideo`…
@@ -125,8 +142,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                         max_dim.height = max_dim.height.max(height);
 
                         // TODO(andreas): this should be part of the Blob component's tag instead.
-                        max_dim.has_encoded_image = media_type.is_image();
-                        max_dim.has_video = media_type.is_video();
+                        max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
+                        max_dim.image_types.insert(ImageTypes::VIDEO);
                     }
                 }
             }

@@ -17,7 +17,7 @@ use re_viewer_context::{
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::MaxDimensions,
+    max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
@@ -276,6 +276,7 @@ struct ImageCounts {
     encoded_image: usize,
     depth: usize,
     video: usize,
+    // Don't need segmentation image since we allow them to be stacked.
 }
 
 // Find the shared image dimensions of every image-entity that is not
@@ -300,10 +301,11 @@ fn has_single_shared_image_dimensionn(
                 image_dimension = Some(new_dimension);
             }
 
-            image_counts.image += dimensions.has_image as usize;
-            image_counts.encoded_image += dimensions.has_encoded_image as usize;
-            image_counts.depth += dimensions.has_depth_image as usize;
-            image_counts.video += dimensions.has_video as usize;
+            image_counts.image += dimensions.image_types.contains(ImageTypes::IMAGE) as usize;
+            image_counts.encoded_image +=
+                dimensions.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
+            image_counts.depth += dimensions.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+            image_counts.video += dimensions.image_types.contains(ImageTypes::VIDEO) as usize;
 
             // Ignore any nested images.
         } else {
