@@ -29,6 +29,9 @@ pub struct RegisterPartitionsRequest {
     /// Partitions to add
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<Partition>,
+    /// what to do if partition is already registered
+    #[prost(enumeration = "IfDuplicateBehavior", tag = "3")]
+    pub on_duplicate: i32,
 }
 impl ::prost::Name for RegisterPartitionsRequest {
     const NAME: &'static str = "RegisterPartitionsRequest";
