@@ -89,6 +89,9 @@ impl TryFrom<&str> for EntityPathFilter {
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
+///
+/// Unless otherwise specified, the [`ResolvedEntityPathFilter`] will filter out entities
+/// at [`EntityPath::partition_properties`].
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct ResolvedEntityPathFilter {
     rules: BTreeMap<ResolvedEntityPathRule, RuleEffect>,
@@ -412,8 +415,12 @@ impl EntityPathFilter {
     }
 
     /// Resolve variables & parse paths, ignoring any errors.
+    ///
+    /// If there is no mention of [`EntityPath::partition_properties`] in the filter, it will be added.
     pub fn resolve_forgiving(&self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
-        let rules = self
+        let mut seen_properties = false;
+
+        let mut rules: BTreeMap<ResolvedEntityPathRule, RuleEffect> = self
             .rules
             .iter()
             .map(|(rule, effect)| {
@@ -422,7 +429,20 @@ impl EntityPathFilter {
                     *effect,
                 )
             })
+            .inspect(|(ResolvedEntityPathRule { resolved_path, .. }, _)| {
+                if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                    seen_properties = true;
+                }
+            })
             .collect();
+
+        if !seen_properties {
+            rules.insert(
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Exclude,
+            );
+        }
+
         ResolvedEntityPathFilter { rules }
     }
 
@@ -931,17 +951,21 @@ mod tests {
     fn test_entity_path_filter() {
         let subst_env = EntityPathSubs::empty();
 
-        let filter = EntityPathFilter::parse_forgiving(
+        let properties = format!("{}/**", EntityPath::partition_properties().to_string());
+
+        let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
-        + /world/**
-        - /world/
-        - /world/car/**
-        + /world/car/driver
-        "#,
-        )
+            - {properties}
+            + /world/**
+            - /world/
+            - /world/car/**
+            + /world/car/driver
+            "#
+        ))
         .resolve_forgiving(&subst_env);
 
         for (path, expected_effect) in [
+            (properties.as_str(), Some(RuleEffect::Exclude)),
             ("/unworldly", None),
             ("/world", Some(RuleEffect::Exclude)),
             ("/world/house", Some(RuleEffect::Include)),
@@ -961,7 +985,7 @@ mod tests {
             EntityPathFilter::parse_forgiving("/**")
                 .resolve_forgiving(&subst_env)
                 .formatted(),
-            "+ /**"
+            format!("+ /**\n- {properties}")
         );
     }
 
@@ -971,17 +995,21 @@ mod tests {
         // We can't do in-place substitution.
         let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
 
-        let filter = EntityPathFilter::parse_forgiving(
+        let properties = format!("{}/**", EntityPath::partition_properties().to_string());
+
+        let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
+        + {properties}
         + $origin/**
         - $origin
         - $origin/car/**
         + $origin/car/driver
-        "#,
-        )
+        "#
+        ))
         .resolve_forgiving(&subst_env);
 
         for (path, expected_effect) in [
+            (properties.as_str(), Some(RuleEffect::Include)),
             ("/unworldly", None),
             ("/annoyingly/long/path", Some(RuleEffect::Exclude)),
             ("/annoyingly/long/path/house", Some(RuleEffect::Include)),
@@ -1007,7 +1035,7 @@ mod tests {
             EntityPathFilter::parse_forgiving("/**")
                 .resolve_forgiving(&subst_env)
                 .formatted(),
-            "+ /**"
+            format!("+ /**\n- {properties}")
         );
     }
 
