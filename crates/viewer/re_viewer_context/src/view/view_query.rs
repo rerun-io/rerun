@@ -115,7 +115,7 @@ impl DataResult {
                 .map_or(true, |data_result| data_result.is_visible());
 
             if parent_visibility == new_value {
-                // TODO(andreas): tagged empty component.
+                // TODO(andreas): blueprint save_empty should know about tags (`EntityBehavior::visible`'s tag)
                 ctx.save_empty_blueprint_component::<components::Visible>(
                     &self.property_overrides.override_path,
                 );

@@ -403,8 +403,8 @@ impl QueryExpressionEvaluator<'_> {
                     tree_prefix_only: !matches_filter,
                     property_overrides: PropertyOverrides {
                         component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
-                        visible: true,
-                        interactive: true,
+                        visible: true, // Determined later during `update_overrides_recursive`.
+                        interactive: true, // Determined later during `update_overrides_recursive`.
                         override_path: self.override_base_path.join(entity_path),
                         query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
                     },
@@ -516,6 +516,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .latest_at(blueprint_query, override_path, [component_name])
                     .component_batch_raw(&component_name)
                 {
+                    // We regard empty overrides as non-existant. This is important because there is no other way of doing component-clears.
                     if !component_data.is_empty() {
                         // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
                         component_overrides.insert(
@@ -598,6 +599,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 view_class_registry,
                 view_state,
             );
+            let parent_visible = true;
+            let parent_interactive = true;
 
             self.update_overrides_recursive(
                 blueprint,
@@ -606,8 +609,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 query_result,
                 root,
                 &default_query_range,
-                true, // parent_visible
-                true, // parent_interactive
+                parent_visible,
+                parent_interactive,
             );
         }
     }

@@ -243,7 +243,7 @@ For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
 Previously, it was possible to override visibility individually, but not recursively.
 Also, Viewer interaction [was hampered](https://github.com/rerun-io/rerun/issues/9254) by this.
 
-Overrides are for these two properties are now always recursive and can be done via the new `EntityBehavior` archetype.
+Overrides for these two properties are now always recursive, and can be applied using the new `EntityBehavior` archetype.
 
 Before:
 ```py
