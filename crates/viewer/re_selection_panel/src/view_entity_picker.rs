@@ -123,6 +123,8 @@ fn add_entities_ui(
                 filter_session_id,
             );
         });
+    } else {
+        ui.label("No entities match the filter.");
     }
 }
 
