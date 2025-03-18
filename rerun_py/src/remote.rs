@@ -1228,7 +1228,6 @@ impl PyRemoteRecording {
         include_semantically_empty_columns = false,
         include_indicator_columns = false,
         include_tombstone_columns = false,
-        include_properties_entity = true,
     ))]
     fn view(
         slf: Bound<'_, Self>,
@@ -1237,7 +1236,6 @@ impl PyRemoteRecording {
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
-        include_properties_entity: bool,
     ) -> PyResult<PyRecordingView> {
         // TODO(jleibs): We should be able to use this to resolve the timeline / contents
         //let borrowed_self = slf.borrow();
@@ -1253,7 +1251,6 @@ impl PyRemoteRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            include_properties_entity,
             filtered_index: Some(timeline),
             filtered_index_range: None,
             filtered_index_values: None,

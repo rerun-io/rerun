@@ -26,7 +26,7 @@ def test_load_recording() -> None:
         recording = rr.dataframe.load_recording(rrd)
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
+        view = recording.view(index="my_index", contents="/**")
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
@@ -37,7 +37,7 @@ def test_load_recording() -> None:
         recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
         assert recording is not None
 
-        view = recording.view(index="my_index", contents="/**", include_properties_entity=False)
+        view = recording.view(index="my_index", contents="/**")
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
@@ -138,7 +138,7 @@ class TestDataframe:
         assert schema.component_columns()[7].is_static is True
 
     def test_schema_view(self) -> None:
-        schema = self.recording.view(index="my_index", contents="points", include_properties_entity=False).schema()
+        schema = self.recording.view(index="my_index", contents="points").schema()
 
         assert len(schema.index_columns()) == 3
         # Position3D, Color
@@ -165,7 +165,7 @@ class TestDataframe:
         assert schema.component_columns()[2].component_name == "rerun.components.Radius"
 
     def test_full_view(self) -> None:
-        view = self.recording.view(index="my_index", contents="/**", include_properties_entity=False)
+        view = self.recording.view(index="my_index", contents="/**")
 
         table = view.select().read_all()
 
@@ -198,7 +198,7 @@ class TestDataframe:
         ]
 
         for expr in filter_expressions:
-            view = self.recording.view(index="my_index", contents=expr, include_properties_entity=False)
+            view = self.recording.view(index="my_index", contents=expr)
 
             table = view.select().read_all()
 
@@ -392,7 +392,7 @@ class TestDataframe:
             assert table.num_rows == 0
 
     def test_roundtrip_send(self) -> None:
-        df = self.recording.view(index="my_index", contents="/**", include_properties_entity=False).select().read_all()
+        df = self.recording.view(index="my_index", contents="/**").select().read_all()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
@@ -403,11 +403,7 @@ class TestDataframe:
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 
-        df_round_trip = (
-            round_trip_recording.view(index="my_index", contents="/**", include_properties_entity=False)
-            .select()
-            .read_all()
-        )
+        df_round_trip = round_trip_recording.view(index="my_index", contents="/**").select().read_all()
 
         print("df:")
         print(df)
