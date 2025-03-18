@@ -588,7 +588,17 @@ pub struct AppOptions {
 // Keep in sync with `index.ts`.
 #[derive(Clone, Deserialize)]
 pub struct Callbacks {
-    /// Fired when an item in the UI is selected.
+    /// Fired when the selection changes.
+    ///
+    /// Examples:
+    /// * Clicking on an entity
+    /// * Clicking on an entity instance
+    /// * Clicking on or inside a view
+    /// * Clicking on a container in the left panel
+    ///
+    /// This event is fired each time any part of the event payload changes,
+    /// this includes for example clicking on different parts of the same
+    /// entity in a 2D or 3D view.
     pub on_selectionchange: Callback,
 
     /// Fired when the a different timeline is selected.

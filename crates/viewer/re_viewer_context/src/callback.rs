@@ -9,20 +9,18 @@ use std::rc::Rc;
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackSelectionItem {
-    /// Selected an (entire) entity.
+    /// Selected an entity, or an instance of an entity.
     ///
-    /// Examples:
-    /// * A full point cloud.
-    /// * A mesh.
-    Entity { entity_path: String },
-
-    /// Selected an instance within an entity.
+    /// If the entity was selected within a view, then this also
+    /// includes the `view_id`.
     ///
-    /// Examples:
-    /// * A single point in a point cloud.
-    Instance {
+    /// If the entity was selected within a 2D or 3D space view,
+    /// then this also includes the position.
+    Entity {
         entity_path: String,
-        instance_id: u64,
+        instance_id: Option<u64>,
+        view_id: Option<String>,
+        position: Option<glam::Vec3>,
     },
 
     /// Selected a view.
@@ -32,10 +30,18 @@ pub enum CallbackSelectionItem {
     Container { container_id: String },
 }
 
+fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
+    match context {
+        Some(ItemContext::TwoD { pos, .. }) => Some(*pos),
+        Some(ItemContext::ThreeD { pos, .. }) => *pos,
+        _ => None,
+    }
+}
+
 impl CallbackSelectionItem {
     // TODO(jan): output more things, including parts of context for data results
     //            and other things not currently available here (e.g. mouse pos)
-    pub fn new(item: &Item, _context: &Option<ItemContext>) -> Option<Self> {
+    pub fn new(item: &Item, context: &Option<ItemContext>) -> Option<Self> {
         match item {
             Item::StoreId(_) | Item::AppId(_) | Item::ComponentPath(_) | Item::DataSource(_) => {
                 None
@@ -46,18 +52,19 @@ impl CallbackSelectionItem {
             Item::Container(container_id) => Some(Self::Container {
                 container_id: container_id.uuid().to_string(),
             }),
-            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
-                if instance_path.is_all() {
-                    Some(Self::Entity {
-                        entity_path: instance_path.entity_path.to_string(),
-                    })
-                } else {
-                    Some(Self::Instance {
-                        entity_path: instance_path.entity_path.to_string(),
-                        instance_id: instance_path.instance.get(),
-                    })
-                }
-            }
+
+            Item::DataResult(view_id, instance_path) => Some(Self::Entity {
+                entity_path: instance_path.entity_path.to_string(),
+                instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                view_id: Some(view_id.uuid().to_string()),
+                position: get_position(context),
+            }),
+            Item::InstancePath(instance_path) => Some(Self::Entity {
+                entity_path: instance_path.entity_path.to_string(),
+                instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                view_id: None,
+                position: get_position(context),
+            }),
         }
     }
 }
@@ -65,6 +72,16 @@ impl CallbackSelectionItem {
 #[derive(Clone)]
 pub struct Callbacks {
     /// Fired when the selection changes.
+    ///
+    /// Examples:
+    /// * Clicking on an entity
+    /// * Clicking on an entity instance
+    /// * Clicking on or inside a view
+    /// * Clicking on a container in the left panel
+    ///
+    /// This event is fired each time any part of the event payload changes,
+    /// this includes for example clicking on different parts of the same
+    /// entity in a 2D or 3D view.
     pub on_selection_change: Rc<dyn Fn(Vec<CallbackSelectionItem>)>,
 
     /// Fired when a different timeline is selected.
