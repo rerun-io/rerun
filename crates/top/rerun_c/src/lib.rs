@@ -255,8 +255,8 @@ impl TryFrom<CTimeline> for Timeline {
         let name = timeline.name.as_str("timeline.name")?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
-            // TODO(#8635): differentiate between duration and timestamp
-            CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+            CTimeType::Duration => TimeType::DurationNs,
+            CTimeType::Timestamp => TimeType::TimestampNs,
         };
         Ok(Self::new(name, typ))
     }
@@ -691,8 +691,8 @@ fn rr_recording_stream_set_time_impl(
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
-        // TODO(#8635): do different things for Duration and Timestamp
-        CTimeType::Duration | CTimeType::Timestamp => TimeType::Time,
+        CTimeType::Duration => TimeType::DurationNs,
+        CTimeType::Timestamp => TimeType::TimestampNs,
     };
     stream.set_time(timeline, TimeCell::new(time_type, value));
     Ok(())

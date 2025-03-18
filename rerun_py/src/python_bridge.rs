@@ -178,6 +178,11 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
+    // properties
+    m.add_class::<PyRecordingProperties>()?;
+    m.add_function(wrap_pyfunction!(set_properties, m)?)?;
+    m.add_function(wrap_pyfunction!(set_name, m)?)?;
+
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
 
@@ -808,7 +813,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
             let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
-            let bytes = PyBytes::new_bound(py, &data);
+            let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
         });
@@ -876,7 +881,7 @@ impl PyMemorySinkStorage {
 
             concat_bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
@@ -906,7 +911,7 @@ impl PyMemorySinkStorage {
 
             bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
@@ -925,7 +930,7 @@ impl PyBinarySinkStorage {
     #[pyo3(signature = (*, flush = true))]
     fn read<'p>(&self, flush: bool, py: Python<'p>) -> Bound<'p, PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        PyBytes::new_bound(
+        PyBytes::new(
             py,
             py.allow_threads(|| {
                 if flush {
@@ -1367,6 +1372,78 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
     Ok(path.to_string())
 }
 
+// --- Properties ---
+
+// TODO(#9284): This should really just be the `archetypes::RecordingProperties`.
+/// A helper class for setting recording properties.
+#[derive(Clone)]
+#[pyclass(frozen, name = "RecordingProperties")]
+struct PyRecordingProperties {
+    name: Option<String>,
+    start_time: Option<i64>,
+}
+
+#[pymethods]
+impl PyRecordingProperties {
+    /// Create new `RecordingProperties`.
+    ///
+    /// Parameters
+    /// ----------
+    /// name : `Optional[str]`
+    ///     The name of the recording.
+    ///
+    /// start_time : `Optional[int]`
+    ///     The start time of the recording in nanoseconds.
+    #[new]
+    #[pyo3(text_signature = "(self, name = None, start_time = None)")]
+    #[pyo3(signature = (name = None, start_time = None))]
+    fn new(name: Option<String>, start_time: Option<i64>) -> Self {
+        Self { name, start_time }
+    }
+}
+
+/// Set the properties of the recording.
+#[pyfunction]
+#[pyo3(signature = (properties, recording=None))]
+fn set_properties(
+    properties: PyRecordingProperties,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    if properties.name.is_none() && properties.start_time.is_none() {
+        re_log::warn!("None of the provided properties match the recording properties.");
+        return Ok(());
+    }
+
+    let mut prop_archetype = re_sdk::RecordingProperties::new();
+
+    if let Some(name) = properties.name {
+        prop_archetype = prop_archetype.with_name(name);
+    }
+    if let Some(started) = properties.start_time {
+        prop_archetype = prop_archetype.with_start_time(started);
+    }
+
+    recording
+        .set_properties(&prop_archetype)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Set the name of the recording.
+#[pyfunction]
+#[pyo3(signature = (name, recording=None))]
+fn set_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+    recording
+        .set_name(name)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
 // --- Helpers ---
 
 fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
@@ -1419,10 +1496,10 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
 }
 
 fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
-    let locals = PyDict::new_bound(py);
+    let locals = PyDict::new(py);
 
-    py.run_bound(
-        r#"
+    py.run(
+        cr#"
 import multiprocessing
 # authkey is the same for child and parent processes, so this is how we know we're the same
 authkey = multiprocessing.current_process().authkey

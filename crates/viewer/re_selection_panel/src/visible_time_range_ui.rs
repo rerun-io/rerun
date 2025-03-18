@@ -1,5 +1,6 @@
 use egui::{NumExt as _, Ui};
 
+use re_chunk::Timeline;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
     blueprint::components::VisibleTimeRange,
@@ -153,7 +154,8 @@ fn query_range_ui(
     is_view: bool,
 ) {
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
-    let time_type = time_ctrl.timeline().typ();
+    let timeline = *time_ctrl.timeline();
+    let time_type = timeline.typ();
 
     let mut interacting_with_controls = false;
     let markdown = "# Visible time range\n
@@ -223,7 +225,7 @@ Notes:
             } else {
                 match &query_range {
                     QueryRange::TimeRange(range) => {
-                        show_visual_time_range(ctx, ui, range, time_type, current_time);
+                        show_visual_time_range(ctx, ui, range, timeline, current_time);
                     }
                     QueryRange::LatestAt => {
                         let current_time =
@@ -312,9 +314,11 @@ fn show_visual_time_range(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     resolved_range: &TimeRange,
-    time_type: TimeType,
+    timeline: Timeline,
     current_time: TimeInt,
 ) {
+    let time_type = timeline.typ();
+
     // Show the resolved visible range as labels (user can't edit them):
     if resolved_range.start == TimeRangeBoundary::Infinite
         && resolved_range.end == TimeRangeBoundary::Infinite
@@ -324,14 +328,7 @@ fn show_visual_time_range(
         && resolved_range.end == TimeRangeBoundary::AT_CURSOR
     {
         let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
-        match time_type {
-            TimeType::Time => {
-                ui.label(format!("At current time: {current_time}"))
-            }
-            TimeType::Sequence => {
-                ui.label(format!("At current frame: {current_time}"))
-            }
-        }.on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
+        ui.label(format!("At {} = {current_time}", timeline.name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
     } else {
         egui::Grid::new("from_to_labels").show(ui, |ui| {
             ui.grid_left_hand_label("From");
@@ -372,11 +369,11 @@ fn resolved_visible_history_boundary_ui(
 ) {
     let boundary_type = match visible_history_boundary {
         TimeRangeBoundary::CursorRelative(_) => match time_type {
-            TimeType::Time => "current time",
+            TimeType::DurationNs | TimeType::TimestampNs => "current time",
             TimeType::Sequence => "current frame",
         },
         TimeRangeBoundary::Absolute(_) => match time_type {
-            TimeType::Time => "absolute time",
+            TimeType::DurationNs | TimeType::TimestampNs => "absolute time",
             TimeType::Sequence => "frame",
         },
         TimeRangeBoundary::Infinite => {
@@ -395,7 +392,7 @@ fn resolved_visible_history_boundary_ui(
             let offset = offset.0;
             if offset != 0 {
                 match time_type {
-                    TimeType::Time => {
+                    TimeType::DurationNs | TimeType::TimestampNs => {
                         // This looks like it should be generically handled somewhere like re_format,
                         // but this actually is rather ad hoc and works thanks to egui::DragValue
                         // biasing towards round numbers and the auto-scaling feature of
@@ -440,11 +437,11 @@ fn visible_history_boundary_combo_label(
 ) -> &'static str {
     match boundary {
         TimeRangeBoundary::CursorRelative(_) => match time_type {
-            TimeType::Time => "current time with offset",
+            TimeType::DurationNs | TimeType::TimestampNs => "current time with offset",
             TimeType::Sequence => "current frame with offset",
         },
         TimeRangeBoundary::Absolute(_) => match time_type {
-            TimeType::Time => "absolute time",
+            TimeType::DurationNs | TimeType::TimestampNs => "absolute time",
             TimeType::Sequence => "absolute frame",
         },
         TimeRangeBoundary::Infinite => {
@@ -548,7 +545,7 @@ fn visible_history_boundary_ui(
                         )
 
                         .on_hover_text(match time_type {
-                            TimeType::Time => "Time duration before/after the current time to use as time range boundary",
+                            TimeType::DurationNs | TimeType::TimestampNs => "Time duration before/after the current time to use as time range boundary",
                             TimeType::Sequence => "Number of frames before/after the current time to use a time range boundary",
                         })
                     ;
@@ -565,7 +562,7 @@ fn visible_history_boundary_ui(
 
             let mut edit_value = (*value).into();
             let response = match time_type {
-                TimeType::Time => {
+                TimeType::DurationNs | TimeType::TimestampNs => {
                     let (drag_resp, base_time_resp) = time_drag_value.temporal_drag_value_ui(
                         ui,
                         &mut edit_value,

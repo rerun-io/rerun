@@ -763,6 +763,40 @@ class RecordingStream:
             recording=self,
         )
 
+    def set_properties(self, properties: bindings.RecordingProperties) -> None:
+        """
+        Set the properties of the recording.
+
+        These are builtin recording properties known to the Rerun viewer.
+
+        Parameters
+        ----------
+        properties : RecordingProperties
+            The name of the recording.
+
+        """
+
+        from ._properties import set_properties
+
+        set_properties(properties, recording=self)
+
+    def set_name(self, name: str) -> None:
+        """
+        Set the name of the recording.
+
+        This name is shown in the Rerun Viewer.
+
+        Parameters
+        ----------
+        name : str
+            The name of the recording.
+
+        """
+
+        from ._properties import set_name
+
+        set_name(name, recording=self)
+
     @overload
     def set_time(self, timeline: str, *, sequence: int) -> None: ...
 

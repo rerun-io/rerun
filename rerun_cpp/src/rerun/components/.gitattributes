@@ -73,6 +73,7 @@ tensor_width_dimension.hpp linguist-generated=true
 texcoord2d.hpp linguist-generated=true
 text.hpp linguist-generated=true
 text_log_level.hpp linguist-generated=true
+timestamp.hpp linguist-generated=true
 transform_mat3x3.hpp linguist-generated=true
 transform_relation.cpp linguist-generated=true
 transform_relation.hpp linguist-generated=true

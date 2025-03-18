@@ -4,7 +4,10 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline, TimelineName};
+use re_log_types::{
+    ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
+};
+use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -418,14 +421,14 @@ fn entity_tree_stats_ui(
                 let typ = db.timeline_type(timeline);
 
                 data_rate = Some(match typ {
-                    re_log_types::TimeType::Time => {
+                    TimeType::Sequence => {
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
+                    }
+
+                    TimeType::DurationNs | TimeType::TimestampNs => {
                         let bytes_per_second = 1e9 * bytes_per_time;
 
                         format!("{}/s in '{}'", format_bytes(bytes_per_second), timeline)
-                    }
-
-                    re_log_types::TimeType::Sequence => {
-                        format!("{} / {}", format_bytes(bytes_per_time), timeline)
                     }
                 });
             }
@@ -746,18 +749,20 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let creation_time = entity_db
-        .store_info()
-        .map(|info| {
-            re_log_types::Timestamp::from(info.started)
+    let recording_name = if let Some(recording_name) = entity_db.property::<Name>() {
+        Some(recording_name.to_string())
+    } else {
+        entity_db.property::<Timestamp>().map(|started| {
+            re_log_types::Timestamp::from(started.0)
                 .to_jiff_zoned(ctx.app_options().timestamp_format)
                 .strftime("%H:%M:%S")
                 .to_string()
         })
-        .unwrap_or("<unknown time>".to_owned());
+    }
+    .unwrap_or("<unknown>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{creation_time} - {size}");
+    let title = format!("{app_id_prefix}{recording_name} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());

@@ -75,6 +75,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`Timestamp`](components/timestamp.md): When the recording started.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.

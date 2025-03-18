@@ -449,6 +449,7 @@ class Recording:
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
+        include_properties_entity: bool = True,
     ) -> RecordingView:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
@@ -487,6 +488,8 @@ class Recording:
 
             Tombstone columns are components used to represent clears. However, even without the clear
             tombstone columns, the view will still apply the clear semantics when resolving row contents.
+        include_properties_entity : bool, optional
+            Whether to include columns from the properties entity, by default `True`.
 
         Returns
         -------
@@ -1039,6 +1042,42 @@ def set_time_timestamp_nanos_since_epoch(
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
+
+class RecordingProperties:
+    """A helper class for setting recording properties."""
+
+    name: Optional[str]
+    start_time: Optional[int]
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        start_time: Optional[int] = None,
+    ) -> None:
+        """
+        Create new `RecordingProperties`.
+
+        Parameters
+        ----------
+        name : `Optional[str]`
+            The name of the recording.
+
+        start_time : `Optional[int]`
+            The start time of the recording in nanoseconds.
+
+        """
+
+def set_properties(
+    properties: RecordingProperties,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the properties of the recording."""
+
+def set_name(
+    name: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the name of the recording."""
 
 def disable_timeline(
     timeline: str,

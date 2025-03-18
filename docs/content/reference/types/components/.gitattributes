@@ -63,6 +63,7 @@ tensor_width_dimension.md linguist-generated=true
 texcoord2d.md linguist-generated=true
 text.md linguist-generated=true
 text_log_level.md linguist-generated=true
+timestamp.md linguist-generated=true
 transform_mat3x3.md linguist-generated=true
 transform_relation.md linguist-generated=true
 translation3d.md linguist-generated=true

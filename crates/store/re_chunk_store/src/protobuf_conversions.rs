@@ -166,6 +166,7 @@ impl TryFrom<re_protos::common::v1alpha1::Query> for crate::QueryExpression {
             include_semantically_empty_columns: value.include_semantically_empty_columns,
             include_indicator_columns: value.include_indicator_columns,
             include_tombstone_columns: value.include_tombstone_columns,
+            include_properties_entity: value.include_properties_entity,
             filtered_index: Some(filtered_index),
             filtered_index_range: value
                 .filtered_index_range
@@ -213,6 +214,7 @@ impl From<crate::QueryExpression> for re_protos::common::v1alpha1::Query {
             include_semantically_empty_columns: value.include_semantically_empty_columns,
             include_indicator_columns: value.include_indicator_columns,
             include_tombstone_columns: value.include_tombstone_columns,
+            include_properties_entity: value.include_properties_entity,
             filtered_index: value.filtered_index.map(|index_name| {
                 re_protos::common::v1alpha1::IndexColumnSelector {
                     timeline: Some(re_protos::common::v1alpha1::Timeline {
@@ -287,6 +289,7 @@ mod tests {
             include_indicator_columns: false,
             include_semantically_empty_columns: true,
             include_tombstone_columns: true,
+            include_properties_entity: false,
             filtered_index: Some(IndexColumnSelector {
                 timeline: Some(Timeline {
                     name: "log_time".to_owned(),

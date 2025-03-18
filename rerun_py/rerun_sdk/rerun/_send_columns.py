@@ -100,6 +100,7 @@ class TimeColumn(TimeColumnLike):
             self.type = pa.duration("ns")
             self.times = [to_nanos(duration) for duration in duration]
         elif timestamp is not None:
+            # TODO(zehiko) add back timezone support (#9310)
             self.type = pa.timestamp("ns")
             self.times = [to_nanos_since_epoch(timestamp) for timestamp in timestamp]
 
