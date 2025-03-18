@@ -142,10 +142,9 @@ impl TimeType {
         match self {
             Self::Sequence => ArrowDataType::Int64,
             Self::DurationNs => ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond),
-            Self::TimestampNs => ArrowDataType::Timestamp(
-                arrow::datatypes::TimeUnit::Nanosecond,
-                Some("+00:00".into()),
-            ),
+            Self::TimestampNs => {
+                ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
+            }
         }
     }
 
@@ -182,9 +181,7 @@ impl TimeType {
         match self {
             Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
             Self::DurationNs => Arc::new(arrow::array::DurationNanosecondArray::new(times, None)),
-            Self::TimestampNs => Arc::new(
-                arrow::array::TimestampNanosecondArray::new(times, None).with_timezone_utc(),
-            ),
+            Self::TimestampNs => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
         }
     }
 
@@ -227,8 +224,7 @@ impl TimeType {
                             Some(time.as_i64())
                         }
                     })
-                    .collect::<arrow::array::TimestampNanosecondArray>()
-                    .with_timezone_utc(),
+                    .collect::<arrow::array::TimestampNanosecondArray>(),
             ),
         }
     }
