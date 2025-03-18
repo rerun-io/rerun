@@ -51,6 +51,15 @@ class EntityBehavior(Archetype):
     rr.log("non_interactive_subtree", rr.Boxes2D(centers=(0, 0), half_sizes=(1, 1)))
     rr.log("non_interactive_subtree/also_non_interactive", rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/1200w.png">
+      <img src="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/full.png" width="640">
+    </picture>
+    </center>
 
     """
 
