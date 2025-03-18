@@ -42,7 +42,7 @@ impl ViewEntityPicker {
             egui_ctx,
             || {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
-                    .default_height(640.0)
+                    .min_height(260.0)
                     .full_span_content(true)
                     // we set the scroll area ourselves
                     .set_side_margin(false)
