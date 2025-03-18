@@ -48,3 +48,13 @@ impl Encode<RerunChunk> for ArrowRecordBatch {
         })
     }
 }
+
+impl Encode<re_protos::common::v1alpha1::DataframePart> for ArrowRecordBatch {
+    fn encode(&self) -> Result<re_protos::common::v1alpha1::DataframePart, CodecError> {
+        let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
+        Ok(re_protos::common::v1alpha1::DataframePart {
+            encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
+            payload: Some(payload),
+        })
+    }
+}
