@@ -85,7 +85,7 @@ impl ViewContents {
     /// The prefix for entity override paths.
     ///
     /// Has to be kept in sync with similar occurrences in other SDK languages.
-    const OVERRIDES_PREFIX: &'static str = "individual_overrides";
+    const OVERRIDES_PREFIX: &'static str = "overrides";
 
     /// Creates a new [`ViewContents`].
     ///
