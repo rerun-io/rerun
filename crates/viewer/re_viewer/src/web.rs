@@ -590,12 +590,6 @@ pub struct AppOptions {
 pub struct Callbacks {
     /// Fired when the selection changes.
     ///
-    /// Examples:
-    /// * Clicking on an entity
-    /// * Clicking on an entity instance
-    /// * Clicking on or inside a view
-    /// * Clicking on a container in the left panel
-    ///
     /// This event is fired each time any part of the event payload changes,
     /// this includes for example clicking on different parts of the same
     /// entity in a 2D or 3D view.
