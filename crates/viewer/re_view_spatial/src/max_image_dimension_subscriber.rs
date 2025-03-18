@@ -20,6 +20,7 @@ bitflags::bitflags! {
         const VIDEO = 0b10000;
     }
 }
+
 #[derive(Debug, Clone, Default)]
 pub struct MaxDimensions {
     pub width: u32,
