@@ -335,6 +335,10 @@ fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
     }
 }
 
+/// Prevent a UI from shrinking if the content size changes.
+///
+/// Should be called at the beginning of the [`egui::Ui`], before any other content is added.
+/// Will reset if the screen size changes.
 pub fn prevent_shrinking(ui: &mut egui::Ui) {
     // The Uis response at this point will conveniently contain last frame's rect
     let last_rect = ui.response().rect;
@@ -342,14 +346,14 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     let screen_size = ui.ctx().screen_rect().size();
 
     let id = ui.id().with("prevent_shrinking");
-    let changed = ui.data_mut(|d| {
-        let last_size = d.get_temp_mut_or_insert_with(id, || screen_size);
-        let changed = *last_size != screen_size;
-        *last_size = screen_size;
+    let screen_size_changed = ui.data_mut(|d| {
+        let last_screen_size = d.get_temp_mut_or_insert_with(id, || screen_size);
+        let changed = *last_screen_size != screen_size;
+        *last_screen_size = screen_size;
         changed
     });
 
-    if last_rect.is_positive() && !changed {
+    if last_rect.is_positive() && !screen_size_changed {
         let min_size = ui.min_size();
         // Set the min size, respecting the current min size.
         ui.set_min_size(egui::Vec2::max(last_rect.size(), min_size));
