@@ -279,8 +279,8 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn parse_forgiving(rules: &str) -> Self {
-        let split_rules = split_whitespace_smart(rules);
+    pub fn parse_forgiving(rules: impl AsRef<str>) -> Self {
+        let split_rules = split_whitespace_smart(rules.as_ref());
         Self::from_query_expressions(split_rules)
     }
 
@@ -301,7 +301,7 @@ impl EntityPathFilter {
     ///
     /// Conflicting rules are resolved by the last rule.
     #[allow(clippy::unnecessary_wraps)] // TODO(andreas): Do some error checking here?
-    pub fn parse_strict(rules: &str) -> Result<Self, EntityPathFilterError> {
+    pub fn parse_strict(rules: impl AsRef<str>) -> Result<Self, EntityPathFilterError> {
         Ok(Self::parse_forgiving(rules))
     }
 
