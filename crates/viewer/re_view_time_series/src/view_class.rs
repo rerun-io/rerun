@@ -32,9 +32,10 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
+use crate::{
+    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
+    PlotSeriesKind,
+};
 
 // ---
 
