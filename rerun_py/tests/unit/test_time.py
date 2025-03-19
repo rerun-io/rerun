@@ -36,9 +36,6 @@ def test_to_nanos_valid(duration: int | float | timedelta | np.timedelta64, expe
 INVALID_TO_NANOS_CASES = [
     "invalid",
     None,
-    # Not enough precision for nanosecond scale
-    np.float16(1.2),
-    np.float32(2.4),
     [1, 2, 3],
     3 + 4j,
 ]

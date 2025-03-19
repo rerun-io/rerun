@@ -117,8 +117,7 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
         return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
     elif isinstance(
         duration,
-        # Only allowing doubles since 32-bit and 16-bit floats lose precision when multiplying at this scale
-        (float, np.float64),
+        (float, np.floating),
     ):
         return round(1e9 * float(duration))  # Interpret as seconds and convert to nanos
     else:
@@ -132,7 +131,7 @@ def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | date
         return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
     elif isinstance(
         timestamp,
-        # Only allowing doubles since 32-bit and 16-bit floats lose precision when multiplying at this scale
+        # Only allowing f64 since anything less has way too little precision for measuring time since 1970
         (float, np.float64),
     ):
         # Interpret as seconds and convert to nanos
