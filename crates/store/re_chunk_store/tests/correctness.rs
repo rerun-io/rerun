@@ -247,7 +247,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     let entity_path = EntityPath::from("this/that");
     let now = Timestamp::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.ns_since_epoch();
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
     let num_instances = 3;

@@ -122,7 +122,7 @@ impl From<super::Duration> for TimeCell {
 impl From<super::Timestamp> for TimeCell {
     #[inline]
     fn from(timestamp: super::Timestamp) -> Self {
-        Self::from_timestamp_nanos_since_epoch(timestamp.ns_since_epoch())
+        Self::from_timestamp_nanos_since_epoch(timestamp.nanos_since_epoch())
     }
 }
 

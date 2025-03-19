@@ -28,7 +28,7 @@ impl From<crate::common::v1alpha1::Time> for re_log_types::Timestamp {
 impl From<re_log_types::Timestamp> for crate::common::v1alpha1::Time {
     fn from(value: re_log_types::Timestamp) -> Self {
         Self {
-            nanos_since_epoch: value.ns_since_epoch(),
+            nanos_since_epoch: value.nanos_since_epoch(),
         }
     }
 }

@@ -10,16 +10,16 @@ pub struct Timestamp(i64);
 impl Timestamp {
     #[inline]
     pub fn now() -> Self {
-        let ns_since_epoch = web_time::SystemTime::UNIX_EPOCH
+        let nanos_since_epoch = web_time::SystemTime::UNIX_EPOCH
             .elapsed()
             .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
-        Self(ns_since_epoch)
+        Self(nanos_since_epoch)
     }
 
     #[inline]
-    pub fn from_ns_since_epoch(ns_since_epoch: i64) -> Self {
-        Self(ns_since_epoch)
+    pub fn from_ns_since_epoch(nanos_since_epoch: i64) -> Self {
+        Self(nanos_since_epoch)
     }
 
     #[inline]
@@ -33,7 +33,7 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn ns_since_epoch(self) -> i64 {
+    pub fn nanos_since_epoch(self) -> i64 {
         self.0
     }
 }
@@ -60,7 +60,7 @@ impl From<super::TimeInt> for Timestamp {
 impl From<Timestamp> for super::TimeInt {
     #[inline]
     fn from(timestamp: Timestamp) -> Self {
-        Self::saturated_temporal_i64(timestamp.ns_since_epoch())
+        Self::saturated_temporal_i64(timestamp.nanos_since_epoch())
     }
 }
 
@@ -99,7 +99,7 @@ impl From<Timestamp> for jiff::Timestamp {
     fn from(value: Timestamp) -> Self {
         // Cannot fail - see docs for jiff::Timestamp::from_nanosecond
         #[expect(clippy::unwrap_used)]
-        Self::from_nanosecond(value.ns_since_epoch() as i128).unwrap()
+        Self::from_nanosecond(value.nanos_since_epoch() as i128).unwrap()
     }
 }
 
@@ -200,7 +200,7 @@ impl Timestamp {
     pub fn format_time_compact(self, timestamp_format: TimestampFormat) -> String {
         match timestamp_format {
             TimestampFormat::UnixEpoch => {
-                let ns = self.ns_since_epoch();
+                let ns = self.nanos_since_epoch();
                 let fractional_ns = ns % 1_000_000_000;
                 let is_whole_second = fractional_ns == 0;
                 if is_whole_second {
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn test_formatting_whole_second() {
         let timestamp: Timestamp = "2022-01-01 00:00:03Z".parse().unwrap();
-        assert_eq!(timestamp.ns_since_epoch(), 1_640_995_203_000_000_000);
+        assert_eq!(timestamp.nanos_since_epoch(), 1_640_995_203_000_000_000);
         assert_eq!(timestamp.format_iso(), "2022-01-01T00:00:03Z");
         assert_eq!(
             "2022-01-01T00:00:03Z".parse::<Timestamp>().unwrap(),
@@ -312,7 +312,7 @@ mod tests {
     #[test]
     fn test_formatting_subsecond() {
         let timestamp: Timestamp = "2022-01-01 00:00:03.123456789Z".parse().unwrap();
-        assert_eq!(timestamp.ns_since_epoch(), 1_640_995_203_123_456_789);
+        assert_eq!(timestamp.nanos_since_epoch(), 1_640_995_203_123_456_789);
         assert_eq!(timestamp.format_iso(), "2022-01-01T00:00:03.123456789Z");
         assert_eq!(
             "2022-01-01T00:00:03.123456789Z"

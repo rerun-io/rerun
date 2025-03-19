@@ -1561,7 +1561,8 @@ impl RecordingStream {
             // Inject the log time
             {
                 let time_timeline = Timeline::log_time();
-                let time = TimeInt::new_temporal(re_log_types::Timestamp::now().ns_since_epoch());
+                let time =
+                    TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
                 let repeated_time = std::iter::repeat(time.as_i64())
                     .take(chunk.num_rows())
