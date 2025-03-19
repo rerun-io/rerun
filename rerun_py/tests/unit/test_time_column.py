@@ -16,7 +16,7 @@ VALID_SEQUENCE_CASES = [
 
 
 @pytest.mark.parametrize("sequence,expected", VALID_SEQUENCE_CASES)
-def test_sequence_column(sequence, expected) -> None:
+def test_sequence_column(sequence: Iterable[int], expected: pa.Array) -> None:
     column = rr.TimeColumn("sequence", sequence=sequence)
     assert column.as_arrow_array() == expected
 
@@ -100,6 +100,8 @@ VALID_TIMESTAMP_CASES = [
 
 
 @pytest.mark.parametrize("timestamp,expected", VALID_TIMESTAMP_CASES)
-def test_timestamp_column(timestamp, expected) -> None:
+def test_timestamp_column(
+    timestamp: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64], expected: pa.Array
+) -> None:
     column = rr.TimeColumn("timestamp", timestamp=timestamp)
     assert column.as_arrow_array() == expected
