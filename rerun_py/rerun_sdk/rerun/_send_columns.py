@@ -99,14 +99,14 @@ class TimeColumn(TimeColumnLike):
         elif duration is not None:
             self.type = pa.duration("ns")
             if isinstance(duration, np.ndarray):
-                self.times = duration.astype("timedelta64[ns]").tolist()
+                self.times = duration.astype("timedelta64[ns]").tolist()  # type: ignore[assignment]
             else:
                 self.times = [np.int64(to_nanos(duration)).astype("timedelta64[ns]") for duration in duration]
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
             self.type = pa.timestamp("ns")
             if isinstance(timestamp, np.ndarray):
-                self.times = timestamp.astype("datetime64[ns]").tolist()
+                self.times = timestamp.astype("datetime64[ns]").tolist()  # type: ignore[assignment]
             else:
                 self.times = [
                     np.int64(to_nanos_since_epoch(timestamp)).astype("datetime64[ns]") for timestamp in timestamp
