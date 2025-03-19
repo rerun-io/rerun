@@ -49,7 +49,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let results = data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query);
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 

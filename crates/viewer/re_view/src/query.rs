@@ -159,7 +159,7 @@ fn query_overrides<'a>(
     for component_name in component_names {
         if let Some(override_value) = data_result
             .property_overrides
-            .resolved_component_overrides
+            .component_overrides
             .get(component_name)
         {
             let current_query = match override_value.store_kind {

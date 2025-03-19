@@ -54,7 +54,7 @@ impl VisualizerSystem for TextLogSystem {
             re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
 
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             self.process_entity(ctx, &query, data_result);
         }
 

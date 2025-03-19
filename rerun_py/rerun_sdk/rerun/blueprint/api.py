@@ -152,7 +152,7 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
+            log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
             if isinstance(components, Iterable):
                 components_list = list(components)
 

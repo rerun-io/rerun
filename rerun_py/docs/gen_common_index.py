@@ -158,6 +158,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="General",
         class_list=[
             "archetypes.Clear",
+            "blueprint.archetypes.EntityBehavior",
             "archetypes.RecordingProperties",
         ],
         gen_page=False,
@@ -445,6 +446,8 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
+Rerun needs at least Python 3.9 to run.
+
 * [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)

@@ -120,7 +120,7 @@ impl SeriesPointSystem {
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
-        let data_results = query.iter_visible_data_results(ctx, Self::identifier());
+        let data_results = query.iter_visible_data_results(Self::identifier());
 
         let parallel_loading = true;
         if parallel_loading {
