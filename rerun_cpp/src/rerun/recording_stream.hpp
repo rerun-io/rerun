@@ -889,7 +889,7 @@ namespace rerun {
             const {
             rr_error status = {};
             this->log_static(
-                this->PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path),
+                this->PARTITION_PROPERTIES_ENTITY_PATH + "/" + std::string(entity_path),
                 properties...
             );
             return status;
