@@ -3,6 +3,7 @@ title = "IMU signals"
 tags = ["Plots"]
 description = "Log multi dimensional signals under a single entity."
 thumbnail_dimensions = [480, 480]
+channel = "release"
 -->
 
 This example demonstrates how to log multi dimensional signals with the Rerun SDK, using the [TUM VI Benchmark](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset).
