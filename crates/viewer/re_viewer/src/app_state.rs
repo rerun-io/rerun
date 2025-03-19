@@ -697,7 +697,9 @@ fn handle_time_ctrl_callbacks(
     callbacks: Option<&crate::callback::Callbacks>,
     response: &re_viewer_context::TimeControlResponse,
 ) {
-    let Some(callbacks) = callbacks else { return };
+    let Some(callbacks) = callbacks else {
+        return;
+    };
 
     if let Some(playing) = response.playing_change {
         if playing {
