@@ -43,7 +43,7 @@ pub use self::{
     error::Error,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeRange {
     pub timeline: re_log_types::Timeline,
     pub range: re_log_types::ResolvedTimeRangeF,
