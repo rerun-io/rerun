@@ -98,7 +98,10 @@ class TimeColumn(TimeColumnLike):
             self.times = sequence
         elif duration is not None:
             self.type = pa.duration("ns")
-            self.times = [to_nanos(duration) for duration in duration]
+            if isinstance(timestamp, np.ndarray):
+                self.times = timestamp.astype("timedelta64[ns]").astype("int64").tolist()
+            else:
+                self.times = [to_nanos(duration) for duration in duration]
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
             self.type = pa.timestamp("ns")
