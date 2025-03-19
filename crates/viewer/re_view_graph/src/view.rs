@@ -99,7 +99,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         suggested_filter: &ResolvedEntityPathFilter,
     ) -> ViewSpawnHeuristics {
-        // TODO(@grtlr): Consider using `suggest_view_for_each_entity` here too.
+        // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())

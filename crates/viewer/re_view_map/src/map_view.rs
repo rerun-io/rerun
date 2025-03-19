@@ -156,7 +156,7 @@ impl ViewClass for MapView {
         ]
         .iter()
         .any(|system_id| {
-            // TODO(@grtlr): This looks slow.
+            // TODO(grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
                 .is_some_and(|indicated_entities| {
