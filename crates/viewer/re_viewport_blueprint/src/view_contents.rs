@@ -516,7 +516,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .latest_at(blueprint_query, override_path, [component_name])
                     .component_batch_raw(&component_name)
                 {
-                    // We regard empty overrides as non-existant. This is important because there is no other way of doing component-clears.
+                    // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
                     if !component_data.is_empty() {
                         // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
                         component_overrides.insert(
