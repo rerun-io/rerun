@@ -1,7 +1,7 @@
-use crate::Item;
-use crate::ItemCollection;
-use crate::ItemContext;
 use re_log_types::{TimeReal, Timeline};
+use re_viewer_context::Item;
+use re_viewer_context::ItemCollection;
+use re_viewer_context::ItemContext;
 use std::rc::Rc;
 
 /// A single item in a selection.

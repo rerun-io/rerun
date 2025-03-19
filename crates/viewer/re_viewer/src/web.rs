@@ -687,7 +687,7 @@ fn create_app(
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
 
-        callbacks: callbacks.clone().map(|opts| re_viewer_context::Callbacks {
+        callbacks: callbacks.clone().map(|opts| crate::Callbacks {
             on_selection_change: Rc::new(move |selection| {
                 // Express the collection as a flat list of items.
                 let array = js_sys::Array::new_with_length(selection.len() as u32);
