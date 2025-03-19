@@ -135,7 +135,8 @@ def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | date
         # Only allowing doubles since 32-bit and 16-bit floats lose precision when multiplying at this scale
         (float, np.float64),
     ):
-        return np.round(1e9 * timestamp).astype("int64")  # Interpret as seconds and convert to nanos
+        # Interpret as seconds and convert to nanos
+        return np.round(1e9 * timestamp).astype("int64")  # type: ignore[no-any-return]
     elif isinstance(timestamp, datetime):
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
@@ -143,7 +144,7 @@ def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | date
             timestamp = timestamp.astimezone(timezone.utc)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-        return np.round(1e9 * (timestamp - epoch).total_seconds()).astype("int64")
+        return np.round(1e9 * (timestamp - epoch).total_seconds()).astype("int64")  # type: ignore[no-any-return]
     elif isinstance(timestamp, np.datetime64):
         return timestamp.astype("datetime64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
