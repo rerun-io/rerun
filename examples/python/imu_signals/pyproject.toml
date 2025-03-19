@@ -1,16 +1,16 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "imu_signals"
 version = "0.1.0"
 requires-python = "<3.12"
 dependencies = ["numpy", "requests>=2.31,<3", "rerun-sdk", "pandas"]
 
-
 [project.scripts]
 imu_signals = "imu_signals:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 
 [tool.rerun-example]
 skip = false
