@@ -1,8 +1,9 @@
 [project]
 name = "imu_signals"
+description = "Log multi dimensional signals under a single entity."
 version = "0.1.0"
 requires-python = "<3.12"
-dependencies = ["numpy", "requests>=2.31,<3", "rerun-sdk", "pandas"]
+dependencies = ["numpy", "requests>=2.31,<3", "rerun-sdk", "pandas", "tqdm"]
 
 [project.scripts]
 imu_signals = "imu_signals:main"

@@ -10,10 +10,11 @@ import pandas as pd
 import requests
 import rerun as rr
 from rerun import blueprint as rrb
+from tqdm.auto import tqdm
 
 cwd = pathlib.Path(__file__).parent.resolve()
 
-DATASET_URL = "https://vision.in.tum.de/tumvi/exported/euroc/512_16/dataset-corridor4_512_16.tar"
+DATASET_URL = "https://storage.googleapis.com/rerun-example-datasets/imu_signals/tum_vi_corridor4_512_16.tar"
 DATASET_NAME = "dataset-corridor4_512_16"
 XYZ_AXIS_NAMES = ["x", "y", "z"]
 XYZ_AXIS_COLORS = [[(231, 76, 60), (39, 174, 96), (52, 120, 219)]]
@@ -42,14 +43,21 @@ def main() -> None:
 
 def _download_dataset(root: pathlib.Path, dataset_url: str = DATASET_URL) -> None:
     os.makedirs(root, exist_ok=True)
-    tar_path = os.path.join(root, "dataset-corridor4_512_16.tar")
-    print("Downloading dataset...")
-    with requests.get(dataset_url, stream=True) as r:
-        r.raise_for_status()
-        with open(tar_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+    tar_path = os.path.join(root, f"{DATASET_NAME}.tar")
+    response = requests.get(dataset_url, stream=True)
+
+    total_size = int(response.headers.get("content-length", 0))
+    block_size = 1024
+
+    with tqdm(desc="Downloading dataset", total=total_size, unit="B", unit_scale=True) as pb:
+        with open(tar_path, "wb") as file:
+            for data in response.iter_content(chunk_size=block_size):
+                pb.update(len(data))
+                file.write(data)
+
+    if total_size != 0 and pb.n != total_size:
+        raise RuntimeError("Failed to download complete dataset!")
+
     print("Extracting dataset...")
     with tarfile.open(tar_path, "r:") as tar:
         tar.extractall(path=root)

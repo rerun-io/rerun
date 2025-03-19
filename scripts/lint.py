@@ -1218,6 +1218,9 @@ def main() -> None:
         "./docs/snippets/all/tutorials/custom-application-id.rs",  # nuh-uh, I don't want rerun_example_ here
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
+        "./examples/python/imu_signals/dataset-corridor4_512_16/dso/cam0/pcalib.txt",  # calibration data in dataset
+        "./examples/python/imu_signals/dataset-corridor4_512_16/dso/cam1/pcalib.txt",  # calibration data in dataset
+        "./examples/python/imu_signals/LICENSE.txt",  # License in dataset
         "./examples/python/objectron/objectron/proto/",  # auto-generated
         "./examples/rust/objectron/src/objectron.rs",  # auto-generated
         "./rerun_cpp/docs/doxygen-awesome/",  # copied from an external repository

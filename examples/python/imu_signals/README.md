@@ -57,3 +57,11 @@ To experiment with the provided example, simply execute the main Python script:
 ```bash
 python -m imu_signals
 ```
+
+## Attribution
+
+This example uses a scene from the **TUM VI Benchmark dataset**, originally provided by [Technical University of Munich (TUM)](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset).
+The dataset is licensed under **Creative Commons Attribution 4.0 (CC BY 4.0)**.
+
+- Original dataset: [TUM VI Benchmark](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset)
+- License details: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
