@@ -201,11 +201,6 @@ message StoreId {
   string id = 2;
 }
 
-// A date-time represented as nanoseconds since unix epoch
-message Time {
-  int64 nanos_since_epoch = 1;
-}
-
 message Tuid {
   // Approximate nanoseconds since epoch.
   fixed64 time_ns = 1;

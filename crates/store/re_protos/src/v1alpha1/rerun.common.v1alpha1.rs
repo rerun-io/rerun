@@ -431,22 +431,6 @@ impl ::prost::Name for StoreId {
         "/rerun.common.v1alpha1.StoreId".into()
     }
 }
-/// A date-time represented as nanoseconds since unix epoch
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct Time {
-    #[prost(int64, tag = "1")]
-    pub nanos_since_epoch: i64,
-}
-impl ::prost::Name for Time {
-    const NAME: &'static str = "Time";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.Time".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.Time".into()
-    }
-}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
