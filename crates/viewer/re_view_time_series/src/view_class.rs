@@ -397,11 +397,11 @@ impl ViewClass for TimeSeriesView {
             .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
-                format_time(
+                re_log_types::TimeCell::new(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
-                    timestamp_format,
                 )
+                .format_compact(timestamp_format)
             })
             .y_axis_formatter(move |mark, _| format_y_axis(mark))
             .label_formatter(move |name, value| {
@@ -725,17 +725,6 @@ fn add_series_to_plot(
             // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}
         }
-    }
-}
-
-fn format_time(time_type: TimeType, time_int: i64, timestamp_format: TimestampFormat) -> String {
-    match time_type {
-        TimeType::DurationNs => {
-            re_log_types::Duration::from_nanos(time_int).format_subsecond_as_relative()
-        }
-        TimeType::TimestampNs => re_log_types::Timestamp::from_ns_since_epoch(time_int)
-            .format_time_compact(timestamp_format),
-        TimeType::Sequence => time_type.format(TimeInt::new_temporal(time_int), timestamp_format),
     }
 }
 

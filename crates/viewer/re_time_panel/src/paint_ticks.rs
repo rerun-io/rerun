@@ -76,14 +76,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                |ns| match time_type {
-                    TimeType::DurationNs => {
-                        re_log_types::Duration::from_nanos(ns).format_subsecond_as_relative()
-                    }
-                    TimeType::TimestampNs => re_log_types::Timestamp::from_ns_since_epoch(ns)
-                        .format_time_compact(timestamp_format),
-                    TimeType::Sequence => unreachable!(),
-                },
+                |ns| re_log_types::TimeCell::new(time_type, ns).format_compact(timestamp_format),
             )
         }
 

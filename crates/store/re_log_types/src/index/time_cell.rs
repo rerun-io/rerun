@@ -159,6 +159,23 @@ impl TryFrom<web_time::SystemTime> for TimeCell {
 
 // ------------------------------------------------------------------
 
+impl TimeCell {
+    pub fn format_compact(&self, timestamp_format: super::TimestampFormat) -> String {
+        let Self { typ, value } = *self;
+
+        match typ {
+            TimeType::DurationNs => {
+                crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
+            }
+
+            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(value.into())
+                .format_time_compact(timestamp_format),
+
+            TimeType::Sequence => typ.format(value, timestamp_format),
+        }
+    }
+}
+
 impl std::fmt::Display for TimeCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.typ {
