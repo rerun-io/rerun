@@ -1156,6 +1156,7 @@ impl App {
                 return;
             };
 
+            let time_range_url = endpoint.to_string();
             // %-encode the time range URL, because it's a url-within-a-url.
             // This results in VERY ugly links.
             // TODO(jan): Tweak the asciiset used here.
@@ -1163,7 +1164,7 @@ impl App {
             //            for linking to recordings that isn't a full url and
             //            can actually exist in a query value.
             let url_query = percent_encoding::utf8_percent_encode(
-                &endpoint.to_string(),
+                &time_range_url,
                 percent_encoding::NON_ALPHANUMERIC,
             );
 
