@@ -1,12 +1,9 @@
 import os
 from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
 
 import pyarrow as pa
-
-from rerun._baseclasses import AsComponents, DescribedComponentBatch
-from rerun.recording_stream import RecordingStream
 
 from .types import (
     AnyColumn,

@@ -63,6 +63,7 @@ namespace rerun {
         // TODO(@grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
         //               that we don't have to hardcode this here.
         inline static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
+
       public:
         /// Creates a new recording stream to log to.
         ///
@@ -873,7 +874,8 @@ namespace rerun {
         /// \param properties The properties of the recording.
         /// \see `try_set_properties`
         template <typename... Ts>
-        void set_properties_with_prefix(std::string_view entity_path, const Ts&... properties) const {
+        void set_properties_with_prefix(std::string_view entity_path, const Ts&... properties)
+            const {
             try_set_properties_with_prefix(entity_path, properties...).handle();
         }
 
@@ -883,9 +885,13 @@ namespace rerun {
         /// \param properties The properties of the recording.
         /// \see `set_properties`
         template <typename... Ts>
-        Error try_set_properties_with_prefix(std::string_view entity_path, const Ts&... properties) const {
+        Error try_set_properties_with_prefix(std::string_view entity_path, const Ts&... properties)
+            const {
             rr_error status = {};
-            this->log_static(this->PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path), properties...);
+            this->log_static(
+                this->PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path),
+                properties...
+            );
             return status;
         }
 

@@ -53,8 +53,8 @@ from ._log import (
 )
 from ._properties import (
     set_name as set_name,
-    set_start_time_nanos as set_start_time_nanos,
     set_properties as set_properties,
+    set_start_time_nanos as set_start_time_nanos,
 )
 from ._send_columns import (
     TimeColumn as TimeColumn,

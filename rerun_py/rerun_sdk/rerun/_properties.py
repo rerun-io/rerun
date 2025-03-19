@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import Iterable, Optional
 
-from rerun._log import log
+from collections.abc import Iterable
+from typing import Optional
+
 import rerun_bindings as bindings
 
-from rerun.error_utils import catch_and_log_exceptions
 from rerun._baseclasses import AsComponents, DescribedComponentBatch
+from rerun._log import log
+from rerun.error_utils import catch_and_log_exceptions
 
 from .recording_stream import RecordingStream
 
