@@ -1,4 +1,4 @@
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{
         self,
@@ -94,17 +94,21 @@ impl ViewClass for GraphView {
         Default::default()
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
+        // TODO(@grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
         {
-            ViewSpawnHeuristics::new(
-                maybe_visualizable
-                    .iter()
-                    .cloned()
-                    .map(RecommendedView::new_single_entity),
-            )
+            ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
+                suggested_filter
+                    .matches(&entity)
+                    .then_some(RecommendedView::new_single_entity(entity))
+            }))
         } else {
             ViewSpawnHeuristics::empty()
         }

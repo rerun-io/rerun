@@ -89,12 +89,24 @@ impl TryFrom<&str> for EntityPathFilter {
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-///
-/// Unless otherwise specified, the [`ResolvedEntityPathFilter`] will filter out entities
-/// at [`EntityPath::partition_properties`].
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
+
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ResolvedEntityPathFilter {
     rules: BTreeMap<ResolvedEntityPathRule, RuleEffect>,
+}
+
+impl ResolvedEntityPathFilter {
+    /// Creates an filter that includes everything under [`EntityPath::root`],
+    /// except for [`EntityPath::partition_properties`].
+    pub fn exclude_properties() -> Self {
+        Self {
+            rules: std::iter::once((
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Exclude,
+            ))
+            .collect(),
+        }
+    }
 }
 
 impl std::fmt::Debug for ResolvedEntityPathFilter {

@@ -1,7 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     View as _, ViewClassIdentifier,
@@ -166,13 +166,18 @@ impl ViewClass for SpatialView2D {
         Box::new(context.unwrap_or_default())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
+            suggested_filter,
         );
 
         let image_dimensions =

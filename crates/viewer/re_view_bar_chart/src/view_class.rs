@@ -1,5 +1,5 @@
 use egui::ahash::HashMap;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{archetypes::PlotLegend, components::Corner2D},
     components::Visible,
@@ -94,9 +94,13 @@ impl ViewClass for BarChartView {
         }
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, suggested_filter)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {

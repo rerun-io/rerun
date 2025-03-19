@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewerContext;
 
@@ -15,6 +15,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
     visualizer_kind: SpatialViewKind,
+    suggested_filter: &ResolvedEntityPathFilter,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
@@ -28,7 +29,24 @@ pub fn default_visualized_entities_for_visualizer_kind(
 
             if data.preferred_view_kind == Some(visualizer_kind) {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
+
+                if indicator_matching
+                    .iter()
+                    .all(|e| suggested_filter.matches(e))
+                {
+                    // We can return early here, because the intersection below would be empty.
+                    return None;
+                }
+
                 let maybe_visualizable = ctx.maybe_visualizable_entities_per_visualizer.get(&id)?;
+
+                if maybe_visualizable
+                    .iter()
+                    .all(|e| suggested_filter.matches(e))
+                {
+                    return None;
+                }
+
                 Some(indicator_matching.intersection(maybe_visualizable))
             } else {
                 None

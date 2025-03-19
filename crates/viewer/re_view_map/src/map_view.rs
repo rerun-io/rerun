@@ -4,7 +4,7 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
@@ -142,7 +142,11 @@ impl ViewClass for MapView {
         true
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // Spawn a single map view at the root if any geospatial entity exists.
@@ -152,9 +156,15 @@ impl ViewClass for MapView {
         ]
         .iter()
         .any(|system_id| {
+            // TODO(@grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
-                .is_some_and(|indicated_entities| !indicated_entities.is_empty())
+                .is_some_and(|indicated_entities| {
+                    !indicated_entities.is_empty()
+                        && !indicated_entities
+                            .iter()
+                            .all(|e| suggested_filter.matches(e))
+                })
         });
 
         if any_map_entity {
