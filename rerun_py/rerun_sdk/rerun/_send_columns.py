@@ -102,7 +102,7 @@ class TimeColumn(TimeColumnLike):
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
             self.type = pa.timestamp("ns")
-            self.times = [to_nanos_since_epoch(timestamp) for timestamp in timestamp]
+            self.times = [to_nanos_since_epoch(timestamp).astype("datetime64[ns]") for timestamp in timestamp]
 
     def timeline_name(self) -> str:
         """Returns the name of the timeline."""

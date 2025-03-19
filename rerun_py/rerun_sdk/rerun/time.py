@@ -108,35 +108,44 @@ def set_time(
         )
 
 
-def to_nanos(duration: int | float | timedelta | np.timedelta64) -> int:
-    if isinstance(duration, (int, np.integer)):
-        return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
-    elif isinstance(duration, float):
-        return round(1e9 * duration)  # Interpret as seconds and convert to nanos
+def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.timedelta64) -> int:
+    if isinstance(duration, np.timedelta64):
+        return duration.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     elif isinstance(duration, timedelta):
         return round(1e9 * duration.total_seconds())
-    elif isinstance(duration, np.timedelta64):
-        return duration.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
+    elif isinstance(duration, (int, np.integer)):
+        return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
+    elif isinstance(
+        duration,
+        # Only allowing doubles since 32-bit and 16-bit floats lose precision when multiplying at this scale
+        (float, np.float64),
+    ):
+        return round(1e9 * float(duration))  # Interpret as seconds and convert to nanos
     else:
         raise TypeError(
             f"set_time: duration must be an int, float, timedelta, or numpy.timedelta64 object, got {type(duration)}",
         )
 
 
-def to_nanos_since_epoch(timestamp: int | float | datetime | np.datetime64) -> int:
+def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64) -> np.int64:
     if isinstance(timestamp, (int, np.integer)):
-        return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
-    elif isinstance(timestamp, float):
-        return round(1e9 * timestamp)  # Interpret as seconds and convert to nanos
+        return np.int64(1_000_000_000 * int(timestamp))  # Interpret as seconds and convert to nanos
+    elif isinstance(
+        timestamp,
+        # Only allowing doubles since 32-bit and 16-bit floats lose precision when multiplying at this scale
+        (float, np.float64),
+    ):
+        return np.round(1e9 * timestamp).astype("int64")  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         else:
             timestamp = timestamp.astimezone(timezone.utc)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
-        return round(1e9 * (timestamp - epoch).total_seconds())
+
+        return np.round(1e9 * (timestamp - epoch).total_seconds()).astype("int64")
     elif isinstance(timestamp, np.datetime64):
-        return timestamp.astype("int64")  # type: ignore[no-any-return]
+        return timestamp.astype("datetime64[ns]").astype("int64")  # type: ignore[no-any-return]
     else:
         raise TypeError(
             f"set_time: timestamp must be an int, float, datetime, or numpy.datetime64 object, got {type(timestamp)}",
