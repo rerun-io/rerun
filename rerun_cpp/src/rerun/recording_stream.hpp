@@ -60,7 +60,7 @@ namespace rerun {
     /// internal clock.
     class RecordingStream {
       private:
-        // TODO(@grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
+        // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
         //               that we don't have to hardcode this here.
         inline static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
 
