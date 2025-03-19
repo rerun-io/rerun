@@ -159,9 +159,7 @@ impl TimeType {
                 // If the timezone is empty/None, it means we don't know the epoch.
                 // But we will assume it's UTC anyway.
                 if timezone.as_ref().is_none_or(|tz| tz.is_empty()) {
-                    re_log::debug_once!(
-                        "Got arrow timestamp array with unknown timezone. Assuming UTC"
-                    );
+                    // TODO(#9310): warn when timezone is missing
                 } else {
                     // Regardless of the timezone, that actual values are in UTC (per arrow standard)
                     // The timezone is mostly a hint on how to _display_ the time, and we currently ignore that.
