@@ -1,7 +1,10 @@
 use re_log_types::{TimeReal, Timeline};
+use re_viewer_context::ContainerId;
 use re_viewer_context::Item;
 use re_viewer_context::ItemCollection;
 use re_viewer_context::ItemContext;
+use re_viewer_context::ViewId;
+use re_viewport_blueprint::ViewportBlueprint;
 use std::rc::Rc;
 
 /// A single item in a selection.
@@ -19,15 +22,18 @@ pub enum CallbackSelectionItem {
     Entity {
         entity_path: String,
         instance_id: Option<u64>,
-        view_id: Option<String>,
+        view_name: Option<String>,
         position: Option<glam::Vec3>,
     },
 
     /// Selected a view.
-    View { view_id: String },
+    View { view_id: String, view_name: String },
 
     /// Selected a container.
-    Container { container_id: String },
+    Container {
+        container_id: String,
+        container_name: String,
+    },
 }
 
 fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
@@ -38,31 +44,64 @@ fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
     }
 }
 
+fn get_view_name(blueprint: &ViewportBlueprint, view_id: &ViewId) -> Option<String> {
+    blueprint.view(view_id).map(|view| {
+        view.display_name
+            .clone()
+            .unwrap_or_else(|| view.missing_name_placeholder())
+    })
+}
+
+fn get_container_name(blueprint: &ViewportBlueprint, container_id: &ContainerId) -> Option<String> {
+    blueprint.container(container_id).map(|container| {
+        container
+            .display_name
+            .clone()
+            .unwrap_or_else(|| container.missing_name_placeholder())
+    })
+}
+
 impl CallbackSelectionItem {
     // TODO(jan): output more things, including parts of context for data results
     //            and other things not currently available here (e.g. mouse pos)
-    pub fn new(item: &Item, context: &Option<ItemContext>) -> Option<Self> {
+    pub fn new(
+        item: &Item,
+        context: &Option<ItemContext>,
+        blueprint: &ViewportBlueprint,
+    ) -> Option<Self> {
         match item {
             Item::StoreId(_) | Item::AppId(_) | Item::ComponentPath(_) | Item::DataSource(_) => {
                 None
             }
             Item::View(view_id) => Some(Self::View {
                 view_id: view_id.uuid().to_string(),
+                view_name: if let Some(name) = get_view_name(blueprint, view_id) {
+                    name
+                } else {
+                    re_log::debug!("failed to get view name for view id {view_id}");
+                    return None;
+                },
             }),
             Item::Container(container_id) => Some(Self::Container {
                 container_id: container_id.uuid().to_string(),
+                container_name: if let Some(name) = get_container_name(blueprint, container_id) {
+                    name
+                } else {
+                    re_log::debug!("failed to get container name for container id {container_id}");
+                    return None;
+                },
             }),
 
             Item::DataResult(view_id, instance_path) => Some(Self::Entity {
                 entity_path: instance_path.entity_path.to_string(),
                 instance_id: instance_path.instance.specific_index().map(|id| id.get()),
-                view_id: Some(view_id.uuid().to_string()),
+                view_name: get_view_name(blueprint, view_id),
                 position: get_position(context),
             }),
             Item::InstancePath(instance_path) => Some(Self::Entity {
                 entity_path: instance_path.entity_path.to_string(),
                 instance_id: instance_path.instance.specific_index().map(|id| id.get()),
-                view_id: None,
+                view_name: None,
                 position: get_position(context),
             }),
         }
@@ -94,11 +133,11 @@ pub struct Callbacks {
 }
 
 impl Callbacks {
-    pub fn on_selection_change(&self, items: &ItemCollection) {
+    pub fn on_selection_change(&self, items: &ItemCollection, blueprint: &ViewportBlueprint) {
         (self.on_selection_change)(
             items
                 .iter()
-                .filter_map(|(item, context)| CallbackSelectionItem::new(item, context))
+                .filter_map(|(item, context)| CallbackSelectionItem::new(item, context, blueprint))
                 .collect(),
         );
     }

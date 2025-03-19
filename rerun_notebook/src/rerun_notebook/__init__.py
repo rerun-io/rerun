@@ -95,7 +95,7 @@ class EntitySelection:
 
     entity_path: str
     instance_id: int | None
-    view_id: str | None
+    view_name: str | None
     position: tuple[int, int, int] | None
 
 
@@ -108,6 +108,7 @@ class ViewSelection:
         return "view"
 
     view_id: str
+    view_name: str
 
 
 @dataclass
@@ -119,6 +120,7 @@ class ContainerSelection:
         return "container"
 
     container_id: str
+    container_name: str
 
 
 SelectionItem = EntitySelection | ViewSelection | ContainerSelection
@@ -131,13 +133,13 @@ def _selection_item_from_json(json: Any) -> SelectionItem:
         return EntitySelection(
             entity_path=json["entity_path"],
             instance_id=json.get("instance_id", None),
-            view_id=json.get("view_id", None),
+            view_name=json.get("view_name", None),
             position=(position[0], position[1], position[2]) if position is not None else None,
         )
     if json["type"] == "view":
-        return ViewSelection(view_id=json["view_id"])
+        return ViewSelection(view_id=json["view_id"], view_name=json["view_name"])
     if json["type"] == "container":
-        return ContainerSelection(container_id=json["container_id"])
+        return ContainerSelection(container_id=json["container_id"], container_name=json["container_name"])
     else:
         raise NotImplementedError(f"selection item kind {json[type]} is not handled")
 

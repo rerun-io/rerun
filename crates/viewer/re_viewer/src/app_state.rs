@@ -224,7 +224,7 @@ impl AppState {
 
         if let SelectionChange::SelectionChanged(selection) = selection_change {
             if let Some(callbacks) = callbacks {
-                callbacks.on_selection_change(selection);
+                callbacks.on_selection_change(selection, &viewport_ui.blueprint);
             }
         }
 
