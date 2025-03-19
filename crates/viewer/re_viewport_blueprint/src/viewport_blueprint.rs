@@ -301,7 +301,7 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let suggested_filter = ResolvedEntityPathFilter::exclude_properties();
+            let suggested_filter = ResolvedEntityPathFilter::properties();
 
             let mut recommended_views = entry
                 .class

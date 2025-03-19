@@ -96,13 +96,12 @@ pub struct ResolvedEntityPathFilter {
 }
 
 impl ResolvedEntityPathFilter {
-    /// Creates an filter that includes everything under [`EntityPath::root`],
-    /// except for [`EntityPath::partition_properties`].
-    pub fn exclude_properties() -> Self {
+    /// Creates an filter that matches [`EntityPath::partition_properties`].
+    pub fn properties() -> Self {
         Self {
             rules: std::iter::once((
                 ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
-                RuleEffect::Exclude,
+                RuleEffect::Include,
             ))
             .collect(),
         }

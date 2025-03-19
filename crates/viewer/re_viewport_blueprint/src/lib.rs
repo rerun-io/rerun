@@ -73,7 +73,7 @@ pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
         .flat_map(|entry| {
             let spawn_heuristics = entry
                 .class
-                .spawn_heuristics(ctx, &ResolvedEntityPathFilter::exclude_properties());
+                .spawn_heuristics(ctx, &ResolvedEntityPathFilter::properties());
             spawn_heuristics
                 .into_vec()
                 .into_iter()
