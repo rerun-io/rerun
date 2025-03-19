@@ -1,6 +1,6 @@
 use datafusion::prelude::SessionContext;
 use re_datafusion::DataFusionConnector;
-use re_protos::remote_store::v1alpha1::storage_node_service_client::StorageNodeServiceClient;
+use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -9,13 +9,13 @@ async fn main() -> anyhow::Result<()> {
     let conn = tonic::transport::Endpoint::new(format!("http://{local_addr}"))?
         .connect()
         .await?;
-    let client = StorageNodeServiceClient::new(conn);
+    let client = CatalogServiceClient::new(conn);
 
     let df_connector = DataFusionConnector::new(client);
 
     let ctx = SessionContext::default();
 
-    let _ = ctx.register_table("redap_catalog", df_connector.get_catalog()?)?;
+    let _ = ctx.register_table("redap_catalog", df_connector.get_datasets())?;
 
     let df = ctx.table("redap_catalog").await?;
 
