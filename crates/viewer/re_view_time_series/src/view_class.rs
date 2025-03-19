@@ -1,12 +1,10 @@
 use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use smallvec::SmallVec;
 
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeInt, TimestampFormat};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
@@ -18,21 +16,26 @@ use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
-use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-    ZOOM_SCROLL_MODIFIER,
+use re_view::{
+    controls::{
+        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
+        ZOOM_SCROLL_MODIFIER,
+    },
+    view_property_ui,
 };
-use re_view::{controls, view_property_ui};
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
+    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
+    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
-use smallvec::SmallVec;
+
+use crate::line_visualizer_system::SeriesLineSystem;
+use crate::point_visualizer_system::SeriesPointSystem;
+use crate::PlotSeriesKind;
+
 // ---
 
 #[derive(Clone)]
