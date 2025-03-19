@@ -53,6 +53,7 @@ re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.23.0-alph
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.23.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.23.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1", default-features = false }
+re_datafusion = { path = "crates/store/re_datafusion", version = "=0.23.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
@@ -184,6 +185,7 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
+datafusion = "45.0"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
