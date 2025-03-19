@@ -40,3 +40,13 @@ impl Decode for RerunChunk {
         decode(self.encoder_version(), &self.payload)
     }
 }
+
+impl Decode for re_protos::common::v1alpha1::DataframePart {
+    fn decode(&self) -> Result<ArrowRecordBatch, CodecError> {
+        let payload = self
+            .payload
+            .as_ref()
+            .ok_or(CodecError::MissingRecordBatch)?;
+        decode(self.encoder_version(), payload)
+    }
+}
