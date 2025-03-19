@@ -951,7 +951,7 @@ mod tests {
     fn test_entity_path_filter() {
         let subst_env = EntityPathSubs::empty();
 
-        let properties = format!("{}/**", EntityPath::partition_properties().to_string());
+        let properties = format!("{}/**", EntityPath::partition_properties());
 
         let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
@@ -995,7 +995,7 @@ mod tests {
         // We can't do in-place substitution.
         let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
 
-        let properties = format!("{}/**", EntityPath::partition_properties().to_string());
+        let properties = format!("{}/**", EntityPath::partition_properties());
 
         let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
