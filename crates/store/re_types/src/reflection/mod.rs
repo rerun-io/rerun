@@ -198,15 +198,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Interactive as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
-                custom_placeholder: Some(Interactive::default().to_arrow()?),
-                datatype: Interactive::arrow_datatype(),
-                verify_arrow_array: Interactive::verify_arrow_array,
-            },
-        ),
-        (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -595,6 +586,15 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
                 datatype: ImagePlaneDistance::arrow_datatype(),
                 verify_arrow_array: ImagePlaneDistance::verify_arrow_array,
+            },
+        ),
+        (
+            <Interactive as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
+                custom_placeholder: Some(Interactive::default().to_arrow()?),
+                datatype: Interactive::arrow_datatype(),
+                verify_arrow_array: Interactive::verify_arrow_array,
             },
         ),
         (
@@ -2145,6 +2145,25 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.SelectedColumns".into(), docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.EntityBehavior"),
+            ArchetypeReflection {
+                display_name: "Entity behavior",
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "interactive", display_name :
+                    "Interactive", component_name : "rerun.components.Interactive"
+                    .into(), docstring_md :
+                    "Whether the entity can be interacted with.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `interactive` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `interactive` value or true if there is no parent.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
+                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    .into(), docstring_md :
+                    "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
+                    is_required : false, },
                 ],
             },
         ),

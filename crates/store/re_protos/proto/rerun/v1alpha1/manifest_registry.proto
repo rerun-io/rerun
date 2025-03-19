@@ -75,6 +75,9 @@ message RegisterPartitionsRequest {
 
   // Partitions to add
   repeated Partition partitions = 2;
+
+  // what to do if partition is already registered
+  IfDuplicateBehavior on_duplicate = 3;
 }
 
 message RegisterPartitionsResponse {

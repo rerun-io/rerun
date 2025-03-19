@@ -5,7 +5,7 @@ order: 2
 
 ## Installing Rerun
 
-The Rerun SDK for Python requires a working installation of [Python-3.8+](https://www.python.org/).
+The Rerun SDK for Python requires a working installation of [Python-3.9+](https://www.python.org/).
 
 You can install the Rerun SDK using the [rerun-sdk](https://pypi.org/project/rerun-sdk/) pypi package via pip:
 

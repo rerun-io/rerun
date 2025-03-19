@@ -42,7 +42,7 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;

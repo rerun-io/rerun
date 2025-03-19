@@ -813,7 +813,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
             let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
-            let bytes = PyBytes::new_bound(py, &data);
+            let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
         });
@@ -881,7 +881,7 @@ impl PyMemorySinkStorage {
 
             concat_bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
@@ -911,7 +911,7 @@ impl PyMemorySinkStorage {
 
             bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
@@ -930,7 +930,7 @@ impl PyBinarySinkStorage {
     #[pyo3(signature = (*, flush = true))]
     fn read<'p>(&self, flush: bool, py: Python<'p>) -> Bound<'p, PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        PyBytes::new_bound(
+        PyBytes::new(
             py,
             py.allow_threads(|| {
                 if flush {
@@ -1496,10 +1496,10 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
 }
 
 fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
-    let locals = PyDict::new_bound(py);
+    let locals = PyDict::new(py);
 
-    py.run_bound(
-        r#"
+    py.run(
+        cr#"
 import multiprocessing
 # authkey is the same for child and parent processes, so this is how we know we're the same
 authkey = multiprocessing.current_process().authkey

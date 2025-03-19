@@ -46,7 +46,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let results =
                 data_result.query_archetype_with_history::<GeoLineStrings>(ctx, view_query);
 

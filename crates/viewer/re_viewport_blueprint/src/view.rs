@@ -449,12 +449,14 @@ impl ViewBlueprint {
 mod tests {
     use std::collections::HashMap;
 
+    use ahash::HashSet;
     use re_chunk::RowId;
     use re_entity_db::EntityDb;
     use re_log_types::{
-        example_components::{MyColor, MyLabel, MyPoint},
+        example_components::{MyLabel, MyPoint, MyPoints},
         StoreId, StoreKind, TimePoint,
     };
+    use re_types::{blueprint::archetypes::EntityBehavior, components::Interactive};
     use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
         test_context::TestContext, IndicatedEntities, MaybeVisualizableEntities, OverridePath,
@@ -515,10 +517,7 @@ mod tests {
 
         // Basic blueprint - a single view that queries everything.
         let view = ViewBlueprint::new("3D".into(), RecommendedView::root());
-        let individual_override_root =
-            ViewContents::override_path_for_entity(view.id, &EntityPath::root());
-        let recursive_override_root =
-            ViewContents::recursive_override_path_for_entity(view.id, &EntityPath::root());
+        let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
@@ -531,170 +530,135 @@ mod tests {
         );
 
         struct Scenario {
-            recursive_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
-            individual_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
-            expected_overrides: HashMap<EntityPath, HashMap<ComponentName, EntityPath>>,
+            blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
+            expected_overrides: HashMap<EntityPath, HashSet<ComponentName>>,
+            expected_hidden: HashSet<EntityPath>,
+            expected_non_interactive: HashSet<EntityPath>,
         }
 
         let scenarios: Vec<Scenario> = vec![
             // No overrides.
             Scenario {
-                recursive_overrides: Vec::new(),
-                individual_overrides: Vec::new(),
+                blueprint_overrides: Vec::new(),
                 expected_overrides: HashMap::default(),
-            },
-            // Recursive override at parent entity.
-            Scenario {
-                recursive_overrides: vec![(
-                    "parent".into(),
-                    Box::new(MyLabel("parent_override".to_owned())),
-                )],
-                individual_overrides: Vec::new(),
-                expected_overrides: HashMap::from([
-                    (
-                        "parent".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                    (
-                        "parent/child".into(),
-                        HashMap::from([(
-                            MyLabel::name(),
-                            recursive_override_root.join(&"parent".into()),
-                        )]),
-                    ),
-                ]),
+                expected_hidden: HashSet::default(),
+                expected_non_interactive: HashSet::default(),
             },
             // Set a single individual.
             Scenario {
-                recursive_overrides: Vec::new(),
-                individual_overrides: vec![(
+                blueprint_overrides: vec![(
                     "parent".into(),
-                    Box::new(MyLabel("parent_individual".to_owned())),
+                    Box::new(
+                        MyPoints::default().with_labels([MyLabel("parent_individual".to_owned())]),
+                    ),
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashMap::from([(
-                        MyLabel::name(),
-                        individual_override_root.join(&"parent".into()),
-                    )]),
+                    std::iter::once(MyLabel::name()).collect(),
                 )]),
+                expected_hidden: HashSet::default(),
+                expected_non_interactive: HashSet::default(),
             },
-            // Recursive override, partially shadowed by individual.
+            // Hide everything.
             Scenario {
-                recursive_overrides: vec![
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyLabel("parent_individual".to_owned())),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        Box::new(MyColor::from_rgb(0, 1, 2)),
-                    ),
-                ],
-                individual_overrides: vec![(
-                    "parent/skipped/grandchild".into(),
-                    Box::new(MyColor::from_rgb(1, 2, 3)),
+                blueprint_overrides: vec![(
+                    "parent".into(),
+                    Box::new(EntityBehavior::new().with_visible(false)),
                 )],
-                expected_overrides: HashMap::from([
-                    (
-                        "parent/skipped".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                        ]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                individual_override_root.join(&"parent/skipped/grandchild".into()),
-                            ),
-                        ]),
-                    ),
-                ]),
+                expected_overrides: HashMap::from([(
+                    "parent".into(),
+                    std::iter::once(Visible::name()).collect(),
+                )]),
+                expected_hidden: [
+                    "parent/skipped/grandchild".into(),
+                    "parent/skipped".into(),
+                    "parent/child".into(),
+                    "parent".into(),
+                ]
+                .into_iter()
+                .collect(),
+                expected_non_interactive: HashSet::default(),
             },
-            // Recursive override, partially shadowed by another recursive override.
+            // Hide part of the tree.
             Scenario {
-                recursive_overrides: vec![
+                blueprint_overrides: vec![
                     (
-                        "parent/skipped".into(),
-                        Box::new(MyLabel("parent_individual".to_owned())),
+                        "parent".into(),
+                        Box::new(EntityBehavior::new().with_visible(false)),
                     ),
                     (
                         "parent/skipped".into(),
-                        Box::new(MyColor::from_rgb(0, 1, 2)),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        Box::new(MyColor::from_rgb(3, 2, 1)),
+                        Box::new(EntityBehavior::new().with_visible(true)),
                     ),
                 ],
-                individual_overrides: Vec::new(),
                 expected_overrides: HashMap::from([
+                    ("parent".into(), std::iter::once(Visible::name()).collect()),
                     (
                         "parent/skipped".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                        ]),
-                    ),
-                    (
-                        "parent/skipped/grandchild".into(),
-                        HashMap::from([
-                            (
-                                MyLabel::name(),
-                                recursive_override_root.join(&"parent/skipped".into()),
-                            ),
-                            (
-                                MyColor::name(),
-                                recursive_override_root.join(&"parent/skipped/grandchild".into()),
-                            ),
-                        ]),
+                        std::iter::once(Visible::name()).collect(),
                     ),
                 ]),
+                expected_hidden: ["parent".into(), "parent/child".into()]
+                    .into_iter()
+                    .collect(),
+                expected_non_interactive: HashSet::default(),
+            },
+            // Make everything non-interactive.
+            Scenario {
+                blueprint_overrides: vec![(
+                    "parent".into(),
+                    Box::new(EntityBehavior::new().with_interactive(false)),
+                )],
+                expected_overrides: HashMap::from([(
+                    "parent".into(),
+                    HashSet::from_iter([Interactive::name()]),
+                )]),
+                expected_hidden: HashSet::default(),
+                expected_non_interactive: [
+                    "parent/skipped/grandchild".into(),
+                    "parent/skipped".into(),
+                    "parent/child".into(),
+                    "parent".into(),
+                ]
+                .into_iter()
+                .collect(),
+            },
+            // Make part of the tree non-interactive.
+            Scenario {
+                blueprint_overrides: vec![
+                    (
+                        "parent".into(),
+                        Box::new(EntityBehavior::new().with_interactive(false)),
+                    ),
+                    (
+                        "parent/skipped".into(),
+                        Box::new(EntityBehavior::new().with_interactive(true)),
+                    ),
+                ],
+                expected_overrides: HashMap::from([
+                    (
+                        "parent".into(),
+                        std::iter::once(Interactive::name()).collect(),
+                    ),
+                    (
+                        "parent/skipped".into(),
+                        std::iter::once(Interactive::name()).collect(),
+                    ),
+                ]),
+                expected_hidden: HashSet::default(),
+                expected_non_interactive: ["parent".into(), "parent/child".into()]
+                    .into_iter()
+                    .collect(),
             },
         ];
 
         for (
             i,
             Scenario {
-                recursive_overrides,
-                individual_overrides,
+                blueprint_overrides,
                 expected_overrides,
+                expected_hidden,
+                expected_non_interactive,
             },
         ) in scenarios.into_iter().enumerate()
         {
@@ -702,53 +666,78 @@ mod tests {
             test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
             let mut add_to_blueprint =
-                |path: &EntityPath, batch: &dyn re_types_core::ComponentBatch| {
+                |path: &EntityPath, archetype: &dyn re_types_core::AsComponents| {
                     let chunk = Chunk::builder(path.clone())
-                        .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
+                        .with_archetype(RowId::new(), TimePoint::default(), archetype)
                         .build()
                         .unwrap();
-
                     test_ctx
                         .blueprint_store
                         .add_chunk(&Arc::new(chunk))
                         .unwrap();
                 };
 
-            // log individual and override components as instructed.
-            for (entity_path, batch) in recursive_overrides {
-                add_to_blueprint(&recursive_override_root.join(&entity_path), batch.as_ref());
-            }
-            for (entity_path, batch) in individual_overrides {
-                add_to_blueprint(&individual_override_root.join(&entity_path), batch.as_ref());
+            // log override components as instructed.
+            for (entity_path, batch) in blueprint_overrides {
+                add_to_blueprint(&override_root.join(&entity_path), batch.as_ref());
             }
 
             // Set up a store query and update the overrides.
             let query_result =
                 update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
 
-            // Extract component overrides for testing.
-            let mut visited: HashMap<EntityPath, HashMap<ComponentName, EntityPath>> =
-                HashMap::default();
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
-                let resolved_component_overrides =
-                    &result.property_overrides.resolved_component_overrides;
-                if !resolved_component_overrides.is_empty() {
-                    visited.insert(
-                        result.entity_path.clone(),
-                        resolved_component_overrides
-                            .iter()
-                            .map(|(component_name, OverridePath { store_kind, path })| {
-                                assert_eq!(*store_kind, StoreKind::Blueprint);
-                                (*component_name, path.clone())
-                            })
-                            .collect(),
+
+                let component_overrides = &result.property_overrides.component_overrides;
+                let mut expected_overrides = expected_overrides
+                    .get(&result.entity_path)
+                    .cloned()
+                    .unwrap_or_default();
+
+                for (component_name, override_path) in component_overrides {
+                    assert_eq!(
+                        override_path.store_kind,
+                        StoreKind::Blueprint,
+                        "Scenario {i}"
+                    );
+
+                    if component_name.ends_with("Indicator") {
+                        // Ignore indicators for overrides.
+                        continue;
+                    }
+
+                    assert!(
+                        expected_overrides.remove(component_name),
+                        "Scenario {i}: expected override for {component_name} at {override_path:?} but got none"
+                    );
+
+                    assert_eq!(
+                        override_path,
+                        &OverridePath {
+                            store_kind: StoreKind::Blueprint,
+                            path: override_root.join(&node.data_result.entity_path),
+                        },
+                        "Scenario {i}"
                     );
                 }
+                assert!(expected_overrides.is_empty(), "Scenario {i}");
+
+                assert_eq!(
+                    result.is_visible(),
+                    !expected_hidden.contains(&result.entity_path),
+                    "Scenario {i}, {}",
+                    result.entity_path
+                );
+                assert_eq!(
+                    result.is_interactive(),
+                    !expected_non_interactive.contains(&result.entity_path),
+                    "Scenario {i}, {}",
+                    result.entity_path
+                );
+
                 true
             });
-
-            assert_eq!(visited, expected_overrides, "Scenario {i}");
         }
     }
 
@@ -773,7 +762,6 @@ mod tests {
             &store_ctx,
             &test_ctx.view_class_registry,
             &test_ctx.blueprint_query,
-            view.id,
             visualizable_entities,
         );
         let mut view_states = ViewStates::default();
