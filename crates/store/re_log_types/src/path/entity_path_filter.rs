@@ -462,16 +462,31 @@ impl EntityPathFilter {
         self,
         subst_env: &EntityPathSubs,
     ) -> Result<ResolvedEntityPathFilter, EntityPathFilterError> {
-        let rules = self
+        let mut seen_properties = false;
+
+        let mut rules = self
             .rules
             .into_iter()
             .map(|(rule, effect)| {
                 ResolvedEntityPathRule::parse_strict(&rule, subst_env).map(|r| (r, effect))
             })
+            .inspect(|maybe_rule| {
+                if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule {
+                    if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                        seen_properties = true;
+                    }
+                }
+            })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
-        Ok(ResolvedEntityPathFilter {
-            rules: BTreeMap::from_iter(rules),
-        })
+
+        if !seen_properties {
+            rules.insert(
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Exclude,
+            );
+        }
+
+        Ok(ResolvedEntityPathFilter { rules })
     }
 
     /// Resolve variables & parse paths, without any substitutions.
