@@ -98,8 +98,8 @@ class TimeColumn(TimeColumnLike):
             self.times = sequence
         elif duration is not None:
             self.type = pa.duration("ns")
-            if isinstance(timestamp, np.ndarray):
-                self.times = timestamp.astype("timedelta64[ns]").tolist()
+            if isinstance(duration, np.ndarray):
+                self.times = duration.astype("timedelta64[ns]").tolist()
             else:
                 self.times = [np.int64(to_nanos(duration)).astype("timedelta64[ns]") for duration in duration]
         elif timestamp is not None:
