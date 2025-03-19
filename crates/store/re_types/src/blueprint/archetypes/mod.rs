@@ -3,6 +3,7 @@
 mod background;
 mod container_blueprint;
 mod dataframe_query;
+mod entity_behavior;
 mod force_center;
 mod force_collision_radius;
 mod force_link;
@@ -28,6 +29,7 @@ mod visualizer_overrides;
 pub use self::background::Background;
 pub use self::container_blueprint::ContainerBlueprint;
 pub use self::dataframe_query::DataframeQuery;
+pub use self::entity_behavior::EntityBehavior;
 pub use self::force_center::ForceCenter;
 pub use self::force_collision_radius::ForceCollisionRadius;
 pub use self::force_link::ForceLink;
