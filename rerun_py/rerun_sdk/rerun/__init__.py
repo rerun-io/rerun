@@ -52,8 +52,8 @@ from ._log import (
     new_entity_path as new_entity_path,
 )
 from ._properties import (
-    RecordingProperties as RecordingProperties,
     set_name as set_name,
+    set_start_time_nanos as set_start_time_nanos,
     set_properties as set_properties,
 )
 from ._send_columns import (

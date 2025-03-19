@@ -1,9 +1,12 @@
 import os
 from collections.abc import Iterator, Sequence
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 import pyarrow as pa
+
+from rerun._baseclasses import AsComponents, DescribedComponentBatch
+from rerun.recording_stream import RecordingStream
 
 from .types import (
     AnyColumn,
@@ -1040,36 +1043,6 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
-class RecordingProperties:
-    """A helper class for setting recording properties."""
-
-    name: Optional[str]
-    start_time: Optional[int]
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        start_time: Optional[int] = None,
-    ) -> None:
-        """
-        Create new `RecordingProperties`.
-
-        Parameters
-        ----------
-        name : `Optional[str]`
-            The name of the recording.
-
-        start_time : `Optional[int]`
-            The start time of the recording in nanoseconds.
-
-        """
-
-def set_properties(
-    properties: RecordingProperties,
-    recording: Optional[PyRecordingStream] = None,
-) -> None:
-    """Set the properties of the recording."""
-
 def set_name(
     name: str,
     recording: Optional[PyRecordingStream] = None,
@@ -1164,6 +1137,9 @@ def escape_entity_path_part(part: str) -> str:
 
 def new_entity_path(parts: list[str]) -> str:
     """Create an entity path."""
+
+def new_property_entity_path(parts: list[str]) -> str:
+    """Create a property entity path."""
 
 def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
     """

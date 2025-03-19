@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, overload
 
 import numpy as np
 from typing_extensions import deprecated
@@ -763,7 +763,11 @@ class RecordingStream:
             recording=self,
         )
 
-    def set_properties(self, properties: bindings.RecordingProperties) -> None:
+    def set_properties(
+        self,
+        properties: AsComponents | Iterable[DescribedComponentBatch],
+        entity_path: Optional[str | list[object]] = None,
+    ) -> None:
         """
         Set the properties of the recording.
 
@@ -771,14 +775,23 @@ class RecordingStream:
 
         Parameters
         ----------
-        properties : RecordingProperties
-            The name of the recording.
+        entity_path:
+            Path to the entity in the recording properties.
+
+        properties :
+            Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
+            or an iterable of (described)component batches.
+
+        recording:
+            Specifies the [`rerun.RecordingStream`][] to use.
+            If left unspecified, defaults to the current active data recording, if there is one.
+            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
         """
 
         from ._properties import set_properties
 
-        set_properties(properties, recording=self)
+        set_properties(entity_path=entity_path, properties=properties, recording=self)
 
     def set_name(self, name: str) -> None:
         """
@@ -796,6 +809,23 @@ class RecordingStream:
         from ._properties import set_name
 
         set_name(name, recording=self)
+
+    def set_start_time_nanos(self, nanos: int) -> None:
+        """
+        Set the start time of the recording.
+
+        This timestamp is shown in the Rerun Viewer.
+
+        Parameters
+        ----------
+        nanos : int
+            The start time of the recording.
+
+        """
+
+        from ._properties import set_start_time_nanos
+
+        set_start_time_nanos(nanos, recording=self)
 
     @overload
     def set_time(self, timeline: str, *, sequence: int) -> None: ...

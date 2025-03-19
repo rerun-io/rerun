@@ -179,9 +179,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
     // properties
-    m.add_class::<PyRecordingProperties>()?;
-    m.add_function(wrap_pyfunction!(set_properties, m)?)?;
+    m.add_function(wrap_pyfunction!(new_property_entity_path, m)?)?;
     m.add_function(wrap_pyfunction!(set_name, m)?)?;
+    m.add_function(wrap_pyfunction!(set_start_time_nanos, m)?)?;
 
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
@@ -1374,62 +1374,17 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 
 // --- Properties ---
 
-// TODO(#9284): This should really just be the `archetypes::RecordingProperties`.
-/// A helper class for setting recording properties.
-#[derive(Clone)]
-#[pyclass(frozen, name = "RecordingProperties")]
-struct PyRecordingProperties {
-    name: Option<String>,
-    start_time: Option<i64>,
-}
-
-#[pymethods]
-impl PyRecordingProperties {
-    /// Create new `RecordingProperties`.
-    ///
-    /// Parameters
-    /// ----------
-    /// name : `Optional[str]`
-    ///     The name of the recording.
-    ///
-    /// start_time : `Optional[int]`
-    ///     The start time of the recording in nanoseconds.
-    #[new]
-    #[pyo3(text_signature = "(self, name = None, start_time = None)")]
-    #[pyo3(signature = (name = None, start_time = None))]
-    fn new(name: Option<String>, start_time: Option<i64>) -> Self {
-        Self { name, start_time }
-    }
-}
-
-/// Set the properties of the recording.
+/// Create a property entity path.
 #[pyfunction]
-#[pyo3(signature = (properties, recording=None))]
-fn set_properties(
-    properties: PyRecordingProperties,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    if properties.name.is_none() && properties.start_time.is_none() {
-        re_log::warn!("None of the provided properties match the recording properties.");
-        return Ok(());
-    }
-
-    let mut prop_archetype = re_sdk::RecordingProperties::new();
-
-    if let Some(name) = properties.name {
-        prop_archetype = prop_archetype.with_name(name);
-    }
-    if let Some(started) = properties.start_time {
-        prop_archetype = prop_archetype.with_start_time(started);
-    }
-
-    recording
-        .set_properties(&prop_archetype)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
+    let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
+    let path = EntityPath::from(
+        parts?
+            .into_iter()
+            .map(|part| EntityPathPart::from(part.borrow()))
+            .collect_vec(),
+    );
+    Ok(EntityPath::partition_properties().join(&path).to_string())
 }
 
 /// Set the name of the recording.
@@ -1441,6 +1396,18 @@ fn set_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     };
     recording
         .set_name(name)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Set the name of the recording.
+#[pyfunction]
+#[pyo3(signature = (nanos, recording=None))]
+fn set_start_time_nanos(nanos: i64, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+    recording
+        .set_start_time(nanos)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 

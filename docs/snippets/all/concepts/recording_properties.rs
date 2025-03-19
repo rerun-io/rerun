@@ -12,5 +12,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Overwrites the name from above.
     rec.set_name("My recording")?;
 
+    // Overwrites the start time from above.
+    rec.set_start_time(42)?;
+
+    // Adds a user-defined property to the recording at
+    rec.set_properties_with_prefix(
+        "cameras/left",
+        &rerun::archetypes::Points3D::new([[1.0, 0.1, 1.0]]),
+    )?;
+
     Ok(())
 }

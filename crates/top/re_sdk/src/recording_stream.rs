@@ -1167,14 +1167,42 @@ impl RecordingStream {
     /// This is a convenience wrapper for statically logging to the entity path
     /// that is reserved for recording properties.
     #[inline]
-    pub fn set_properties(&self, properties: &RecordingProperties) -> RecordingStreamResult<()> {
-        self.log_static(EntityPath::partition_properties(), properties)
+    pub fn set_properties<AS: ?Sized + AsComponents>(
+        &self,
+        properties: &AS,
+    ) -> RecordingStreamResult<()> {
+        self.set_properties_with_prefix(EntityPath::root(), properties)
+    }
+
+    /// Sets the recording properties.
+    ///
+    /// This is a convenience wrapper for statically logging to the entity path
+    /// that is reserved for recording properties.
+    #[inline]
+    pub fn set_properties_with_prefix<AS: ?Sized + AsComponents>(
+        &self,
+        entity_path: impl Into<EntityPath>,
+        properties: &AS,
+    ) -> RecordingStreamResult<()> {
+        self.log_static(
+            EntityPath::partition_properties().join(&entity_path.into()),
+            properties,
+        )
     }
 
     /// Sets the name of the recording.
     #[inline]
     pub fn set_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_name(name.into());
+        // `set_properties` will automatically log to the correct entity path.
+        self.set_properties(&update)
+    }
+
+    /// Sets the start time of the recording.
+    #[inline]
+    pub fn set_start_time(&self, timestamp: impl Into<Timestamp>) -> RecordingStreamResult<()> {
+        let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
+        // `set_properties` will automatically log to the correct entity path.
         self.set_properties(&update)
     }
 
