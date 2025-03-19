@@ -3,7 +3,7 @@ title = "IMU signals"
 tags = ["Plots"]
 description = "Log multi dimensional signals under a single entity."
 thumbnail_dimensions = [480, 480]
-channel = "nightly"
+channel = "main"
 build_args = ["--seconds=10"]
 -->
 
