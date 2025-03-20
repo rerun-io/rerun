@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from rerun.archetypes import Scalar
+from rerun.archetypes import Scalars
 from rerun.datatypes import Float64ArrayLike
 
 CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
@@ -31,7 +31,7 @@ CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 ]
 
 
-def test_scalar_columns() -> None:
+def test_scalars_columns() -> None:
     for input, expected in CASES:
-        data = [*Scalar.columns(scalar=input)]
+        data = [*Scalars.columns(scalars=input)]
         assert data[1].as_arrow_array().to_pylist() == expected

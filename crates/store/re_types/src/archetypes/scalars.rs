@@ -38,7 +38,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     for step in 0..64 {
 ///         rec.set_time_sequence("step", step);
-///         rec.log("scalars", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+///         rec.log(
+///             "scalars",
+///             &rerun::Scalars::new([(step as f64 / 10.0).sin()]),
+///         )?;
 ///     }
 ///
 ///     Ok(())
@@ -67,9 +70,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.send_columns(
 ///         "scalars",
 ///         [times],
-///         rerun::Scalar::update_fields()
-///             .with_many_scalar(scalars)
-///             .columns_of_unit_batches()?,
+///         rerun::Scalars::new(scalars).columns_of_unit_batches()?,
 ///     )?;
 ///
 ///     Ok(())
@@ -87,17 +88,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Scalars {
     /// The scalar values to log.
-    pub scalar: Option<SerializedComponentBatch>,
+    pub scalars: Option<SerializedComponentBatch>,
 }
 
 impl Scalars {
-    /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::scalars`].
     #[inline]
-    pub fn descriptor_scalar() -> ComponentDescriptor {
+    pub fn descriptor_scalars() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalars".into()),
             component_name: "rerun.components.Scalar".into(),
-            archetype_field_name: Some("scalar".into()),
+            archetype_field_name: Some("scalars".into()),
         }
     }
 
@@ -113,7 +114,7 @@ impl Scalars {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Scalars::descriptor_scalar()]);
+    once_cell::sync::Lazy::new(|| [Scalars::descriptor_scalars()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Scalars::descriptor_indicator()]);
@@ -124,7 +125,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            Scalars::descriptor_scalar(),
+            Scalars::descriptor_scalars(),
             Scalars::descriptor_indicator(),
         ]
     });
@@ -183,10 +184,10 @@ impl ::re_types_core::Archetype for Scalars {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let scalar = arrays_by_descr
-            .get(&Self::descriptor_scalar())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scalar()));
-        Ok(Self { scalar })
+        let scalars = arrays_by_descr
+            .get(&Self::descriptor_scalars())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scalars()));
+        Ok(Self { scalars })
     }
 }
 
@@ -194,7 +195,7 @@ impl ::re_types_core::AsComponents for Scalars {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.scalar.clone()]
+        [Some(Self::indicator()), self.scalars.clone()]
             .into_iter()
             .flatten()
             .collect()
@@ -206,9 +207,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for Scalars {}
 impl Scalars {
     /// Create a new `Scalars`.
     #[inline]
-    pub fn new(scalar: impl IntoIterator<Item = impl Into<crate::components::Scalar>>) -> Self {
+    pub fn new(scalars: impl IntoIterator<Item = impl Into<crate::components::Scalar>>) -> Self {
         Self {
-            scalar: try_serialize_field(Self::descriptor_scalar(), scalar),
+            scalars: try_serialize_field(Self::descriptor_scalars(), scalars),
         }
     }
 
@@ -223,9 +224,9 @@ impl Scalars {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            scalar: Some(SerializedComponentBatch::new(
+            scalars: Some(SerializedComponentBatch::new(
                 crate::components::Scalar::arrow_empty(),
-                Self::descriptor_scalar(),
+                Self::descriptor_scalars(),
             )),
         }
     }
@@ -249,8 +250,8 @@ impl Scalars {
         I: IntoIterator<Item = usize> + Clone,
     {
         let columns = [self
-            .scalar
-            .map(|scalar| scalar.partitioned(_lengths.clone()))
+            .scalars
+            .map(|scalars| scalars.partitioned(_lengths.clone()))
             .transpose()?];
         Ok(columns
             .into_iter()
@@ -268,18 +269,18 @@ impl Scalars {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_scalar = self.scalar.as_ref().map(|b| b.array.len());
-        let len = None.or(len_scalar).unwrap_or(0);
+        let len_scalars = self.scalars.as_ref().map(|b| b.array.len());
+        let len = None.or(len_scalars).unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
 
     /// The scalar values to log.
     #[inline]
-    pub fn with_scalar(
+    pub fn with_scalars(
         mut self,
-        scalar: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
+        scalars: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
     ) -> Self {
-        self.scalar = try_serialize_field(Self::descriptor_scalar(), scalar);
+        self.scalars = try_serialize_field(Self::descriptor_scalars(), scalars);
         self
     }
 }
@@ -287,6 +288,6 @@ impl Scalars {
 impl ::re_byte_size::SizeBytes for Scalars {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.scalar.heap_size_bytes()
+        self.scalars.heap_size_bytes()
     }
 }

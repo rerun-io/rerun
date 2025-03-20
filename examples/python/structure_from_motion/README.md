@@ -77,7 +77,7 @@ For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes
 `plot/avg_reproj_err` entity.
 
 ```python
-rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
+rr.log("plot/avg_reproj_err", rr.Scalars(np.mean(point_errors)))
 ```
 
 ### 2D points

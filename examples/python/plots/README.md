@@ -52,7 +52,7 @@ It also adjusts the width and color of the plotted line based on the calculated 
 ```python
 def log_parabola() -> None:
     # Name never changes, log it only once.
-    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
+    rr.log("curves/parabola", rr.SeriesLines(name="f(t) = (0.01t - 3)³ + 1"), static=True)
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
@@ -62,8 +62,8 @@ def log_parabola() -> None:
 
         rr.log(
             "curves/parabola",
-            rr.Scalar(f_of_t),
-            rr.SeriesLine(width=width, color=color),
+            rr.Scalars(f_of_t),
+            rr.SeriesLines(width=width, color=color),
         )
 ```
 
@@ -77,17 +77,17 @@ Then, it iterates over a range of time steps, calculates the sin and cos values 
  ```python
 def log_trig() -> None:
     # Styling doesn't change over time, log it once with static=True.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
+    rr.log("trig/sin", rr.SeriesLines(color=[255, 0, 0], name="sin(0.01t)"), static=True)
+    rr.log("trig/cos", rr.SeriesLines(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 100.0)):
         rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rr.log("trig/sin", rr.Scalar(sin_of_t))
+        rr.log("trig/sin", rr.Scalars(sin_of_t))
 
         cos_of_t = cos(float(t) / 100.0)
-        rr.log("trig/cos", rr.Scalar(cos_of_t))
+        rr.log("trig/cos", rr.Scalars(cos_of_t))
  ```
 
 ### Classification
@@ -101,16 +101,16 @@ Additionally, it generates random samples around the line function and logs them
  ```python
 def log_classification() -> None:
     # Log components that don't change only once:
-    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), static=True)
+    rr.log("classification/line", rr.SeriesLines(colors=[255, 255, 0], widths=3.0), static=True)
 
     for t in range(0, 1000, 2):
         rr.set_time("frame_nr", sequence=t)
 
         # … existing code …
-        rr.log("classification/line", rr.Scalar(f_of_t))
+        rr.log("classification/line", rr.Scalars(f_of_t))
 
         # … existing code …
-        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
+        rr.log("classification/samples", rr.Scalars(g_of_t), rr.SeriesPoints(colors=color, marker_sizes=marker_size))
  ```
 
 

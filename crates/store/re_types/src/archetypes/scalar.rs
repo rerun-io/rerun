@@ -38,7 +38,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     for step in 0..64 {
 ///         rec.set_time_sequence("step", step);
-///         rec.log("scalars", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+///         rec.log(
+///             "scalars",
+///             &rerun::Scalars::new([(step as f64 / 10.0).sin()]),
+///         )?;
 ///     }
 ///
 ///     Ok(())
@@ -67,9 +70,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.send_columns(
 ///         "scalars",
 ///         [times],
-///         rerun::Scalar::update_fields()
-///             .with_many_scalar(scalars)
-///             .columns_of_unit_batches()?,
+///         rerun::Scalars::new(scalars).columns_of_unit_batches()?,
 ///     )?;
 ///
 ///     Ok(())

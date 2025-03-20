@@ -50,7 +50,7 @@ class Scalar(Archetype):
 
     for step in range(64):
         rr.set_time("step", sequence=step)
-        rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))
+        rr.log("scalars", rr.Scalars(math.sin(step / 10.0)))
     ```
     <center>
     <picture>
@@ -77,7 +77,7 @@ class Scalar(Archetype):
     rr.send_columns(
         "scalars",
         indexes=[rr.TimeColumn("step", sequence=times)],
-        columns=rr.Scalar.columns(scalar=scalars),
+        columns=rr.Scalars.columns(scalars=scalars),
     )
     ```
     <center>

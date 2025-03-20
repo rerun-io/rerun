@@ -31,9 +31,9 @@ the plot-specific archetypes through the blueprint.
 
 ### Simple line plot
 
-snippet: archetypes/scalar_simple
+snippet: archetypes/scalars_simple
 
-<picture data-inline-viewer="snippets/scalar_simple">
+<picture data-inline-viewer="snippets/scalars_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png">
@@ -43,9 +43,9 @@ snippet: archetypes/scalar_simple
 
 ### Multiple time series plots
 
-snippet: archetypes/scalar_multiple_plots
+snippet: archetypes/scalars_multiple_plots
 
-<picture data-inline-viewer="snippets/scalar_multiple_plots">
+<picture data-inline-viewer="snippets/scalars_multiple_plots">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1024w.png">
@@ -55,9 +55,9 @@ snippet: archetypes/scalar_multiple_plots
 
 ### Update a scalar over time
 
-snippet: archetypes/scalar_row_updates
+snippet: archetypes/scalars_row_updates
 
-<picture data-inline-viewer="snippets/scalar_row_updates">
+<picture data-inline-viewer="snippets/scalars_row_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">
@@ -67,9 +67,9 @@ snippet: archetypes/scalar_row_updates
 
 ### Update a scalar over time, in a single operation
 
-snippet: archetypes/scalar_column_updates
+snippet: archetypes/scalars_column_updates
 
-<picture data-inline-viewer="snippets/scalar_column_updates">
+<picture data-inline-viewer="snippets/scalars_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">

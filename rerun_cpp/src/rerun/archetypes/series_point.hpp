@@ -54,7 +54,7 @@ namespace rerun::archetypes {
     ///             .with_color({255, 0, 0})
     ///             .with_name("sin(0.01t)")
     ///             .with_marker(rerun::components::MarkerShape::Circle)
-    ///             .with_marker_size(4)
+    ///             .with_marker_size(4.0f)
     ///     );
     ///     rec.log_static(
     ///         "trig/cos",
@@ -62,7 +62,7 @@ namespace rerun::archetypes {
     ///             .with_color({0, 255, 0})
     ///             .with_name("cos(0.01t)")
     ///             .with_marker(rerun::components::MarkerShape::Cross)
-    ///             .with_marker_size(2)
+    ///             .with_marker_size(2.0f)
     ///     );
     ///
     ///     // Log the data on a timeline called "step".

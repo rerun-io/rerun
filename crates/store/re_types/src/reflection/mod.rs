@@ -1859,9 +1859,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "scalar", display_name : "Scalar",
-                    component_name : "rerun.components.Scalar".into(), docstring_md :
-                    "The scalar values to log.", is_required : true, },
+                    ArchetypeFieldReflection { name : "scalars", display_name :
+                    "Scalars", component_name : "rerun.components.Scalar".into(),
+                    docstring_md : "The scalar values to log.", is_required : true, },
                 ],
             },
         ),

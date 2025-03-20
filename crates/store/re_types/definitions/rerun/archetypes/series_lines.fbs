@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 /// The underlying data needs to be logged to the same entity-path using [archetypes.Scalars].
 /// Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 ///
-/// \example archetypes/series_line_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"
+/// \example archetypes/series_lines_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"
 table SeriesLines (
     "attr.docs.category": "Plotting",
     "attr.docs.view_types": "TimeSeriesView"

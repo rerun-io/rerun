@@ -270,8 +270,8 @@ class MeasurementLogger:
         if measurement.barometric_altitude is not None:
             rr.log(
                 entity_path + "/barometric_altitude",
-                rr.Scalar(measurement.barometric_altitude),
-                rr.SeriesLine(color=color),
+                rr.Scalars(measurement.barometric_altitude),
+                rr.SeriesLines(colors=color),
             )
 
     def flush(self) -> None:

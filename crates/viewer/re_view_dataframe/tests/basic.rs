@@ -2,7 +2,7 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{Timeline, TimelineName};
-use re_types::archetypes::Scalar;
+use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
@@ -18,14 +18,14 @@ pub fn test_null_timeline() {
     let timeline_b = Timeline::new_sequence("timeline_b");
 
     test_context.log_entity("first".into(), |builder| {
-        builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalar::new(10.0))
+        builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalars::new([10.0]))
     });
 
     test_context.log_entity("second".into(), |builder| {
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 1), (timeline_b, 10)],
-            &Scalar::new(12.0),
+            &Scalars::new([12.0]),
         )
     });
 
@@ -46,9 +46,9 @@ pub fn test_unknown_timeline() {
 
     test_context.log_entity("some_entity".into(), |builder| {
         builder
-            .with_archetype(RowId::new(), [(timeline, 0)], &Scalar::new(10.0))
-            .with_archetype(RowId::new(), [(timeline, 1)], &Scalar::new(20.0))
-            .with_archetype(RowId::new(), [(timeline, 2)], &Scalar::new(30.0))
+            .with_archetype(RowId::new(), [(timeline, 0)], &Scalars::new([10.0]))
+            .with_archetype(RowId::new(), [(timeline, 1)], &Scalars::new([20.0]))
+            .with_archetype(RowId::new(), [(timeline, 2)], &Scalars::new([30.0]))
     });
 
     let view_id = setup_blueprint(&mut test_context, &TimelineName::from("unknown_timeline"));

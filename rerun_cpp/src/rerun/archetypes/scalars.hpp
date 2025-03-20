@@ -74,13 +74,13 @@ namespace rerun::archetypes {
     ///     rec.send_columns(
     ///         "scalars",
     ///         rerun::TimeColumn::from_sequence("step", std::move(times)),
-    ///         rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()
+    ///         rerun::Scalars(std::move(scalar_data)).columns()
     ///     );
     /// }
     /// ```
     struct Scalars {
         /// The scalar values to log.
-        std::optional<ComponentBatch> scalar;
+        std::optional<ComponentBatch> scalars;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.ScalarsIndicator";
@@ -90,9 +90,9 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Scalars";
 
-        /// `ComponentDescriptor` for the `scalar` field.
-        static constexpr auto Descriptor_scalar = ComponentDescriptor(
-            ArchetypeName, "scalar", Loggable<rerun::components::Scalar>::Descriptor.component_name
+        /// `ComponentDescriptor` for the `scalars` field.
+        static constexpr auto Descriptor_scalars = ComponentDescriptor(
+            ArchetypeName, "scalars", Loggable<rerun::components::Scalar>::Descriptor.component_name
         );
 
       public:
@@ -102,9 +102,9 @@ namespace rerun::archetypes {
         Scalars& operator=(const Scalars& other) = default;
         Scalars& operator=(Scalars&& other) = default;
 
-        explicit Scalars(Collection<rerun::components::Scalar> _scalar)
-            : scalar(ComponentBatch::from_loggable(std::move(_scalar), Descriptor_scalar)
-                         .value_or_throw()) {}
+        explicit Scalars(Collection<rerun::components::Scalar> _scalars)
+            : scalars(ComponentBatch::from_loggable(std::move(_scalars), Descriptor_scalars)
+                          .value_or_throw()) {}
 
         /// Update only some specific fields of a `Scalars`.
         static Scalars update_fields() {
@@ -115,8 +115,8 @@ namespace rerun::archetypes {
         static Scalars clear_fields();
 
         /// The scalar values to log.
-        Scalars with_scalar(const Collection<rerun::components::Scalar>& _scalar) && {
-            scalar = ComponentBatch::from_loggable(_scalar, Descriptor_scalar).value_or_throw();
+        Scalars with_scalars(const Collection<rerun::components::Scalar>& _scalars) && {
+            scalars = ComponentBatch::from_loggable(_scalars, Descriptor_scalars).value_or_throw();
             return std::move(*this);
         }
 

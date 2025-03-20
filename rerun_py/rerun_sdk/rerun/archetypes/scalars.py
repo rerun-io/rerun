@@ -49,7 +49,7 @@ class Scalars(Archetype):
 
     for step in range(64):
         rr.set_time("step", sequence=step)
-        rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))
+        rr.log("scalars", rr.Scalars(math.sin(step / 10.0)))
     ```
     <center>
     <picture>
@@ -76,7 +76,7 @@ class Scalars(Archetype):
     rr.send_columns(
         "scalars",
         indexes=[rr.TimeColumn("step", sequence=times)],
-        columns=rr.Scalar.columns(scalar=scalars),
+        columns=rr.Scalars.columns(scalars=scalars),
     )
     ```
     <center>
@@ -91,27 +91,27 @@ class Scalars(Archetype):
 
     """
 
-    def __init__(self: Any, scalar: datatypes.Float64ArrayLike) -> None:
+    def __init__(self: Any, scalars: datatypes.Float64ArrayLike) -> None:
         """
         Create a new instance of the Scalars archetype.
 
         Parameters
         ----------
-        scalar:
+        scalars:
             The scalar values to log.
 
         """
 
         # You can define your own __init__ function as a member of ScalarsExt in scalars_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(scalar=scalar)
+            self.__attrs_init__(scalars=scalars)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            scalar=None,
+            scalars=None,
         )
 
     @classmethod
@@ -126,7 +126,7 @@ class Scalars(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        scalar: datatypes.Float64ArrayLike | None = None,
+        scalars: datatypes.Float64ArrayLike | None = None,
     ) -> Scalars:
         """
         Update only some specific fields of a `Scalars`.
@@ -135,7 +135,7 @@ class Scalars(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        scalar:
+        scalars:
             The scalar values to log.
 
         """
@@ -143,7 +143,7 @@ class Scalars(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "scalar": scalar,
+                "scalars": scalars,
             }
 
             if clear_unset:
@@ -164,7 +164,7 @@ class Scalars(Archetype):
     def columns(
         cls,
         *,
-        scalar: datatypes.Float64ArrayLike | None = None,
+        scalars: datatypes.Float64ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -176,7 +176,7 @@ class Scalars(Archetype):
 
         Parameters
         ----------
-        scalar:
+        scalars:
             The scalar values to log.
 
         """
@@ -184,14 +184,14 @@ class Scalars(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                scalar=scalar,
+                scalars=scalars,
             )
 
         batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"scalar": scalar}
+        kwargs = {"scalars": scalars}
         columns = []
 
         for batch in batches:
@@ -221,7 +221,7 @@ class Scalars(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
-    scalar: components.ScalarBatch | None = field(
+    scalars: components.ScalarBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=components.ScalarBatch._converter,  # type: ignore[misc]

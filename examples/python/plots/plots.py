@@ -43,7 +43,7 @@ def log_parabola() -> None:
     # `SeriesLine` archetype, we further hint the viewer to use the line plot visualizer.
     # Alternatively, you can achieve time-independent styling using overrides, as is everywhere else in this example
     # (see the `main()` function).
-    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
+    rr.log("curves/parabola", rr.SeriesLines(names="f(t) = (0.01t - 3)³ + 1"), static=True)
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
@@ -60,8 +60,8 @@ def log_parabola() -> None:
         # Note: by using the `rr.SeriesLine` archetype, we hint the viewer to use the line plot visualizer.
         rr.log(
             "curves/parabola",
-            rr.Scalar(f_of_t),
-            rr.SeriesLine(width=width, color=color),
+            rr.Scalars(f_of_t),
+            rr.SeriesLines(widths=width, colors=color),
         )
 
 
@@ -70,10 +70,10 @@ def log_trig() -> None:
         rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rr.log("trig/sin", rr.Scalar(sin_of_t))
+        rr.log("trig/sin", rr.Scalars(sin_of_t))
 
         cos_of_t = cos(float(t) / 100.0)
-        rr.log("trig/cos", rr.Scalar(cos_of_t))
+        rr.log("trig/cos", rr.Scalars(cos_of_t))
 
 
 def log_spiral() -> None:
@@ -97,7 +97,7 @@ def log_classification() -> None:
         rr.set_time("frame_nr", sequence=t)
 
         f_of_t = (2 * 0.01 * t) + 2
-        rr.log("classification/line", rr.Scalar(f_of_t))
+        rr.log("classification/line", rr.Scalars(f_of_t))
 
         g_of_t = f_of_t + random.uniform(-5.0, 5.0)
         if g_of_t < f_of_t - 1.5:
@@ -112,8 +112,8 @@ def log_classification() -> None:
         # override instead (see `main()`)
         rr.log(
             "classification/samples",
-            rr.Scalar(g_of_t),
-            rr.SeriesPoint(color=color, marker_size=marker_size),
+            rr.Scalars(g_of_t),
+            rr.SeriesPoints(colors=color, marker_sizes=marker_size),
         )
 
 
