@@ -89,7 +89,7 @@ message UnregisterPartitionsRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partitions to remove
-  repeated string partition_ids = 2;
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // What to do if partition is not found
   rerun.common.v1alpha1.IfMissingBehavior on_unknown_partition = 3;
@@ -119,7 +119,7 @@ message CreatePartitionManifestsRequest {
 
   // Create manifest for specific partitions. All will be
   // created if left unspecified (empty list)
-  repeated string partition_ids = 2;
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
@@ -136,7 +136,7 @@ message QueryDatasetRequest {
 
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
-  repeated string partition_ids = 2;
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
@@ -201,7 +201,7 @@ message FetchPartitionRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
   // Partition for which we want to get chunks
-  string partition_id = 2;
+  rerun.common.v1alpha1.PartitionId partition_id = 2;
 }
 
 message FetchPartitionResponse {
@@ -215,7 +215,7 @@ message GetChunksRequest {
 
   // Client can specify from which partitions to get chunks. If left unspecified (empty list),
   // data from all partition (that match other query parameters) will be included.
-  repeated string partition_ids = 2;
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // Client can specify chunk ids to include. If left unspecified (empty list),
   // all chunks (that match other query parameters) will be included.
@@ -235,7 +235,7 @@ message CreatePartitionIndexesRequest {
 
   // List of specific partitions that will be indexes.
   // All partitions will be indexed if left unspecified (empty list)
-  repeated string partition_ids = 2;
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
   // what kind of index do we want to create and what are
   // its index specific properties
