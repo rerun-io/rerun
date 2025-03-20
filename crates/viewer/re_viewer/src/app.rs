@@ -1119,7 +1119,7 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream { url: base_url }) = &entity_db.data_source
+        let Some(SmartChannelSource::RedapGrpcStream(mut endpoint)) = entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1138,10 +1138,10 @@ impl App {
             return;
         };
 
-        let time_range = re_uri::TimeRange {
+        endpoint.time_range = Some(re_uri::TimeRange {
             timeline: *time_ctrl.timeline(),
             range,
-        };
+        });
 
         // On web we can produce a link to the web viewer,
         // which can be used to share the time range.
@@ -1156,7 +1156,7 @@ impl App {
                 return;
             };
 
-            let time_range_url = format!("{base_url}?time_range={time_range}");
+            let time_range_url = endpoint.to_string();
             // %-encode the time range URL, because it's a url-within-a-url.
             // This results in VERY ugly links.
             // TODO(jan): Tweak the asciiset used here.
@@ -1172,7 +1172,7 @@ impl App {
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let url = format!("{base_url}?time_range={time_range}");
+        let url = endpoint.to_string();
 
         self.egui_ctx.copy_text(url.clone());
         self.notifications

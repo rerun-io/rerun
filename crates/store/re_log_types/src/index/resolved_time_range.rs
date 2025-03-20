@@ -135,7 +135,7 @@ impl re_byte_size::SizeBytes for ResolvedTimeRange {
 // ----------------------------------------------------------------------------
 
 /// Like [`ResolvedTimeRange`], but using [`TimeReal`] for improved precision.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ResolvedTimeRangeF {
     pub min: TimeReal,

@@ -41,12 +41,8 @@ pub fn stream_from_redap(
     re_log::debug!("Loading {endpoint}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RerunGrpcStream {
-            url: endpoint.to_string(),
-        },
-        re_smart_channel::SmartChannelSource::RedapGrpcStream {
-            url: endpoint.to_string(),
-        },
+        re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
     );
 
     spawn_future(async move {

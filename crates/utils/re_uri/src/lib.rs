@@ -43,7 +43,7 @@ pub use self::{
     error::Error,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeRange {
     pub timeline: re_log_types::Timeline,
     pub range: re_log_types::ResolvedTimeRangeF,
@@ -227,7 +227,7 @@ impl std::fmt::Display for Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),

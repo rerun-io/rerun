@@ -6670,6 +6670,7 @@ dependencies = [
  "crossbeam",
  "parking_lot",
  "re_tracing",
+ "re_uri",
  "serde",
  "web-time",
 ]
