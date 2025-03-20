@@ -83,7 +83,7 @@ class EntitySelection:
     Selected an entity, or an instance of an entity.
 
     If the entity was selected within a view, then this also
-    includes the `view_id`.
+    includes the view's name.
 
     If the entity was selected within a 2D or 3D space view,
     then this also includes the position.
