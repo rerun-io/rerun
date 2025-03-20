@@ -65,6 +65,9 @@ pub struct TimeSeriesViewState {
     /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
     /// forwarded to the default providers.
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+
+    /// Whether to reset the plot bounds next frame.
+    reset_bounds_next_frame: bool,
 }
 
 impl Default for TimeSeriesViewState {
@@ -72,10 +75,16 @@ impl Default for TimeSeriesViewState {
         Self {
             is_dragging_time_cursor: false,
             was_dragging_time_cursor: false,
-            saved_auto_bounds: Default::default(),
+            saved_auto_bounds: egui::Vec2b {
+                // Default x bounds to automatically show all time values.
+                x: true,
+                // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+                y: false,
+            },
             scalar_range: [0.0, 0.0].into(),
             time_offset: 0,
             default_names_for_entities: Default::default(),
+            reset_bounds_next_frame: false,
         }
     }
 }
@@ -411,7 +420,7 @@ impl ViewClass for TimeSeriesView {
 
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
-            .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+            .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
                 re_log_types::TimeCell::new(
@@ -490,15 +499,20 @@ impl ViewClass for TimeSeriesView {
                 if !state.was_dragging_time_cursor {
                     state.saved_auto_bounds = plot_ui.auto_bounds();
                 }
-                // Freeze any change to the plot boundaries to avoid weird interaction with the time
-                // cursor.
-                plot_ui.set_plot_bounds(plot_ui.plot_bounds());
+                // Freeze any change to the plot boundaries to avoid weird interaction with the time cursor.
+                plot_ui.set_auto_bounds([false, false]);
             } else if state.was_dragging_time_cursor {
                 plot_ui.set_auto_bounds(state.saved_auto_bounds);
             } else {
-                plot_ui.set_auto_bounds([plot_ui.auto_bounds()[0], false]);
+                plot_ui.set_auto_bounds([
+                    // X bounds are handled by egui plot - either to auto or manually controlled.
+                    plot_ui.auto_bounds()[0] || state.reset_bounds_next_frame,
+                    // Y bounds are always handled by the blueprint.
+                    false,
+                ]);
             }
 
+            state.reset_bounds_next_frame = false;
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
 
             add_series_to_plot(
@@ -538,6 +552,7 @@ impl ViewClass for TimeSeriesView {
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
             scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
             scalar_axis.save_blueprint_component(ctx, &new_y_range);
