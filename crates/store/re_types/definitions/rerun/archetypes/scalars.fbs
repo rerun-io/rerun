@@ -1,9 +1,10 @@
 namespace rerun.archetypes;
 
-/// A double-precision scalar, e.g. for use for time-series plots.
+/// One or more double-precision scalar values, e.g. for use for time-series plots.
 ///
 /// The current timeline value will be used for the time/X-axis, hence scalars
 /// should not be static.
+/// Number of scalars per timestamp is expected to be the same over time.
 ///
 /// When used to produce a plot, this archetype is used to provide the data that
 /// is referenced by [archetypes.SeriesLines] or [archetypes.SeriesPoints]. You can do
@@ -14,16 +15,15 @@ namespace rerun.archetypes;
 /// \example archetypes/scalar_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
 /// \example archetypes/scalar_row_updates title="Update a scalar over time" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
 /// \example archetypes/scalar_column_updates title="Update a scalar over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
-table Scalar (
-  "attr.rerun.deprecated": "Use `Scalars` instead.",
+table Scalars (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "TimeSeriesView"
 ) {
   // --- Required ---
 
-  /// The scalar value to log.
-  scalar: rerun.components.Scalar ("attr.rerun.component_required", order: 1000);
+  /// The scalar values to log.
+  scalar: [rerun.components.Scalar] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

@@ -1,7 +1,5 @@
 namespace rerun.archetypes;
 
-// ---
-
 /// Define the style properties for a point series in a chart.
 ///
 /// This archetype only provides styling information and should be logged as static
@@ -10,6 +8,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/series_point_style title="Point series" image="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png"
 table SeriesPoint (
+    "attr.rerun.deprecated": "Use `SeriesPoints` instead.",
     "attr.docs.category": "Plotting",
     "attr.docs.view_types": "TimeSeriesView"
 ) {
@@ -28,13 +27,6 @@ table SeriesPoint (
     ///
     /// Used in the legend.
     name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
-
-    /// Which point series are visible.
-    ///
-    /// If not set, all point series on this entity are visible.
-    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-    /// via this property will still be visible in the legend.
-    visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
 
     /// Size of the marker.
     marker_size: rerun.components.MarkerSize ("attr.rerun.component_optional", nullable, order: 4000);

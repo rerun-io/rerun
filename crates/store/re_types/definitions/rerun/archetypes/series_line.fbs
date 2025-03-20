@@ -1,7 +1,5 @@
 namespace rerun.archetypes;
 
-// ---
-
 /// Define the style properties for a line series in a chart.
 ///
 /// This archetype only provides styling information and should be logged as static
@@ -10,6 +8,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/series_line_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"
 table SeriesLine (
+    "attr.rerun.deprecated": "Use `SeriesLines` instead.",
     "attr.docs.category": "Plotting",
     "attr.docs.view_types": "TimeSeriesView"
 ) {
@@ -29,13 +28,6 @@ table SeriesLine (
     ///
     /// Used in the legend.
     name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
-
-    /// Which lines are visible.
-    ///
-    /// If not set, all line series on this entity are visible.
-    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-    /// via this property will still be visible in the legend.
-    visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
 
     /// Configures the zoom-dependent scalar aggregation.
     ///

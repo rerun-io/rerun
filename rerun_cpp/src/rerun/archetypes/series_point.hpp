@@ -4,13 +4,13 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/color.hpp"
 #include "../components/marker_shape.hpp"
 #include "../components/marker_size.hpp"
 #include "../components/name.hpp"
-#include "../components/series_visible.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -18,6 +18,9 @@
 #include <optional>
 #include <utility>
 #include <vector>
+
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
 
 namespace rerun::archetypes {
     /// **Archetype**: Define the style properties for a point series in a chart.
@@ -71,7 +74,7 @@ namespace rerun::archetypes {
     ///     }
     /// }
     /// ```
-    struct SeriesPoint {
+    struct [[deprecated("Use `SeriesPoints` instead.")]] SeriesPoint {
         /// Color for the corresponding series.
         std::optional<ComponentBatch> color;
 
@@ -82,13 +85,6 @@ namespace rerun::archetypes {
         ///
         /// Used in the legend.
         std::optional<ComponentBatch> name;
-
-        /// Which point series are visible.
-        ///
-        /// If not set, all point series on this entity are visible.
-        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-        /// via this property will still be visible in the legend.
-        std::optional<ComponentBatch> visible_series;
 
         /// Size of the marker.
         std::optional<ComponentBatch> marker_size;
@@ -114,11 +110,6 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
             ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
-        );
-        /// `ComponentDescriptor` for the `visible_series` field.
-        static constexpr auto Descriptor_visible_series = ComponentDescriptor(
-            ArchetypeName, "visible_series",
-            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `marker_size` field.
         static constexpr auto Descriptor_marker_size = ComponentDescriptor(
@@ -188,20 +179,6 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Which point series are visible.
-        ///
-        /// If not set, all point series on this entity are visible.
-        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-        /// via this property will still be visible in the legend.
-        SeriesPoint with_visible_series(
-            const Collection<rerun::components::SeriesVisible>& _visible_series
-        ) && {
-            visible_series =
-                ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)
-                    .value_or_throw();
-            return std::move(*this);
-        }
-
         /// Size of the marker.
         SeriesPoint with_marker_size(const rerun::components::MarkerSize& _marker_size) && {
             marker_size = ComponentBatch::from_loggable(_marker_size, Descriptor_marker_size)
@@ -244,6 +221,8 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
+    RR_PUSH_WARNINGS
+    RR_DISABLE_DEPRECATION_WARNING
 
     /// \private
     template <>
@@ -254,3 +233,5 @@ namespace rerun {
         );
     };
 } // namespace rerun
+
+RR_POP_WARNINGS
