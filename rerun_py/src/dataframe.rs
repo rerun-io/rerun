@@ -1294,8 +1294,6 @@ impl PyRecording {
     ///
     ///     Tombstone columns are components used to represent clears. However, even without the clear
     ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
-    /// include_properties_entity : bool, optional
-    ///     Whether to include columns from the properties entity, by default `True`.
     ///
     /// Returns
     /// -------
@@ -1321,7 +1319,6 @@ impl PyRecording {
         include_semantically_empty_columns = false,
         include_indicator_columns = false,
         include_tombstone_columns = false,
-        include_properties_entity = true,
     ))]
     fn view(
         slf: Bound<'_, Self>,
@@ -1330,7 +1327,6 @@ impl PyRecording {
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
-        include_properties_entity: bool,
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
@@ -1346,7 +1342,6 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            include_properties_entity,
             filtered_index: Some(*time_column.timeline().name()),
             filtered_index_range: None,
             filtered_index_values: None,

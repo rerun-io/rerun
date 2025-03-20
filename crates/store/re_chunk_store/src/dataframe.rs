@@ -324,12 +324,6 @@ pub struct QueryExpression {
     /// `Clear`: [`re_types_core::archetypes::Clear`]
     pub include_tombstone_columns: bool,
 
-    /// Whether the `view_contents` should include the properties that are logged to
-    /// [`EntityPath::partition_properties`].
-    ///
-    /// `view_contents`: [`QueryExpression::view_contents`]
-    pub include_properties_entity: bool,
-
     /// The index used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 column contains non-null data at that index will be kept in the
@@ -598,7 +592,6 @@ impl ChunkStore {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            include_properties_entity,
             filtered_index: _,
             filtered_index_range: _,
             filtered_index_values: _,
@@ -628,16 +621,10 @@ impl ChunkStore {
 
             let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
 
-            let passes_properties_check = || {
-                *include_properties_entity
-                    || column.entity_path != EntityPath::partition_properties()
-            };
-
             is_part_of_view_contents()
                 && passes_semantically_empty_check()
                 && passes_indicator_check()
                 && passes_tombstone_check()
-                && passes_properties_check()
         };
 
         self.schema().filter_components(filter)

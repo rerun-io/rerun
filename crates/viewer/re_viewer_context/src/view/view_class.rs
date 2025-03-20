@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{ComponentName, ViewClassIdentifier};
 
 use crate::{
@@ -170,7 +170,14 @@ pub trait ViewClass: Send + Sync {
     }
 
     /// Determines which views should be spawned by default for this class.
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics;
+    ///
+    /// As the name implies, `suggested_filter` is only a suggestion and can be,
+    /// overwritten if a view decides to display more data.
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.
     fn selection_ui(

@@ -232,7 +232,7 @@ impl VisualizerSystem for CamerasVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let latest_at = query.latest_at_query();
             let query_ctx = ctx.query_context(data_result, &latest_at);
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);

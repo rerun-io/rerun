@@ -246,6 +246,45 @@ but for the moment the Viewer is not able to make this distinction.
 For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
 
 
+### Overriding `Visible` and `Interactive` is now always recursive
+
+Previously, it was possible to override visibility individually, but not recursively.
+Also, Viewer interaction [was hampered](https://github.com/rerun-io/rerun/issues/9254) by this.
+
+Overrides for these two properties are now always recursive, and can be applied using the new `EntityBehavior` archetype.
+
+Before:
+```py
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        overrides={"points": [rrb.components.Visible(False)]}
+        overrides={
+            "hidden_subtree": [rrb.components.Visible(False)],
+            "hidden_subtree/child0": [rrb.components.Visible(False)],
+            "hidden_subtree/child1": [rrb.components.Visible(False)],
+            # …
+            "non_interactive_subtree": [rrb.components.Interactive(False)],
+            "non_interactive_subtree/child0": [rrb.components.Interactive(False)],
+            "non_interactive_subtree/child1": [rrb.components.Interactive(False)],
+            # …
+        }
+    ),
+)
+```
+
+After:
+```py
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        overrides={
+            "hidden_subtree": rrb.EntityBehavior(visible=False),
+            "hidden_subtree/not_hidden": rrb.EntityBehavior(visible=True),
+            "non_interactive_subtree": rrb.EntityBehavior(interactive=False),
+        }
+    )
+)
+```
+
 ### Visible time range overrides have to specify the underlying archetype
 
 (Note that this functionality broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))

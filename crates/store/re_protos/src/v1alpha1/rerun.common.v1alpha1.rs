@@ -151,9 +151,6 @@ pub struct Query {
     /// Specifies how null values should be filled in the returned dataframe.
     #[prost(enumeration = "SparseFillStrategy", tag = "11")]
     pub sparse_fill_strategy: i32,
-    /// Whether the view_contents should ignore columns from the recording properties entity.
-    #[prost(bool, tag = "12")]
-    pub include_properties_entity: bool,
 }
 impl ::prost::Name for Query {
     const NAME: &'static str = "Query";
@@ -580,6 +577,24 @@ impl ::prost::Name for ScanParametersOrderClause {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+}
+/// Unique identifier for a partition. Can be user defined
+/// which means it can be of any type. For simplicity we start
+/// with a string, but we will probably revisit this.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PartitionId {
+    #[prost(string, optional, tag = "1")]
+    pub id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for PartitionId {
+    const NAME: &'static str = "PartitionId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.PartitionId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.PartitionId".into()
     }
 }
 /// supported encoder versions for encoding data
