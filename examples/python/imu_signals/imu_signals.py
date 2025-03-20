@@ -35,7 +35,31 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    _setup_rerun(args)
+    blueprint = rrb.Horizontal(
+        rrb.Vertical(
+            rrb.TimeSeriesView(
+                origin="gyroscope",
+                name="Gyroscope",
+                overrides={
+                    # TODO(#9022): Pluralize series line type.
+                    "/gyroscope": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                },
+            ),
+            rrb.TimeSeriesView(
+                origin="accelerometer",
+                name="Accelerometer",
+                overrides={
+                    # TODO(#9022): Pluralize series line type.
+                    "/accelerometer": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                },
+            ),
+        ),
+        rrb.Spatial3DView(origin="/", name="World position"),
+        column_shares=[0.45, 0.55],
+    )
+
+    rr.script_setup(args, "rerun_example_imu_data", default_blueprint=blueprint)
+
     _log_imu_data(args.seconds)
     _log_image_data(args.seconds)
     _log_gt_imu(args.seconds)
@@ -62,33 +86,6 @@ def _download_dataset(root: pathlib.Path, dataset_url: str = DATASET_URL) -> Non
     with tarfile.open(tar_path, "r:") as tar:
         tar.extractall(path=root)
     os.remove(tar_path)
-
-
-def _setup_rerun(args) -> None:
-    blueprint = rrb.Horizontal(
-        rrb.Vertical(
-            rrb.TimeSeriesView(
-                origin="gyroscope",
-                name="Gyroscope",
-                overrides={
-                    # TODO(#9022): Pluralize series line type.
-                    "/gyroscope": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
-                },
-            ),
-            rrb.TimeSeriesView(
-                origin="accelerometer",
-                name="Accelerometer",
-                overrides={
-                    # TODO(#9022): Pluralize series line type.
-                    "/accelerometer": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
-                },
-            ),
-        ),
-        rrb.Spatial3DView(origin="/", name="World position"),
-        column_shares=[0.45, 0.55],
-    )
-
-    rr.script_setup(args, "rerun_example_imu_data", default_blueprint=blueprint)
 
 
 def _log_imu_data(max_time_sec: float) -> None:
