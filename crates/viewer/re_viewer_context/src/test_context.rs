@@ -119,6 +119,11 @@ impl Default for TestContext {
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
+        recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(Timeline::log_tick());
+
         Self {
             recording_store,
             blueprint_store,

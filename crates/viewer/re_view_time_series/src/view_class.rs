@@ -1,12 +1,10 @@
 use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use smallvec::SmallVec;
 
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt, TimestampFormat};
+use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
@@ -18,21 +16,27 @@ use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
 use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
-use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-    ZOOM_SCROLL_MODIFIER,
+use re_view::{
+    controls::{
+        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
+        ZOOM_SCROLL_MODIFIER,
+    },
+    view_property_ui,
 };
-use re_view::{controls, view_property_ui};
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
+    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
+    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
-use smallvec::SmallVec;
+
+use crate::{
+    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
+    PlotSeriesKind,
+};
+
 // ---
 
 #[derive(Clone)]
@@ -410,11 +414,11 @@ impl ViewClass for TimeSeriesView {
             .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
-                format_time(
+                re_log_types::TimeCell::new(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
-                    timestamp_format,
                 )
+                .format_compact(timestamp_format)
             })
             .y_axis_formatter(move |mark, _| format_y_axis(mark))
             .label_formatter(move |name, value| {
@@ -738,16 +742,6 @@ fn add_series_to_plot(
             // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}
         }
-    }
-}
-
-fn format_time(time_type: TimeType, time_int: i64, timestamp_format: TimestampFormat) -> String {
-    match time_type {
-        TimeType::DurationNs | TimeType::TimestampNs => {
-            let time = re_log_types::Time::from_ns_since_epoch(time_int);
-            time.format_time_compact(timestamp_format)
-        }
-        TimeType::Sequence => time_type.format(TimeInt::new_temporal(time_int), timestamp_format),
     }
 }
 
