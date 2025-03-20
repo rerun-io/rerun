@@ -6,7 +6,7 @@ use crate::{
 };
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
@@ -81,7 +81,11 @@ Configure in the selection panel:
         re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
         Default::default()
     }
@@ -149,7 +153,6 @@ Configure in the selection panel:
             include_semantically_empty_columns: false,
             include_indicator_columns: false,
             include_tombstone_columns: false,
-            include_properties_entity: true,
         };
 
         let view_columns = query_engine

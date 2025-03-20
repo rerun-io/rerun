@@ -89,9 +89,23 @@ impl TryFrom<&str> for EntityPathFilter {
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
+
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ResolvedEntityPathFilter {
     rules: BTreeMap<ResolvedEntityPathRule, RuleEffect>,
+}
+
+impl ResolvedEntityPathFilter {
+    /// Creates an filter that matches [`EntityPath::partition_properties`].
+    pub fn properties() -> Self {
+        Self {
+            rules: std::iter::once((
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Include,
+            ))
+            .collect(),
+        }
+    }
 }
 
 impl std::fmt::Debug for ResolvedEntityPathFilter {
@@ -279,8 +293,8 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn parse_forgiving(rules: &str) -> Self {
-        let split_rules = split_whitespace_smart(rules);
+    pub fn parse_forgiving(rules: impl AsRef<str>) -> Self {
+        let split_rules = split_whitespace_smart(rules.as_ref());
         Self::from_query_expressions(split_rules)
     }
 
@@ -301,7 +315,7 @@ impl EntityPathFilter {
     ///
     /// Conflicting rules are resolved by the last rule.
     #[allow(clippy::unnecessary_wraps)] // TODO(andreas): Do some error checking here?
-    pub fn parse_strict(rules: &str) -> Result<Self, EntityPathFilterError> {
+    pub fn parse_strict(rules: impl AsRef<str>) -> Result<Self, EntityPathFilterError> {
         Ok(Self::parse_forgiving(rules))
     }
 
@@ -412,8 +426,12 @@ impl EntityPathFilter {
     }
 
     /// Resolve variables & parse paths, ignoring any errors.
+    ///
+    /// If there is no mention of [`EntityPath::partition_properties`] in the filter, it will be added.
     pub fn resolve_forgiving(&self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
-        let rules = self
+        let mut seen_properties = false;
+
+        let mut rules: BTreeMap<ResolvedEntityPathRule, RuleEffect> = self
             .rules
             .iter()
             .map(|(rule, effect)| {
@@ -422,7 +440,20 @@ impl EntityPathFilter {
                     *effect,
                 )
             })
+            .inspect(|(ResolvedEntityPathRule { resolved_path, .. }, _)| {
+                if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                    seen_properties = true;
+                }
+            })
             .collect();
+
+        if !seen_properties {
+            rules.insert(
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Exclude,
+            );
+        }
+
         ResolvedEntityPathFilter { rules }
     }
 
@@ -431,16 +462,31 @@ impl EntityPathFilter {
         self,
         subst_env: &EntityPathSubs,
     ) -> Result<ResolvedEntityPathFilter, EntityPathFilterError> {
-        let rules = self
+        let mut seen_properties = false;
+
+        let mut rules = self
             .rules
             .into_iter()
             .map(|(rule, effect)| {
                 ResolvedEntityPathRule::parse_strict(&rule, subst_env).map(|r| (r, effect))
             })
+            .inspect(|maybe_rule| {
+                if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule {
+                    if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                        seen_properties = true;
+                    }
+                }
+            })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
-        Ok(ResolvedEntityPathFilter {
-            rules: BTreeMap::from_iter(rules),
-        })
+
+        if !seen_properties {
+            rules.insert(
+                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                RuleEffect::Exclude,
+            );
+        }
+
+        Ok(ResolvedEntityPathFilter { rules })
     }
 
     /// Resolve variables & parse paths, without any substitutions.
@@ -931,17 +977,21 @@ mod tests {
     fn test_entity_path_filter() {
         let subst_env = EntityPathSubs::empty();
 
-        let filter = EntityPathFilter::parse_forgiving(
+        let properties = format!("{}/**", EntityPath::partition_properties());
+
+        let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
-        + /world/**
-        - /world/
-        - /world/car/**
-        + /world/car/driver
-        "#,
-        )
+            - {properties}
+            + /world/**
+            - /world/
+            - /world/car/**
+            + /world/car/driver
+            "#
+        ))
         .resolve_forgiving(&subst_env);
 
         for (path, expected_effect) in [
+            (properties.as_str(), Some(RuleEffect::Exclude)),
             ("/unworldly", None),
             ("/world", Some(RuleEffect::Exclude)),
             ("/world/house", Some(RuleEffect::Include)),
@@ -961,7 +1011,7 @@ mod tests {
             EntityPathFilter::parse_forgiving("/**")
                 .resolve_forgiving(&subst_env)
                 .formatted(),
-            "+ /**"
+            format!("+ /**\n- {properties}")
         );
     }
 
@@ -971,17 +1021,21 @@ mod tests {
         // We can't do in-place substitution.
         let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
 
-        let filter = EntityPathFilter::parse_forgiving(
+        let properties = format!("{}/**", EntityPath::partition_properties());
+
+        let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
+        + {properties}
         + $origin/**
         - $origin
         - $origin/car/**
         + $origin/car/driver
-        "#,
-        )
+        "#
+        ))
         .resolve_forgiving(&subst_env);
 
         for (path, expected_effect) in [
+            (properties.as_str(), Some(RuleEffect::Include)),
             ("/unworldly", None),
             ("/annoyingly/long/path", Some(RuleEffect::Exclude)),
             ("/annoyingly/long/path/house", Some(RuleEffect::Include)),
@@ -1007,7 +1061,7 @@ mod tests {
             EntityPathFilter::parse_forgiving("/**")
                 .resolve_forgiving(&subst_env)
                 .formatted(),
-            "+ /**"
+            format!("+ /**\n- {properties}")
         );
     }
 

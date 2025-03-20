@@ -1,3 +1,4 @@
+use re_log_types::ResolvedEntityPathFilter;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, RecommendedView, ViewClass,
     ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
@@ -10,6 +11,7 @@ use re_viewer_context::{
 pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
     view: &impl ViewClass,
+    suggested_filter: &ResolvedEntityPathFilter,
 ) -> ViewSpawnHeuristics
 where
     TVisualizer: VisualizerSystem + IdentifiedViewSystem + Default,
@@ -34,16 +36,17 @@ where
         .intersection(indicator_matching_entities)
         .filter_map(|entity| {
             let context = view.visualizable_filter_context(entity, ctx.recording());
-            if visualizer
+            if !visualizer
                 .filter_visualizable_entities(
                     MaybeVisualizableEntities(std::iter::once(entity.clone()).collect()),
                     context.as_ref(),
                 )
                 .is_empty()
+                && !suggested_filter.matches(entity)
             {
-                None
-            } else {
                 Some(RecommendedView::new_single_entity(entity.clone()))
+            } else {
+                None
             }
         });
 
