@@ -804,7 +804,7 @@ class RecordingStream:
 
         """
 
-        from ._properties import set_name
+        from ._properties import send_recording_name
 
         send_recording_name(name, recording=self)
 

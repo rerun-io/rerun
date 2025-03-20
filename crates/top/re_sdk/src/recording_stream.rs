@@ -111,6 +111,9 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// let rec = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+///
+/// Automatically sends a [`Chunk`] with the default [`RecordingProperties`] to
+/// the sink, unless an explicit `recording_id` is set via [`RecordingStreamBuilder::recording_id`].
 #[derive(Debug)]
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
@@ -197,7 +200,7 @@ impl RecordingStreamBuilder {
             StoreKind::Recording,
             recording_id.into(),
         ));
-        self
+        self.disable_properties()
     }
 
     /// Sets an optional name for the recording.
