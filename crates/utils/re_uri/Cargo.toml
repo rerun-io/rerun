@@ -14,13 +14,10 @@ version.workspace = true
 [lints]
 workspace = true
 
-[features]
-serde = ["dep:serde", "url/serde"]
-
 [dependencies]
 re_log_types.workspace = true
 
 # External
-serde = { workspace = true, optional = true }
+serde.workspace = true
 thiserror.workspace = true
-url = { workspace = true }
+url = { workspace = true, features = ["serde"] }

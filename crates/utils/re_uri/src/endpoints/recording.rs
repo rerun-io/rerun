@@ -1,7 +1,6 @@
 use crate::{Origin, TimeRange};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct RecordingEndpoint {
     pub origin: Origin,
     pub recording_id: String,
