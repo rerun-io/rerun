@@ -126,16 +126,18 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
         )
 
 
-def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64) -> int:
+def to_nanos_since_epoch(
+    timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64,
+) -> np.integer:
     if isinstance(timestamp, (int, np.integer)):
-        return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
+        return 1_000_000_000 * np.int64(timestamp)  # Interpret as seconds and convert to nanos
     elif isinstance(
         timestamp,
         # Only allowing f64 since anything less has way too little precision for measuring time since 1970
         (float, np.float64),
     ):
         # Interpret as seconds and convert to nanos
-        return np.round(1e9 * timestamp).astype("int64")  # type: ignore[no-any-return]
+        return np.round(1e9 * timestamp).astype("int64")
     elif isinstance(timestamp, datetime):
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
@@ -143,9 +145,9 @@ def to_nanos_since_epoch(timestamp: int | np.integer | float | np.float64 | date
             timestamp = timestamp.astimezone(timezone.utc)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-        return np.round(1e9 * (timestamp - epoch).total_seconds()).astype("int64")  # type: ignore[no-any-return]
+        return np.round(1e9 * (timestamp - epoch).total_seconds()).astype("int64")
     elif isinstance(timestamp, np.datetime64):
-        return timestamp.astype("datetime64[ns]").astype("int64")  # type: ignore[no-any-return]
+        return timestamp.astype("datetime64[ns]").astype("int64")
     else:
         raise TypeError(
             f"set_time: timestamp must be an int, float, datetime, or numpy.datetime64 object, got {type(timestamp)}",
