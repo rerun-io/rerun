@@ -588,7 +588,11 @@ pub struct AppOptions {
 // Keep in sync with `index.ts`.
 #[derive(Clone, Deserialize)]
 pub struct Callbacks {
-    /// Fired when an item in the UI is selected.
+    /// Fired when the selection changes.
+    ///
+    /// This event is fired each time any part of the event payload changes,
+    /// this includes for example clicking on different parts of the same
+    /// entity in a 2D or 3D view.
     pub on_selectionchange: Callback,
 
     /// Fired when the a different timeline is selected.
@@ -683,7 +687,7 @@ fn create_app(
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
 
-        callbacks: callbacks.clone().map(|opts| re_viewer_context::Callbacks {
+        callbacks: callbacks.clone().map(|opts| crate::Callbacks {
             on_selection_change: Rc::new(move |selection| {
                 // Express the collection as a flat list of items.
                 let array = js_sys::Array::new_with_length(selection.len() as u32);

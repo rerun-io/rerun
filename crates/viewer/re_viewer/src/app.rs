@@ -14,7 +14,7 @@ use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, Callbacks, CommandReceiver, CommandSender,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
@@ -23,6 +23,7 @@ use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
+    callback::Callbacks,
     AppState,
 };
 // ----------------------------------------------------------------------------

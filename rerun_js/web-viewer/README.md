@@ -56,3 +56,5 @@ You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-
 ℹ️ Note:
 This package only targets recent versions of browsers.
 If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
+
+For more information about using the package, visit [our docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).

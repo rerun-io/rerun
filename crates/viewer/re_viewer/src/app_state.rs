@@ -157,7 +157,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        callbacks: Option<&re_viewer_context::Callbacks>,
+        callbacks: Option<&crate::callback::Callbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -224,7 +224,7 @@ impl AppState {
 
         if let SelectionChange::SelectionChanged(selection) = selection_change {
             if let Some(callbacks) = callbacks {
-                callbacks.on_selection_change(selection);
+                callbacks.on_selection_change(selection, &viewport_ui.blueprint);
             }
         }
 
@@ -650,7 +650,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    callbacks: Option<&re_viewer_context::Callbacks>,
+    callbacks: Option<&crate::callback::Callbacks>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -661,20 +661,26 @@ fn move_time(
         false
     };
 
-    let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+    let recording_time_ctrl_response = ctx.rec_cfg.time_ctrl.write().update(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        callbacks,
     );
 
+    handle_time_ctrl_callbacks(callbacks, &recording_time_ctrl_response);
+
+    let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
+
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
-        ctx.blueprint_cfg.time_ctrl.write().update(
-            ctx.store_context.blueprint.times_per_timeline(),
-            dt,
-            more_data_is_coming,
-            None,
-        )
+        ctx.blueprint_cfg
+            .time_ctrl
+            .write()
+            .update(
+                ctx.store_context.blueprint.times_per_timeline(),
+                dt,
+                more_data_is_coming,
+            )
+            .needs_repaint
     } else {
         re_viewer_context::NeedsRepaint::No
     };
@@ -683,6 +689,31 @@ fn move_time(
         || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
     {
         ctx.egui_ctx().request_repaint();
+    }
+}
+
+fn handle_time_ctrl_callbacks(
+    callbacks: Option<&crate::callback::Callbacks>,
+    response: &re_viewer_context::TimeControlResponse,
+) {
+    let Some(callbacks) = callbacks else {
+        return;
+    };
+
+    if let Some(playing) = response.playing_change {
+        if playing {
+            callbacks.on_play();
+        } else {
+            callbacks.on_pause();
+        }
+    }
+
+    if let Some((timeline, time)) = response.timeline_change {
+        callbacks.on_timeline_change(timeline, time);
+    }
+
+    if let Some(time) = response.time_change {
+        callbacks.on_time_update(time);
     }
 }
 

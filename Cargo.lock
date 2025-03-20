@@ -7200,6 +7200,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "ehttp",
+ "glam",
  "image",
  "itertools 0.14.0",
  "js-sys",
