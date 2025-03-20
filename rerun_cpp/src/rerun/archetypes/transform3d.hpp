@@ -85,7 +85,7 @@ namespace rerun::archetypes {
     ///
     ///     // TODO(#5521): log two views as in the python example
     ///
-    ///     rec.set_index_duration_secs("sim_time", 0.0);
+    ///     rec.set_time_duration_secs("sim_time", 0.0);
     ///
     ///     // Planetary motion is typically in the XY plane.
     ///     rec.log_static("/", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
@@ -127,7 +127,7 @@ namespace rerun::archetypes {
     ///     // Movement via transforms.
     ///     for (int i = 0; i <6 * 120; i++) {
     ///         float time = static_cast<float>(i) / 120.0f;
-    ///         rec.set_index_duration_secs("sim_time", time);
+    ///         rec.set_time_duration_secs("sim_time", time);
     ///         float r_moon = time * 5.0f;
     ///         float r_planet = time * 2.0f;
     ///
@@ -168,7 +168,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.set_index_sequence("tick", 0);
+    ///     rec.set_time_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
@@ -176,7 +176,7 @@ namespace rerun::archetypes {
     ///     );
     ///
     ///     for (int t = 0; t <100; t++) {
-    ///         rec.set_index_sequence("tick", t + 1);
+    ///         rec.set_time_sequence("tick", t + 1);
     ///         rec.log(
     ///             "box",
     ///             rerun::Transform3D()
@@ -210,7 +210,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.set_index_sequence("tick", 0);
+    ///     rec.set_time_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),

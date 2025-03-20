@@ -22,6 +22,9 @@ mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
     #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
 
+    #[path = "./rerun.catalog.v1alpha1.rs"]
+    pub mod rerun_catalog_v1alpha1;
+
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
 
@@ -72,6 +75,12 @@ pub mod remote_store {
         pub const CATALOG_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
         pub const CATALOG_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
         pub const CATALOG_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
+    }
+}
+
+pub mod catalog {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_catalog_v1alpha1::*;
     }
 }
 
@@ -196,14 +205,12 @@ mod sizes {
             let Self {
                 application_id,
                 store_id,
-                started,
                 store_source,
                 store_version,
             } = self;
 
             application_id.heap_size_bytes()
                 + store_id.heap_size_bytes()
-                + started.heap_size_bytes()
                 + store_source.heap_size_bytes()
                 + store_version.heap_size_bytes()
         }

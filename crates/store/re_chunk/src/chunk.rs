@@ -283,23 +283,73 @@ impl Chunk {
             components,
         } = lhs;
 
-        *entity_path == rhs.entity_path
-            && timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec()
-            && {
-                let timelines: IntMap<_, _> = timelines
-                    .iter()
-                    .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-                    .collect();
-                let rhs_timelines: IntMap<_, _> = rhs
-                    .timelines
-                    .iter()
-                    .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-                    .collect();
-                timelines == rhs_timelines
+        if *entity_path != rhs.entity_path {
+            return false;
+        }
+
+        if timelines.keys().collect_vec() != rhs.timelines.keys().collect_vec() {
+            return false;
+        }
+
+        let timelines: IntMap<_, _> = timelines
+            .iter()
+            .map(|(timeline, time_column)| (*timeline, time_column))
+            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
+            .collect();
+        let rhs_timelines: IntMap<_, _> = rhs
+            .timelines
+            .iter()
+            .map(|(timeline, time_column)| (*timeline, time_column))
+            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
+            .collect();
+        if timelines != rhs_timelines {
+            return false;
+        }
+
+        // Handle edge case: recording time on partition properties should ignore start time.
+        if entity_path == &EntityPath::partition_properties() {
+            // We're going to filter out some components on both lhs and rhs.
+            // Therefore, it's important that we first check that the number of components is the same.
+            if components.len() != rhs.components.len() {
+                return false;
             }
-            && *components == rhs.components
+
+            // Copied from `rerun.archetypes.RecordingProperties`.
+            let recording_time_descriptor = ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype_field_name: Some("start_time".into()),
+                component_name: "rerun.components.Timestamp".into(),
+            };
+
+            // Filter out the recording time component from both lhs and rhs.
+            let lhs_components = components
+                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
+                .cloned()
+                .flat_map(|per_desc| {
+                    per_desc
+                        .into_iter()
+                        .filter(|(desc, _)| desc != &recording_time_descriptor)
+                })
+                .collect::<IntMap<_, _>>();
+            let rhs_components = rhs
+                .components
+                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
+                .cloned()
+                .flat_map(|per_desc| {
+                    per_desc
+                        .into_iter()
+                        .filter(|(desc, _)| desc != &recording_time_descriptor)
+                })
+                .collect::<IntMap<_, _>>();
+
+            if lhs_components != rhs_components {
+                return false;
+            }
+        } else if *components != rhs.components {
+            return false;
+        }
+
+        true
     }
 
     // Only used for tests atm
@@ -957,7 +1007,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -983,7 +1033,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1021,7 +1071,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1050,7 +1100,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }

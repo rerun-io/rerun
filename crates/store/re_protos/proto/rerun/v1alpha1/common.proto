@@ -103,6 +103,9 @@ message Query {
 
   // Specifies how null values should be filled in the returned dataframe.
   SparseFillStrategy sparse_fill_strategy = 11;
+
+  reserved 12;
+  reserved "include_properties_entity";
 }
 
 message ColumnSelection {

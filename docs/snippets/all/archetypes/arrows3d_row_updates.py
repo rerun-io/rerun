@@ -22,5 +22,5 @@ vectors = [np.linspace((-1, -1, 0), (1, 1, i), 5) for i in range(5)]
 colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
 
 for i in range(5):
-    rr.set_index("time", timedelta=10 + i)
+    rr.set_time("time", duration=10 + i)
     rr.log("arrows", rr.Arrows3D(vectors=vectors[i], origins=origins, colors=colors[i]))

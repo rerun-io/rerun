@@ -4,6 +4,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
+use re_types::components::Timestamp;
 use re_ui::{
     icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
@@ -76,14 +77,16 @@ impl ItemTitle {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
         let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-            if let Some(info) = entity_db.store_info() {
-                let time = re_log_types::Timestamp::from(info.started)
-                    .to_jiff_zoned(ctx.app_options().timestamp_format)
-                    .strftime("%H:%M:%S")
-                    .to_string();
-                format!("{} - {}", info.application_id, time)
-            } else {
-                id_str.clone()
+            match (entity_db.app_id(), entity_db.property::<Timestamp>()) {
+                (Some(application_id), Some(started)) => {
+                    let time = re_log_types::Timestamp::from(started.0)
+                        .to_jiff_zoned(ctx.app_options().timestamp_format)
+                        .strftime("%H:%M:%S")
+                        .to_string();
+                    format!("{application_id} - {time}")
+                }
+                (Some(application_id), None) => application_id.to_string(),
+                _ => id_str.clone(),
             }
         } else {
             id_str.clone()

@@ -37,7 +37,7 @@ use re_protos::{
         UpdateCatalogRequest, VectorIvfPqIndex,
     },
 };
-use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time};
+use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind};
 
 use crate::dataframe::{
     ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
@@ -882,7 +882,6 @@ impl PyStorageNodeClient {
                 application_id: ApplicationId::from("rerun_data_platform"),
                 store_id: store_id.clone(),
                 cloned_from: None,
-                started: Time::now(),
                 store_source: StoreSource::Unknown,
                 store_version: None,
             };

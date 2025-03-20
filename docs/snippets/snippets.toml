@@ -18,6 +18,12 @@
 [snippets_ref]
 features = [
   [
+    "Setting recording properties",
+    [
+      "concepts/recording_properties",
+    ],
+  ],
+  [
     "Update rows",
     [
       "archetypes/arrows3d_row_updates",
@@ -142,6 +148,10 @@ features = [
 "archetypes/image_advanced" = [
   "cpp",  # Missing examples
   "rust", # Missing examples
+]
+"archetypes/entity_behavior" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",

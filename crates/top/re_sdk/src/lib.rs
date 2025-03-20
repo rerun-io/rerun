@@ -58,8 +58,8 @@ pub fn default_flush_timeout() -> Option<std::time::Duration> {
 pub use re_log_types::{
     entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
-
 pub use re_memory::MemoryLimit;
+pub use re_types::archetypes::RecordingProperties;
 
 pub use global::cleanup_if_forked_child;
 
@@ -105,11 +105,11 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{Time, TimeCell, TimeInt, TimePoint, TimeType, Timeline};
 }
-pub use time::{IndexCell, Time, TimePoint, Timeline};
+pub use time::{Time, TimeCell, TimePoint, Timeline};
 
-pub use re_types_core::{
+pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentName, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, LoggableBatch, NamedIndicatorComponent,
@@ -208,7 +208,6 @@ pub fn new_store_info(
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
         cloned_from: None,
-        started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),

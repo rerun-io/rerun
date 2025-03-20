@@ -239,18 +239,46 @@ fn add_entities_line_ui(
     //TODO(ab): use `CustomContent` support for action button to implement this.
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if entity_path_filter.contains_rule_for_exactly(entity_path) {
-            // Reset-button
-            // Shows when an entity is explicitly excluded or included
-            let response = ui.small_icon_button(&re_ui::icons::RESET);
+            if ResolvedEntityPathFilter::properties().matches(entity_path) {
+                let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
-            if response.clicked() {
-                view.contents.remove_filter_rule_for(ctx, entity_path);
-            }
+                ui.add_enabled_ui(enabled, |ui| {
+                    let response = ui.small_icon_button(&re_ui::icons::ADD);
 
-            if is_explicitly_excluded {
-                response.on_hover_text("Stop excluding this entity path.");
-            } else if is_explicitly_included {
-                response.on_hover_text("Stop including this entity path.");
+                    if response.clicked() {
+                        view.contents.remove_filter_rule_for(ctx, entity_path);
+                        view.contents.raw_add_entity_inclusion(
+                            ctx,
+                            ResolvedEntityPathRule::including_subtree(entity_path),
+                        );
+                    }
+
+                    if enabled {
+                        if add_info.can_add.is_compatible_and_missing() {
+                            response.on_hover_text(
+                                "Include this entity and all its descendants in the view",
+                            );
+                        } else {
+                            response.on_hover_text("Add descendants of this entity to the view");
+                        }
+                    } else if let CanAddToView::No { reason } = &add_info.can_add {
+                        response.on_disabled_hover_text(reason);
+                    }
+                });
+            } else {
+                // Reset-button
+                // Shows when an entity is explicitly excluded or included
+                let response = ui.small_icon_button(&re_ui::icons::RESET);
+
+                if response.clicked() {
+                    view.contents.remove_filter_rule_for(ctx, entity_path);
+                }
+
+                if is_explicitly_excluded {
+                    response.on_hover_text("Stop excluding this entity path.");
+                } else if is_explicitly_included {
+                    response.on_hover_text("Stop including this entity path.");
+                }
             }
         } else if is_included {
             // Remove-button

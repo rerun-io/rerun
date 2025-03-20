@@ -17,7 +17,7 @@ void log_hand(
     const auto color =
         rerun::Color{static_cast<uint8_t>(255 - c), c, blue, std::max<uint8_t>(128, blue)};
 
-    rec.set_index_duration("sim_time", step);
+    rec.set_time_duration("sim_time", step);
 
     rec.log(
         std::string("world/") + name + "_pt",

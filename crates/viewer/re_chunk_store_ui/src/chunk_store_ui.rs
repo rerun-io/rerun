@@ -461,23 +461,25 @@ fn format_time_range(
     if time_range.min() == time_range.max() {
         timeline.typ().format(time_range.min(), timestamp_format)
     } else {
-        format!(
-            "{} ({})",
-            timeline.format_time_range(time_range, timestamp_format),
-            match timeline.typ() {
-                TimeType::Time => {
-                    format!(
-                        "{}s",
-                        re_format::format_f64(
-                            (time_range.max().as_f64() - time_range.min().as_f64())
-                                / 1_000_000_000.0
-                        )
-                    )
-                }
-                TimeType::Sequence => {
-                    format!("{} ticks", re_format::format_uint(time_range.abs_length()))
-                }
+        let length = match timeline.typ() {
+            TimeType::Sequence => {
+                format!("{} ticks", re_format::format_uint(time_range.abs_length()))
             }
+
+            // The relartive time for both these are duration:
+            TimeType::DurationNs | TimeType::TimestampNs => {
+                format!(
+                    "{}s",
+                    re_format::format_f64(
+                        (time_range.max().as_f64() - time_range.min().as_f64()) / 1_000_000_000.0
+                    )
+                )
+            }
+        };
+
+        format!(
+            "{} ({length})",
+            timeline.format_time_range(time_range, timestamp_format)
         )
     }
 }

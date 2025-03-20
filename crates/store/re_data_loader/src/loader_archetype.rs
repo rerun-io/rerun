@@ -67,28 +67,28 @@ impl DataLoader for ArchetypeLoader {
         // TODO(cmc): log these once heuristics (I think?) are fixed
         if false {
             if let Ok(metadata) = filepath.metadata() {
-                use re_log_types::IndexCell;
+                use re_log_types::TimeCell;
 
                 if let Some(created) = metadata
                     .created()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("created_at", created);
+                    timepoint.insert_cell("created_at", created);
                 }
                 if let Some(modified) = metadata
                     .modified()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("modified_at", modified);
+                    timepoint.insert_cell("modified_at", modified);
                 }
                 if let Some(accessed) = metadata
                     .accessed()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("accessed_at", accessed);
+                    timepoint.insert_cell("accessed_at", accessed);
                 }
             }
         }
@@ -184,9 +184,9 @@ fn load_video(
     re_tracing::profile_function!();
 
     let video_timeline = re_log_types::Timeline::new_duration("video");
-    timepoint.insert_index(
+    timepoint.insert_cell(
         *video_timeline.name(),
-        re_log_types::IndexCell::ZERO_DURATION,
+        re_log_types::TimeCell::ZERO_DURATION,
     );
 
     let video_asset = AssetVideo::new(contents);

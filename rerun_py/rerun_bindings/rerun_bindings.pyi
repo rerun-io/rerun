@@ -1040,6 +1040,42 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
+class RecordingProperties:
+    """A helper class for setting recording properties."""
+
+    name: Optional[str]
+    start_time: Optional[int]
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        start_time: Optional[int] = None,
+    ) -> None:
+        """
+        Create new `RecordingProperties`.
+
+        Parameters
+        ----------
+        name : `Optional[str]`
+            The name of the recording.
+
+        start_time : `Optional[int]`
+            The start time of the recording in nanoseconds.
+
+        """
+
+def set_properties(
+    properties: RecordingProperties,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the properties of the recording."""
+
+def set_name(
+    name: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Set the name of the recording."""
+
 def disable_timeline(
     timeline: str,
     recording: Optional[PyRecordingStream] = None,

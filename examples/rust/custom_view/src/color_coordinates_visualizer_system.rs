@@ -63,7 +63,7 @@ impl VisualizerSystem for InstanceColorSystem {
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             // …gather all colors and their instance ids.
 
             let results = ctx.recording_engine().cache().latest_at(

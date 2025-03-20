@@ -38,7 +38,7 @@ All data logged using Rerun in the following sections is connected to a specific
 Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
 
  ```python
-rr.set_index("frame", sequence=frame_idx)
+rr.set_time("frame", sequence=frame_idx)
  ```
 
 ### Images

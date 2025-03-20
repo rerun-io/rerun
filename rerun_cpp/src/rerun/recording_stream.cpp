@@ -1,4 +1,5 @@
 #include "recording_stream.hpp"
+#include "archetypes.hpp"
 #include "c/rerun.h"
 #include "component_batch.hpp"
 #include "config.hpp"
@@ -10,6 +11,8 @@
 #include <cassert>
 #include <string> // to_string
 #include <vector>
+
+static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
 
 namespace rerun {
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
@@ -139,13 +142,13 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_index_sequence(std::string_view timeline_name, int64_t sequence_nr)
+    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr)
         const {
         if (!is_enabled()) {
             return;
         }
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_SEQUENCE,
@@ -155,10 +158,10 @@ namespace rerun {
         Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_index_duration_nanos(std::string_view timeline_name, int64_t nanos)
+    void RecordingStream::set_time_duration_nanos(std::string_view timeline_name, int64_t nanos)
         const {
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_DURATION,
@@ -168,11 +171,11 @@ namespace rerun {
         Error(error).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_index_timestamp_nanos_since_epoch(
+    void RecordingStream::set_time_timestamp_nanos_since_epoch(
         std::string_view timeline_name, int64_t nanos
     ) const {
         rr_error error = {};
-        rr_recording_stream_set_index(
+        rr_recording_stream_set_time(
             _id,
             detail::to_rr_string(timeline_name),
             RR_TIME_TYPE_TIMESTAMP,
@@ -313,6 +316,21 @@ namespace rerun {
             &status
         );
 
+        return status;
+    }
+
+    Error RecordingStream::try_set_properties(archetypes::RecordingProperties& properties) const {
+        rr_error status = {};
+        this->log_static(PARTITION_PROPERTIES_ENTITY_PATH, properties);
+        return status;
+    }
+
+    Error RecordingStream::try_set_name(std::string_view name) const {
+        rr_error status = {};
+        this->log_static(
+            PARTITION_PROPERTIES_ENTITY_PATH,
+            rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
+        );
         return status;
     }
 

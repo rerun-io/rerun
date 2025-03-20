@@ -361,7 +361,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
             break
 
         ret, bgr = cap.read()
-        rr.set_index("frame", sequence=frame_idx)
+        rr.set_time("frame", sequence=frame_idx)
 
         if not ret:
             logging.info("End of video")

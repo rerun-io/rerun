@@ -483,7 +483,7 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 ///
 /// For example:
 /// `rr_recording_stream_set_time_sequence(stream, "frame_nr", RR_TIME_TYPE_SEQUENCE, frame_nr, &err)`.
-extern void rr_recording_stream_set_index(
+extern void rr_recording_stream_set_time(
     rr_recording_stream stream, rr_string timeline_name, rr_time_type time_type, int64_t value,
     rr_error* error
 );

@@ -152,7 +152,7 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
+            log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
             if isinstance(components, Iterable):
                 components_list = list(components)
 
@@ -621,7 +621,7 @@ class Blueprint:
                 default_enabled=True,
             ),
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_time("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -651,7 +651,7 @@ class Blueprint:
                 default_enabled=True,
             ),
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_time("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -712,7 +712,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         ),
     )
 
-    blueprint_stream.set_index("blueprint", sequence=0)
+    blueprint_stream.set_time("blueprint", sequence=0)
 
     blueprint._log_to_stream(blueprint_stream)
 

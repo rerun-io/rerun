@@ -17,7 +17,7 @@ std::vector<rerun::Color> colors(10, rerun::Color(255, 0, 0));
 std::vector<rerun::Radius> radii(10, rerun::Radius(0.1f));
 
 // Only log colors and radii once.
-rec.set_index_sequence("frame_nr", 0);
+rec.set_time_sequence("frame_nr", 0);
 rec.log("points", colors, radii);
 
 std::default_random_engine gen;
@@ -27,7 +27,7 @@ std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
 //
 // They will automatically re-use the colors and radii logged at the beginning.
 for (int i = 0; i < 10; ++i) {
-    rec.set_index_sequence("frame_nr", i);
+    rec.set_time_sequence("frame_nr", i);
 
     std::vector<rerun::Position3D> points(10);
     std::generate(points.begin(), points.end(), [&] {
@@ -51,7 +51,7 @@ int main() {
 
     // Only log colors and radii once.
     // Logging statically with `RecordingStream::log_static` would also work.
-    rec.set_index_sequence("frame_nr", 0);
+    rec.set_time_sequence("frame_nr", 0);
     rec.log("points", rerun::Points3D().with_colors(rerun::Color(255, 0, 0)).with_radii(0.1f));
 
     std::default_random_engine gen;
@@ -61,7 +61,7 @@ int main() {
     //
     // They will automatically re-use the colors and radii logged at the beginning.
     for (int i = 0; i < 10; ++i) {
-        rec.set_index_sequence("frame_nr", i);
+        rec.set_time_sequence("frame_nr", i);
 
         std::vector<rerun::Position3D> points(10);
         std::generate(points.begin(), points.end(), [&] {

@@ -39,7 +39,7 @@ int main() {
     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
 
     for (size_t i = 0; i < 5; i++) {
-        rec.set_index_duration_secs("time", 10.0 + static_cast<double>(i));
+        rec.set_time_duration_secs("time", 10.0 + static_cast<double>(i));
         rec.log(
             "arrows",
             rerun::Arrows3D::from_vectors(vectors[i])

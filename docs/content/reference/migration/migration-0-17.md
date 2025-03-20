@@ -41,7 +41,7 @@ For example, setting color and enabling the `SeriesPoint` visualizer was previou
 rr.log("data", rr.SeriesPoint(color=[255, 255, 0]), static=True)
 
 for t in range(1000):
-    rr.set_index("frame_nr", sequence=t)
+    rr.set_time_sequence("frame_nr", t)
     rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(
@@ -53,7 +53,7 @@ Now the override can be specified from the blueprint, removing the need to inclu
 
 ```python
 for t in range(1000):
-    rr.set_index("frame_nr", sequence=t)
+    rr.set_time_sequence("frame_nr", t)
     rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(

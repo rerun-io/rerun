@@ -14,7 +14,7 @@ int main() {
         positions.emplace_back(static_cast<float>(i), 0.0f, 0.0f);
     }
 
-    rec.set_index_sequence("frame", 0);
+    rec.set_time_sequence("frame", 0);
     rec.log("points", rerun::Points3D(positions));
 
     for (int i = 0; i < 10; ++i) {
@@ -37,7 +37,7 @@ int main() {
         }
 
         // Update only the colors and radii, leaving everything else as-is.
-        rec.set_index_sequence("frame", i);
+        rec.set_time_sequence("frame", i);
         rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
     }
 
@@ -45,6 +45,6 @@ int main() {
     radii.emplace_back(0.3f);
 
     // Update the positions and radii, and clear everything else in the process.
-    rec.set_index_sequence("frame", 20);
+    rec.set_time_sequence("frame", 20);
     rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with_radii(radii));
 }

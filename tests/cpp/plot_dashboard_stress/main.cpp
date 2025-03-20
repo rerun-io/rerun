@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
                 rerun::SortingStatus::Sorted
             );
         } else {
-            rec.set_index_duration_secs("sim_time", sim_times[offset]);
+            rec.set_time_duration_secs("sim_time", sim_times[offset]);
         }
 
         // Log

@@ -67,7 +67,7 @@ fn paint_time_range_ticks(
     let font_id = egui::TextStyle::Small.resolve(ui.style());
 
     match time_type {
-        TimeType::Time => {
+        TimeType::DurationNs | TimeType::TimestampNs => {
             paint_ticks(
                 ui.ctx(),
                 ui.visuals().dark_mode,

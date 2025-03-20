@@ -13,14 +13,14 @@ pub use self::external::re_chunk_store::{
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{
-    EntityPath, EntityPathFilter, EntityPathSubs, IndexCell, ResolvedEntityPathFilter,
-    ResolvedTimeRange, StoreKind, TimeInt, Timeline, TimelineName,
+    EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter, ResolvedTimeRange,
+    StoreKind, TimeCell, TimeInt, Timeline, TimelineName,
 };
 #[doc(no_inline)]
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
 
 #[doc(no_inline)]
-pub use self::external::re_types_core::ComponentName;
+pub use self::external::re_types_core::{ComponentDescriptor, ComponentName};
 
 pub mod external {
     pub use re_chunk;

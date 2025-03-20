@@ -64,7 +64,7 @@ def log_readme() -> None:
 def log_some_views() -> None:
     from math import cos, sin, tau
 
-    rr.set_index("frame_nr", sequence=0)
+    rr.set_time("frame_nr", sequence=0)
 
     rr.log(
         "boxes3d",
@@ -79,7 +79,7 @@ def log_some_views() -> None:
     rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(int(tau * 2 * 10.0)):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)
         rr.log("plots/sin", rr.Scalar(sin_of_t))

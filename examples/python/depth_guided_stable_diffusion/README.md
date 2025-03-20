@@ -64,8 +64,8 @@ rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
 ### Denoising loop
 For each step in the denoising loop we set a time sequence with step and timestep and log the latent model input, noise predictions, latents and image. This make is possible for us to see all denoising steps in the Rerun viewer.
 ```python
-rr.set_index("step", sequence=i)
-rr.set_index("timestep", sequence=t)
+rr.set_time("step", sequence=i)
+rr.set_time("timestep", sequence=t)
 rr.log("diffusion/latent_model_input", rr.Tensor(latent_model_input))
 rr.log("diffusion/noise_pred", rr.Tensor(noise_pred, dim_names=["b", "c", "h", "w"]))
 rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))

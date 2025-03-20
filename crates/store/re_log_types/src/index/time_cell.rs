@@ -1,20 +1,20 @@
 use std::str::FromStr;
 
-use crate::{NonMinI64, Time, TimeInt, TimeType};
+use crate::{NonMinI64, TimeInt, TimeType};
 
 pub struct OutOfRange;
 
 /// An typed cell of an index, e.g. a point in time on some unknown timeline.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct IndexCell {
+pub struct TimeCell {
     pub typ: TimeType,
     pub value: NonMinI64,
 }
 
-impl IndexCell {
+impl TimeCell {
     pub const ZERO_DURATION: Self = Self {
-        typ: TimeType::Time,
+        typ: TimeType::DurationNs,
         value: NonMinI64::ZERO,
     };
 
@@ -36,13 +36,13 @@ impl IndexCell {
 
     #[inline]
     pub fn from_duration_nanos(nanos: impl TryInto<NonMinI64>) -> Self {
-        Self::new(TimeType::Time, nanos)
+        Self::new(TimeType::DurationNs, nanos)
     }
 
     /// Create a timestamp from number of nanoseconds since the unix epoch, 1970-01-01 00:00:00 UTC.
     #[inline]
     pub fn from_timestamp_nanos_since_epoch(nanos_since_epoch: impl TryInto<NonMinI64>) -> Self {
-        Self::new(TimeType::Time, nanos_since_epoch)
+        Self::new(TimeType::TimestampNs, nanos_since_epoch)
     }
 
     /// Create a timestamp from number of seconds since the unix epoch, 1970-01-01 00:00:00 UTC.
@@ -70,7 +70,7 @@ impl IndexCell {
     }
 }
 
-impl re_byte_size::SizeBytes for IndexCell {
+impl re_byte_size::SizeBytes for TimeCell {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -82,44 +82,44 @@ impl re_byte_size::SizeBytes for IndexCell {
     }
 }
 
-impl From<IndexCell> for TimeInt {
+impl From<TimeCell> for TimeInt {
     #[inline]
-    fn from(cell: IndexCell) -> Self {
+    fn from(cell: TimeCell) -> Self {
         Self::from(cell.value)
     }
 }
 
-impl From<IndexCell> for NonMinI64 {
+impl From<TimeCell> for NonMinI64 {
     #[inline]
-    fn from(cell: IndexCell) -> Self {
+    fn from(cell: TimeCell) -> Self {
         cell.value
     }
 }
 
-impl From<IndexCell> for i64 {
+impl From<TimeCell> for i64 {
     #[inline]
-    fn from(cell: IndexCell) -> Self {
+    fn from(cell: TimeCell) -> Self {
         cell.value.get()
     }
 }
 
 // ------------------------------------------------------------------
 
-impl From<std::time::Duration> for IndexCell {
+impl From<std::time::Duration> for TimeCell {
     /// Saturating cast from [`std::time::Duration`].
     fn from(time: std::time::Duration) -> Self {
         Self::from_duration_nanos(NonMinI64::saturating_from_u128(time.as_nanos()))
     }
 }
 
-impl From<super::Duration> for IndexCell {
+impl From<super::Duration> for TimeCell {
     #[inline]
     fn from(duration: super::Duration) -> Self {
         Self::from_duration_nanos(duration.as_nanos())
     }
 }
 
-impl From<super::Timestamp> for IndexCell {
+impl From<super::Timestamp> for TimeCell {
     #[inline]
     fn from(timestamp: super::Timestamp) -> Self {
         Self::from_timestamp_nanos_since_epoch(timestamp.ns_since_epoch())
@@ -128,7 +128,7 @@ impl From<super::Timestamp> for IndexCell {
 
 // ------------------------------------------------------------------
 
-impl TryFrom<std::time::SystemTime> for IndexCell {
+impl TryFrom<std::time::SystemTime> for TimeCell {
     type Error = OutOfRange;
 
     fn try_from(time: std::time::SystemTime) -> Result<Self, Self::Error> {
@@ -144,7 +144,7 @@ impl TryFrom<std::time::SystemTime> for IndexCell {
 // On non-wasm32 builds, `web_time::SystemTime` is a re-export of `std::time::SystemTime`,
 // so it's covered by the above `TryFrom`.
 #[cfg(target_arch = "wasm32")]
-impl TryFrom<web_time::SystemTime> for IndexCell {
+impl TryFrom<web_time::SystemTime> for TimeCell {
     type Error = OutOfRange;
 
     fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
@@ -159,24 +159,25 @@ impl TryFrom<web_time::SystemTime> for IndexCell {
 
 // ------------------------------------------------------------------
 
-impl std::fmt::Display for IndexCell {
+impl std::fmt::Display for TimeCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.typ {
             // NOTE: we avoid special characters here so we can put these formats in an URI
-            TimeType::Sequence => self.value.fmt(f),
-            TimeType::Time => Time::from_ns_since_epoch(self.value.get())
-                .format(crate::TimestampFormat::Utc)
+            TimeType::Sequence => write!(f, "{}", self.value),
+            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
+            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(self.value.get())
+                .format_iso()
                 .fmt(f),
         }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("Invalid IndexCell: {0}")]
-pub struct InvalidIndexCell(String);
+#[error("Invalid TimeCell: {0}")]
+pub struct InvalidTimeCell(String);
 
-impl FromStr for IndexCell {
-    type Err = InvalidIndexCell;
+impl FromStr for TimeCell {
+    type Err = InvalidTimeCell;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(int) = NonMinI64::from_str(s) {
@@ -186,7 +187,7 @@ impl FromStr for IndexCell {
         } else if let Ok(timestamp) = s.parse::<super::Timestamp>() {
             Ok(Self::from(timestamp))
         } else {
-            Err(InvalidIndexCell(format!(
+            Err(InvalidTimeCell(format!(
                 "Expected a #sequence, duration, or RFC3339 timestamp, but got '{s}'"
             )))
         }
@@ -200,20 +201,20 @@ mod tests {
     #[test]
     fn test_iso_format_and_parse() {
         assert_eq!(
-            "1234".parse::<IndexCell>().unwrap(),
-            IndexCell::from_sequence(1234)
+            "1234".parse::<TimeCell>().unwrap(),
+            TimeCell::from_sequence(1234)
         );
 
         assert_eq!(
-            "10.134567s".parse::<IndexCell>().unwrap(),
-            IndexCell::from_duration_nanos(10_134_567_000)
+            "10.134567s".parse::<TimeCell>().unwrap(),
+            TimeCell::from_duration_nanos(10_134_567_000)
         );
 
         assert_eq!(
             "2022-01-01T00:00:03.123456789Z"
-                .parse::<IndexCell>()
+                .parse::<TimeCell>()
                 .unwrap(),
-            IndexCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789)
+            TimeCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789)
         );
     }
 }

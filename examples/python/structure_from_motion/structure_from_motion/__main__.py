@@ -132,7 +132,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         if resize:
             visible_xys *= scale_factor
 
-        rr.set_index("frame", sequence=frame_idx)
+        rr.set_time("frame", sequence=frame_idx)
 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]

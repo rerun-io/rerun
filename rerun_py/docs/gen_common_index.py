@@ -107,7 +107,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Timeline functions",
         func_list=[
-            "set_index",
+            "set_time",
             "set_time_sequence",
             "set_time_seconds",
             "set_time_nanos",
@@ -121,7 +121,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "send_columns",
         ],
         class_list=[
-            "IndexColumn",
+            "TimeColumn",
             "TimeNanosColumn",
             "TimeSecondsColumn",
             "TimeSequenceColumn",
@@ -155,8 +155,12 @@ SECTION_TABLE: Final[list[Section]] = [
     # These are tables but don't need their own pages since they refer to types that
     # were added in the pages up above
     Section(
-        title="Clearing Entities",
-        class_list=["archetypes.Clear"],
+        title="General",
+        class_list=[
+            "archetypes.Clear",
+            "blueprint.archetypes.EntityBehavior",
+            "archetypes.RecordingProperties",
+        ],
         gen_page=False,
     ),
     Section(
@@ -442,6 +446,8 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
+Rerun needs at least Python 3.9 to run.
+
 * [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)

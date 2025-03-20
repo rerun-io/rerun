@@ -167,6 +167,18 @@ impl EntityPath {
     pub fn parse_forgiving(input: &str) -> Self {
         let mut warnings = vec![];
 
+        // TODO(#9193): Ideally we'd want to print a warning here, but that
+        //              conflicts with how we construct entity paths in our non-Rust SDKs.
+        // if input.starts_with(RESERVED_NAMESPACE_PREFIX)
+        //     || input
+        //         .strip_prefix("/")
+        //         .is_some_and(|s| s.starts_with(RESERVED_NAMESPACE_PREFIX))
+        // {
+        //     re_log::warn_once!(
+        //         "Entity path part starts with reserved namespace prefix `{RESERVED_NAMESPACE_PREFIX}`",
+        //     );
+        // }
+
         let parts: Vec<_> = tokenize_entity_path(input)
             .into_iter()
             .filter(|&part| part != "/") // ignore duplicate slashes

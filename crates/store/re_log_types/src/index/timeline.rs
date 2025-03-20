@@ -69,7 +69,7 @@ impl Timeline {
     pub fn new_duration(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ: TimeType::DurationNs,
         }
     }
 
@@ -78,7 +78,7 @@ impl Timeline {
     pub fn new_timestamp(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ: TimeType::TimestampNs,
         }
     }
 
@@ -107,7 +107,7 @@ impl Timeline {
     /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
-        Self::new(TimelineName::log_time(), TimeType::Time)
+        Self::new(TimelineName::log_time(), TimeType::TimestampNs)
     }
 
     /// The log tick timeline to which all API functions will always log.
