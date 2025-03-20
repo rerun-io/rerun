@@ -57,8 +57,6 @@ fn get_container_name(blueprint: &ViewportBlueprint, container_id: &ContainerId)
 }
 
 impl CallbackSelectionItem {
-    // TODO(jan): output more things, including parts of context for data results
-    //            and other things not currently available here (e.g. mouse pos)
     pub fn new(
         item: &Item,
         context: &Option<ItemContext>,
