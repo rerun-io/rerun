@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Iterator
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 
@@ -217,9 +218,9 @@ class Archetype(AsComponents):
                     if as_arrow_array is None:
                         comp_contents = "<unknown>"
                     else:
-                        comp_contents = pformat(as_arrow_array().to_pylist(), compact=True)
+                        comp_contents = re.sub(r'\[\s+\[', '[[', pformat(as_arrow_array().to_pylist(), compact=True, indent=4))
 
-                    yield f"    {fld.name}={comp_contents}"
+                    yield f"  {fld.name}={comp_contents}"
 
         args = ",\n".join(fields_repr())
         if args:
