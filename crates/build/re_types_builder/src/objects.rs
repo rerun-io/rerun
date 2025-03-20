@@ -105,6 +105,7 @@ impl Objects {
                     let is_enum_component = obj.kind == ObjectKind::Component && obj.is_enum(); // Enum components are allowed to have no datatype.
                     let is_test_component = obj.kind == ObjectKind::Component && obj.is_testing(); // Test components are allowed to have datatypes for the moment. TODO(andreas): Should clean this up as well!
                     if !is_enum_component && !is_test_component {
+                        dbg!(&field);
                         reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes.", field.fqname, field.typ));
                     }
                 }
@@ -1038,31 +1039,8 @@ impl Type {
             }
         }
 
-        let is_int = matches!(
-            typ,
-            FbsBaseType::Byte
-                | FbsBaseType::UByte
-                | FbsBaseType::Short
-                | FbsBaseType::UShort
-                | FbsBaseType::Int
-                | FbsBaseType::UInt
-                | FbsBaseType::Long
-                | FbsBaseType::ULong
-        );
-        if is_int {
-            // Hack needed because enums get `typ == FbsBaseType::Byte`,
-            // or whatever integer type the enum was assigned to.
-            let enum_index = field_type.index() as usize;
-            if enum_index < enums.len() {
-                // It is an enum.
-                assert!(
-                    typ == FbsBaseType::UByte,
-                    "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
-                );
-
-                let enum_ = &enums[field_type.index() as usize];
-                return Self::Object(enum_.name().to_owned());
-            }
+        if let Some(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
+            return Self::Object(enum_fqname);
         }
 
         match typ {
@@ -1099,6 +1077,7 @@ impl Type {
                     field_type,
                     field_type.element(),
                     attrs,
+                    virtpath,
                 ),
                 length: field_type.fixed_length() as usize,
             },
@@ -1109,6 +1088,7 @@ impl Type {
                     field_type,
                     field_type.element(),
                     attrs,
+                    virtpath,
                 ),
             },
             FbsBaseType::UType | FbsBaseType::Vector64 => {
@@ -1264,6 +1244,44 @@ impl Type {
     }
 }
 
+fn try_get_enum_fqname(
+    enums: &[FbsEnum<'_>],
+    field_type: FbsType<'_>,
+    typ: FbsBaseType,
+    virtpath: &str,
+) -> Option<String> {
+    if is_int(typ) {
+        // Hack needed because enums get `typ == FbsBaseType::Byte`,
+        // or whatever integer type the enum was assigned to.
+        let enum_index = field_type.index() as usize;
+        if enum_index < enums.len() {
+            // It is an enum.
+            assert!(
+                typ == FbsBaseType::UByte,
+                "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
+            );
+
+            let enum_ = &enums[field_type.index() as usize];
+            return Some(enum_.name().to_owned());
+        }
+    }
+    None
+}
+
+fn is_int(typ: FbsBaseType) -> bool {
+    matches!(
+        typ,
+        FbsBaseType::Byte
+            | FbsBaseType::UByte
+            | FbsBaseType::Short
+            | FbsBaseType::UShort
+            | FbsBaseType::Int
+            | FbsBaseType::UInt
+            | FbsBaseType::Long
+            | FbsBaseType::ULong
+    )
+}
+
 /// The underlying element type for arrays/vectors/maps.
 ///
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
@@ -1293,7 +1311,12 @@ impl ElementType {
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
         attrs: &Attributes,
+        virtpath: &str,
     ) -> Self {
+        if let Some(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
+            return Self::Object(enum_fqname);
+        }
+
         // TODO(jleibs): Clean up fqname plumbing
         let fqname = "???";
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
