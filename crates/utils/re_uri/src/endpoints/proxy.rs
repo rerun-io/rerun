@@ -1,6 +1,7 @@
 use crate::Origin;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ProxyEndpoint {
     pub origin: Origin,
 }

@@ -43,7 +43,8 @@ pub use self::{
     error::Error,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeRange {
     pub timeline: re_log_types::Timeline,
     pub range: re_log_types::ResolvedTimeRangeF,
@@ -101,9 +102,8 @@ impl TryFrom<&str> for TimeRange {
 /// The different schemes supported by Rerun.
 ///
 /// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(
-    Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Scheme {
     Rerun,
     RerunHttp,
@@ -164,9 +164,8 @@ impl TryFrom<&str> for Scheme {
     }
 }
 
-#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Origin {
     pub scheme: Scheme,
     pub host: url::Host<String>,
@@ -228,6 +227,7 @@ impl std::fmt::Display for Origin {
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),
