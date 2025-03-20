@@ -56,6 +56,17 @@ pub mod log_msg {
 pub mod manifest_registry {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
+
+        /// DatasetManifest mandatory field names. All mandatory metadata fields are prefixed
+        /// with "rerun_" to avoid conflicts with user-defined fields.
+        pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
+        pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
+        pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
+        pub const DATASET_MANIFEST_DESCRIPTION_FIELD_NAME: &str = "rerun_description";
+        pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
+        pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
+        pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
+        pub const DATASET_MANIFEST_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
     }
 }
 
