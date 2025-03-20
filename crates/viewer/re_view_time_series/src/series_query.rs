@@ -228,7 +228,7 @@ pub fn collect_series_name(
     series_names
 }
 
-/// Collects radius_ui for the series into pre-allocated plot points.
+/// Collects `radius_ui` for the series into pre-allocated plot points.
 pub fn collect_radius_ui(
     query: &RangeQuery,
     results: &re_view::HybridRangeResults<'_>,
