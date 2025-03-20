@@ -45,20 +45,15 @@ fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
 }
 
 fn get_view_name(blueprint: &ViewportBlueprint, view_id: &ViewId) -> Option<String> {
-    blueprint.view(view_id).map(|view| {
-        view.display_name
-            .clone()
-            .unwrap_or_else(|| view.missing_name_placeholder())
-    })
+    blueprint
+        .view(view_id)
+        .map(|view| view.display_name_or_default().as_ref().to_owned())
 }
 
 fn get_container_name(blueprint: &ViewportBlueprint, container_id: &ContainerId) -> Option<String> {
-    blueprint.container(container_id).map(|container| {
-        container
-            .display_name
-            .clone()
-            .unwrap_or_else(|| container.missing_name_placeholder())
-    })
+    blueprint
+        .container(container_id)
+        .map(|container| container.display_name_or_default().as_ref().to_owned())
 }
 
 impl CallbackSelectionItem {
