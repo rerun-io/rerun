@@ -128,7 +128,7 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
 
 def to_nanos_since_epoch(
     timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64,
-) -> np.integer:
+) -> np.int64:
     if isinstance(timestamp, (int, np.integer)):
         return 1_000_000_000 * np.int64(timestamp)  # Interpret as seconds and convert to nanos
     elif isinstance(
