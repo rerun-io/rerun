@@ -52,9 +52,9 @@ from ._log import (
     new_entity_path as new_entity_path,
 )
 from ._properties import (
-    set_recording_name as set_recording_name,
-    set_properties as set_properties,
-    set_recording_start_time_nanos as set_recording_start_time_nanos,
+    send_property as send_property,
+    send_recording_name as send_recording_name,
+    send_recording_start_time_nanos as send_recording_start_time_nanos,
 )
 from ._send_columns import (
     TimeColumn as TimeColumn,

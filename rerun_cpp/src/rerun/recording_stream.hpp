@@ -866,57 +866,35 @@ namespace rerun {
             Collection<ComponentColumn> component_columns
         ) const;
 
-        /// Set the properties of a recording.
+        /// Set a property of a recording.
         ///
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
-        /// \param entity_path The path to the recording property.
-        /// \param properties The properties of the recording.
-        /// \see `try_set_properties`
+        /// \param name The name of the property.
+        /// \param properties The property.
+        /// \see `try_send_property`
         template <typename... Ts>
-        void set_properties_with_prefix(std::string_view entity_path, const Ts&... properties)
+        void send_property(std::string_view name, const Ts&... properties)
             const {
-            try_set_properties_with_prefix(entity_path, properties...).handle();
+            try_send_property(name, properties...).handle();
         }
 
-        /// Set the properties of a recording.
+        /// Set a property of a recording.
         ///
-        /// \param entity_path The path to the recording property.
-        /// \param properties The properties of the recording.
-        /// \see `set_properties`
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param name The name of the property.
+        /// \param properties The property.
+        /// \see `set_property`
         template <typename... Ts>
-        Error try_set_properties_with_prefix(std::string_view entity_path, const Ts&... properties)
+        Error try_send_property(std::string_view name, const Ts&... properties)
             const {
             rr_error status = {};
             this.log_static(
                 this.PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path),
-                properties...
+                properties... // NOLINT
             );
             return status;
-        }
-
-        /// Set the properties of a recording.
-        ///
-        /// This is a shorthand method for logging to the root of the recording properties.
-        ///
-        /// \param properties The properties of the recording.
-        /// \see `try_set_properties`
-        template <typename... Ts>
-        void set_properties(const Ts&... properties) const {
-            // We need to split this into two arguments so that the compiler can bottom out.
-            try_set_properties_with_prefix("", properties...).handle();
-        }
-
-        /// Set the properties of a recording.
-        ///
-        /// This is a shorthand method for logging to the root of the recording properties.
-        ///
-        /// \param properties The properties of the recording.
-        /// \see `set_properties`
-        template <typename... Ts>
-        Error try_set_properties(const Ts&... properties) const {
-            // We need to split this into two arguments so that the compiler can bottom out.
-            try_set_properties_with_prefix("", properties...);
         }
 
         /// Set the name of a recording.
@@ -924,32 +902,32 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param name The name of the recording.
-        /// \see `try_set_recording_name`
-        void set_recording_name(std::string_view name) const {
-            try_set_recording_name(name).handle();
+        /// \see `try_send_recording_name`
+        void send_recording_name(std::string_view name) const {
+            try_send_recording_name(name).handle();
         }
 
         /// Set the name of a recording.
         ///
         /// \param name The name of the recording.
-        /// \see `set_recording_name`
-        Error try_set_recording_name(std::string_view name) const;
+        /// \see `send_recording_name`
+        Error try_send_recording_name(std::string_view name) const;
 
         /// Set the start time of a recording.
         ///
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
-        /// \see `try_set_recording_start_time`
-        void set_recording_start_time_nanos(int64_t nanos) const {
-            try_set_recording_start_time_nanos(nanos).handle();
+        /// \see `try_send_recording_start_time`
+        void send_recording_start_time_nanos(int64_t nanos) const {
+            try_send_recording_start_time_nanos(nanos).handle();
         }
 
         /// Set the start time of a recording.
         ///
         /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
         /// \see `set_name`
-        Error try_set_recording_start_time_nanos(int64_t nanos) const;
+        Error try_send_recording_start_time_nanos(int64_t nanos) const;
 
         /// @}
 

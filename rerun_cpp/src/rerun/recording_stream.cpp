@@ -317,7 +317,7 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_set_recording_name(std::string_view name) const {
+    Error RecordingStream::try_send_recording_name(std::string_view name) const {
         rr_error status = {};
         this.log_static(
             this.PARTITION_PROPERTIES_ENTITY_PATH,
@@ -326,7 +326,7 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_set_recording_start_time_nanos(int64_t nanos) const {
+    Error RecordingStream::try_send_recording_start_time_nanos(int64_t nanos) const {
         rr_error status = {};
         this.log_static(
             this.PARTITION_PROPERTIES_ENTITY_PATH,

@@ -13,22 +13,20 @@ from .recording_stream import RecordingStream
 
 
 @catch_and_log_exceptions()
-def set_properties(
-    properties: AsComponents | Iterable[DescribedComponentBatch],
-    entity_path: Optional[str | list[object]] = None,
+def send_property(
+    name: str,
+    property: AsComponents | Iterable[DescribedComponentBatch],
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Set the properties of the recording.
-
-    These are builtin recording properties known to the Rerun viewer.
+    Send a property of the recording.
 
     Parameters
     ----------
-    entity_path:
-        Path to the entity in the recording properties.
+    name:
+        Name of the property.
 
-    properties :
+    property :
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
         or an iterable of (described)component batches.
 
@@ -38,16 +36,13 @@ def set_properties(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if entity_path is None:
-        entity_path = []
 
-    if isinstance(entity_path, list):
-        entity_path = bindings.new_property_entity_path([str(part) for part in entity_path])
+    entity_path = bindings.new_property_entity_path([name])
 
-    log(entity_path, properties, recording=recording, static=True)
+    log(entity_path, property, recording=recording, static=True)
 
 
-def set_recording_name(name: str, recording: RecordingStream | None = None) -> None:
+def send_recording_name(name: str, recording: RecordingStream | None = None) -> None:
     """
     Set the name of the recording.
 
@@ -65,10 +60,10 @@ def set_recording_name(name: str, recording: RecordingStream | None = None) -> N
 
     """
 
-    bindings.set_recording_name(name, recording=recording.to_native() if recording is not None else None)
+    bindings.send_recording_name(name, recording=recording.to_native() if recording is not None else None)
 
 
-def set_recording_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -> None:
+def send_recording_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -> None:
     """
     Set the start time of the recording.
 
@@ -86,4 +81,4 @@ def set_recording_start_time_nanos(nanos: int, recording: RecordingStream | None
 
     """
 
-    bindings.set_recording_start_time_nanos(nanos, recording=recording.to_native() if recording is not None else None)
+    bindings.send_recording_start_time_nanos(nanos, recording=recording.to_native() if recording is not None else None)

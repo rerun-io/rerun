@@ -1162,51 +1162,48 @@ impl RecordingStream {
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
-    /// Sets the recording properties.
+    /// Internally, we convert the name to an [`EntityPath`] and then log the property.
+    /// For now we don't expose the [`EntityPath`] directly, but we might in the future
+    /// to document that we support hierarchical properties.
     ///
-    /// This is a convenience wrapper for statically logging to the entity path
-    /// that is reserved for recording properties.
+    /// `sub_path` specifies everything below [`EntityPath::partition_properties`].
     #[inline]
-    pub fn set_properties<AS: ?Sized + AsComponents>(
+    fn send_property_impl<AS: ?Sized + AsComponents>(
         &self,
-        properties: &AS,
-    ) -> RecordingStreamResult<()> {
-        self.set_properties_with_prefix(EntityPath::root(), properties)
-    }
-
-    /// Sets the recording properties.
-    ///
-    /// This is a convenience wrapper for statically logging to the entity path
-    /// that is reserved for recording properties.
-    #[inline]
-    pub fn set_properties_with_prefix<AS: ?Sized + AsComponents>(
-        &self,
-        entity_path: impl Into<EntityPath>,
+        sub_path: impl Into<EntityPath>,
         properties: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_static(
-            EntityPath::partition_properties().join(&entity_path.into()),
+            EntityPath::partition_properties().join(&sub_path.into()),
             properties,
         )
     }
 
-    /// Sets the name of the recording.
+    /// Sends a property to the recording.
     #[inline]
-    pub fn set_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
-        let update = RecordingProperties::update_fields().with_name(name.into());
-        // `set_properties` will automatically log to the correct entity path.
-        self.set_properties(&update)
+    pub fn send_property<AS: ?Sized + AsComponents>(
+        &self,
+        name: impl Into<String>,
+        properties: &AS,
+    ) -> RecordingStreamResult<()> {
+        self.send_property_impl(name.into(), properties)
     }
 
-    /// Sets the start time of the recording.
+    /// Sends the name of the recording.
     #[inline]
-    pub fn set_recording_start_time(
+    pub fn send_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
+        let update = RecordingProperties::update_fields().with_name(name.into());
+        self.send_property_impl("recording", &update)
+    }
+
+    /// Sends the start time of the recording.
+    #[inline]
+    pub fn send_recording_start_time(
         &self,
         timestamp: impl Into<Timestamp>,
     ) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
-        // `set_properties` will automatically log to the correct entity path.
-        self.set_properties(&update)
+        self.send_property_impl("recording", &update)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even

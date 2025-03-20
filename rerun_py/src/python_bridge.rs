@@ -180,8 +180,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // properties
     m.add_function(wrap_pyfunction!(new_property_entity_path, m)?)?;
-    m.add_function(wrap_pyfunction!(set_recording_name, m)?)?;
-    m.add_function(wrap_pyfunction!(set_recording_start_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording_name, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording_start_time_nanos, m)?)?;
 
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
@@ -1390,19 +1390,19 @@ fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyR
 /// Set the name of the recording.
 #[pyfunction]
 #[pyo3(signature = (name, recording=None))]
-fn set_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+fn send_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
     recording
-        .set_recording_name(name)
+        .send_recording_name(name)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 /// Set the name of the recording.
 #[pyfunction]
 #[pyo3(signature = (nanos, recording=None))]
-fn set_recording_start_time_nanos(
+fn send_recording_start_time_nanos(
     nanos: i64,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
@@ -1410,7 +1410,7 @@ fn set_recording_start_time_nanos(
         return Ok(());
     };
     recording
-        .set_recording_start_time(nanos)
+        .send_recording_start_time(nanos)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 

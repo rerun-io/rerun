@@ -763,22 +763,20 @@ class RecordingStream:
             recording=self,
         )
 
-    def set_properties(
+    def send_property(
         self,
-        properties: AsComponents | Iterable[DescribedComponentBatch],
-        entity_path: Optional[str | list[object]] = None,
+        name: str,
+        property: AsComponents | Iterable[DescribedComponentBatch],
     ) -> None:
         """
-        Set the properties of the recording.
-
-        These are builtin recording properties known to the Rerun viewer.
+            Send a property of the recording.
 
         Parameters
         ----------
-        entity_path:
-            Path to the entity in the recording properties.
+        name:
+            Name of the property.
 
-        properties :
+        property :
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
             or an iterable of (described)component batches.
 
@@ -789,11 +787,11 @@ class RecordingStream:
 
         """
 
-        from ._properties import set_properties
+        from ._properties import send_property
 
-        set_properties(entity_path=entity_path, properties=properties, recording=self)
+        send_property(name=name, property=property, recording=self)
 
-    def set_recording_name(self, name: str) -> None:
+    def send_recording_name(self, name: str) -> None:
         """
         Set the name of the recording.
 
@@ -808,9 +806,9 @@ class RecordingStream:
 
         from ._properties import set_name
 
-        set_recording_name(name, recording=self)
+        send_recording_name(name, recording=self)
 
-    def set_recording_start_time_nanos(self, nanos: int) -> None:
+    def send_recording_start_time_nanos(self, nanos: int) -> None:
         """
         Set the start time of the recording.
 
@@ -823,9 +821,9 @@ class RecordingStream:
 
         """
 
-        from ._properties import set_recording_start_time_nanos
+        from ._properties import send_recording_start_time_nanos
 
-        set_recording_start_time_nanos(nanos, recording=self)
+        send_recording_start_time_nanos(nanos, recording=self)
 
     @overload
     def set_time(self, timeline: str, *, sequence: int) -> None: ...
