@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
@@ -190,7 +190,11 @@ impl ViewClass for TimeSeriesView {
         Ok(())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
@@ -215,6 +219,15 @@ impl ViewClass for TimeSeriesView {
             indicated_entities
                 .0
                 .extend(maybe_visualizable.iter().cloned());
+        }
+
+        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        let indicated_entities = indicated_entities;
+        if indicated_entities
+            .iter()
+            .all(|e| suggested_filter.matches(e))
+        {
+            return ViewSpawnHeuristics::default();
         }
 
         if indicated_entities.0.is_empty() {

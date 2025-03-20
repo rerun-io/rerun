@@ -1,3 +1,4 @@
+use re_log_types::ResolvedEntityPathFilter;
 use re_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
@@ -42,7 +43,11 @@ impl ViewClass for ViewClassPlaceholder {
         crate::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::empty()
     }
 
