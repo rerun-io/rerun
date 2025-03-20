@@ -128,13 +128,5 @@ viewer.on("selectionchange", (items) => {
     }
   }
 });
-
-viewer.on("timeupdate", (time) => {
-  console.log("current time", time);
-});
-
-viewer.on("timelinechange", (timeline, time) => {
-  console.log("timeline changed to: ", timeline);
-  console.log("current time", time);
-})
 ```
+
