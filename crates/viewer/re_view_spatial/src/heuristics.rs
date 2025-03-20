@@ -29,30 +29,14 @@ pub fn default_visualized_entities_for_visualizer_kind(
 
             if data.preferred_view_kind == Some(visualizer_kind) {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
-
-                if indicator_matching
-                    .iter()
-                    .all(|e| suggested_filter.matches(e))
-                {
-                    // We can return early here, because the intersection below would be empty.
-                    return None;
-                }
-
                 let maybe_visualizable = ctx.maybe_visualizable_entities_per_visualizer.get(&id)?;
-
-                if maybe_visualizable
-                    .iter()
-                    .all(|e| suggested_filter.matches(e))
-                {
-                    return None;
-                }
-
                 Some(indicator_matching.intersection(maybe_visualizable))
             } else {
                 None
             }
         })
         .flatten()
+        .filter(|e| !suggested_filter.matches(e))
         .cloned()
         .collect()
 }
