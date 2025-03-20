@@ -42,7 +42,7 @@ where
                     context.as_ref(),
                 )
                 .is_empty()
-                && suggested_filter.matches(entity)
+                && !suggested_filter.matches(entity)
             {
                 Some(RecommendedView::new_single_entity(entity.clone()))
             } else {
