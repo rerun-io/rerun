@@ -180,7 +180,12 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
     {
         let quoted_field_reflections = obj.fields.iter().map(|field| {
             let Some(component_name) = field.typ.fqname() else {
-                panic!("archetype field must be an object/union or an array/vector of such")
+                reporter.error(
+                    &field.virtpath,
+                    &field.fqname,
+                    "Archetype field must be an object/union or an array/vector of such",
+                );
+                return TokenStream::new();
             };
             let name = &field.name;
             let display_name = re_case::to_human_case(&field.name);
