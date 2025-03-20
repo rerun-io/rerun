@@ -1192,7 +1192,7 @@ impl RecordingStream {
 
     /// Sets the name of the recording.
     #[inline]
-    pub fn set_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
+    pub fn set_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_name(name.into());
         // `set_properties` will automatically log to the correct entity path.
         self.set_properties(&update)
@@ -1200,7 +1200,10 @@ impl RecordingStream {
 
     /// Sets the start time of the recording.
     #[inline]
-    pub fn set_start_time(&self, timestamp: impl Into<Timestamp>) -> RecordingStreamResult<()> {
+    pub fn set_recording_start_time(
+        &self,
+        timestamp: impl Into<Timestamp>,
+    ) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
         // `set_properties` will automatically log to the correct entity path.
         self.set_properties(&update)

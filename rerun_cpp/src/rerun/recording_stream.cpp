@@ -317,19 +317,19 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_set_name(std::string_view name) const {
+    Error RecordingStream::try_set_recording_name(std::string_view name) const {
         rr_error status = {};
-        this->log_static(
-            this->PARTITION_PROPERTIES_ENTITY_PATH,
+        this.log_static(
+            this.PARTITION_PROPERTIES_ENTITY_PATH,
             rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
         );
         return status;
     }
 
-    Error RecordingStream::try_set_start_time_nanos(int64_t nanos) const {
+    Error RecordingStream::try_set_recording_start_time_nanos(int64_t nanos) const {
         rr_error status = {};
-        this->log_static(
-            this->PARTITION_PROPERTIES_ENTITY_PATH,
+        this.log_static(
+            this.PARTITION_PROPERTIES_ENTITY_PATH,
             rerun::archetypes::RecordingProperties::update_fields().with_start_time(nanos)
         );
         return status;

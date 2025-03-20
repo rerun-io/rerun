@@ -47,7 +47,7 @@ def set_properties(
     log(entity_path, properties, recording=recording, static=True)
 
 
-def set_name(name: str, recording: RecordingStream | None = None) -> None:
+def set_recording_name(name: str, recording: RecordingStream | None = None) -> None:
     """
     Set the name of the recording.
 
@@ -65,10 +65,10 @@ def set_name(name: str, recording: RecordingStream | None = None) -> None:
 
     """
 
-    bindings.set_name(name, recording=recording.to_native() if recording is not None else None)
+    bindings.set_recording_name(name, recording=recording.to_native() if recording is not None else None)
 
 
-def set_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -> None:
+def set_recording_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -> None:
     """
     Set the start time of the recording.
 
@@ -86,4 +86,4 @@ def set_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -
 
     """
 
-    bindings.set_start_time_nanos(nanos, recording=recording.to_native() if recording is not None else None)
+    bindings.set_recording_start_time_nanos(nanos, recording=recording.to_native() if recording is not None else None)

@@ -61,8 +61,8 @@ namespace rerun {
     class RecordingStream {
       private:
         // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
-        //               that we don't have to hardcode this here.
-        inline static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
+        //              that we don't have to hardcode this here.
+       static constexpr const char PARTITION_PROPERTIES_ENTITY_PATH[] = "__partition_properties/";
 
       public:
         /// Creates a new recording stream to log to.
@@ -888,8 +888,8 @@ namespace rerun {
         Error try_set_properties_with_prefix(std::string_view entity_path, const Ts&... properties)
             const {
             rr_error status = {};
-            this->log_static(
-                this->PARTITION_PROPERTIES_ENTITY_PATH + "/" + std::string(entity_path),
+            this.log_static(
+                this.PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path),
                 properties...
             );
             return status;
@@ -904,7 +904,7 @@ namespace rerun {
         template <typename... Ts>
         void set_properties(const Ts&... properties) const {
             // We need to split this into two arguments so that the compiler can bottom out.
-            try_set_properties_with_prefix("/", properties...).handle();
+            try_set_properties_with_prefix("", properties...).handle();
         }
 
         /// Set the properties of a recording.
@@ -916,7 +916,7 @@ namespace rerun {
         template <typename... Ts>
         Error try_set_properties(const Ts&... properties) const {
             // We need to split this into two arguments so that the compiler can bottom out.
-            try_set_properties_with_prefix("/", properties...);
+            try_set_properties_with_prefix("", properties...);
         }
 
         /// Set the name of a recording.
@@ -924,32 +924,32 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param name The name of the recording.
-        /// \see `try_set_name`
-        void set_name(std::string_view name) const {
-            try_set_name(name).handle();
+        /// \see `try_set_recording_name`
+        void set_recording_name(std::string_view name) const {
+            try_set_recording_name(name).handle();
         }
 
         /// Set the name of a recording.
         ///
         /// \param name The name of the recording.
-        /// \see `set_name`
-        Error try_set_name(std::string_view name) const;
+        /// \see `set_recording_name`
+        Error try_set_recording_name(std::string_view name) const;
 
         /// Set the start time of a recording.
         ///
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
-        /// \see `try_set_start_time`
-        void set_start_time_nanos(int64_t nanos) const {
-            try_set_start_time_nanos(nanos).handle();
+        /// \see `try_set_recording_start_time`
+        void set_recording_start_time_nanos(int64_t nanos) const {
+            try_set_recording_start_time_nanos(nanos).handle();
         }
 
         /// Set the start time of a recording.
         ///
         /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
         /// \see `set_name`
-        Error try_set_start_time_nanos(int64_t nanos) const;
+        Error try_set_recording_start_time_nanos(int64_t nanos) const;
 
         /// @}
 

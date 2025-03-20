@@ -793,7 +793,7 @@ class RecordingStream:
 
         set_properties(entity_path=entity_path, properties=properties, recording=self)
 
-    def set_name(self, name: str) -> None:
+    def set_recording_name(self, name: str) -> None:
         """
         Set the name of the recording.
 
@@ -808,9 +808,9 @@ class RecordingStream:
 
         from ._properties import set_name
 
-        set_name(name, recording=self)
+        set_recording_name(name, recording=self)
 
-    def set_start_time_nanos(self, nanos: int) -> None:
+    def set_recording_start_time_nanos(self, nanos: int) -> None:
         """
         Set the start time of the recording.
 
@@ -823,9 +823,9 @@ class RecordingStream:
 
         """
 
-        from ._properties import set_start_time_nanos
+        from ._properties import set_recording_start_time_nanos
 
-        set_start_time_nanos(nanos, recording=self)
+        set_recording_start_time_nanos(nanos, recording=self)
 
     @overload
     def set_time(self, timeline: str, *, sequence: int) -> None: ...
