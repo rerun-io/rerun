@@ -218,7 +218,11 @@ class Archetype(AsComponents):
                     if as_arrow_array is None:
                         comp_contents = "<unknown>"
                     else:
-                        comp_contents = re.sub(r'\[\s+\[', '[[', pformat(as_arrow_array().to_pylist(), compact=True, indent=4))
+                        # Note: the regex here is necessary because for some reason pformat add spurious spaces when
+                        # indent > 1.
+                        comp_contents = re.sub(
+                            r"\[\s+\[", "[[", pformat(as_arrow_array().to_pylist(), compact=True, indent=4)
+                        )
 
                     yield f"  {fld.name}={comp_contents}"
 
