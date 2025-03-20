@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Iterator
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 
@@ -201,18 +202,35 @@ class Archetype(AsComponents):
     """Base class for all archetypes."""
 
     def __str__(self) -> str:
+        from pprint import pformat
+
         cls = type(self)
 
-        s = f"rr.{cls.__name__}(\n"
-        for fld in fields(cls):
-            if "component" in fld.metadata:
-                comp = getattr(self, fld.name)
-                datatype = getattr(comp, "type", None)
-                if datatype:
-                    s += f"  {datatype.extension_name}<{datatype}>(\n    {comp.to_pylist()}\n  )\n"
-        s += ")"
+        def fields_repr() -> Iterable[str]:
+            for fld in fields(cls):
+                if "component" in fld.metadata:
+                    comp = getattr(self, fld.name)
+                    if comp is None:
+                        continue
 
-        return s
+                    as_arrow_array = getattr(comp, "as_arrow_array", None)
+
+                    if as_arrow_array is None:
+                        comp_contents = "<unknown>"
+                    else:
+                        # Note: the regex here is necessary because for some reason pformat add spurious spaces when
+                        # indent > 1.
+                        comp_contents = re.sub(
+                            r"\[\s+\[", "[[", pformat(as_arrow_array().to_pylist(), compact=True, indent=4)
+                        )
+
+                    yield f"  {fld.name}={comp_contents}"
+
+        args = ",\n".join(fields_repr())
+        if args:
+            return f"rr.{cls.__name__}(\n{args}\n)"
+        else:
+            return f"rr.{cls.__name__}()"
 
     @classmethod
     def archetype_name(cls) -> str:
