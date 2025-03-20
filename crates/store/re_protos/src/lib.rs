@@ -57,7 +57,7 @@ pub mod manifest_registry {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
 
-        /// DatasetManifest mandatory field names. All mandatory metadata fields are prefixed
+        /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed
         /// with "rerun_" to avoid conflicts with user-defined fields.
         pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
