@@ -579,6 +579,24 @@ impl ::prost::Name for ScanParametersOrderClause {
         "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
     }
 }
+/// Unique identifier for a partition. Can be user defined
+/// which means it can be of any type. For simplicity we start
+/// with a string, but we will probably revisit this.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PartitionId {
+    #[prost(string, optional, tag = "1")]
+    pub id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for PartitionId {
+    const NAME: &'static str = "PartitionId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.PartitionId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.PartitionId".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
