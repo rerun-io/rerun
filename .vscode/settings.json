@@ -16,7 +16,7 @@
     // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
     "rust-analyzer.check.workspace": false,
     "rust-analyzer.cargo.allTargets": true,
-    // --all-features will set the `__ci` feature flag, which stops re_web_viewer_server/build.rs from building the web viewer
+    // --all-features will set the `__ci` feature flag, which stops re_web_viewer_server/build.rs from requiring the web viewer to be built.
     "rust-analyzer.cargo.features": "all",
     // Use a separate target directory for Rust Analyzer so it doesn't prevent cargo/clippy from doing things.
     "rust-analyzer.cargo.targetDir": "target_ra",
