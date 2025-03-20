@@ -49,6 +49,8 @@ impl ViewEntityPicker {
                     .scrollable([false, false])
             },
             |ui, open| {
+                // 80%, never more than 500px
+                ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     *open = false;
                     return;
@@ -65,22 +67,12 @@ impl ViewEntityPicker {
                 });
                 ui.add_space(5.0);
 
-                let max_height = 0.85 * ui.ctx().screen_rect().height();
-                egui::ScrollArea::new([false, true])
-                    .min_scrolled_height(max_height)
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        ui.panel_content(|ui| {
-                            let matcher = self.filter_state.filter();
-                            add_entities_ui(
-                                ctx,
-                                ui,
-                                view,
-                                &matcher,
-                                self.filter_state.session_id(),
-                            );
-                        });
+                egui::ScrollArea::new([false, true]).show(ui, |ui| {
+                    ui.panel_content(|ui| {
+                        let matcher = self.filter_state.filter();
+                        add_entities_ui(ctx, ui, view, &matcher, self.filter_state.session_id());
                     });
+                });
             },
         );
     }
