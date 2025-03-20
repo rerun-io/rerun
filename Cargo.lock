@@ -2420,13 +2420,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "experimental_multi_scalar"
-version = "0.23.0-alpha.1+dev"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "extend_viewer_ui"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
