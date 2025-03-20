@@ -452,8 +452,7 @@ impl ViewClass for TimeSeriesView {
             }
         }
 
-        let mut is_resetting = false;
-
+        let mut plot_double_clicked = false;
         let egui_plot::PlotResponse {
             inner: _,
             response,
@@ -470,19 +469,13 @@ impl ViewClass for TimeSeriesView {
                 time_ctrl_write.pause();
             }
 
-            is_resetting = plot_ui.response().double_clicked();
+            plot_double_clicked = plot_ui.response().double_clicked();
 
             let current_bounds = plot_ui.plot_bounds();
             plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
                 [current_bounds.min()[0], y_range.start()],
                 [current_bounds.max()[0], y_range.end()],
             ));
-
-            let current_auto = plot_ui.auto_bounds();
-            plot_ui.set_auto_bounds([
-                current_auto[0] || is_resetting,
-                is_resetting && !y_zoom_lock,
-            ]);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -502,7 +495,10 @@ impl ViewClass for TimeSeriesView {
                 plot_ui.set_plot_bounds(plot_ui.plot_bounds());
             } else if state.was_dragging_time_cursor {
                 plot_ui.set_auto_bounds(state.saved_auto_bounds);
+            } else {
+                plot_ui.set_auto_bounds([plot_ui.auto_bounds()[0], false]);
             }
+
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
 
             add_series_to_plot(
@@ -514,10 +510,35 @@ impl ViewClass for TimeSeriesView {
             );
         });
 
+        // Interact with the plot items (lines, scatters, etc.)
+        let hovered_data_result = hovered_plot_item
+            .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
+            .map(|instance_path| {
+                let mut instance_path = instance_path.clone();
+                if response.double_clicked() {
+                    // Select entire entity on double-click:
+                    instance_path.instance = re_log_types::Instance::ALL;
+                }
+                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+            });
+        if let Some(hovered) = hovered_data_result.clone().or_else(|| {
+            if response.hovered() {
+                Some(re_viewer_context::Item::View(query.view_id))
+            } else {
+                None
+            }
+        }) {
+            ctx.handle_select_hover_drag_interactions(&response, hovered, false);
+        }
+
+        // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
+        let is_resetting = plot_double_clicked && hovered_data_result.is_none();
+
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
             scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
             scalar_axis.save_blueprint_component(ctx, &new_y_range);
         }
@@ -530,25 +551,6 @@ impl ViewClass for TimeSeriesView {
                 transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
             })
             .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
-
-        // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
-        if !is_resetting {
-            if let Some(hovered) = hovered_plot_item
-                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
-                .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone())
-                })
-                .or_else(|| {
-                    if response.hovered() {
-                        Some(re_viewer_context::Item::View(query.view_id))
-                    } else {
-                        None
-                    }
-                })
-            {
-                ctx.handle_select_hover_drag_interactions(&response, hovered, false);
-            }
-        }
 
         // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
         update_series_visibility_overrides_from_plot(
