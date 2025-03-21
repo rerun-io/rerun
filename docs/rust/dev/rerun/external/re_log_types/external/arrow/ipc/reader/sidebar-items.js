@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["read_dictionary","read_footer_length","read_record_batch"],"struct":["FileDecoder","FileReader","FileReaderBuilder","StreamDecoder","StreamReader"]};

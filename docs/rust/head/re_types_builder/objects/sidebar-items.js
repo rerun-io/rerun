@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BUILTIN_UNIT_TYPE_FQNAME"],"enum":["ElementType","FieldKind","ObjectClass","ObjectKind","Type"],"fn":["filepath_from_declaration_file","is_testing_fqname","validate_archetype_field_attributes"],"struct":["Attributes","Object","ObjectField","Objects","ViewReference"]};

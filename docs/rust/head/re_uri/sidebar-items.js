@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","RedapUri","Scheme"],"fn":["replace_and_parse"],"mod":["endpoints","error"],"struct":["CatalogEndpoint","Origin","ProxyEndpoint","RecordingEndpoint","TimeRange"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["ipc_from_schema","schema_from_ipc"]};

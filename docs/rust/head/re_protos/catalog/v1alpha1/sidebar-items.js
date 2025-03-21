@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EntryType"],"mod":["catalog_service_client","catalog_service_server"],"struct":["CreateDatasetEntryRequest","CreateDatasetEntryResponse","DatasetEntry","DeleteDatasetEntryRequest","DeleteDatasetEntryResponse","EntryDetails","EntryFilter","FindEntriesRequest","FindEntriesResponse","ReadDatasetEntryRequest","ReadDatasetEntryResponse"]};

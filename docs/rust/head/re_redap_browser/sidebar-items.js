@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["add_server_modal","collection_ui","collections","context","requested_object","servers"],"struct":["RedapServers"]};

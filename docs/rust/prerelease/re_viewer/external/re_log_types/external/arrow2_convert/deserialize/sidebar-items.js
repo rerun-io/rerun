@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["arrow_array_deserialize_iterator","arrow_array_deserialize_iterator_as_type"],"struct":["BufferBinaryArray","BufferBinaryArrayIter"],"trait":["ArrowDeserialize","TryIntoCollection"]};

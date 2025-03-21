@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["color_from_hex"]};
