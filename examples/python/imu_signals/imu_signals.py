@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
-import pathlib
 import tarfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ import rerun as rr
 from rerun import blueprint as rrb
 from tqdm.auto import tqdm
 
-cwd = pathlib.Path(__file__).parent.resolve()
+DATA_DIR = Path(__file__).parent / "dataset"
 
 DATASET_URL = "https://storage.googleapis.com/rerun-example-datasets/imu_signals/tum_vi_corridor4_512_16.tar"
 DATASET_NAME = "dataset-corridor4_512_16"
@@ -21,9 +21,9 @@ XYZ_AXIS_COLORS = [[(231, 76, 60), (39, 174, 96), (52, 120, 219)]]
 
 
 def main() -> None:
-    dataset_path = cwd / DATASET_NAME
+    dataset_path = DATA_DIR / DATASET_NAME
     if not dataset_path.exists():
-        _download_dataset(cwd)
+        _download_dataset(DATA_DIR)
 
     parser = argparse.ArgumentParser(description="Visualizes the TUM Visual-Inertial dataset using the Rerun SDK.")
     parser.add_argument(
@@ -65,7 +65,7 @@ def main() -> None:
     _log_gt_imu(args.seconds)
 
 
-def _download_dataset(root: pathlib.Path, dataset_url: str = DATASET_URL) -> None:
+def _download_dataset(root: Path, dataset_url: str = DATASET_URL) -> None:
     os.makedirs(root, exist_ok=True)
     tar_path = os.path.join(root, f"{DATASET_NAME}.tar")
     response = requests.get(dataset_url, stream=True)
@@ -90,7 +90,7 @@ def _download_dataset(root: pathlib.Path, dataset_url: str = DATASET_URL) -> Non
 
 def _log_imu_data(max_time_sec: float) -> None:
     imu_data = pd.read_csv(
-        cwd / DATASET_NAME / "dso/imu.txt",
+        DATA_DIR / DATASET_NAME / "dso/imu.txt",
         sep=" ",
         header=0,
         names=["timestamp", "gyro.x", "gyro.y", "gyro.z", "accel.x", "accel.y", "accel.z"],
@@ -113,7 +113,7 @@ def _log_imu_data(max_time_sec: float) -> None:
 
 def _log_image_data(max_time_sec: float) -> None:
     times = pd.read_csv(
-        cwd / DATASET_NAME / "dso/cam0/times.txt",
+        DATA_DIR / DATASET_NAME / "dso/cam0/times.txt",
         sep=" ",
         header=0,
         names=["filename", "timestamp", "exposure_time"],
@@ -142,14 +142,14 @@ def _log_image_data(max_time_sec: float) -> None:
         if timestamp > max_time_sec:
             break
 
-        image_path = cwd / DATASET_NAME / "dso/cam0/images" / f"{filename}.png"
+        image_path = DATA_DIR / DATASET_NAME / "dso/cam0/images" / f"{filename}.png"
         rr.set_time("timestamp", timestamp=timestamp)
         rr.log("/world/cam0/image", rr.EncodedImage(path=image_path))
 
 
 def _log_gt_imu(max_time_sec: float) -> None:
     gt_imu = pd.read_csv(
-        cwd / DATASET_NAME / "dso/gt_imu.csv",
+        DATA_DIR / DATASET_NAME / "dso/gt_imu.csv",
         sep=",",
         header=0,
         names=["timestamp", "t.x", "t.y", "t.z", "q.w", "q.x", "q.y", "q.z"],
