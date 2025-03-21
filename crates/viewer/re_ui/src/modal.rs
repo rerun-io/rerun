@@ -173,12 +173,11 @@ impl ModalWrapper {
         }
 
         let modal_response = egui::Modal::new(id.with("modal"))
-            .frame(egui::Frame {
-                fill: ctx.style().visuals.panel_fill,
-                ..Default::default()
-            })
+            .frame(egui::Frame::new().fill(ctx.style().visuals.panel_fill))
             .area(area)
             .show(ctx, |ui| {
+                prevent_shrinking(ui);
+
                 ui.set_clip_rect(ui.max_rect());
 
                 let item_spacing_y = ui.spacing().item_spacing.y;
@@ -333,5 +332,30 @@ fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
             },
         },
         ..Default::default()
+    }
+}
+
+/// Prevent a UI from shrinking if the content size changes.
+///
+/// Should be called at the beginning of the [`egui::Ui`], before any other content is added.
+/// Will reset if the screen size changes.
+pub fn prevent_shrinking(ui: &mut egui::Ui) {
+    // The Uis response at this point will conveniently contain last frame's rect
+    let last_rect = ui.response().rect;
+
+    let screen_size = ui.ctx().screen_rect().size();
+
+    let id = ui.id().with("prevent_shrinking");
+    let screen_size_changed = ui.data_mut(|d| {
+        let last_screen_size = d.get_temp_mut_or_insert_with(id, || screen_size);
+        let changed = *last_screen_size != screen_size;
+        *last_screen_size = screen_size;
+        changed
+    });
+
+    if last_rect.is_positive() && !screen_size_changed {
+        let min_size = ui.min_size();
+        // Set the min size, respecting the current min size.
+        ui.set_min_size(egui::Vec2::max(last_rect.size(), min_size));
     }
 }
