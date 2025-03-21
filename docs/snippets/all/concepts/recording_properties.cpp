@@ -15,10 +15,14 @@ arrow::Status run_main() {
     // Start time is set automatically, but we can overwrite it at any time.
     rec.send_recording_start_time_nanos(1742539110661000000);
 
+    // Adds a user-defined property to the recording, using an existing Rerun type.
     auto points = rerun::Points3D({{1.0, 0.1, 1.0}});
     rec.send_property("camera_left", points);
 
-    std::shared_ptr<arrow::Array> arrow_array;
+    // Adds another property, this time with user-defined data.
+    {
+          std::shared_ptr<arrow::Array> arrow_array;
+          // ...
 
     arrow::DoubleBuilder confidences_builder;
     ARROW_RETURN_NOT_OK(confidences_builder.AppendValues({0.3, 0.4, 0.5, 0.6}));

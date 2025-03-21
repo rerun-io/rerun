@@ -11,7 +11,7 @@ rec.send_recording_name("My recording")
 # Start time is set automatically, but we can overwrite it at any time.
 rec.send_recording_start_time_nanos(1742539110661000000)
 
-# Adds a user-defined property to the recording.
+# Adds a user-defined property to the recording, using an existing Rerun type.
 rec.send_property(
     "camera_left",
     rr.archetypes.Points3D([[1.0, 0.1, 1.0]]),
