@@ -763,26 +763,32 @@ class RecordingStream:
             recording=self,
         )
 
-    def set_properties(self, properties: bindings.RecordingProperties) -> None:
+    def send_property(
+        self,
+        name: str,
+        values: AsComponents | Iterable[DescribedComponentBatch],
+    ) -> None:
         """
-        Set the properties of the recording.
-
-        These are builtin recording properties known to the Rerun viewer.
+            Send a property of the recording.
 
         Parameters
         ----------
-        properties : RecordingProperties
-            The name of the recording.
+        name:
+            Name of the property.
+
+        values:
+            Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
+            or an iterable of (described)component batches.
 
         """
 
-        from ._properties import set_properties
+        from ._properties import send_property
 
-        set_properties(properties, recording=self)
+        send_property(name=name, values=values, recording=self)
 
-    def set_name(self, name: str) -> None:
+    def send_recording_name(self, name: str) -> None:
         """
-        Set the name of the recording.
+        Send the name of the recording.
 
         This name is shown in the Rerun Viewer.
 
@@ -793,9 +799,26 @@ class RecordingStream:
 
         """
 
-        from ._properties import set_name
+        from ._properties import send_recording_name
 
-        set_name(name, recording=self)
+        send_recording_name(name, recording=self)
+
+    def send_recording_start_time_nanos(self, nanos: int) -> None:
+        """
+        Send the start time of the recording.
+
+        This timestamp is shown in the Rerun Viewer.
+
+        Parameters
+        ----------
+        nanos : int
+            The start time of the recording.
+
+        """
+
+        from ._properties import send_recording_start_time_nanos
+
+        send_recording_start_time_nanos(nanos, recording=self)
 
     @overload
     def set_time(self, timeline: str, *, sequence: int) -> None: ...

@@ -111,6 +111,9 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// let rec = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+///
+/// Automatically sends a [`Chunk`] with the default [`RecordingProperties`] to
+/// the sink, unless an explicit `recording_id` is set via [`RecordingStreamBuilder::recording_id`].
 #[derive(Debug)]
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
@@ -191,13 +194,16 @@ impl RecordingStreamBuilder {
     /// unique `RecordingId`s.
     ///
     /// The default is to use a random `RecordingId`.
+    ///
+    /// When explicitly setting a `RecordingId`, the initial chunk that contains the recording
+    /// properties will not be sent.
     #[inline]
     pub fn recording_id(mut self, recording_id: impl Into<String>) -> Self {
         self.store_id = Some(StoreId::from_string(
             StoreKind::Recording,
             recording_id.into(),
         ));
-        self
+        self.disable_properties()
     }
 
     /// Sets an optional name for the recording.
@@ -879,7 +885,7 @@ impl RecordingStreamInner {
 
             re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-            let properties_chunk = Chunk::builder(EntityPath::partition_properties())
+            let properties_chunk = Chunk::builder(EntityPath::recording_properties())
                 .with_archetype(RowId::new(), TimePoint::default(), properties)
                 .build()?;
 
@@ -1160,20 +1166,32 @@ impl RecordingStream {
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
-    /// Sets the recording properties.
-    ///
-    /// This is a convenience wrapper for statically logging to the entity path
-    /// that is reserved for recording properties.
+    /// Sends a property to the recording.
     #[inline]
-    pub fn set_properties(&self, properties: &RecordingProperties) -> RecordingStreamResult<()> {
-        self.log_static(EntityPath::partition_properties(), properties)
+    pub fn send_property<AS: ?Sized + AsComponents>(
+        &self,
+        name: impl Into<String>,
+        values: &AS,
+    ) -> RecordingStreamResult<()> {
+        let sub_path = EntityPath::from(name.into());
+        self.log_static(EntityPath::properties().join(&sub_path), values)
     }
 
-    /// Sets the name of the recording.
+    /// Sends the name of the recording.
     #[inline]
-    pub fn set_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
+    pub fn send_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_name(name.into());
-        self.set_properties(&update)
+        self.log_static(EntityPath::recording_properties(), &update)
+    }
+
+    /// Sends the start time of the recording.
+    #[inline]
+    pub fn send_recording_start_time(
+        &self,
+        timestamp: impl Into<Timestamp>,
+    ) -> RecordingStreamResult<()> {
+        let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
+        self.log_static(EntityPath::recording_properties(), &update)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even

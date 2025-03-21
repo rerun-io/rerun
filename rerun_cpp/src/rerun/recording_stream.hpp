@@ -17,10 +17,6 @@
 namespace rerun {
     struct ComponentBatch;
 
-    namespace archetypes {
-        struct RecordingProperties;
-    }
-
     enum class StoreKind {
         Recording,
         Blueprint,
@@ -62,6 +58,12 @@ namespace rerun {
     /// The data will be timestamped automatically based on the `RecordingStream`'s
     /// internal clock.
     class RecordingStream {
+      private:
+        // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
+        //              that we don't have to hardcode this here.
+        static constexpr const char PROPERTIES_ENTITY_PATH[] = "__properties/";
+        static constexpr const char RECORDING_PROPERTIES_ENTITY_PATH[] = "__properties/recording/";
+
       public:
         /// Creates a new recording stream to log to.
         ///
@@ -864,37 +866,64 @@ namespace rerun {
             Collection<ComponentColumn> component_columns
         ) const;
 
-        /// Set the properties of a recording.
+        /// Set a property of a recording.
         ///
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
-        /// \param properties The properties of the recording.
-        /// \see `try_set_recording_properties`
-        void set_properties(archetypes::RecordingProperties& properties) const {
-            try_set_properties(properties).handle();
+        /// \param name The name of the property.
+        /// \param values The values of the property.
+        /// \see `try_send_property`
+        template <typename... Ts>
+        void send_property(std::string_view name, const Ts&... values) const {
+            try_send_property(name, values...).handle();
         }
 
-        /// Set the properties of a recording.
+        /// Set a property of a recording.
         ///
-        /// \param properties The properties of the recording.
-        /// \see `set_recording_properties`
-        Error try_set_properties(archetypes::RecordingProperties& properties) const;
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param name The name of the property.
+        /// \param values The values of the property.
+        /// \see `set_property`
+        template <typename... Ts>
+        Error try_send_property(std::string_view name, const Ts&... values) const {
+            return try_log_static(
+                this->PROPERTIES_ENTITY_PATH + std::string(name),
+                values... // NOLINT
+            );
+        }
 
         /// Set the name of a recording.
         ///
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param name The name of the recording.
-        /// \see `try_set_recording_name`
-        void set_name(std::string_view name) const {
-            try_set_name(name).handle();
+        /// \see `try_send_recording_name`
+        void send_recording_name(std::string_view name) const {
+            try_send_recording_name(name).handle();
         }
 
         /// Set the name of a recording.
         ///
         /// \param name The name of the recording.
-        /// \see `set_recording_name`
-        Error try_set_name(std::string_view name) const;
+        /// \see `send_recording_name`
+        Error try_send_recording_name(std::string_view name) const;
+
+        /// Set the start time of a recording.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
+        /// \see `try_send_recording_start_time`
+        void send_recording_start_time_nanos(int64_t nanos) const {
+            try_send_recording_start_time_nanos(nanos).handle();
+        }
+
+        /// Set the start time of a recording.
+        ///
+        /// \param nanos The timestamp of the recording in nanoseconds since Unix epoch.
+        /// \see `set_name`
+        Error try_send_recording_start_time_nanos(int64_t nanos) const;
 
         /// @}
 

@@ -11,3 +11,12 @@ static_assert(
     "rerun.hpp!"
 );
 #endif
+
+#if defined(RERUN_H)
+static_assert(
+    false,
+    "RERUN_H should not be defined. This indicates that we're leaking the c/rerun.h "
+    "through "
+    "rerun.hpp!"
+);
+#endif

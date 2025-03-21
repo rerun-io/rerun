@@ -71,9 +71,6 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
-pub const RESERVED_NAMESPACE_PREFIX: &str = "__";
-const PARTITION_PROPERTIES_PATH: &str = "partition_properties";
-
 /// The unique identifier of an entity, e.g. `camera/3/points`
 ///
 /// The entity path is a list of [parts][EntityPathPart] separated by slashes.
@@ -115,11 +112,19 @@ impl EntityPath {
         Self::from(vec![])
     }
 
+    /// The reserved namespace for properties.
     #[inline]
-    pub fn partition_properties() -> Self {
-        Self::from(vec![EntityPathPart::new(format!(
-            "{RESERVED_NAMESPACE_PREFIX}{PARTITION_PROPERTIES_PATH}"
-        ))])
+    pub fn properties() -> Self {
+        Self::from(vec![EntityPathPart::properties()])
+    }
+
+    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
+    #[inline]
+    pub fn recording_properties() -> Self {
+        Self::from(vec![
+            EntityPathPart::properties(),
+            EntityPathPart::recording(),
+        ])
     }
 
     #[inline]
@@ -564,12 +569,15 @@ mod tests {
     }
 
     #[test]
+    fn test_properties() {
+        assert_eq!(EntityPath::properties(), EntityPath::from("/__properties"),);
+    }
+
+    #[test]
     fn test_recording_properties() {
         assert_eq!(
-            EntityPath::partition_properties(),
-            EntityPath::from(format!(
-                "{RESERVED_NAMESPACE_PREFIX}{PARTITION_PROPERTIES_PATH}"
-            ))
+            EntityPath::recording_properties(),
+            EntityPath::from("/__properties/recording"),
         );
     }
 

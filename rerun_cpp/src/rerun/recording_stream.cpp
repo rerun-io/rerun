@@ -12,8 +12,6 @@
 #include <string> // to_string
 #include <vector>
 
-static const std::string PARTITION_PROPERTIES_ENTITY_PATH = "__partition_properties";
-
 namespace rerun {
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
@@ -319,19 +317,21 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_set_properties(archetypes::RecordingProperties& properties) const {
+    Error RecordingStream::try_send_recording_name(std::string_view name) const {
         rr_error status = {};
-        this->log_static(PARTITION_PROPERTIES_ENTITY_PATH, properties);
-        return status;
-    }
-
-    Error RecordingStream::try_set_name(std::string_view name) const {
-        rr_error status = {};
-        this->log_static(
-            PARTITION_PROPERTIES_ENTITY_PATH,
+        log_static(
+            this->RECORDING_PROPERTIES_ENTITY_PATH,
             rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
         );
         return status;
     }
 
+    Error RecordingStream::try_send_recording_start_time_nanos(int64_t nanos) const {
+        rr_error status = {};
+        log_static(
+            this->RECORDING_PROPERTIES_ENTITY_PATH,
+            rerun::archetypes::RecordingProperties::update_fields().with_start_time(nanos)
+        );
+        return status;
+    }
 } // namespace rerun

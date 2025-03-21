@@ -41,7 +41,7 @@ impl crate::DataUi for ApplicationId {
             .bundle
             .recordings()
             .filter(|db| db.app_id() == Some(self))
-            .sorted_by_key(|entity_db| entity_db.property::<Timestamp>())
+            .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
             .collect();
 
         // Using the same content ui also for tooltips even if it can't be interacted with.
