@@ -1384,7 +1384,7 @@ fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyR
             .map(|part| EntityPathPart::from(part.borrow()))
             .collect_vec(),
     );
-    Ok(EntityPath::partition_properties().join(&path).to_string())
+    Ok(EntityPath::properties().join(&path).to_string())
 }
 
 /// Send the name of the recording.

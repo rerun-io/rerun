@@ -112,17 +112,17 @@ impl EntityPath {
         Self::from(vec![])
     }
 
-    /// The reserved namespace for (partition) properties.
+    /// The reserved namespace for properties.
     #[inline]
-    pub fn partition_properties() -> Self {
-        Self::from(vec![EntityPathPart::partition_properties()])
+    pub fn properties() -> Self {
+        Self::from(vec![EntityPathPart::properties()])
     }
 
     /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
     #[inline]
     pub fn recording_properties() -> Self {
         Self::from(vec![
-            EntityPathPart::partition_properties(),
+            EntityPathPart::properties(),
             EntityPathPart::recording(),
         ])
     }
@@ -569,10 +569,10 @@ mod tests {
     }
 
     #[test]
-    fn test_partition_properties() {
+    fn test_properties() {
         assert_eq!(
-            EntityPath::partition_properties().to_string(),
-            EntityPath::from("/__partition_properties"),
+            EntityPath::properties().to_string(),
+            EntityPath::from("/__properties"),
         );
     }
 
@@ -580,7 +580,7 @@ mod tests {
     fn test_recording_properties() {
         assert_eq!(
             EntityPath::recording_properties().to_string(),
-            EntityPath::from("/__partition_properties/recording"),
+            EntityPath::from("/__properties/recording"),
         );
     }
 

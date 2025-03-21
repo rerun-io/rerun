@@ -1174,7 +1174,7 @@ impl RecordingStream {
         values: &AS,
     ) -> RecordingStreamResult<()> {
         let sub_path = EntityPath::from(name.into());
-        self.log_static(EntityPath::partition_properties().join(&sub_path), values)
+        self.log_static(EntityPath::properties().join(&sub_path), values)
     }
 
     /// Sends the name of the recording.

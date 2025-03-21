@@ -61,9 +61,8 @@ namespace rerun {
       private:
         // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
         //              that we don't have to hardcode this here.
-        static constexpr const char PARTITION_PROPERTIES_ENTITY_PATH[] = "__partition_properties/";
-        static constexpr const char RECORDING_PROPERTIES_ENTITY_PATH[] =
-            "__partition_properties/recording";
+        static constexpr const char PROPERTIES_ENTITY_PATH[] = "__properties/";
+        static constexpr const char RECORDING_PROPERTIES_ENTITY_PATH[] = "__properties/recording/";
 
       public:
         /// Creates a new recording stream to log to.
@@ -889,7 +888,7 @@ namespace rerun {
         template <typename... Ts>
         Error try_send_property(std::string_view name, const Ts&... values) const {
             return try_log_static(
-                this->PARTITION_PROPERTIES_ENTITY_PATH + std::string(name),
+                this->PROPERTIES_ENTITY_PATH + std::string(name),
                 values... // NOLINT
             );
         }
