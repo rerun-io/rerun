@@ -1,4 +1,4 @@
-name: Cargo Machete
+name: Cargo Shear
 
 on:
   push:
@@ -8,13 +8,13 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  cargo-machete:
+  cargo-shear:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Machete
+      - name: Shear
         run: |
-          cargo install cargo-machete@0.7.0 --locked
-          cargo machete
+          cargo +stable install cargo-shear@1.1.11 --locked
+          cargo shear

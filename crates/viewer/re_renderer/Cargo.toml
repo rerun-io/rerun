@@ -26,8 +26,13 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
-[package.metadata.cargo-machete]
-ignored = ["profiling"] # Needed to hook up wgpu, see below at dependency setup.
+[package.metadata.cargo-shear]
+ignored = [
+  "profiling",    # Needed to hook up wgpu, see below at dependency setup.
+  "js-sys",       # Needed for wasm builds
+  "getrandom",
+  "wasm-bindgen",
+]
 
 
 [features]
