@@ -58,7 +58,7 @@ def main() -> None:
         column_shares=[0.45, 0.55],
     )
 
-    rr.script_setup(args, "rerun_example_imu_data", default_blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_imu_signals", default_blueprint=blueprint)
 
     _log_imu_data(args.seconds)
     _log_image_data(args.seconds)
