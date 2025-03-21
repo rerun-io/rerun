@@ -439,10 +439,9 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     SECTION("set_time_duration_nanos does not log errors") {
         check_logged_error([&] { stream.set_time_duration_nanos("duration", 1); });
     }
-    SECTION("set_time_timestamp_seconds_since_epoch does not log errors") {
-        check_logged_error([&] {
-            stream.set_time_timestamp_seconds_since_epoch("capture_time", 1.0);
-        });
+    SECTION("set_time_timestamp_secs_since_epoch does not log errors") {
+        check_logged_error([&] { stream.set_time_timestamp_secs_since_epoch("capture_time", 1.0); }
+        );
     }
 
     SECTION("set_time_timestamp_nanos_since_epoch does not log errors") {
