@@ -24,7 +24,7 @@ use crate::util::{determine_time_per_pixel, determine_time_range, points_to_seri
 use crate::view_class::TimeSeriesViewState;
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
-/// The system for rendering [`SeriesLines`] archetypes.
+/// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesLineSystem {
     pub all_series: Vec<PlotSeries>,
