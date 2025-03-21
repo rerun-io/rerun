@@ -14,6 +14,13 @@ pub struct PyEntryId {
 
 //TODO(ab): __str__ + properties
 
+#[pymethods]
+impl PyEntryId {
+    pub fn __str__(&self) -> String {
+        self.id.to_string()
+    }
+}
+
 impl From<Tuid> for PyEntryId {
     fn from(id: Tuid) -> Self {
         Self { id }
@@ -70,7 +77,7 @@ impl TryFrom<EntryType> for PyEntryType {
 
 // ---
 
-#[pyclass(name = "Entry")]
+#[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
     pub connection: CatalogConnectionHandle,
     pub catalog: Py<PyCatalogClient>,

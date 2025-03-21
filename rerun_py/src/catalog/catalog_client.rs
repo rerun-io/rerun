@@ -1,9 +1,9 @@
 use pyo3::exceptions::PyRuntimeError;
+use pyo3::types::PyList;
 use pyo3::{pyclass, pymethods, Py, PyResult, Python};
+use re_protos::catalog::v1alpha1::{DatasetEntry, EntryDetails, EntryFilter, EntryType};
 
-use re_protos::catalog::v1alpha1::{DatasetEntry, EntryDetails, EntryFilter};
-
-use crate::catalog::{CatalogConnectionHandle, PyEntry, PyEntryId};
+use crate::catalog::{CatalogConnectionHandle, PyDataset, PyEntry, PyEntryId};
 
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
@@ -27,8 +27,7 @@ impl PyCatalogClient {
         })
     }
 
-    // TODO: Create and return entry objects
-    fn list_entries(slf: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
+    fn entries(slf: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let mut slf_mut_guard = slf.borrow_mut(py);
         let entry_details = slf_mut_guard.connection.find_entries(EntryFilter {
             id: None,
@@ -62,26 +61,121 @@ impl PyCatalogClient {
             .collect()
     }
 
-    fn create_dataset(&mut self, name: &str) -> PyResult<PyEntryId> {
-        let response = self.connection.create_dataset(DatasetEntry {
+    fn get_dataset(slf: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyDataset>> {
+        let mut slf_mut_guard = slf.borrow_mut(py);
+        let connection = slf_mut_guard.connection.clone();
+        let entry_details = slf_mut_guard.connection.find_entries(EntryFilter {
+            id: Some(id.borrow(py).id.into()),
+            name: None,
+            entry_type: Some(EntryType::Dataset as i32),
+        })?;
+
+        //TODO(ab): check len == 1?
+
+        let entry_details = entry_details
+            .first()
+            .ok_or(PyRuntimeError::new_err("No entry found"))?;
+
+        let entry = PyEntry {
+            connection: connection.clone(),
+            catalog: slf.clone_ref(py),
+            id,
+            details: entry_details.clone(),
+        };
+
+        let dataset = PyDataset {
+            connection: connection.clone(),
+            // dataset_handle: entry_details
+            //     .dataset_handle
+            //     .ok_or(PyRuntimeError::new_err("No dataset handle in entry"))?,
+        };
+
+        Py::new(py, (dataset, entry))
+    }
+
+    // TODO(ab): this requires a `FindDatasetEntries` endpoint
+    fn datasets(slf: Py<Self>, py: Python<'_>) -> PyResult<Py<PyList>> {
+        let mut slf_mut_guard = slf.borrow_mut(py);
+        let entry_details = slf_mut_guard.connection.find_entries(EntryFilter {
+            id: None,
+            name: None,
+            entry_type: Some(EntryType::Dataset as i32),
+        })?;
+        let connection = slf_mut_guard.connection.clone();
+
+        // Generate entry objects.
+        let datasets = entry_details
+            .into_iter()
+            .map(|entry_details| {
+                let entry_id = Py::new(
+                    py,
+                    entry_details
+                        .id
+                        .ok_or(PyRuntimeError::new_err("No id in entry"))
+                        .map(PyEntryId::from)?,
+                )?;
+
+                let entry = PyEntry {
+                    connection: connection.clone(),
+                    catalog: slf.clone_ref(py),
+                    id: entry_id,
+                    details: entry_details,
+                };
+
+                let dataset = PyDataset {
+                    connection: connection.clone(),
+                    // dataset_handle: entry_details
+                    //     .dataset_handle
+                    //     .ok_or(PyRuntimeError::new_err("No dataset handle in entry"))?,
+                };
+
+                Py::new(py, (dataset, entry))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(PyList::new(py, datasets)?.into())
+    }
+
+    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
+        let mut self_mut = self_.borrow_mut(py);
+        let response = self_mut.connection.create_dataset(DatasetEntry {
             details: Some(EntryDetails {
                 name: Some(name.to_owned()),
                 ..Default::default()
             }),
             dataset_handle: None,
         })?;
+        let connection = self_mut.connection.clone();
 
         //TODO(ab): proper error management + wrapping in helper objects
-        response
+        let entry_details = response
             .details
-            .ok_or(PyRuntimeError::new_err("No details in response"))?
-            .id
-            .ok_or(PyRuntimeError::new_err("No id in details"))
-            .map(|id| PyEntryId { id: id.into() })
+            .ok_or(PyRuntimeError::new_err("No details in response"))?;
+
+        let entry_id = Py::new(
+            py,
+            entry_details
+                .id
+                .ok_or(PyRuntimeError::new_err("No id in entry"))
+                .map(PyEntryId::from)?,
+        )?;
+
+        let entry = PyEntry {
+            connection: connection.clone(),
+            catalog: self_.clone_ref(py),
+            id: entry_id,
+            details: entry_details,
+        };
+
+        let dataset = PyDataset {
+            connection,
+            // dataset_handle: entry_details
+            //     .dataset_handle
+            //     .ok_or(PyRuntimeError::new_err("No dataset handle in entry"))?,
+        };
+
+        Ok(Py::new(py, (dataset, entry))?)
     }
 
-    // TODO: Create and return entry objects
-    fn delete_dataset(&mut self, id: PyEntryId) -> PyResult<()> {
-        self.connection.delete_dataset(id)
-    }
+    //TODO: dataset from url
 }
