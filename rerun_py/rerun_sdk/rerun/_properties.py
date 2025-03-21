@@ -38,12 +38,12 @@ def send_property(
 
     entity_path = bindings.new_property_entity_path([name])
 
-    log(entity_path, values, recording=recording.to_native() if recording is not None else None, static=True)
+    log(entity_path, values, recording=recording, static=True)
 
 
 def send_recording_name(name: str, recording: RecordingStream | None = None) -> None:
     """
-    Set the name of the recording.
+    Send the name of the recording.
 
     This name is shown in the Rerun Viewer.
 
@@ -64,7 +64,7 @@ def send_recording_name(name: str, recording: RecordingStream | None = None) -> 
 
 def send_recording_start_time_nanos(nanos: int, recording: RecordingStream | None = None) -> None:
     """
-    Set the start time of the recording.
+    Send the start time of the recording.
 
     This timestamp is shown in the Rerun Viewer.
 

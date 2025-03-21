@@ -110,10 +110,10 @@ class TestDataframe:
         assert schema.index_columns()[2].name == "my_index"
 
         # Default property columns
-        assert schema.component_columns()[0].entity_path == "/__partition_properties"
+        assert schema.component_columns()[0].entity_path == "/__partition_properties/recording"
         assert schema.component_columns()[0].component_name == "rerun.components.RecordingPropertiesIndicator"
         assert schema.component_columns()[0].is_static is True
-        assert schema.component_columns()[1].entity_path == "/__partition_properties"
+        assert schema.component_columns()[1].entity_path == "/__partition_properties/recording"
         assert schema.component_columns()[1].component_name == "rerun.components.Timestamp"
         assert schema.component_columns()[1].is_static is True
 

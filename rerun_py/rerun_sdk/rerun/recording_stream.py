@@ -788,7 +788,7 @@ class RecordingStream:
 
     def send_recording_name(self, name: str) -> None:
         """
-        Set the name of the recording.
+        Send the name of the recording.
 
         This name is shown in the Rerun Viewer.
 
@@ -805,7 +805,7 @@ class RecordingStream:
 
     def send_recording_start_time_nanos(self, nanos: int) -> None:
         """
-        Set the start time of the recording.
+        Send the start time of the recording.
 
         This timestamp is shown in the Rerun Viewer.
 

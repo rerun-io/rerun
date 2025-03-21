@@ -1044,7 +1044,13 @@ def send_recording_name(
     name: str,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Set the name of the recording."""
+    """Send the name of the recording."""
+
+def send_recording_start_time_nanos(
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Send the start time of the recording."""
 
 def disable_timeline(
     timeline: str,
