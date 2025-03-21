@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt, TimePoint, Timeline,
-    TimelineName,
+    entity_path, ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand,
+    EntityPath, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt,
+    TimePoint, Timeline, TimelineName,
 };
 use re_types::archetypes::RecordingProperties;
 use re_types::components::Timestamp;
@@ -884,7 +884,7 @@ impl RecordingStreamInner {
 
             re_log::debug!(properties = ?properties, "adding recording properties to batcher");
 
-            let properties_chunk = Chunk::builder(EntityPath::partition_properties())
+            let properties_chunk = Chunk::builder(EntityPath::recording_properties())
                 .with_archetype(RowId::new(), TimePoint::default(), properties)
                 .build()?;
 
@@ -1165,38 +1165,22 @@ impl RecordingStream {
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
-    /// Internally, we convert the name to an [`EntityPath`] and then log the property.
-    /// For now we don't expose the [`EntityPath`] directly, but we might in the future
-    /// to document that we support hierarchical properties.
-    ///
-    /// `sub_path` specifies everything below [`EntityPath::partition_properties`].
-    #[inline]
-    fn send_property_impl<AS: ?Sized + AsComponents>(
-        &self,
-        sub_path: impl Into<EntityPath>,
-        properties: &AS,
-    ) -> RecordingStreamResult<()> {
-        self.log_static(
-            EntityPath::partition_properties().join(&sub_path.into()),
-            properties,
-        )
-    }
-
     /// Sends a property to the recording.
     #[inline]
     pub fn send_property<AS: ?Sized + AsComponents>(
         &self,
         name: impl Into<String>,
-        properties: &AS,
+        values: &AS,
     ) -> RecordingStreamResult<()> {
-        self.send_property_impl(name.into(), properties)
+        let sub_path = EntityPath::from(name.into());
+        self.log_static(EntityPath::partition_properties().join(&sub_path), values)
     }
 
     /// Sends the name of the recording.
     #[inline]
     pub fn send_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_name(name.into());
-        self.send_property_impl("recording", &update)
+        self.log_static(EntityPath::recording_properties(), &update)
     }
 
     /// Sends the start time of the recording.
@@ -1206,7 +1190,7 @@ impl RecordingStream {
         timestamp: impl Into<Timestamp>,
     ) -> RecordingStreamResult<()> {
         let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
-        self.send_property_impl("recording", &update)
+        self.log_static(EntityPath::recording_properties(), &update)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even

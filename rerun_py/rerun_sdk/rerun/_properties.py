@@ -15,7 +15,7 @@ from .recording_stream import RecordingStream
 @catch_and_log_exceptions()
 def send_property(
     name: str,
-    property: AsComponents | Iterable[DescribedComponentBatch],
+    values: AsComponents | Iterable[DescribedComponentBatch],
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -26,7 +26,7 @@ def send_property(
     name:
         Name of the property.
 
-    property :
+    values:
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
         or an iterable of (described)component batches.
 
@@ -39,7 +39,7 @@ def send_property(
 
     entity_path = bindings.new_property_entity_path([name])
 
-    log(entity_path, property, recording=recording, static=True)
+    log(entity_path, values, recording=recording, static=True)
 
 
 def send_recording_name(name: str, recording: RecordingStream | None = None) -> None:

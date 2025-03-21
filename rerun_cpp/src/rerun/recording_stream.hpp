@@ -871,12 +871,12 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param name The name of the property.
-        /// \param properties The property.
+        /// \param values The values of the property.
         /// \see `try_send_property`
         template <typename... Ts>
-        void send_property(std::string_view name, const Ts&... properties)
+        void send_property(std::string_view name, const Ts&... values)
             const {
-            try_send_property(name, properties...).handle();
+            try_send_property(name, values...).handle();
         }
 
         /// Set a property of a recording.
@@ -884,15 +884,15 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param name The name of the property.
-        /// \param properties The property.
+        /// \param values The values of the property.
         /// \see `set_property`
         template <typename... Ts>
-        Error try_send_property(std::string_view name, const Ts&... properties)
+        Error try_send_property(std::string_view name, const Ts&... values)
             const {
             rr_error status = {};
             this.log_static(
                 this.PARTITION_PROPERTIES_ENTITY_PATH + std::string(entity_path),
-                properties... // NOLINT
+                values... // NOLINT
             );
             return status;
         }

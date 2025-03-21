@@ -766,7 +766,7 @@ class RecordingStream:
     def send_property(
         self,
         name: str,
-        property: AsComponents | Iterable[DescribedComponentBatch],
+        values: AsComponents | Iterable[DescribedComponentBatch],
     ) -> None:
         """
             Send a property of the recording.
@@ -776,7 +776,7 @@ class RecordingStream:
         name:
             Name of the property.
 
-        property :
+        values:
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
             or an iterable of (described)component batches.
 
@@ -789,7 +789,7 @@ class RecordingStream:
 
         from ._properties import send_property
 
-        send_property(name=name, property=property, recording=self)
+        send_property(name=name, values=values, recording=self)
 
     def send_recording_name(self, name: str) -> None:
         """

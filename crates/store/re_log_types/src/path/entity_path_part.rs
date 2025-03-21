@@ -2,6 +2,9 @@ use re_string_interner::InternedString;
 
 use crate::PathParseError;
 
+const PARTITION_PROPERTIES_PART: &str = "__partition_properties";
+const RECORDING_PROPERTIES_PART: &str = "recording";
+
 /// The different parts that make up an [`EntityPath`][crate::EntityPath].
 ///
 /// A non-empty string.
@@ -30,6 +33,16 @@ impl EntityPathPart {
     #[inline]
     pub fn new(unescaped_string: impl Into<InternedString>) -> Self {
         Self(unescaped_string.into())
+    }
+
+    #[inline]
+    pub fn partition_properties() -> Self {
+        Self::new(PARTITION_PROPERTIES_PART)
+    }
+
+    #[inline]
+    pub fn recording() -> Self {
+        Self::new(RECORDING_PROPERTIES_PART)
     }
 
     /// Unescape the string, forgiving any syntax error with a best-effort approach.
