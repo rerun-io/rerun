@@ -335,3 +335,11 @@ overrides={
 }
 # …
 ```
+
+## Consistent constructor naming of `Asset3D` across C++ and Rust
+
+We've deprecated inconsistent constructors with following replacements:
+- 🦀 Rust: `from_file` -> `from_file_path`
+- 🌊 C++:
+    - `from_file` -> `from_file_path`
+    - `from_bytes` -> `from_file_contents`
