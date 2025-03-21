@@ -20,18 +20,18 @@ pub enum CallbackSelectionItem {
     /// If the entity was selected within a 2D or 3D space view,
     /// then this also includes the position.
     Entity {
-        entity_path: String,
-        instance_id: Option<u64>,
+        entity_path: re_log_types::EntityPath,
+        instance_id: re_log_types::Instance,
         view_name: Option<String>,
         position: Option<glam::Vec3>,
     },
 
     /// Selected a view.
-    View { view_id: String, view_name: String },
+    View { view_id: ViewId, view_name: String },
 
     /// Selected a container.
     Container {
-        container_id: String,
+        container_id: ContainerId,
         container_name: String,
     },
 }
@@ -67,7 +67,8 @@ impl CallbackSelectionItem {
                 None
             }
             Item::View(view_id) => Some(Self::View {
-                view_id: view_id.uuid().to_string(),
+                view_id: *view_id,
+                // view_id: view_id.uuid().to_string(),
                 view_name: if let Some(name) = get_view_name(blueprint, view_id) {
                     name
                 } else {
@@ -76,7 +77,8 @@ impl CallbackSelectionItem {
                 },
             }),
             Item::Container(container_id) => Some(Self::Container {
-                container_id: container_id.uuid().to_string(),
+                container_id: *container_id,
+                // container_id: container_id.uuid().to_string(),
                 container_name: if let Some(name) = get_container_name(blueprint, container_id) {
                     name
                 } else {
@@ -86,14 +88,18 @@ impl CallbackSelectionItem {
             }),
 
             Item::DataResult(view_id, instance_path) => Some(Self::Entity {
-                entity_path: instance_path.entity_path.to_string(),
-                instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                // entity_path: instance_path.entity_path.to_string(),
+                // instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                entity_path: instance_path.entity_path.clone(),
+                instance_id: instance_path.instance,
                 view_name: get_view_name(blueprint, view_id),
                 position: get_position(context),
             }),
             Item::InstancePath(instance_path) => Some(Self::Entity {
-                entity_path: instance_path.entity_path.to_string(),
-                instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                // entity_path: instance_path.entity_path.to_string(),
+                // instance_id: instance_path.instance.specific_index().map(|id| id.get()),
+                entity_path: instance_path.entity_path.clone(),
+                instance_id: instance_path.instance,
                 view_name: None,
                 position: get_position(context),
             }),
@@ -101,6 +107,10 @@ impl CallbackSelectionItem {
     }
 }
 
+/// Represents a set of callbacks that may be registered to the Viewer
+/// via [`StartupOptions`][`crate::StartupOptions`].
+///
+/// For constructing an instance of this type, see [`Callbacks::builder`].
 #[derive(Clone)]
 pub struct Callbacks {
     /// Fired when the selection changes.
@@ -126,6 +136,10 @@ pub struct Callbacks {
 }
 
 impl Callbacks {
+    pub fn builder() -> CallbacksBuilder {
+        CallbacksBuilder::default()
+    }
+
     pub fn on_selection_change(&self, items: &ItemCollection, blueprint: &ViewportBlueprint) {
         (self.on_selection_change)(
             items
@@ -149,5 +163,53 @@ impl Callbacks {
 
     pub fn on_play(&self) {
         (self.on_play)();
+    }
+}
+
+#[derive(Default)]
+pub struct CallbacksBuilder {
+    on_selection_change: Option<Rc<dyn Fn(Vec<CallbackSelectionItem>)>>,
+    on_timeline_change: Option<Rc<dyn Fn(Timeline, TimeReal)>>,
+    on_time_update: Option<Rc<dyn Fn(TimeReal)>>,
+    on_pause: Option<Rc<dyn Fn()>>,
+    on_play: Option<Rc<dyn Fn()>>,
+}
+
+impl CallbacksBuilder {
+    pub fn on_selection_change(mut self, f: impl Fn(Vec<CallbackSelectionItem>) + 'static) -> Self {
+        self.on_selection_change = Some(Rc::new(f));
+        self
+    }
+
+    pub fn on_timeline_change(mut self, f: impl Fn(Timeline, TimeReal) + 'static) -> Self {
+        self.on_timeline_change = Some(Rc::new(f));
+        self
+    }
+
+    pub fn on_time_update(mut self, f: impl Fn(TimeReal) + 'static) -> Self {
+        self.on_time_update = Some(Rc::new(f));
+        self
+    }
+
+    pub fn on_pause(mut self, f: impl Fn() + 'static) -> Self {
+        self.on_pause = Some(Rc::new(f));
+        self
+    }
+
+    pub fn on_play(mut self, f: impl Fn() + 'static) -> Self {
+        self.on_play = Some(Rc::new(f));
+        self
+    }
+
+    pub fn build(self) -> Callbacks {
+        Callbacks {
+            on_selection_change: self.on_selection_change.unwrap_or_else(|| Rc::new(|_| {})),
+            on_timeline_change: self
+                .on_timeline_change
+                .unwrap_or_else(|| Rc::new(|_, _| {})),
+            on_time_update: self.on_time_update.unwrap_or_else(|| Rc::new(|_| {})),
+            on_pause: self.on_pause.unwrap_or_else(|| Rc::new(|| {})),
+            on_play: self.on_play.unwrap_or_else(|| Rc::new(|| {})),
+        }
     }
 }
