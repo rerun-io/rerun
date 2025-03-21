@@ -18,10 +18,10 @@ Before, Rerun would try to guess what you meant (small values were assumed to be
 Now you need to be explicit.
 
 
-### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
+### 🦀 Rust: deprecated `RecordingStream::set_time_secs` and `set_time_nanos`
 Use one of these instead:
-* `set_duration_seconds`
-* `set_timestamp_seconds_since_epoch`
+* `set_duration_secs`
+* `set_timestamp_secs_since_epoch`
 * `set_time` with `std::time::Duration`
 * `set_time` with `std::time::SystemTime`
 
@@ -29,14 +29,14 @@ Use one of these instead:
 ### 🌊 C++
 We've deprecated the following functions, with the following replacements:
 * `set_time` -> `set_time_duration` or `set_time_timestamp`
-* `set_time_seconds` -> `set_time_duration_secs` or `set_time_timestamp_seconds_since_epoch`
+* `set_time_secs` -> `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`
 * `set_time_nanos` -> `set_time_duration_nanos` or `set_time_timestamp_nanos_since_epoch`
 
 `TimeColumn` also has deprecated functions.
 
 
 ### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
-We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
+We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
 `set_time` takes either a `sequence=`, `duration=` or `timestamp=` argument.
 
 `duration` must be either:
@@ -53,11 +53,11 @@ We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_
 ##### `rr.set_sequence("foo", 42)`
 New: `rr.set_time("foo", sequence=42)`
 
-##### `rr.set_time_seconds("foo", duration_seconds)`
-When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_seconds)`
+##### `rr.set_time_secs("foo", duration_secs)`
+When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_secs)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
-##### `rr.set_time_seconds("foo", seconds_since_epoch)`
+##### `rr.set_time_secs("foo", seconds_since_epoch)`
 New: `rr.set_time("foo", timestamp=seconds_since_epoch)`
 You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 
@@ -84,8 +84,8 @@ The migration is very similar to the above.
 ##### `rr.TimeSequenceColumn("foo", values)`
 New: `rr.TimeColumn("foo", sequence=values)`
 
-##### `rr.TimeSecondsColumn("foo", duration_seconds)`
-New: `rr.TimeColumn("foo", duration=duration_seconds)`
+##### `rr.TimeSecondsColumn("foo", duration_secs)`
+New: `rr.TimeColumn("foo", duration=duration_secs)`
 
 ##### `rr.TimeSecondsColumn("foo", seconds_since_epoch)`
 New: `rr.TimeColumn("foo", timestamp=seconds_since_epoch)`

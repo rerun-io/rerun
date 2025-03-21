@@ -176,7 +176,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             let y_green = 60.0;
             let time_point = TimePoint::default().with(
                 timeline,
-                TimeInt::from_seconds(i.try_into().expect("unexpected min value")),
+                TimeInt::from_secs(i.try_into().expect("unexpected min value")),
             );
 
             for y in [y_green, y_red] {
@@ -224,7 +224,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
 
     let mut time_ctrl = test_context.recording_config.time_ctrl.write();
     time_ctrl.set_timeline(timeline);
-    time_ctrl.set_time(TimeReal::from_seconds(4.5));
+    time_ctrl.set_time(TimeReal::from_secs(4.5));
 }
 
 #[test]
@@ -233,10 +233,10 @@ fn test_visible_time_range_latest_at() {
         timeline: timeline.into(),
         range: re_types::datatypes::TimeRange {
             start: re_types::datatypes::TimeRangeBoundary::Absolute(
-                TimeInt::from_milliseconds(start.try_into().unwrap()).into(),
+                TimeInt::from_millis(start.try_into().unwrap()).into(),
             ),
             end: re_types::datatypes::TimeRangeBoundary::Absolute(
-                TimeInt::from_milliseconds(end.try_into().unwrap()).into(),
+                TimeInt::from_millis(end.try_into().unwrap()).into(),
             ),
         },
     };
@@ -268,10 +268,10 @@ fn test_visible_time_range_latest_at() {
             timeline: "timestamp".into(),
             range: re_types::datatypes::TimeRange {
                 start: re_types::datatypes::TimeRangeBoundary::CursorRelative(
-                    TimeInt::from_milliseconds((-1500).try_into().unwrap()).into(),
+                    TimeInt::from_millis((-1500).try_into().unwrap()).into(),
                 ),
                 end: re_types::datatypes::TimeRangeBoundary::CursorRelative(
-                    TimeInt::from_milliseconds(0.try_into().unwrap()).into(),
+                    TimeInt::from_millis(0.try_into().unwrap()).into(),
                 ),
             },
         }),

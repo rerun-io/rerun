@@ -47,7 +47,7 @@ impl ArFrame {
 
 fn timepoint(frame: usize, time: f64) -> rerun::TimePoint {
     [
-        ("time", TimeCell::from_timestamp_seconds_since_epoch(time)),
+        ("time", TimeCell::from_timestamp_secs_since_epoch(time)),
         ("frame", TimeCell::from_sequence(frame as i64)),
     ]
     .into()

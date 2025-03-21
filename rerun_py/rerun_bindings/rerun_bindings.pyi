@@ -1165,7 +1165,9 @@ def escape_entity_path_part(part: str) -> str:
 def new_entity_path(parts: list[str]) -> str:
     """Create an entity path."""
 
-def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(
+    video_bytes_arrow_array: Any, media_type: Optional[str] = None
+) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 

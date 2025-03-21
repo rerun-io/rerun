@@ -271,13 +271,10 @@ impl framework::Example for RenderDepthClouds {
             ..
         } = self;
 
-        let seconds_since_startup = time.seconds_since_startup();
+        let secs_since_startup = time.secs_since_startup();
         if matches!(camera_control, CameraControl::RotateAroundCenter) {
-            *camera_position = Vec3::new(
-                seconds_since_startup.sin(),
-                0.5,
-                seconds_since_startup.cos(),
-            ) * 100.0;
+            *camera_position =
+                Vec3::new(secs_since_startup.sin(), 0.5, secs_since_startup.cos()) * 100.0;
         }
 
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();

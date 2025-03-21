@@ -7,7 +7,7 @@ impl From<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
 impl From<re_tuid::Tuid> for crate::common::v1alpha1::Tuid {
     fn from(value: re_tuid::Tuid) -> Self {
         Self {
-            time_ns: value.nanoseconds_since_epoch(),
+            time_ns: value.nanos_since_epoch(),
             inc: value.inc(),
         }
     }

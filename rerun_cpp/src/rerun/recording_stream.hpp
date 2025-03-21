@@ -220,7 +220,7 @@ namespace rerun {
         /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) const;
 
         /// Set the index value of the given timeline as a duration, for the current calling thread.
@@ -231,7 +231,7 @@ namespace rerun {
         /// For example: `rec.set_time_duration("runtime", time_since_start)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         template <typename TRep, typename TPeriod>
         void set_time_duration(
             std::string_view timeline_name, std::chrono::duration<TRep, TPeriod> duration
@@ -248,7 +248,7 @@ namespace rerun {
         /// For example: `rec.set_time_duration_secs("runtime", seconds_since_start)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_duration_secs(std::string_view timeline_name, double secs) const {
             set_time_duration_nanos(timeline_name, static_cast<int64_t>(1e9 * secs + 0.5));
         }
@@ -261,7 +261,7 @@ namespace rerun {
         /// For example: `rec.set_time_duration_nanos("runtime", nanos_since_start)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_duration_nanos(std::string_view timeline_name, int64_t nanos) const;
 
         /// Set the index value of the given timeline as a timestamp, for the current calling thread.
@@ -272,7 +272,7 @@ namespace rerun {
         /// For example: `rec.set_time_timestamp("capture_time", now())`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         template <typename TClock>
         void set_time_timestamp(
             std::string_view timeline_name, std::chrono::time_point<TClock> timestamp
@@ -289,11 +289,11 @@ namespace rerun {
         /// Used for all subsequent logging performed from this same thread, until the next call
         /// to one of the time setting methods.
         ///
-        /// For example: `rec.set_time_timestamp_seconds_since_epoch("capture_time", secs_since_epoch())`.
+        /// For example: `rec.set_time_timestamp_secs_since_epoch("capture_time", secs_since_epoch())`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
-        void set_time_timestamp_seconds_since_epoch(std::string_view timeline_name, double seconds)
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
+        void set_time_timestamp_secs_since_epoch(std::string_view timeline_name, double seconds)
             const {
             set_time_timestamp_nanos_since_epoch(
                 timeline_name,
@@ -309,7 +309,7 @@ namespace rerun {
         /// For example: `rec.set_time_timestamp_nanos_since_epoch("capture_time", nanos_since_epoch())`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_seconds_since_epoch, set_time_timestamp_nanos_since_epoch
+        /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_timestamp_nanos_since_epoch(std::string_view timeline_name, int64_t nanos)
             const;
 
@@ -321,7 +321,7 @@ namespace rerun {
         /// For example: `rec.set_time("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        /// @see set_time_sequence, set_time_secs, set_time_nanos, reset_time, disable_timeline
         template <typename TClock>
         [[deprecated("Renamed to `set_time_timestamp`")]] void set_time(
             std::string_view timeline_name, std::chrono::time_point<TClock> time
@@ -337,7 +337,7 @@ namespace rerun {
         /// For example: `rec.set_time("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        /// @see set_time_sequence, set_time_secs, set_time_nanos, reset_time, disable_timeline
         template <typename TRep, typename TPeriod>
         [[deprecated("Renamed `set_time_duration`")]] void set_time(
             std::string_view timeline_name, std::chrono::duration<TRep, TPeriod> time
@@ -345,7 +345,7 @@ namespace rerun {
             if constexpr (std::is_floating_point<TRep>::value) {
                 using seconds_double =
                     std::chrono::duration<double>; // Default ratio is 1:1 == seconds.
-                set_time_seconds(
+                set_time_secs(
                     timeline_name,
                     std::chrono::duration_cast<seconds_double>(time).count()
                 );
@@ -362,14 +362,13 @@ namespace rerun {
         /// Used for all subsequent logging performed from this same thread, until the next call
         /// to one of the time setting methods.
         ///
-        /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+        /// For example: `rec.set_time_secs("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
-        [[deprecated(
-            "Use either `set_time_duration_secs` or `set_time_timestamp_seconds_since_epoch`"
+        [[deprecated("Use either `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`"
         )]] void
-            set_time_seconds(std::string_view timeline_name, double seconds) const {
+            set_time_secs(std::string_view timeline_name, double seconds) const {
             set_time_duration_secs(timeline_name, seconds);
         }
 
@@ -381,7 +380,7 @@ namespace rerun {
         /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_time_sequence, set_time_seconds, reset_time, set_time, disable_timeline
+        /// @see set_time_sequence, set_time_secs, reset_time, set_time, disable_timeline
         [[deprecated(
             "Use either `set_time_duration_nanos` or `set_time_timestamp_nanos_since_epoch`"
         )]] void
@@ -395,7 +394,7 @@ namespace rerun {
         ///
         /// No-op if the timeline doesn't exist.
         ///
-        /// @see set_time_sequence, set_time_seconds, set_time, reset_time
+        /// @see set_time_sequence, set_time_secs, set_time, reset_time
         void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
@@ -404,7 +403,7 @@ namespace rerun {
         /// to one of the time setting methods.
         ///
         /// For example: `rec.reset_time()`.
-        /// @see set_time_sequence, set_time_seconds, set_time_nanos, disable_timeline
+        /// @see set_time_sequence, set_time_secs, set_time_nanos, disable_timeline
         void reset_time() const;
 
         /// @}

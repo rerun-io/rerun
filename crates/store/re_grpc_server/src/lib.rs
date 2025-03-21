@@ -651,7 +651,7 @@ mod tests {
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(
                             re_log_types::Timeline::new_sequence("blueprint"),
-                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                            re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
                         &re_types::blueprint::archetypes::Background::new(
                             re_types::blueprint::components::BackgroundKind::SolidColor,
@@ -700,7 +700,7 @@ mod tests {
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(
                             re_log_types::Timeline::new_sequence("log_time"),
-                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                            re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
                         &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
                     )

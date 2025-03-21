@@ -25,7 +25,7 @@ fn build_mesh_instances(
     re_ctx: &RenderContext,
     model_mesh_instances: &[GpuMeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
-    seconds_since_startup: f32,
+    secs_since_startup: f32,
 ) -> anyhow::Result<MeshDrawData> {
     let mesh_instances = mesh_instance_positions_and_colors
         .chunks_exact(model_mesh_instances.len())
@@ -40,7 +40,7 @@ fn build_mesh_instances(
                             2.5 + (i % 7) as f32,
                             2.5 + (i % 11) as f32,
                         ) * 0.01,
-                        glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
+                        glam::Quat::from_rotation_y(i as f32 + secs_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
                     additive_tint: *c,
@@ -53,7 +53,7 @@ fn build_mesh_instances(
     Ok(MeshDrawData::new(re_ctx, &mesh_instances)?)
 }
 
-fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
+fn lorenz_points(secs_since_startup: f32) -> Vec<glam::Vec3> {
     // Lorenz attractor https://en.wikipedia.org/wiki/Lorenz_system
     fn lorenz_integrate(cur: glam::Vec3, dt: f32) -> glam::Vec3 {
         let sigma: f32 = 10.0;
@@ -68,7 +68,7 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     }
 
     // slow buildup and reset
-    let num_points = (((seconds_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
+    let num_points = (((secs_since_startup * 0.05).fract() * 10000.0) as u32).max(1);
 
     let mut latest_point = glam::vec3(-0.1, 0.001, 0.0);
     std::iter::repeat_with(move || {
@@ -81,9 +81,9 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     .collect()
 }
 
-fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> anyhow::Result<LineDrawData> {
+fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Result<LineDrawData> {
     // Calculate some points that look nice for an animated line.
-    let lorenz_points = lorenz_points(seconds_since_startup);
+    let lorenz_points = lorenz_points(secs_since_startup);
 
     let mut builder = LineDrawableBuilder::new(re_ctx);
     builder.reserve_vertices(lorenz_points.len() + 4 + 1000)?;
@@ -121,9 +121,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> anyhow::Re
     // Blue spiral, rotating
     builder
         .batch("blue spiral")
-        .world_from_obj(glam::Affine3A::from_rotation_x(
-            seconds_since_startup * 10.0,
-        ))
+        .world_from_obj(glam::Affine3A::from_rotation_x(secs_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,
@@ -305,27 +303,24 @@ impl Example for Multiview {
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
-            let seconds_since_startup = time.seconds_since_startup();
-            self.camera_position = Vec3::new(
-                seconds_since_startup.sin(),
-                0.5,
-                seconds_since_startup.cos(),
-            ) * 10.0;
+            let secs_since_startup = time.secs_since_startup();
+            self.camera_position =
+                Vec3::new(secs_since_startup.sin(), 0.5, secs_since_startup.cos()) * 10.0;
         }
 
         handle_incoming_screenshots(re_ctx);
 
-        let seconds_since_startup = time.seconds_since_startup();
+        let secs_since_startup = time.secs_since_startup();
         let view_from_world = IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y)
             .ok_or(anyhow::format_err!("invalid camera"))?;
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default());
-        let lines = build_lines(re_ctx, seconds_since_startup)?;
+        let lines = build_lines(re_ctx, secs_since_startup)?;
 
         let mut builder = PointCloudBuilder::new(re_ctx);
         builder
             .batch("Random Points")
-            .world_from_obj(glam::Affine3A::from_rotation_x(seconds_since_startup))
+            .world_from_obj(glam::Affine3A::from_rotation_x(secs_since_startup))
             .add_points(
                 &self.random_points_positions,
                 &self.random_points_radii,
@@ -338,7 +333,7 @@ impl Example for Multiview {
             re_ctx,
             &self.model_mesh_instances,
             &self.mesh_instance_positions_and_colors,
-            seconds_since_startup,
+            secs_since_startup,
         )?;
 
         let splits = framework::split_resolution(resolution, 2, 2).collect::<Vec<_>>();

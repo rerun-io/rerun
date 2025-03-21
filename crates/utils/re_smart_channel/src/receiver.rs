@@ -42,8 +42,8 @@ impl<T: Send> Receiver<T> {
             return Err(crate::RecvError);
         };
 
-        let latency_ns = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_ns.store(latency_ns, Relaxed);
+        let latency_nanos = msg.time.elapsed().as_nanos() as u64;
+        self.stats.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
     }
@@ -59,8 +59,8 @@ impl<T: Send> Receiver<T> {
             }
         };
 
-        let latency_ns = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_ns.store(latency_ns, Relaxed);
+        let latency_nanos = msg.time.elapsed().as_nanos() as u64;
+        self.stats.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
     }
@@ -80,8 +80,8 @@ impl<T: Send> Receiver<T> {
             }
         };
 
-        let latency_ns = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_ns.store(latency_ns, Relaxed);
+        let latency_nanos = msg.time.elapsed().as_nanos() as u64;
+        self.stats.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
     }
@@ -114,14 +114,14 @@ impl<T: Send> Receiver<T> {
     }
 
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
-    pub fn latency_ns(&self) -> u64 {
-        self.stats.latency_ns.load(Relaxed)
+    pub fn latency_nanos(&self) -> u64 {
+        self.stats.latency_nanos.load(Relaxed)
     }
 
     /// Latest known latency from sending a message to receiving it,
     /// in seconds
     pub fn latency_sec(&self) -> f32 {
-        self.latency_ns() as f32 / 1e9
+        self.latency_nanos() as f32 / 1e9
     }
 
     /// Create a new channel that use the same stats as this one.
