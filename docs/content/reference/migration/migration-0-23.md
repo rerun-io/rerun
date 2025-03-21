@@ -335,3 +335,31 @@ overrides={
 }
 # …
 ```
+
+## Types for time series plots are now plural
+
+The `Scalar`/`SeriesPoint`/`SeriesLine` archetypes have been deprecated in favor of
+`Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
+scatter plots or lines on the same archetype.
+
+
+Before:
+```py
+rr.log("trig/sin", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
+```
+
+After:
+```py
+rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalars(sin(float(t) / 100.0)))
+```
+<!-- This is trivial enough across languages why I left it at a python only example -->
+
+The old types still work for the moment but will be removed in a future release.
