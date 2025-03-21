@@ -233,10 +233,10 @@ fn test_visible_time_range_latest_at() {
         timeline: timeline.into(),
         range: re_types::datatypes::TimeRange {
             start: re_types::datatypes::TimeRangeBoundary::Absolute(
-                TimeInt::from_milliseconds(start.try_into().unwrap()).into(),
+                TimeInt::from_millis(start.try_into().unwrap()).into(),
             ),
             end: re_types::datatypes::TimeRangeBoundary::Absolute(
-                TimeInt::from_milliseconds(end.try_into().unwrap()).into(),
+                TimeInt::from_millis(end.try_into().unwrap()).into(),
             ),
         },
     };
@@ -268,10 +268,10 @@ fn test_visible_time_range_latest_at() {
             timeline: "timestamp".into(),
             range: re_types::datatypes::TimeRange {
                 start: re_types::datatypes::TimeRangeBoundary::CursorRelative(
-                    TimeInt::from_milliseconds((-1500).try_into().unwrap()).into(),
+                    TimeInt::from_millis((-1500).try_into().unwrap()).into(),
                 ),
                 end: re_types::datatypes::TimeRangeBoundary::CursorRelative(
-                    TimeInt::from_milliseconds(0.try_into().unwrap()).into(),
+                    TimeInt::from_millis(0.try_into().unwrap()).into(),
                 ),
             },
         }),

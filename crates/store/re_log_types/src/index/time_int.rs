@@ -82,7 +82,7 @@ impl TimeInt {
 
     /// For time timelines.
     #[inline]
-    pub fn from_milliseconds(millis: NonMinI64) -> Self {
+    pub fn from_millis(millis: NonMinI64) -> Self {
         Self::new_temporal(millis.get().saturating_mul(1_000_000))
     }
 
