@@ -2,10 +2,7 @@
 
 use std::sync::Arc;
 
-use re_viewer::external::{
-    arrow, eframe, egui, egui::mutex::Mutex, re_chunk_store, re_entity_db, re_log, re_log_types,
-    re_memory, re_types,
-};
+use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
 use re_viewer::AsyncRuntimeHandle;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -169,12 +166,9 @@ fn selection_item_ui(ui: &mut egui::Ui, item: &re_viewer::CallbackSelectionItem)
         } => {
             ui.vertical(|ui| {
                 if let Some(instance_id) = instance_id.specific_index().map(|id| id.get()) {
-                    ui.label(format!(
-                        "Entity {}[#{instance_id}]",
-                        entity_path.to_string()
-                    ));
+                    ui.label(format!("Entity {entity_path}[{instance_id}]"));
                 } else {
-                    ui.label(format!("Entity {}", entity_path.to_string()));
+                    ui.label(format!("Entity {entity_path}"));
                 }
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
