@@ -8,6 +8,7 @@
 mod aggregation;
 mod line_visualizer_system;
 mod point_visualizer_system;
+mod series_query;
 mod util;
 mod view_class;
 

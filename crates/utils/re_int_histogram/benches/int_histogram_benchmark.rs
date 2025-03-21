@@ -23,11 +23,11 @@ criterion_main!(benches);
 
 /// Baseline for performance and memory benchmarks
 #[derive(Default)]
-pub struct BTreeeInt64Histogram {
+pub struct BTreeInt64Histogram {
     map: std::collections::BTreeMap<i64, u32>,
 }
 
-impl BTreeeInt64Histogram {
+impl BTreeInt64Histogram {
     pub fn increment(&mut self, key: i64, inc: u32) {
         *self.map.entry(key).or_default() += inc;
     }
@@ -43,8 +43,8 @@ impl BTreeeInt64Histogram {
 
 /// Baselines
 fn btree(c: &mut Criterion) {
-    fn create(num_elements: i64, sparseness: i64) -> BTreeeInt64Histogram {
-        let mut histogram = BTreeeInt64Histogram::default();
+    fn create(num_elements: i64, sparseness: i64) -> BTreeInt64Histogram {
+        let mut histogram = BTreeInt64Histogram::default();
         for i in 0..num_elements {
             histogram.increment(i * sparseness, 1);
         }
