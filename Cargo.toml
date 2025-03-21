@@ -255,8 +255,8 @@ prost-build = "0.13.3"
 prost-types = "0.13.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
-pyo3 = "0.23.3"
-pyo3-build-config = "0.23.3"
+pyo3 = "0.24.0"
+pyo3-build-config = "0.24.0"
 quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }

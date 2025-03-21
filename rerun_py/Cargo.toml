@@ -73,7 +73,7 @@ mimalloc = { version = "0.1.43", features = ["local_dynamic_tls"] }
 numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-pyo3 = { workspace = true, features = ["abi3-py38"] }
+pyo3 = { workspace = true, features = ["abi3-py39"] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
 
