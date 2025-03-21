@@ -385,7 +385,7 @@ impl ViewClass for TimeSeriesView {
             TimeType::TimestampNs | TimeType::DurationNs => {
                 // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
                 // we need to round to a whole day:
-                round_ns_to_start_of_day(min_time)
+                round_nanos_to_start_of_day(min_time)
             }
         };
         state.time_offset = time_offset;
@@ -448,7 +448,7 @@ impl ViewClass for TimeSeriesView {
             TimeType::Sequence => {}
             TimeType::DurationNs | TimeType::TimestampNs => {
                 let canvas_size = ui.available_size();
-                plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+                plot = plot.x_grid_spacer(move |spacer| nanos_grid_spacer(canvas_size, &spacer));
             }
         }
 
@@ -754,7 +754,7 @@ fn format_y_axis(mark: egui_plot::GridMark) -> String {
         .format(mark.value)
 }
 
-fn ns_grid_spacer(
+fn nanos_grid_spacer(
     canvas_size: egui::Vec2,
     input: &egui_plot::GridInput,
 ) -> Vec<egui_plot::GridMark> {
@@ -806,9 +806,9 @@ fn ns_grid_spacer(
     marks
 }
 
-fn round_ns_to_start_of_day(ns: i64) -> i64 {
-    let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
-    (ns + ns_per_day / 2) / ns_per_day * ns_per_day
+fn round_nanos_to_start_of_day(ns: i64) -> i64 {
+    let nanos_per_day = 24 * 60 * 60 * 1_000_000_000;
+    (ns + nanos_per_day / 2) / nanos_per_day * nanos_per_day
 }
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {

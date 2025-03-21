@@ -18,7 +18,7 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn from_ns_since_epoch(nanos_since_epoch: i64) -> Self {
+    pub fn from_nanos_since_epoch(nanos_since_epoch: i64) -> Self {
         Self(nanos_since_epoch)
     }
 
@@ -29,7 +29,7 @@ impl Timestamp {
 
     #[inline]
     pub fn from_seconds_since_epoch(secs: f64) -> Self {
-        Self::from_ns_since_epoch((secs * 1e9).round() as _)
+        Self::from_nanos_since_epoch((secs * 1e9).round() as _)
     }
 
     #[inline]
@@ -53,7 +53,7 @@ impl From<re_types_core::datatypes::TimeInt> for Timestamp {
 impl From<super::TimeInt> for Timestamp {
     #[inline]
     fn from(int: super::TimeInt) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
+        Self::from_nanos_since_epoch(int.as_i64())
     }
 }
 
@@ -246,7 +246,7 @@ impl Timestamp {
                 .map(|zoned| zoned.into())
         } else if timestamp_format == TimestampFormat::UnixEpoch {
             let ns = re_format::parse_i64(s)?;
-            Some(Self::from_ns_since_epoch(ns))
+            Some(Self::from_nanos_since_epoch(ns))
         } else {
             None
         }

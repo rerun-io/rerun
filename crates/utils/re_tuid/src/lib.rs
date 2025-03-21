@@ -50,12 +50,7 @@ impl Tuid {
 /// Example: `182342300C5F8C327a7b4a6e5a379ac4`
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:016X}{:016x}",
-            self.nanoseconds_since_epoch(),
-            self.inc()
-        )
+        write!(f, "{:016X}{:016x}", self.nanos_since_epoch(), self.inc())
     }
 }
 
@@ -121,7 +116,7 @@ impl Tuid {
             let new = Self::from_nanos_and_inc(monotonic_nanos_since_epoch(), latest.inc() + 1);
 
             debug_assert!(
-                latest.nanoseconds_since_epoch() <= new.nanoseconds_since_epoch(),
+                latest.nanos_since_epoch() <= new.nanos_since_epoch(),
                 "Time should be monotonically increasing"
             );
 
@@ -148,7 +143,7 @@ impl Tuid {
 
     #[inline]
     pub fn as_u128(&self) -> u128 {
-        ((self.nanoseconds_since_epoch() as u128) << 64) | (self.inc() as u128)
+        ((self.nanos_since_epoch() as u128) << 64) | (self.inc() as u128)
     }
 
     #[inline]
@@ -166,7 +161,7 @@ impl Tuid {
     ///
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
+    pub fn nanos_since_epoch(&self) -> u64 {
         u64::from_be_bytes(self.time_ns)
     }
 
@@ -334,7 +329,7 @@ impl serde::Serialize for Tuid {
         S: serde::Serializer,
     {
         LegacyTuid {
-            time_ns: self.nanoseconds_since_epoch(),
+            time_ns: self.nanos_since_epoch(),
             inc: self.inc(),
         }
         .serialize(serializer)

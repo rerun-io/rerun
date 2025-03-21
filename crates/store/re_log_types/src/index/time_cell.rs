@@ -168,7 +168,7 @@ impl TimeCell {
                 crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
             }
 
-            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(value.into())
+            TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(value.into())
                 .format_time_compact(timestamp_format),
 
             TimeType::Sequence => typ.format(value, timestamp_format),
@@ -182,7 +182,7 @@ impl std::fmt::Display for TimeCell {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => write!(f, "{}", self.value),
             TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
-            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(self.value.get())
+            TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(self.value.get())
                 .format_iso()
                 .fmt(f),
         }
