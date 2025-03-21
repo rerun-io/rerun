@@ -570,16 +570,13 @@ mod tests {
 
     #[test]
     fn test_properties() {
-        assert_eq!(
-            EntityPath::properties().to_string(),
-            EntityPath::from("/__properties"),
-        );
+        assert_eq!(EntityPath::properties(), EntityPath::from("/__properties"),);
     }
 
     #[test]
     fn test_recording_properties() {
         assert_eq!(
-            EntityPath::recording_properties().to_string(),
+            EntityPath::recording_properties(),
             EntityPath::from("/__properties/recording"),
         );
     }
