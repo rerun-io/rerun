@@ -22,7 +22,6 @@ arrow::Status run_main() {
     // Adds another property, this time with user-defined data.
     {
         std::shared_ptr<arrow::Array> arrow_array;
-        // ...
 
         arrow::DoubleBuilder confidences_builder;
         ARROW_RETURN_NOT_OK(confidences_builder.AppendValues({0.3, 0.4, 0.5, 0.6}));
