@@ -321,7 +321,7 @@ fn add_popup_ui(
                 }
             }
 
-            ui.close_menu();
+            ui.close();
         }
     }
 }
