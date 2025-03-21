@@ -22,7 +22,7 @@ use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
-/// The system for rendering [`SeriesPoint`] archetypes.
+/// The system for rendering [`SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesPointSystem {
     pub all_series: Vec<PlotSeries>,
