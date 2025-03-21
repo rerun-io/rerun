@@ -14,4 +14,4 @@ rr.init("rerun_example_scalar_row_updates", spawn=True)
 
 for step in range(64):
     rr.set_time("step", sequence=step)
-    rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))
+    rr.log("scalars", rr.Scalars(math.sin(step / 10.0)))

@@ -311,7 +311,7 @@ class FaceLandmarkerLogger:
                     # NOTE(cmc): That one we still log as temporal, otherwise it's really meh.
                     rr.log(
                         f"blendshapes/{i}/{blendshape.category_name}",
-                        rr.Scalar(blendshape.score),
+                        rr.Scalars(blendshape.score),
                     )
 
 

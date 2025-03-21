@@ -80,14 +80,14 @@ brand_colors = {
 
 
 def style_plot(symbol: str) -> rr.SeriesLine:
-    return rr.SeriesLine(
+    return rr.SeriesLines(
         color=brand_colors[symbol],
         name=symbol,
     )
 
 
 def style_peak(symbol: str) -> rr.SeriesPoint:
-    return rr.SeriesPoint(
+    return rr.SeriesPoints(
         color=0xFF0000FF,
         name=f"{symbol} (peak)",
         marker="Up",
@@ -154,9 +154,9 @@ def main() -> None:
             # Log the stock state over the course of the day
             for row in hist.itertuples():
                 rr.set_time("time", duration=row.Index)
-                rr.log(f"stocks/{symbol}/{day}", rr.Scalar(row.High))
+                rr.log(f"stocks/{symbol}/{day}", rr.Scalars(row.High))
                 if row.Index == peak:
-                    rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalar(row.High))
+                    rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalars(row.High))
 
 
 if __name__ == "__main__":

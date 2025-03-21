@@ -180,7 +180,7 @@ def main() -> None:
             for series_idx, series_path in enumerate(series_paths):
                 if args.temporal_batch_size is None:
                     value = values[index, plot_idx, series_idx]
-                    rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
+                    rr.log(f"{plot_path}/{series_path}", rr.Scalars(value))
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
                     rr.send_columns(

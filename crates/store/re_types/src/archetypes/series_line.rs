@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(deprecated)]
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
@@ -36,25 +37,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Log two lines series under a shared root so that they show in the same plot by default.
 ///     rec.log_static(
 ///         "trig/sin",
-///         &rerun::SeriesLine::new()
-///             .with_color([255, 0, 0])
-///             .with_name("sin(0.01t)")
-///             .with_width(2.0),
+///         &rerun::SeriesLines::new()
+///             .with_colors([[255, 0, 0]])
+///             .with_names(["sin(0.01t)"])
+///             .with_widths([2.0]),
 ///     )?;
 ///     rec.log_static(
 ///         "trig/cos",
-///         &rerun::SeriesLine::new()
-///             .with_color([0, 255, 0])
-///             .with_name("cos(0.01t)")
-///             .with_width(4.0),
+///         &rerun::SeriesLines::new()
+///             .with_colors([[0, 255, 0]])
+///             .with_names(["cos(0.01t)"])
+///             .with_widths([4.0]),
 ///     )?;
 ///
 ///     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
 ///         rec.set_time_sequence("step", t);
 ///
 ///         // Log two time series under a shared root so that they show in the same plot by default.
-///         rec.log("trig/sin", &rerun::Scalar::new((t as f64 / 100.0).sin()))?;
-///         rec.log("trig/cos", &rerun::Scalar::new((t as f64 / 100.0).cos()))?;
+///         rec.log("trig/sin", &rerun::Scalars::new([(t as f64 / 100.0).sin()]))?;
+///         rec.log("trig/cos", &rerun::Scalars::new([(t as f64 / 100.0).cos()]))?;
 ///     }
 ///
 ///     Ok(())
@@ -70,6 +71,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Default)]
+#[deprecated(note = "Use `SeriesLines` instead.")]
 pub struct SeriesLine {
     /// Color for the corresponding series.
     pub color: Option<SerializedComponentBatch>,
@@ -81,13 +83,6 @@ pub struct SeriesLine {
     ///
     /// Used in the legend.
     pub name: Option<SerializedComponentBatch>,
-
-    /// Which lines are visible.
-    ///
-    /// If not set, all line series on this entity are visible.
-    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-    /// via this property will still be visible in the legend.
-    pub visible_series: Option<SerializedComponentBatch>,
 
     /// Configures the zoom-dependent scalar aggregation.
     ///
@@ -128,16 +123,6 @@ impl SeriesLine {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
-    #[inline]
-    pub fn descriptor_visible_series() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
-            component_name: "rerun.components.SeriesVisible".into(),
-            archetype_field_name: Some("visible_series".into()),
-        }
-    }
-
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
@@ -165,32 +150,30 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [SeriesLine::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesLine::descriptor_color(),
             SeriesLine::descriptor_width(),
             SeriesLine::descriptor_name(),
-            SeriesLine::descriptor_visible_series(),
             SeriesLine::descriptor_aggregation_policy(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesLine::descriptor_indicator(),
             SeriesLine::descriptor_color(),
             SeriesLine::descriptor_width(),
             SeriesLine::descriptor_name(),
-            SeriesLine::descriptor_visible_series(),
             SeriesLine::descriptor_aggregation_policy(),
         ]
     });
 
 impl SeriesLine {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SeriesLine`] [`::re_types_core::Archetype`]
@@ -251,11 +234,6 @@ impl ::re_types_core::Archetype for SeriesLine {
         let name = arrays_by_descr
             .get(&Self::descriptor_name())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_name()));
-        let visible_series = arrays_by_descr
-            .get(&Self::descriptor_visible_series())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_visible_series())
-            });
         let aggregation_policy = arrays_by_descr
             .get(&Self::descriptor_aggregation_policy())
             .map(|array| {
@@ -265,7 +243,6 @@ impl ::re_types_core::Archetype for SeriesLine {
             color,
             width,
             name,
-            visible_series,
             aggregation_policy,
         })
     }
@@ -280,7 +257,6 @@ impl ::re_types_core::AsComponents for SeriesLine {
             self.color.clone(),
             self.width.clone(),
             self.name.clone(),
-            self.visible_series.clone(),
             self.aggregation_policy.clone(),
         ]
         .into_iter()
@@ -299,7 +275,6 @@ impl SeriesLine {
             color: None,
             width: None,
             name: None,
-            visible_series: None,
             aggregation_policy: None,
         }
     }
@@ -326,10 +301,6 @@ impl SeriesLine {
             name: Some(SerializedComponentBatch::new(
                 crate::components::Name::arrow_empty(),
                 Self::descriptor_name(),
-            )),
-            visible_series: Some(SerializedComponentBatch::new(
-                crate::components::SeriesVisible::arrow_empty(),
-                Self::descriptor_visible_series(),
             )),
             aggregation_policy: Some(SerializedComponentBatch::new(
                 crate::components::AggregationPolicy::arrow_empty(),
@@ -366,9 +337,6 @@ impl SeriesLine {
             self.name
                 .map(|name| name.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.visible_series
-                .map(|visible_series| visible_series.partitioned(_lengths.clone()))
-                .transpose()?,
             self.aggregation_policy
                 .map(|aggregation_policy| aggregation_policy.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -392,13 +360,11 @@ impl SeriesLine {
         let len_color = self.color.as_ref().map(|b| b.array.len());
         let len_width = self.width.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
-        let len_visible_series = self.visible_series.as_ref().map(|b| b.array.len());
         let len_aggregation_policy = self.aggregation_policy.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_color)
             .or(len_width)
             .or(len_name)
-            .or(len_visible_series)
             .or(len_aggregation_policy)
             .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
@@ -466,21 +432,6 @@ impl SeriesLine {
         self
     }
 
-    /// Which lines are visible.
-    ///
-    /// If not set, all line series on this entity are visible.
-    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-    /// via this property will still be visible in the legend.
-    #[inline]
-    pub fn with_visible_series(
-        mut self,
-        visible_series: impl IntoIterator<Item = impl Into<crate::components::SeriesVisible>>,
-    ) -> Self {
-        self.visible_series =
-            try_serialize_field(Self::descriptor_visible_series(), visible_series);
-        self
-    }
-
     /// Configures the zoom-dependent scalar aggregation.
     ///
     /// This is done only if steps on the X axis go below a single pixel,
@@ -517,7 +468,6 @@ impl ::re_byte_size::SizeBytes for SeriesLine {
         self.color.heap_size_bytes()
             + self.width.heap_size_bytes()
             + self.name.heap_size_bytes()
-            + self.visible_series.heap_size_bytes()
             + self.aggregation_policy.heap_size_bytes()
     }
 }

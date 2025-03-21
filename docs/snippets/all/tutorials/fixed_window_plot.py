@@ -35,4 +35,4 @@ while True:
 
     rr.set_time("time", timestamp=cur_time)
 
-    rr.log("random_walk", rr.Scalar(value))
+    rr.log("random_walk", rr.Scalars(value))

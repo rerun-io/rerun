@@ -6,7 +6,7 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
-    archetypes::{SeriesLine, SeriesPoint},
+    archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
         archetypes::{PlotLegend, ScalarAxis},
         components::{Corner2D, LockRangeDuringZoom},
@@ -679,8 +679,8 @@ fn update_series_visibility_overrides_from_plot(
 
         let override_path = result.override_path();
         let descriptor = match series.kind {
-            PlotSeriesKind::Continuous => Some(SeriesLine::descriptor_visible_series()),
-            PlotSeriesKind::Scatter(_) => Some(SeriesPoint::descriptor_visible_series()),
+            PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
+            PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),
             PlotSeriesKind::Clear => {
                 if cfg!(debug_assertions) {
                     unreachable!(

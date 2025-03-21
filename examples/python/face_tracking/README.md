@@ -166,7 +166,7 @@ The blendshapes are logged along with their corresponding scores.
 ```python
 for blendshape in blendshapes:
     if blendshape.category_name in BLENDSHAPES_CATEGORIES:
-        rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.Scalar(blendshape.score))
+        rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.Scalars(blendshape.score))
 ```
 
 ## Run the code

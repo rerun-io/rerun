@@ -723,7 +723,7 @@ API usage examples:
 
   for step in range(0, 64):
       rr.set_time_sequence("step", step)
-      rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
+      rr.log("scalar", rr.Scalars(math.sin(step / 10.0)))
   ```
 
   Using `send()` (fast, memory efficient):
@@ -779,7 +779,7 @@ API usage examples:
 
   for step in 0..64 {
       rec.set_time_sequence("step", step);
-      rec.log("scalar", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+      rec.log("scalar", &rerun::Scalars::new((step as f64 / 10.0).sin()))?;
   }
   ```
 

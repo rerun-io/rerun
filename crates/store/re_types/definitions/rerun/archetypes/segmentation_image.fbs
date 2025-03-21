@@ -1,6 +1,5 @@
 namespace rerun.archetypes;
 
-
 /// An image made up of integer [components.ClassId]s.
 ///
 /// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on annotation context.

@@ -58,7 +58,7 @@ for i in range(100):
     rr.log("world/data/nested/transformed/point", rr.Boxes2D(centers=[0, 3], half_sizes=[0.5, 0.5]))
 
     rr.log("text_log", rr.TextLog(f"hello {i}"))
-    rr.log("scalar", rr.Scalar(math.sin(i / 100 * 2 * math.pi)))
+    rr.log("scalar", rr.Scalars(math.sin(i / 100 * 2 * math.pi)))
 
     depth_image = 100 * np.ones((10, 100), dtype=np.float32)
     depth_image[:, i] = 50

@@ -194,9 +194,9 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Plotting",
         class_list=[
             "archetypes.BarChart",
-            "archetypes.Scalar",
-            "archetypes.SeriesLine",
-            "archetypes.SeriesPoint",
+            "archetypes.Scalars",
+            "archetypes.SeriesLines",
+            "archetypes.SeriesPoints",
         ],
         gen_page=False,
     ),
@@ -254,6 +254,15 @@ SECTION_TABLE: Final[list[Section]] = [
             "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Deprecated",
+        class_list=[
+            "archetypes.Scalar",
+            "archetypes.SeriesLine",
+            "archetypes.SeriesPoint",
         ],
         gen_page=False,
     ),

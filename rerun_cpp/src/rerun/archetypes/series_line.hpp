@@ -4,12 +4,12 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
-#include "../components/series_visible.hpp"
 #include "../components/stroke_width.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -18,6 +18,9 @@
 #include <optional>
 #include <utility>
 #include <vector>
+
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
 
 namespace rerun::archetypes {
     /// **Archetype**: Define the style properties for a line series in a chart.
@@ -47,23 +50,23 @@ namespace rerun::archetypes {
     ///     // Log two lines series under a shared root so that they show in the same plot by default.
     ///     rec.log_static(
     ///         "trig/sin",
-    ///         rerun::SeriesLine().with_color({255, 0, 0}).with_name("sin(0.01t)").with_width(2)
+    ///         rerun::SeriesLines().with_colors({255, 0, 0}).with_names("sin(0.01t)").with_widths(2.0f)
     ///     );
     ///     rec.log_static(
     ///         "trig/cos",
-    ///         rerun::SeriesLine().with_color({0, 255, 0}).with_name("cos(0.01t)").with_width(4)
+    ///         rerun::SeriesLines().with_colors({0, 255, 0}).with_names("cos(0.01t)").with_widths(4.0f)
     ///     );
     ///
     ///     // Log the data on a timeline called "step".
     ///     for (int t = 0; t <static_cast<int>(TAU * 2.0 * 100.0); ++t) {
     ///         rec.set_time_sequence("step", t);
     ///
-    ///         rec.log("trig/sin", rerun::Scalar(sin(static_cast<double>(t) / 100.0)));
-    ///         rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 100.0)));
+    ///         rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 100.0)));
+    ///         rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 100.0)));
     ///     }
     /// }
     /// ```
-    struct SeriesLine {
+    struct [[deprecated("Use `SeriesLines` instead.")]] SeriesLine {
         /// Color for the corresponding series.
         std::optional<ComponentBatch> color;
 
@@ -74,13 +77,6 @@ namespace rerun::archetypes {
         ///
         /// Used in the legend.
         std::optional<ComponentBatch> name;
-
-        /// Which lines are visible.
-        ///
-        /// If not set, all line series on this entity are visible.
-        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-        /// via this property will still be visible in the legend.
-        std::optional<ComponentBatch> visible_series;
 
         /// Configures the zoom-dependent scalar aggregation.
         ///
@@ -110,11 +106,6 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
             ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
-        );
-        /// `ComponentDescriptor` for the `visible_series` field.
-        static constexpr auto Descriptor_visible_series = ComponentDescriptor(
-            ArchetypeName, "visible_series",
-            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
@@ -184,20 +175,6 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Which lines are visible.
-        ///
-        /// If not set, all line series on this entity are visible.
-        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-        /// via this property will still be visible in the legend.
-        SeriesLine with_visible_series(
-            const Collection<rerun::components::SeriesVisible>& _visible_series
-        ) && {
-            visible_series =
-                ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)
-                    .value_or_throw();
-            return std::move(*this);
-        }
-
         /// Configures the zoom-dependent scalar aggregation.
         ///
         /// This is done only if steps on the X axis go below a single pixel,
@@ -248,6 +225,8 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
+    RR_PUSH_WARNINGS
+    RR_DISABLE_DEPRECATION_WARNING
 
     /// \private
     template <>
@@ -257,3 +236,5 @@ namespace rerun {
         );
     };
 } // namespace rerun
+
+RR_POP_WARNINGS

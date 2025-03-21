@@ -9,4 +9,4 @@ rr.init("rerun_example_scalar", spawn=True)
 # Log the data on a timeline called "step".
 for step in range(64):
     rr.set_time("step", sequence=step)
-    rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
+    rr.log("scalar", rr.Scalars(math.sin(step / 10.0)))

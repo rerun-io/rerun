@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import (
@@ -21,6 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["SeriesLine"]
 
 
+@deprecated("""Use `SeriesLines` instead.""")
 @define(str=False, repr=False, init=False)
 class SeriesLine(Archetype):
     """
@@ -43,15 +45,15 @@ class SeriesLine(Archetype):
     # Set up plot styling:
     # They are logged as static as they don't change over time and apply to all timelines.
     # Log two lines series under a shared root so that they show in the same plot by default.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)", width=2), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
+    rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
+    rr.log("trig/cos", rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)", widths=4), static=True)
 
     # Log the data on a timeline called "step".
     for t in range(int(tau * 2 * 100.0)):
         rr.set_time("step", sequence=t)
 
-        rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
-        rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
+        rr.log("trig/sin", rr.Scalars(sin(float(t) / 100.0)))
+        rr.log("trig/cos", rr.Scalars(cos(float(t) / 100.0)))
     ```
     <center>
     <picture>
@@ -71,7 +73,6 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ) -> None:
         """
@@ -87,12 +88,6 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
-        visible_series:
-            Which lines are visible.
-
-            If not set, all line series on this entity are visible.
-            Unlike with the regular visibility property of the entire entity, any series that is hidden
-            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -104,13 +99,7 @@ class SeriesLine(Archetype):
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                color=color,
-                width=width,
-                name=name,
-                visible_series=visible_series,
-                aggregation_policy=aggregation_policy,
-            )
+            self.__attrs_init__(color=color, width=width, name=name, aggregation_policy=aggregation_policy)
             return
         self.__attrs_clear__()
 
@@ -120,7 +109,6 @@ class SeriesLine(Archetype):
             color=None,
             width=None,
             name=None,
-            visible_series=None,
             aggregation_policy=None,
         )
 
@@ -139,7 +127,6 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ) -> SeriesLine:
         """
@@ -157,12 +144,6 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
-        visible_series:
-            Which lines are visible.
-
-            If not set, all line series on this entity are visible.
-            Unlike with the regular visibility property of the entire entity, any series that is hidden
-            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -178,7 +159,6 @@ class SeriesLine(Archetype):
                 "color": color,
                 "width": width,
                 "name": name,
-                "visible_series": visible_series,
                 "aggregation_policy": aggregation_policy,
             }
 
@@ -203,7 +183,6 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32ArrayLike | None = None,
         width: datatypes.Float32ArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -224,12 +203,6 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
-        visible_series:
-            Which lines are visible.
-
-            If not set, all line series on this entity are visible.
-            Unlike with the regular visibility property of the entire entity, any series that is hidden
-            via this property will still be visible in the legend.
         aggregation_policy:
             Configures the zoom-dependent scalar aggregation.
 
@@ -245,7 +218,6 @@ class SeriesLine(Archetype):
                 color=color,
                 width=width,
                 name=name,
-                visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
             )
 
@@ -253,13 +225,7 @@ class SeriesLine(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {
-            "color": color,
-            "width": width,
-            "name": name,
-            "visible_series": visible_series,
-            "aggregation_policy": aggregation_policy,
-        }
+        kwargs = {"color": color, "width": width, "name": name, "aggregation_policy": aggregation_policy}
         columns = []
 
         for batch in batches:
@@ -315,19 +281,6 @@ class SeriesLine(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    visible_series: components.SeriesVisibleBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
-    )
-    # Which lines are visible.
-    #
-    # If not set, all line series on this entity are visible.
-    # Unlike with the regular visibility property of the entire entity, any series that is hidden
-    # via this property will still be visible in the legend.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -5,6 +5,9 @@
 
 #include "../collection_adapter_builtins.hpp"
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun::archetypes {
     Scalar Scalar::clear_fields() {
         auto archetype = Scalar();
@@ -55,3 +58,5 @@ namespace rerun {
         return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun
+
+RR_POP_WARNINGS

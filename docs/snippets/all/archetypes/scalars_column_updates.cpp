@@ -24,6 +24,6 @@ int main() {
     rec.send_columns(
         "scalars",
         rerun::TimeColumn::from_sequence("step", std::move(times)),
-        rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()
+        rerun::Scalars(std::move(scalar_data)).columns()
     );
 }
