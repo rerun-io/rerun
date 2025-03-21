@@ -373,7 +373,13 @@ let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacu
 
 // … log data to `rec` …
 
-rerun::native_viewer::show(storage.take())?;
+// Blocks until the viewer is closed.
+// For more customizations, refer to `re_viewer::run_native_app`.
+rerun::show(
+    // Show has to be called on the main thread.
+    rerun::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+    storage.take(),
+)?;
 ```
 
 The Viewer will block the main thread until it is closed.
