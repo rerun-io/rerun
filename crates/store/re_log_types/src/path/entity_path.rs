@@ -112,11 +112,13 @@ impl EntityPath {
         Self::from(vec![])
     }
 
+    /// The reserved namespace for (partition) properties.
     #[inline]
     pub fn partition_properties() -> Self {
         Self::from(vec![EntityPathPart::partition_properties()])
     }
 
+    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
     #[inline]
     pub fn recording_properties() -> Self {
         Self::from(vec![
