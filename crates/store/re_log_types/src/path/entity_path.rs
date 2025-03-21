@@ -567,12 +567,18 @@ mod tests {
     }
 
     #[test]
+    fn test_partition_properties() {
+        assert_eq!(
+            EntityPath::partition_properties().to_string(),
+            EntityPath::from("/__partition_properties"),
+        );
+    }
+
+    #[test]
     fn test_recording_properties() {
         assert_eq!(
-            EntityPath::partition_properties(),
-            EntityPath::from(format!(
-                "{RESERVED_NAMESPACE_PREFIX}{PARTITION_PROPERTIES_PATH}"
-            ))
+            EntityPath::recording_properties().to_string(),
+            EntityPath::from("/__partition_properties/recording"),
         );
     }
 

@@ -21,7 +21,7 @@ rec.send_property(
 rec.send_property(
     "situation",
     rr.AnyValues(
-        robot_serial_number=1337,
+        confidences=[0.3, 0.4, 0.5, 0.6],
         traffic="low",
         weather="sunny",
     ),
