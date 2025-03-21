@@ -201,11 +201,6 @@ message StoreId {
   string id = 2;
 }
 
-// A date-time represented as nanoseconds since unix epoch
-message Time {
-  int64 nanos_since_epoch = 1;
-}
-
 message Tuid {
   // Approximate nanoseconds since epoch.
   fixed64 time_ns = 1;
@@ -288,4 +283,11 @@ message ScanParametersOrderClause {
   bool descending = 1;
   bool nulls_last = 2;
   optional string column_name = 3;
+}
+
+// Unique identifier for a partition. Can be user defined
+// which means it can be of any type. For simplicity we start
+// with a string, but we will probably revisit this.
+message PartitionId {
+  optional string id = 1;
 }

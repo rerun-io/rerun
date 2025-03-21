@@ -1,4 +1,4 @@
-use crate::{Duration, NonMinI64, Time, TryFromIntError};
+use crate::{Duration, NonMinI64, TryFromIntError};
 
 /// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 ///
@@ -168,31 +168,12 @@ impl From<NonMinI64> for TimeInt {
     }
 }
 
-impl TryFrom<Time> for TimeInt {
-    type Error = TryFromIntError;
-
-    #[inline]
-    fn try_from(t: Time) -> Result<Self, Self::Error> {
-        let Some(t) = NonMinI64::new(t.nanos_since_epoch()) else {
-            return Err(TryFromIntError);
-        };
-        Ok(Self(Some(t)))
-    }
-}
-
 impl TryFrom<TimeInt> for NonMinI64 {
     type Error = TryFromIntError;
 
     #[inline]
     fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
         Self::new(t.as_i64()).ok_or(TryFromIntError)
-    }
-}
-
-impl From<TimeInt> for Time {
-    #[inline]
-    fn from(int: TimeInt) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
     }
 }
 

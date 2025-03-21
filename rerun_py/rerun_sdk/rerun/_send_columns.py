@@ -94,22 +94,30 @@ class TimeColumn(TimeColumnLike):
         self.timeline = timeline
 
         if sequence is not None:
-            self.type = pa.int64()
-            self.times = sequence
+            self.times = pa.array(sequence, pa.int64())
         elif duration is not None:
-            self.type = pa.duration("ns")
-            self.times = [to_nanos(duration) for duration in duration]
+            if isinstance(duration, np.ndarray):
+                self.times = pa.array(duration.astype("timedelta64[ns]"), pa.duration("ns"))
+            else:
+                self.times = pa.array(
+                    [np.int64(to_nanos(duration)).astype("timedelta64[ns]") for duration in duration], pa.duration("ns")
+                )
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
-            self.type = pa.timestamp("ns")
-            self.times = [to_nanos_since_epoch(timestamp) for timestamp in timestamp]
+            if isinstance(timestamp, np.ndarray):
+                self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+            else:
+                self.times = pa.array(
+                    [np.int64(to_nanos_since_epoch(timestamp)).astype("datetime64[ns]") for timestamp in timestamp],
+                    pa.timestamp("ns"),
+                )
 
     def timeline_name(self) -> str:
         """Returns the name of the timeline."""
         return self.timeline
 
     def as_arrow_array(self) -> pa.Array:
-        return pa.array(self.times, type=self.type)
+        return self.times
 
 
 @deprecated(

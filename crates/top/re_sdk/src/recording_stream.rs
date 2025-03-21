@@ -16,7 +16,7 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt, TimePoint, Timeline,
+    StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint, Timeline,
     TimelineName,
 };
 use re_types::archetypes::RecordingProperties;
@@ -158,7 +158,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
 
             properties: Some(
-                RecordingProperties::new().with_start_time(Time::now().nanos_since_epoch()),
+                RecordingProperties::new().with_start_time(re_types::components::Timestamp::now()),
             ),
         }
     }
@@ -216,9 +216,7 @@ impl RecordingStreamBuilder {
 
     /// Sets an optional name for the recording.
     #[inline]
-    pub fn recording_started(mut self, time: impl Into<Time>) -> Self {
-        let started = Timestamp::from(time.into().nanos_since_epoch());
-
+    pub fn recording_started(mut self, started: impl Into<Timestamp>) -> Self {
         self.properties = if let Some(props) = self.properties.take() {
             Some(props.with_start_time(started))
         } else {
@@ -1578,7 +1576,8 @@ impl RecordingStream {
             // Inject the log time
             {
                 let time_timeline = Timeline::log_time();
-                let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
+                let time =
+                    TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
                 let repeated_time = std::iter::repeat(time.as_i64())
                     .take(chunk.num_rows())
@@ -2669,7 +2668,7 @@ mod tests {
         let mut timepoint = |frame_nr: i64| {
             let mut tp = TimePoint::default();
             if !static_ {
-                tp.insert(Timeline::log_time(), Time::now());
+                tp.insert(Timeline::log_time(), re_log_types::Timestamp::now());
                 tp.insert(Timeline::log_tick(), tick);
                 tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);
             }

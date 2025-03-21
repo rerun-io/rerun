@@ -50,7 +50,7 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    RedapGrpcStream { url: String },
+    RedapGrpcStream(re_uri::RecordingEndpoint),
 
     /// The data is streaming in via a message proxy.
     MessageProxy { url: String },
@@ -60,9 +60,8 @@ impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ }
-            | Self::RedapGrpcStream { url }
-            | Self::MessageProxy { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } | Self::MessageProxy { url } => url.fmt(f),
+            Self::RedapGrpcStream(endpoint) => endpoint.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -121,7 +120,7 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RerunGrpcStream { url: String },
+    RedapGrpcStream(re_uri::RecordingEndpoint),
 
     /// A stream of messages over message proxy gRPC interface.
     MessageProxy { url: String },
@@ -132,9 +131,8 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url }
-            | Self::RerunGrpcStream { url }
-            | Self::MessageProxy { url } => url.clone(),
+            Self::RrdHttpStream { url } | Self::MessageProxy { url } => url.clone(),
+            Self::RedapGrpcStream(endpoint) => endpoint.to_string(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),

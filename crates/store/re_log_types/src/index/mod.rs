@@ -3,7 +3,6 @@
 mod duration;
 mod non_min_i64;
 mod resolved_time_range;
-mod time;
 mod time_cell;
 mod time_int;
 mod time_point;
@@ -17,7 +16,6 @@ pub use self::{
     duration::Duration,
     non_min_i64::{NonMinI64, TryFromIntError},
     resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF},
-    time::Time,
     time_cell::TimeCell,
     time_int::TimeInt,
     time_point::TimePoint,

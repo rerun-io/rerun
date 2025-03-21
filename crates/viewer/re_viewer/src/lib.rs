@@ -7,6 +7,7 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod callback;
 pub mod env_vars;
 mod saving;
 mod screenshotter;
@@ -24,6 +25,8 @@ mod loading;
 pub mod blueprint;
 
 pub(crate) use {app_state::AppState, ui::memory_panel};
+
+pub use callback::{CallbackSelectionItem, Callbacks};
 
 pub use app::{App, StartupOptions};
 

@@ -91,7 +91,7 @@ impl crate::DataUi for EntityDb {
                 if let Ok(nanos_since_epoch) =
                     i64::try_from(latest_row_id.nanoseconds_since_epoch())
                 {
-                    let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
+                    let time = re_log_types::Timestamp::from_ns_since_epoch(nanos_since_epoch);
                     ui.grid_left_hand_label("Modified");
                     ui.label(time.format(ctx.app_options().timestamp_format));
                     ui.end_row();

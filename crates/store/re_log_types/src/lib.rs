@@ -37,9 +37,8 @@ use re_byte_size::SizeBytes;
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
-        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeCell, TimeInt,
-        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TryFromIntError,
+        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
+        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -621,7 +620,7 @@ impl std::fmt::Display for StoreSource {
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {
     (
         Timeline::log_time(),
         TimeInt::new_temporal(log_time.nanos_since_epoch()),

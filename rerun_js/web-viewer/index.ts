@@ -112,24 +112,36 @@ export interface AppOptions extends WebViewerOptions {
   enable_history?: boolean;
 }
 
-/** Selected an (entire) entity. */
-export type EntityItem = { type: "entity"; entity_path: string };
+/**
+ * Selected an entity, or an instance of an entity.
+ *
+ * If the entity was selected within a view, then this also
+ * includes the view's name.
+ *
+ * If the entity was selected within a 2D or 3D space view,
+ * then this also includes the position.
+ */
+export type EntityItem = {
+  type: "entity";
 
-/** Selected an instance within an entity. */
-export type InstanceItem = {
-  type: "instance";
   entity_path: string;
-  instance_id: number;
+  instance_id?: number;
+  view_name?: string;
+  position?: [number, number, number];
 };
 
 /** Selected a view. */
-export type ViewItem = { type: "view"; view_id: string };
+export type ViewItem = { type: "view"; view_id: string; view_name: string };
 
 /** Selected a container. */
-export type ContainerItem = { type: "container"; container_id: string };
+export type ContainerItem = {
+  type: "container";
+  container_id: string;
+  container_name: string;
+};
 
 /** A single item in a selection. */
-export type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
+export type SelectionItem = EntityItem | ViewItem | ContainerItem;
 
 interface Callbacks {
   on_selectionchange: (selection: SelectionItem[]) => void;
@@ -160,16 +172,16 @@ interface WebViewerEvents {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? never
-  : K]: WebViewerEvents[K] extends any[]
-  ? WebViewerEvents[K]
-  : [WebViewerEvents[K]];
+    ? never
+    : K]: WebViewerEvents[K] extends any[]
+    ? WebViewerEvents[K]
+    : [WebViewerEvents[K]];
 };
 
 type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? K
-  : never]: WebViewerEvents[K];
+    ? K
+    : never]: WebViewerEvents[K];
 };
 
 type Cancel = () => void;
@@ -228,9 +240,9 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-        get_state: () => this.#fullscreen,
-        on_toggle: () => this.toggle_fullscreen(),
-      }
+          get_state: () => this.#fullscreen,
+          on_toggle: () => this.toggle_fullscreen(),
+        }
       : undefined;
 
     const callbacks = {
@@ -594,7 +606,8 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${value ? "playing" : "paused"
+        `attempted to set play state to ${
+          value ? "playing" : "paused"
         } in a stopped web viewer`,
       );
     }
@@ -724,7 +737,7 @@ export class WebViewer {
     }
   }
 
-  #minimize = () => { };
+  #minimize = () => {};
 
   #maximize = () => {
     _minimize_current_fullscreen_viewer?.();

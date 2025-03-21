@@ -53,7 +53,7 @@ impl TimeCell {
 
     /// A timestamp of the current clock time.
     pub fn timestamp_now() -> Self {
-        Self::from_timestamp_nanos_since_epoch(crate::Time::now().nanos_since_epoch())
+        crate::Timestamp::now().into()
     }
 
     #[inline]
@@ -122,7 +122,7 @@ impl From<super::Duration> for TimeCell {
 impl From<super::Timestamp> for TimeCell {
     #[inline]
     fn from(timestamp: super::Timestamp) -> Self {
-        Self::from_timestamp_nanos_since_epoch(timestamp.ns_since_epoch())
+        Self::from_timestamp_nanos_since_epoch(timestamp.nanos_since_epoch())
     }
 }
 
@@ -158,6 +158,23 @@ impl TryFrom<web_time::SystemTime> for TimeCell {
 }
 
 // ------------------------------------------------------------------
+
+impl TimeCell {
+    pub fn format_compact(&self, timestamp_format: super::TimestampFormat) -> String {
+        let Self { typ, value } = *self;
+
+        match typ {
+            TimeType::DurationNs => {
+                crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
+            }
+
+            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(value.into())
+                .format_time_compact(timestamp_format),
+
+            TimeType::Sequence => typ.format(value, timestamp_format),
+        }
+    }
+}
 
 impl std::fmt::Display for TimeCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

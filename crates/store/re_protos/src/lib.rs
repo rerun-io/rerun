@@ -245,15 +245,6 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::common::v1alpha1::Time {
-        #[inline]
-        fn heap_size_bytes(&self) -> u64 {
-            let Self { nanos_since_epoch } = self;
-
-            nanos_since_epoch.heap_size_bytes()
-        }
-    }
-
     impl SizeBytes for crate::log_msg::v1alpha1::StoreSource {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {

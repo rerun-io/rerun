@@ -13,7 +13,6 @@ try:
     from rerun_notebook import (
         ContainerSelection as ContainerSelection,
         EntitySelection as EntitySelection,
-        InstanceSelection as InstanceSelection,
         SelectionItem as SelectionItem,
         ViewerCallbacks as ViewerCallbacks,
         ViewSelection as ViewSelection,

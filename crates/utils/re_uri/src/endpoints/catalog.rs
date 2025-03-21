@@ -1,6 +1,6 @@
 use crate::Origin;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct CatalogEndpoint {
     pub origin: Origin,
 }

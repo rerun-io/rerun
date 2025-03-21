@@ -60,8 +60,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         let string = match source.as_ref() {
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::RedapGrpcStream { url } => format!("Loading {url}…"),
+            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
+            SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }

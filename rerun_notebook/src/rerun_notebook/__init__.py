@@ -62,7 +62,13 @@ class ViewerCallbacks:
     """
 
     def on_selection_change(self, selection: list[SelectionItem]) -> None:
-        """Fired when the selection changes."""
+        """
+        Fired when the selection changes.
+
+        This event is fired each time any part of the event payload changes,
+        this includes for example clicking on different parts of the same
+        entity in a 2D or 3D view.
+        """
 
     def on_timeline_change(self, timeline: str, time: float) -> None:
         """Fired when a different timeline is selected."""
@@ -74,12 +80,13 @@ class ViewerCallbacks:
 @dataclass
 class EntitySelection:
     """
-    Selected an (entire) entity.
+    Selected an entity, or an instance of an entity.
 
-    Examples:
-    * A full point cloud.
-    * A mesh.
+    If the entity was selected within a view, then this also
+    includes the view's name.
 
+    If the entity was selected within a 2D or 3D space view,
+    then this also includes the position.
     """
 
     @property
@@ -87,24 +94,9 @@ class EntitySelection:
         return "entity"
 
     entity_path: str
-
-
-@dataclass
-class InstanceSelection:
-    """
-    Selected an instance within an entity.
-
-    Examples:
-    * A single point in a point cloud.
-
-    """
-
-    @property
-    def kind(self) -> Literal["instance"]:
-        return "instance"
-
-    entity_path: str
-    instance_id: int
+    instance_id: int | None
+    view_name: str | None
+    position: tuple[int, int, int] | None
 
 
 @dataclass
@@ -116,6 +108,7 @@ class ViewSelection:
         return "view"
 
     view_id: str
+    view_name: str
 
 
 @dataclass
@@ -127,21 +120,26 @@ class ContainerSelection:
         return "container"
 
     container_id: str
+    container_name: str
 
 
-SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
+SelectionItem = EntitySelection | ViewSelection | ContainerSelection
 """A single item in a selection."""
 
 
 def _selection_item_from_json(json: Any) -> SelectionItem:
     if json["type"] == "entity":
-        return EntitySelection(entity_path=json["entity_path"])
-    if json["type"] == "instance":
-        return InstanceSelection(entity_path=json["entity_path"], instance_id=json["instance_id"])
+        position = json.get("position", None)
+        return EntitySelection(
+            entity_path=json["entity_path"],
+            instance_id=json.get("instance_id", None),
+            view_name=json.get("view_name", None),
+            position=(position[0], position[1], position[2]) if position is not None else None,
+        )
     if json["type"] == "view":
-        return ViewSelection(view_id=json["view_id"])
+        return ViewSelection(view_id=json["view_id"], view_name=json["view_name"])
     if json["type"] == "container":
-        return ContainerSelection(container_id=json["container_id"])
+        return ContainerSelection(container_id=json["container_id"], container_name=json["container_name"])
     else:
         raise NotImplementedError(f"selection item kind {json[type]} is not handled")
 

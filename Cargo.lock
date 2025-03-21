@@ -6328,7 +6328,6 @@ name = "re_log_types"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "anyhow",
  "arrow",
  "backtrace",
  "bytemuck",
@@ -6671,6 +6670,7 @@ dependencies = [
  "crossbeam",
  "parking_lot",
  "re_tracing",
+ "re_uri",
  "serde",
  "web-time",
 ]
@@ -7200,6 +7200,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "ehttp",
+ "glam",
  "image",
  "itertools 0.14.0",
  "js-sys",
