@@ -71,7 +71,7 @@ def send_recording_start_time_nanos(nanos: int, recording: RecordingStream | Non
     Parameters
     ----------
     nanos : int
-        The start time of the recording.
+        The start time of the recording in nanoseconds since UNIX epoch.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.

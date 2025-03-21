@@ -1387,7 +1387,7 @@ fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyR
     Ok(EntityPath::partition_properties().join(&path).to_string())
 }
 
-/// Set the name of the recording.
+/// Send the name of the recording.
 #[pyfunction]
 #[pyo3(signature = (name, recording=None))]
 fn send_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
@@ -1399,7 +1399,7 @@ fn send_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyR
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-/// Set the name of the recording.
+/// Send the start time of the recording.
 #[pyfunction]
 #[pyo3(signature = (nanos, recording=None))]
 fn send_recording_start_time_nanos(
