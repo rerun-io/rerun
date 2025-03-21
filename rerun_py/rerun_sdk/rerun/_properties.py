@@ -38,7 +38,7 @@ def send_property(
 
     entity_path = bindings.new_property_entity_path([name])
 
-    log(entity_path, values, recording=recording, static=True)
+    log(entity_path, values, recording=recording.to_native(), static=True)
 
 
 def send_recording_name(name: str, recording: RecordingStream | None = None) -> None:

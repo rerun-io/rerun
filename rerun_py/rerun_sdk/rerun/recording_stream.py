@@ -780,11 +780,6 @@ class RecordingStream:
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
             or an iterable of (described)component batches.
 
-        recording:
-            Specifies the [`rerun.RecordingStream`][] to use.
-            If left unspecified, defaults to the current active data recording, if there is one.
-            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
         """
 
         from ._properties import send_property
