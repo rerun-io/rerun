@@ -231,3 +231,37 @@ class catch_and_log_exceptions:
 
             # Return the local context to the prior value
             _rerun_exception_ctx.strict_mode = self.original_strict
+
+
+T = TypeVar("T", bound=Callable[..., Any])
+
+
+def deprecated_param(name: str, *, use_instead: str | None = None, since: str | None = None) -> Callable[[T], T]:
+    """
+    Marks a parameter as deprecated.
+
+    @deprecated_param(foo, use_instead="bar", since="0.23")
+    def foo(foo: int | None = None, bar: str | None = None) -> None:
+        ...
+    """
+
+    def decorator(func: T) -> T:
+        sig = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            if name in kwargs:
+                message = f"The parameter '{name}' in function '{func.__name__}' is deprecated"
+                if since:
+                    message += f" since version {since}"
+                if use_instead:
+                    message += f", use {use_instead} instead"
+                warnings.warn(message, DeprecationWarning, stacklevel=2)
+            return func(*args, **kwargs)
+
+        # Preserve the original signature
+        wrapper.__signature__ = sig  # type: ignore[attr-defined]
+
+        return cast(T, wrapper)
+
+    return decorator
