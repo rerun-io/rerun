@@ -12,7 +12,6 @@ static_assert(
 );
 #endif
 
-
 #if defined(RERUN_H)
 static_assert(
     false,
