@@ -78,4 +78,4 @@ class AssetVideoExt:
         if self.media_type is not None:
             media_type = self.media_type.as_arrow_array()[0].as_py()
 
-        return np.array(bindings.asset_video_read_frame_timestamps_ns(video_buffer, media_type), dtype=np.int64)
+        return np.array(bindings.asset_video_read_frame_timestamps_nanos(video_buffer, media_type), dtype=np.int64)

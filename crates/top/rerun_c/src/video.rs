@@ -2,7 +2,7 @@ use crate::{CError, CErrorCode, CStringView};
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_video_asset_read_frame_timestamps_ns(
+pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
     video_bytes: *const u8,
     video_bytes_len: u64,
     media_type: CStringView,
@@ -48,12 +48,12 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_ns(
     };
 
     let num_timestamps = video.samples.len();
-    let timestamps_ns_memory = alloc_func(alloc_context, num_timestamps as u32);
-    let timestamps_ns =
-        unsafe { std::slice::from_raw_parts_mut(timestamps_ns_memory, num_timestamps) };
-    for (segment, timestamp_ns) in video.frame_timestamps_ns().zip(timestamps_ns.iter_mut()) {
-        *timestamp_ns = segment;
+    let timestamps_nanos_memory = alloc_func(alloc_context, num_timestamps as u32);
+    let timestamps_nanos =
+        unsafe { std::slice::from_raw_parts_mut(timestamps_nanos_memory, num_timestamps) };
+    for (segment, timestamp_nanos) in video.frame_timestamps_nanos().zip(timestamps_nanos.iter_mut()) {
+        *timestamp_nanos = segment;
     }
 
-    timestamps_ns.as_mut_ptr()
+    timestamps_nanos.as_mut_ptr()
 }

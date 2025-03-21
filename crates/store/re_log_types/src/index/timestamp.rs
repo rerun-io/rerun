@@ -143,7 +143,7 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let format_fractional_ns = |ns: i32| {
+        let format_fractional_nanos = |ns: i32| {
             let is_whole_sec = ns % 1_000_000_000 == 0;
             let is_whole_ms = ns % 1_000_000 == 0;
 
@@ -164,7 +164,7 @@ impl Timestamp {
                 format!(
                     "{}{}",
                     timestamp.as_second(),
-                    format_fractional_ns(timestamp.subsec_nanosecond())
+                    format_fractional_nanos(timestamp.subsec_nanosecond())
                 )
             }
 
@@ -187,7 +187,7 @@ impl Timestamp {
 
                 format!(
                     "{formatted}{}{suffix}",
-                    format_fractional_ns(zoned.subsec_nanosecond())
+                    format_fractional_nanos(zoned.subsec_nanosecond())
                 )
             }
         }
@@ -201,13 +201,13 @@ impl Timestamp {
         match timestamp_format {
             TimestampFormat::UnixEpoch => {
                 let ns = self.nanos_since_epoch();
-                let fractional_ns = ns % 1_000_000_000;
-                let is_whole_second = fractional_ns == 0;
+                let fractional_nanos = ns % 1_000_000_000;
+                let is_whole_second = fractional_nanos == 0;
                 if is_whole_second {
                     re_format::format_int(ns / 1_000_000_000)
                 } else {
                     // Show offset since last whole second:
-                    crate::Duration::from_nanos(fractional_ns).format_subsecond_as_relative()
+                    crate::Duration::from_nanos(fractional_nanos).format_subsecond_as_relative()
                 }
             }
 

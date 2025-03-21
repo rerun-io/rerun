@@ -183,8 +183,11 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_properties, m)?)?;
     m.add_function(wrap_pyfunction!(set_name, m)?)?;
 
-    use crate::video::asset_video_read_frame_timestamps_ns;
-    m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
+    use crate::video::asset_video_read_frame_timestamps_nanos;
+    m.add_function(wrap_pyfunction!(
+        asset_video_read_frame_timestamps_nanos,
+        m
+    )?)?;
 
     // dataframes
     crate::dataframe::register(m)?;

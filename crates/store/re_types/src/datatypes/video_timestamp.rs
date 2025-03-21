@@ -90,12 +90,12 @@ impl ::re_types_core::Loggable for VideoTimestamp {
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
-            .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")?
+            .with_context("rerun.datatypes.VideoTimestamp#timestamp_nanos")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")
+            .with_context("rerun.datatypes.VideoTimestamp#timestamp_nanos")
             .with_context("rerun.datatypes.VideoTimestamp")?)
     }
 
@@ -121,7 +121,7 @@ impl ::re_types_core::Loggable for VideoTimestamp {
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")?
+                .with_context("rerun.datatypes.VideoTimestamp#timestamp_nanos")?
                 .values()
                 .as_ref();
             {
@@ -133,8 +133,8 @@ impl ::re_types_core::Loggable for VideoTimestamp {
 
 impl From<i64> for VideoTimestamp {
     #[inline]
-    fn from(timestamp_ns: i64) -> Self {
-        Self(timestamp_ns)
+    fn from(timestamp_nanos: i64) -> Self {
+        Self(timestamp_nanos)
     }
 }
 

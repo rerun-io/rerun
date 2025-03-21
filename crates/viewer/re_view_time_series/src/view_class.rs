@@ -3,7 +3,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
-use re_format::next_grid_tick_magnitude_ns;
+use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
@@ -761,43 +761,43 @@ fn nanos_grid_spacer(
     let minimum_medium_line_spacing = 150.0; // ≈min size of a label
     let max_medium_lines = canvas_size.x as f64 / minimum_medium_line_spacing;
 
-    let (min_ns, max_ns) = input.bounds;
-    let width_ns = max_ns - min_ns;
+    let (min_nanos, max_nanos) = input.bounds;
+    let width_nanos = max_nanos - min_nanos;
 
-    let mut small_spacing_ns = 1;
-    while width_ns / (next_grid_tick_magnitude_ns(small_spacing_ns) as f64) > max_medium_lines {
-        let next_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
-        if small_spacing_ns < next_ns {
-            small_spacing_ns = next_ns;
+    let mut small_spacing_nanos = 1;
+    while width_nanos / (next_grid_tick_magnitude_nanos(small_spacing_nanos) as f64) > max_medium_lines {
+        let next_nanos = next_grid_tick_magnitude_nanos(small_spacing_nanos);
+        if small_spacing_nanos < next_nanos {
+            small_spacing_nanos = next_nanos;
         } else {
             break; // we've reached the max
         }
     }
-    let medium_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
-    let big_spacing_ns = next_grid_tick_magnitude_ns(medium_spacing_ns);
+    let medium_spacing_nanos = next_grid_tick_magnitude_nanos(small_spacing_nanos);
+    let big_spacing_nanos = next_grid_tick_magnitude_nanos(medium_spacing_nanos);
 
-    let mut current_ns = (min_ns.floor() as i64) / small_spacing_ns * small_spacing_ns;
+    let mut current_nanos = (min_nanos.floor() as i64) / small_spacing_nanos * small_spacing_nanos;
     let mut marks = vec![];
 
-    while current_ns <= max_ns.ceil() as i64 {
-        let is_big_line = current_ns % big_spacing_ns == 0;
-        let is_medium_line = current_ns % medium_spacing_ns == 0;
+    while current_nanos <= max_nanos.ceil() as i64 {
+        let is_big_line = current_nanos % big_spacing_nanos == 0;
+        let is_medium_line = current_nanos % medium_spacing_nanos == 0;
 
         let step_size = if is_big_line {
-            big_spacing_ns
+            big_spacing_nanos
         } else if is_medium_line {
-            medium_spacing_ns
+            medium_spacing_nanos
         } else {
-            small_spacing_ns
+            small_spacing_nanos
         };
 
         marks.push(egui_plot::GridMark {
-            value: current_ns as f64,
+            value: current_nanos as f64,
             step_size: step_size as f64,
         });
 
-        if let Some(new_ns) = current_ns.checked_add(small_spacing_ns) {
-            current_ns = new_ns;
+        if let Some(new_nanos) = current_nanos.checked_add(small_spacing_nanos) {
+            current_nanos = new_nanos;
         } else {
             break;
         };

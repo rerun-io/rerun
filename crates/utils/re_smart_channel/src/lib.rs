@@ -147,7 +147,7 @@ impl std::fmt::Display for SmartMessageSource {
 #[derive(Default)]
 pub(crate) struct SharedStats {
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
-    latency_ns: AtomicU64,
+    latency_nanos: AtomicU64,
 }
 
 pub fn smart_channel<T: Send>(
@@ -243,13 +243,13 @@ fn test_smart_channel() {
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
-    assert_eq!(tx.latency_ns(), 0);
+    assert_eq!(tx.latency_nanos(), 0);
 
     tx.send(42).unwrap();
 
     assert_eq!(tx.len(), 1);
     assert_eq!(rx.len(), 1);
-    assert_eq!(tx.latency_ns(), 0);
+    assert_eq!(tx.latency_nanos(), 0);
 
     std::thread::sleep(std::time::Duration::from_millis(10));
 
@@ -257,7 +257,7 @@ fn test_smart_channel() {
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
-    assert!(tx.latency_ns() > 1_000_000);
+    assert!(tx.latency_nanos() > 1_000_000);
 }
 
 #[test]

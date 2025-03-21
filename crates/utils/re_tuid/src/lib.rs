@@ -24,7 +24,7 @@ pub struct Tuid {
     /// A big-endian u64 encoded as bytes to keep the alignment of `Tuid` to 1.
     ///
     /// We use big-endian so that the raw bytes of the `Tuid` sorts in time order.
-    time_ns: [u8; 8],
+    time_nanos: [u8; 8],
 
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
@@ -85,13 +85,13 @@ impl<'a> From<&'a Tuid> for std::borrow::Cow<'a, Tuid> {
 impl Tuid {
     /// All zeroes.
     pub const ZERO: Self = Self {
-        time_ns: [0; 8],
+        time_nanos: [0; 8],
         inc: [0; 8],
     };
 
     /// All ones.
     pub const MAX: Self = Self {
-        time_ns: u64::MAX.to_be_bytes(),
+        time_nanos: u64::MAX.to_be_bytes(),
         inc: u64::MAX.to_be_bytes(),
     };
 
@@ -129,9 +129,9 @@ impl Tuid {
     /// Construct a [`Tuid`] from the upper and lower halves of a u128-bit.
     /// The first should be nano-seconds since epoch.
     #[inline]
-    pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
+    pub fn from_nanos_and_inc(time_nanos: u64, inc: u64) -> Self {
         Self {
-            time_ns: time_ns.to_be_bytes(),
+            time_nanos: time_nanos.to_be_bytes(),
             inc: inc.to_be_bytes(),
         }
     }
@@ -162,7 +162,7 @@ impl Tuid {
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
     pub fn nanos_since_epoch(&self) -> u64 {
-        u64::from_be_bytes(self.time_ns)
+        u64::from_be_bytes(self.time_nanos)
     }
 
     /// The increment part of the [`Tuid`].
@@ -182,10 +182,10 @@ impl Tuid {
     #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
-        let Self { time_ns, inc } = *self;
+        let Self { time_nanos, inc } = *self;
 
         Self {
-            time_ns,
+            time_nanos,
             inc: u64::from_be_bytes(inc).wrapping_add(1).to_be_bytes(),
         }
     }
@@ -200,9 +200,9 @@ impl Tuid {
     #[must_use]
     #[inline]
     pub fn incremented_by(&self, n: u64) -> Self {
-        let Self { time_ns, inc } = *self;
+        let Self { time_nanos, inc } = *self;
         Self {
-            time_ns,
+            time_nanos,
             inc: u64::from_be_bytes(inc).wrapping_add(n).to_be_bytes(),
         }
     }
@@ -318,7 +318,7 @@ fn test_tuid_formatting() {
 #[cfg(feature = "serde")]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 struct LegacyTuid {
-    time_ns: u64,
+    time_nanos: u64,
     inc: u64,
 }
 
@@ -329,7 +329,7 @@ impl serde::Serialize for Tuid {
         S: serde::Serializer,
     {
         LegacyTuid {
-            time_ns: self.nanos_since_epoch(),
+            time_nanos: self.nanos_since_epoch(),
             inc: self.inc(),
         }
         .serialize(serializer)
@@ -342,7 +342,7 @@ impl<'de> serde::Deserialize<'de> for Tuid {
     where
         D: serde::Deserializer<'de>,
     {
-        let LegacyTuid { time_ns, inc } = serde::Deserialize::deserialize(deserializer)?;
-        Ok(Self::from_nanos_and_inc(time_ns, inc))
+        let LegacyTuid { time_nanos, inc } = serde::Deserialize::deserialize(deserializer)?;
+        Ok(Self::from_nanos_and_inc(time_nanos, inc))
     }
 }

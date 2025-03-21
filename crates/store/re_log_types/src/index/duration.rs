@@ -131,8 +131,8 @@ impl Duration {
     pub fn format_subsecond_as_relative(self) -> String {
         let ns = self.as_nanos();
 
-        let fractional_ns = ns % 1_000_000_000;
-        let is_whole_second = fractional_ns == 0;
+        let fractional_nanos = ns % 1_000_000_000;
+        let is_whole_second = fractional_nanos == 0;
 
         if is_whole_second {
             self.to_string()
@@ -140,18 +140,18 @@ impl Duration {
             // We are in the sub-second resolution.
             // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
             // so instead we switch to showing the time as milliseconds since the last whole second:
-            let ms = fractional_ns as f64 * 1e-6;
-            if fractional_ns % 1_000_000 == 0 {
+            let ms = fractional_nanos as f64 * 1e-6;
+            if fractional_nanos % 1_000_000 == 0 {
                 format!("{ms:+.0} ms")
-            } else if fractional_ns % 100_000 == 0 {
+            } else if fractional_nanos % 100_000 == 0 {
                 format!("{ms:+.1} ms")
-            } else if fractional_ns % 10_000 == 0 {
+            } else if fractional_nanos % 10_000 == 0 {
                 format!("{ms:+.2} ms")
-            } else if fractional_ns % 1_000 == 0 {
+            } else if fractional_nanos % 1_000 == 0 {
                 format!("{ms:+.3} ms")
-            } else if fractional_ns % 100 == 0 {
+            } else if fractional_nanos % 100 == 0 {
                 format!("{ms:+.4} ms")
-            } else if fractional_ns % 10 == 0 {
+            } else if fractional_nanos % 10 == 0 {
                 format!("{ms:+.5} ms")
             } else {
                 format!("{ms:+.6} ms")

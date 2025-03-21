@@ -282,7 +282,7 @@ impl VideoData {
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
+    pub fn frame_timestamps_nanos(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
