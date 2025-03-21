@@ -8,7 +8,7 @@ mod entry;
 use pyo3::{prelude::*, Bound, PyResult};
 
 pub use catalog_client::PyCatalogClient;
-pub use connection_handle::CatalogConnectionHandle;
+pub use connection_handle::ConnectionHandle;
 pub use dataset::PyDataset;
 pub use entry::{PyEntry, PyEntryId, PyEntryType};
 

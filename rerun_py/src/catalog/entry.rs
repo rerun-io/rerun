@@ -1,9 +1,11 @@
+use std::str::FromStr as _;
+
 use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
 
 use re_protos::catalog::v1alpha1::{EntryDetails, EntryType};
 use re_tuid::Tuid;
 
-use crate::catalog::{CatalogConnectionHandle, PyCatalogClient};
+use crate::catalog::PyCatalogClient;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(name = "EntryId")]
@@ -16,6 +18,14 @@ pub struct PyEntryId {
 
 #[pymethods]
 impl PyEntryId {
+    #[new]
+    pub fn new(id: String) -> PyResult<Self> {
+        Ok(Self {
+            id: Tuid::from_str(id.as_str())
+                .map_err(|err| PyTypeError::new_err(format!("invalid Tuid: {err}")))?,
+        })
+    }
+
     pub fn __str__(&self) -> String {
         self.id.to_string()
     }
@@ -79,8 +89,8 @@ impl TryFrom<EntryType> for PyEntryType {
 
 #[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
-    pub connection: CatalogConnectionHandle,
-    pub catalog: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClient>,
+
     pub id: Py<PyEntryId>,
 
     pub details: EntryDetails,
@@ -100,7 +110,7 @@ impl PyEntry {
 
     #[getter]
     pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClient> {
-        self.catalog.clone_ref(py)
+        self.client.clone_ref(py)
     }
 
     #[getter]
