@@ -677,10 +677,7 @@
 <a href="#676" id="676">676</a>
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#679" id="679">679</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>ahash::{HashMap, HashSet};
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
@@ -1252,16 +1249,13 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_properties() {
-        <span class="macro">assert_eq!</span>(
-            EntityPath::properties().to_string(),
-            EntityPath::from(<span class="string">"/__properties"</span>),
-        );
+        <span class="macro">assert_eq!</span>(EntityPath::properties(), EntityPath::from(<span class="string">"/__properties"</span>),);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_recording_properties() {
         <span class="macro">assert_eq!</span>(
-            EntityPath::recording_properties().to_string(),
+            EntityPath::recording_properties(),
             EntityPath::from(<span class="string">"/__properties/recording"</span>),
         );
     }
