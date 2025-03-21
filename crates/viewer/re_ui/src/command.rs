@@ -459,6 +459,8 @@ impl UICommand {
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
                 if input.consume_shortcut(&kb_shortcut) {
+                    // Clear the shortcut key from input to prevent it from propagating to other UI component.
+                    input.keys_down.remove(&kb_shortcut.logical_key);
                     return Some(command);
                 }
             }
