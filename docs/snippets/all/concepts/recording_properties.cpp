@@ -16,40 +16,41 @@ arrow::Status run_main() {
     rec.send_recording_start_time_nanos(1742539110661000000);
 
     // Adds a user-defined property to the recording, using an existing Rerun type.
-    auto points = rerun::Points3D({{1.0, 0.1, 1.0}});
+    auto points = rerun::Points3D({{1.0f, 0.1f, 1.0f}});
     rec.send_property("camera_left", points);
 
     // Adds another property, this time with user-defined data.
     {
-          std::shared_ptr<arrow::Array> arrow_array;
-          // ...
+        std::shared_ptr<arrow::Array> arrow_array;
+        // ...
 
-    arrow::DoubleBuilder confidences_builder;
-    ARROW_RETURN_NOT_OK(confidences_builder.AppendValues({0.3, 0.4, 0.5, 0.6}));
-    ARROW_RETURN_NOT_OK(confidences_builder.Finish(&arrow_array));
-    auto confidences =
-        rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "confidence");
+        arrow::DoubleBuilder confidences_builder;
+        ARROW_RETURN_NOT_OK(confidences_builder.AppendValues({0.3, 0.4, 0.5, 0.6}));
+        ARROW_RETURN_NOT_OK(confidences_builder.Finish(&arrow_array));
+        auto confidences =
+            rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "confidence");
 
-    arrow::StringBuilder traffic_builder;
-    ARROW_RETURN_NOT_OK(traffic_builder.Append("low"));
-    ARROW_RETURN_NOT_OK(traffic_builder.Finish(&arrow_array));
-    auto traffic = rerun::ComponentBatch::from_arrow_array(
-        std::move(arrow_array),
-        rerun::ComponentDescriptor("traffic")
-    );
+        arrow::StringBuilder traffic_builder;
+        ARROW_RETURN_NOT_OK(traffic_builder.Append("low"));
+        ARROW_RETURN_NOT_OK(traffic_builder.Finish(&arrow_array));
+        auto traffic = rerun::ComponentBatch::from_arrow_array(
+            std::move(arrow_array),
+            rerun::ComponentDescriptor("traffic")
+        );
 
-    arrow::StringBuilder weather_builder;
-    ARROW_RETURN_NOT_OK(weather_builder.Append("sunny"));
-    ARROW_RETURN_NOT_OK(weather_builder.Finish(&arrow_array));
-    auto weather = rerun::ComponentBatch::from_arrow_array(
-        std::move(arrow_array),
-        rerun::ComponentDescriptor("weather")
-    );
+        arrow::StringBuilder weather_builder;
+        ARROW_RETURN_NOT_OK(weather_builder.Append("sunny"));
+        ARROW_RETURN_NOT_OK(weather_builder.Finish(&arrow_array));
+        auto weather = rerun::ComponentBatch::from_arrow_array(
+            std::move(arrow_array),
+            rerun::ComponentDescriptor("weather")
+        );
 
-    rec.send_property("situation", confidences, traffic, weather);
+        rec.send_property("situation", confidences, traffic, weather);
 
-    // Properties, including the name, can be overwritten at any time.
-    rec.send_recording_name("My episode");
+        // Properties, including the name, can be overwritten at any time.
+        rec.send_recording_name("My episode");
+    }
 
     return arrow::Status::OK();
 }

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "as_components.hpp"
-#include "c/rerun.h"
 #include "component_column.hpp"
 #include "error.hpp"
 #include "spawn_options.hpp"
@@ -889,12 +888,10 @@ namespace rerun {
         /// \see `set_property`
         template <typename... Ts>
         Error try_send_property(std::string_view name, const Ts&... values) const {
-            rr_error status = {};
-            log_static(
+            return try_log_static(
                 this->PARTITION_PROPERTIES_ENTITY_PATH + std::string(name),
                 values... // NOLINT
             );
-            return status;
         }
 
         /// Set the name of a recording.
