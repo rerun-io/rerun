@@ -121,9 +121,7 @@ fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Resul
     // Blue spiral, rotating
     builder
         .batch("blue spiral")
-        .world_from_obj(glam::Affine3A::from_rotation_x(
-            secs_since_startup * 10.0,
-        ))
+        .world_from_obj(glam::Affine3A::from_rotation_x(secs_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,
@@ -306,11 +304,8 @@ impl Example for Multiview {
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let secs_since_startup = time.secs_since_startup();
-            self.camera_position = Vec3::new(
-                secs_since_startup.sin(),
-                0.5,
-                secs_since_startup.cos(),
-            ) * 10.0;
+            self.camera_position =
+                Vec3::new(secs_since_startup.sin(), 0.5, secs_since_startup.cos()) * 10.0;
         }
 
         handle_incoming_screenshots(re_ctx);

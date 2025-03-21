@@ -195,9 +195,13 @@ fn load_video(
         Ok(frame_timestamps_nanos) => {
             // Time column.
             let is_sorted = Some(true);
-            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_nanos.into();
-            let time_column =
-                re_chunk::TimeColumn::new(is_sorted, video_timeline, frame_timestamps_nanos.clone());
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
+            let time_column = re_chunk::TimeColumn::new(
+                is_sorted,
+                video_timeline,
+                frame_timestamps_nanos.clone(),
+            );
 
             // VideoTimestamp component column.
             let video_timestamps = frame_timestamps_nanos

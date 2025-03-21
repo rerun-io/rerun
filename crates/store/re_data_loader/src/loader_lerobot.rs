@@ -389,7 +389,8 @@ fn load_episode_video(
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
         Ok(frame_timestamps_nanos) => {
-            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_nanos.into();
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
 
             let video_timestamps = frame_timestamps_nanos
                 .iter()

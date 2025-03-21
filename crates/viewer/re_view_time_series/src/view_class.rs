@@ -765,7 +765,9 @@ fn nanos_grid_spacer(
     let width_nanos = max_nanos - min_nanos;
 
     let mut small_spacing_nanos = 1;
-    while width_nanos / (next_grid_tick_magnitude_nanos(small_spacing_nanos) as f64) > max_medium_lines {
+    while width_nanos / (next_grid_tick_magnitude_nanos(small_spacing_nanos) as f64)
+        > max_medium_lines
+    {
         let next_nanos = next_grid_tick_magnitude_nanos(small_spacing_nanos);
         if small_spacing_nanos < next_nanos {
             small_spacing_nanos = next_nanos;
