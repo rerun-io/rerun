@@ -136,10 +136,13 @@ pub struct Callbacks {
 }
 
 impl Callbacks {
+    #[inline]
     pub fn builder() -> CallbacksBuilder {
         CallbacksBuilder::default()
     }
 
+    /// Fire a selection change event.
+    #[inline]
     pub fn on_selection_change(&self, items: &ItemCollection, blueprint: &ViewportBlueprint) {
         (self.on_selection_change)(
             items
@@ -149,23 +152,32 @@ impl Callbacks {
         );
     }
 
+    /// Fire a timeline change event.
+    #[inline]
     pub fn on_timeline_change(&self, timeline: Timeline, time: TimeReal) {
         (self.on_timeline_change)(timeline, time);
     }
 
+    /// Fire a time update event.
+    #[inline]
     pub fn on_time_update(&self, time: TimeReal) {
         (self.on_time_update)(time);
     }
 
+    /// Fire a pause event.
+    #[inline]
     pub fn on_pause(&self) {
         (self.on_pause)();
     }
 
+    /// Fire a play event.
+    #[inline]
     pub fn on_play(&self) {
         (self.on_play)();
     }
 }
 
+/// Builder struct for [`Callbacks`].
 #[derive(Default)]
 pub struct CallbacksBuilder {
     on_selection_change: Option<Rc<dyn Fn(Vec<CallbackSelectionItem>)>>,
@@ -176,31 +188,48 @@ pub struct CallbacksBuilder {
 }
 
 impl CallbacksBuilder {
+    /// Fired when the selection changes.
+    ///
+    /// This event is fired each time any part of the event payload changes,
+    /// this includes for example clicking on different parts of the same
+    /// entity in a 2D or 3D view.
+    #[inline]
     pub fn on_selection_change(mut self, f: impl Fn(Vec<CallbackSelectionItem>) + 'static) -> Self {
         self.on_selection_change = Some(Rc::new(f));
         self
     }
 
+    /// Fired when a different timeline is selected.
+    #[inline]
     pub fn on_timeline_change(mut self, f: impl Fn(Timeline, TimeReal) + 'static) -> Self {
         self.on_timeline_change = Some(Rc::new(f));
         self
     }
 
+    /// Fired when the timepoint changes.
+    ///
+    /// Does not fire when `on_seek` is called.
+    #[inline]
     pub fn on_time_update(mut self, f: impl Fn(TimeReal) + 'static) -> Self {
         self.on_time_update = Some(Rc::new(f));
         self
     }
 
+    /// Fired when the timeline is paused.
+    #[inline]
     pub fn on_pause(mut self, f: impl Fn() + 'static) -> Self {
         self.on_pause = Some(Rc::new(f));
         self
     }
 
+    /// Fired when the timeline is played.
+    #[inline]
     pub fn on_play(mut self, f: impl Fn() + 'static) -> Self {
         self.on_play = Some(Rc::new(f));
         self
     }
 
+    #[inline]
     pub fn build(self) -> Callbacks {
         Callbacks {
             on_selection_change: self.on_selection_change.unwrap_or_else(|| Rc::new(|_| {})),
