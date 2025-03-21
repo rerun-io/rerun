@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
+use re_log_encoding::encoder::{encode_as_bytes_local, encode_ref_as_bytes_local};
 use re_log_types::LogMsg;
 
 use crate::sink::LogSink;
@@ -53,7 +54,7 @@ impl std::io::Write for BinaryStreamStorageInner {
 ///
 /// Reading from this consumes the bytes from the stream.
 pub struct BinaryStreamStorage {
-    inner: BinaryStreamStorageInner,
+    inner: Arc<Mutex<Vec<LogMsg>>>,
     rec: RecordingStream,
 }
 
@@ -73,9 +74,8 @@ impl BinaryStreamStorage {
     /// logged messages have been written to the stream before you read them.
     #[inline]
     pub fn read(&self) -> Vec<u8> {
-        let mut buffer = std::io::Cursor::new(Vec::new());
-        std::mem::swap(&mut buffer, &mut *self.inner.0.lock());
-        buffer.into_inner()
+        // TODO(jan, gijs): handle error here?
+        encode_as_bytes_local(self.inner.lock().drain(..).map(Ok)).unwrap_or_default()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
@@ -106,20 +106,7 @@ impl Drop for BinaryStreamStorage {
 /// This stream has no mechanism of limiting memory or creating back-pressure. If you do not
 /// read from it, it will buffer all messages that you have logged.
 pub struct BinaryStreamSink {
-    /// The sender to the encoder thread.
-    tx: Mutex<Sender<Option<Command>>>,
-
-    /// Handle to join the encoder thread on drop.
-    join_handle: Option<std::thread::JoinHandle<()>>,
-}
-
-impl Drop for BinaryStreamSink {
-    fn drop(&mut self) {
-        self.tx.lock().send(None).ok();
-        if let Some(join_handle) = self.join_handle.take() {
-            join_handle.join().ok();
-        }
-    }
+    buffer: Arc<Mutex<Vec<LogMsg>>>,
 }
 
 impl BinaryStreamSink {
@@ -127,24 +114,9 @@ impl BinaryStreamSink {
     pub fn new(rec: RecordingStream) -> Result<(Self, BinaryStreamStorage), BinaryStreamSinkError> {
         let storage = BinaryStreamStorage::new(rec);
 
-        // We always compress when writing to a stream
-        // TODO(jleibs): Make this configurable
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        let encoder = re_log_encoding::encoder::DroppableEncoder::new(
-            re_build_info::CrateVersion::LOCAL,
-            encoding_options,
-            storage.inner.clone(),
-        )?;
-
-        let join_handle = spawn_and_stream(encoder, rx)?;
-
         Ok((
             Self {
-                tx: tx.into(),
-                join_handle: Some(join_handle),
+                buffer: storage.inner.clone(),
             },
             storage,
         ))
@@ -154,50 +126,9 @@ impl BinaryStreamSink {
 impl LogSink for BinaryStreamSink {
     #[inline]
     fn send(&self, msg: re_log_types::LogMsg) {
-        self.tx.lock().send(Some(Command::Send(msg))).ok();
+        self.buffer.lock().push(msg);
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        let (cmd, oneshot) = Command::flush();
-        self.tx.lock().send(Some(cmd)).ok();
-        oneshot.recv().ok();
-    }
-}
-
-/// Spawn the encoder thread that will write log messages to the binary stream.
-fn spawn_and_stream<W: std::io::Write + Send + 'static>(
-    mut encoder: re_log_encoding::encoder::DroppableEncoder<W>,
-    rx: Receiver<Option<Command>>,
-) -> Result<std::thread::JoinHandle<()>, BinaryStreamSinkError> {
-    std::thread::Builder::new()
-        .name("binary_stream_encoder".into())
-        .spawn({
-            move || {
-                while let Ok(Some(cmd)) = rx.recv() {
-                    match cmd {
-                        Command::Send(log_msg) => {
-                            if let Err(err) = encoder.append(&log_msg) {
-                                re_log::error!(
-                                    "Failed to write log stream to binary stream: {err}"
-                                );
-                                return;
-                            }
-                        }
-                        Command::Flush(oneshot) => {
-                            re_log::trace!("Flushing…");
-                            if let Err(err) = encoder.flush_blocking() {
-                                re_log::error!(
-                                    "Failed to flush log stream to binary stream: {err}"
-                                );
-                                return;
-                            }
-                            drop(oneshot); // signals the oneshot
-                        }
-                    }
-                }
-                re_log::debug!("Log stream written to binary stream");
-            }
-        })
-        .map_err(BinaryStreamSinkError::SpawnThread)
+    fn flush_blocking(&self) {}
 }
