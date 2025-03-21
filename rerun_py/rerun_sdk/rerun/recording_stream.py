@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
 import numpy as np
 from typing_extensions import deprecated

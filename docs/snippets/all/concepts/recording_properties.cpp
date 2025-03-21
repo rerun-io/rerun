@@ -29,14 +29,18 @@ arrow::Status run_main() {
     arrow::StringBuilder traffic_builder;
     ARROW_RETURN_NOT_OK(traffic_builder.Append("low"));
     ARROW_RETURN_NOT_OK(traffic_builder.Finish(&arrow_array));
-    auto traffic =
-        rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), rerun::ComponentDescriptor("traffic"));
+    auto traffic = rerun::ComponentBatch::from_arrow_array(
+        std::move(arrow_array),
+        rerun::ComponentDescriptor("traffic")
+    );
 
     arrow::StringBuilder weather_builder;
     ARROW_RETURN_NOT_OK(weather_builder.Append("sunny"));
     ARROW_RETURN_NOT_OK(weather_builder.Finish(&arrow_array));
-    auto weather =
-        rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), rerun::ComponentDescriptor("weather"));
+    auto weather = rerun::ComponentBatch::from_arrow_array(
+        std::move(arrow_array),
+        rerun::ComponentDescriptor("weather")
+    );
 
     rec.send_property("situation", confidences, traffic, weather);
 
