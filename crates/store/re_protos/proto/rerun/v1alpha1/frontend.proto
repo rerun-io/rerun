@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package rerun.frontend.v1alpha1;
+
+import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/manifest_registry.proto";
+
+service FrontendService {
+  // List partitions in the Dataset
+  rpc ListPartitions(ListPartitionsRequest) returns (stream rerun.manifest_registry.v1alpha1.ListPartitionsResponse) {}
+}
+
+message ListPartitionsRequest {
+  // Dataset for which we want to list partitions
+  rerun.common.v1alpha1.Tuid dataset_id = 1;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
