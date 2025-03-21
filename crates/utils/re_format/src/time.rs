@@ -23,11 +23,11 @@ pub fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
 ///
 /// This is meant for a relatively stable display of timestamps that are typically in minutes
 /// where we still care about fractional seconds.
-pub fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
-    let n = timestamp_seconds as i32;
+pub fn format_timestamp_secs(timestamp_secs: f64) -> String {
+    let n = timestamp_secs as i32;
     let hours = n / (60 * 60);
     let mins = (n / 60) % 60;
-    let secs = (n % 60) as f64 + timestamp_seconds.fract();
+    let secs = (n % 60) as f64 + timestamp_secs.fract();
 
     if hours > 0 {
         format!("{hours:02}:{mins:02}:{secs:02.02}")
@@ -44,7 +44,7 @@ pub fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
 /// * fractional seconds
 /// * minutes:[fractional seconds]
 /// * hours:minutes:[fractional seconds]
-pub fn parse_timestamp_seconds(s: &str) -> Option<f64> {
+pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
     let parts: Vec<&str> = s.split(':').collect();
     match parts.len() {
         1 => parts[0].parse::<f64>().ok(),

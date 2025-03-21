@@ -235,7 +235,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
 fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::Time) {
     ui.monospace(re_format::format_int(timestamp.0))
         .on_hover_ui(|ui| {
-            ui.monospace(re_format::format_timestamp_seconds(
+            ui.monospace(re_format::format_timestamp_secs(
                 timestamp.into_secs(video_data.timescale),
             ));
         });
@@ -249,8 +249,8 @@ pub fn show_decoded_frame_info(
     video_timestamp: Option<VideoTimestamp>,
     blob: &re_types::datatypes::Blob,
 ) {
-    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
-        video_timestamp.as_seconds()
+    let timestamp_in_secs = if let Some(video_timestamp) = video_timestamp {
+        video_timestamp.as_secs()
     } else {
         // TODO(emilk): Some time controls would be nice,
         // but the point here is not to have a nice viewer,
@@ -265,7 +265,7 @@ pub fn show_decoded_frame_info(
     match video.frame_at(
         render_ctx,
         player_stream_id,
-        timestamp_in_seconds,
+        timestamp_in_secs,
         blob.as_slice(),
     ) {
         Ok(VideoFrameTexture {
@@ -368,10 +368,10 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
-        re_format::format_timestamp_seconds(presentation_time_range.start.into_secs(
+        re_format::format_timestamp_secs(presentation_time_range.start.into_secs(
             video_data.timescale
         )),
-        re_format::format_timestamp_seconds(presentation_time_range.end.into_secs(
+        re_format::format_timestamp_secs(presentation_time_range.end.into_secs(
             video_data.timescale
         )),
     )))

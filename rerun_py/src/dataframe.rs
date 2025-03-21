@@ -940,7 +940,7 @@ impl PyRecordingView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+    fn filter_range_secs(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this check? If so, how can we accomplish it?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
@@ -958,8 +958,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_log_types::Timestamp::from_seconds_since_epoch(start);
-        let end = re_log_types::Timestamp::from_seconds_since_epoch(end);
+        let start = re_log_types::Timestamp::from_secs_since_epoch(start);
+        let end = re_log_types::Timestamp::from_secs_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 

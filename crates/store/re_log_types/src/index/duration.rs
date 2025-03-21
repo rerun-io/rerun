@@ -47,7 +47,7 @@ impl Duration {
     }
 
     /// Format as seconds, approximately.
-    pub fn format_seconds(self) -> String {
+    pub fn format_secs(self) -> String {
         let nanos = self.as_nanos();
         let secs = nanos as f64 * 1e-9;
 
@@ -70,55 +70,55 @@ impl Duration {
             self.0
         };
 
-        let whole_seconds = total_nanos / Self::NANOS_PER_SEC;
-        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_seconds;
+        let whole_secs = total_nanos / Self::NANOS_PER_SEC;
+        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_secs;
 
-        let mut seconds_remaining = whole_seconds;
+        let mut secs_remaining = whole_secs;
         let mut did_write = false;
 
-        let days = seconds_remaining / Self::SEC_PER_DAY;
+        let days = secs_remaining / Self::SEC_PER_DAY;
         if days > 0 {
             write!(f, "{days}d")?;
-            seconds_remaining -= days * Self::SEC_PER_DAY;
+            secs_remaining -= days * Self::SEC_PER_DAY;
             did_write = true;
         }
 
-        let hours = seconds_remaining / Self::SEC_PER_HOUR;
+        let hours = secs_remaining / Self::SEC_PER_HOUR;
         if hours > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{hours}h")?;
-            seconds_remaining -= hours * Self::SEC_PER_HOUR;
+            secs_remaining -= hours * Self::SEC_PER_HOUR;
             did_write = true;
         }
 
-        let minutes = seconds_remaining / Self::SEC_PER_MINUTE;
+        let minutes = secs_remaining / Self::SEC_PER_MINUTE;
         if minutes > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{minutes}m")?;
-            seconds_remaining -= minutes * Self::SEC_PER_MINUTE;
+            secs_remaining -= minutes * Self::SEC_PER_MINUTE;
             did_write = true;
         }
 
         const MAX_MILLISECOND_ACCURACY: bool = true;
         const MAX_MICROSECOND_ACCURACY: bool = true;
 
-        if seconds_remaining > 0 || nanos > 0 || !did_write {
+        if secs_remaining > 0 || nanos > 0 || !did_write {
             if did_write {
                 write!(f, " ")?;
             }
 
             if nanos == 0 {
-                write!(f, "{seconds_remaining}s")?;
+                write!(f, "{secs_remaining}s")?;
             } else if MAX_MILLISECOND_ACCURACY || nanos % 1_000_000 == 0 {
-                write!(f, "{}.{:03}s", seconds_remaining, nanos / 1_000_000)?;
+                write!(f, "{}.{:03}s", secs_remaining, nanos / 1_000_000)?;
             } else if MAX_MICROSECOND_ACCURACY || nanos % 1_000 == 0 {
-                write!(f, "{}.{:06}s", seconds_remaining, nanos / 1_000)?;
+                write!(f, "{}.{:06}s", secs_remaining, nanos / 1_000)?;
             } else {
-                write!(f, "{seconds_remaining}.{nanos:09}s")?;
+                write!(f, "{secs_remaining}.{nanos:09}s")?;
             }
         }
 
@@ -222,11 +222,11 @@ mod tests {
 
     #[test]
     fn test_formatting_duratuon() {
-        assert_eq!(&Duration::from_micros(42_000_000).format_seconds(), "+42s");
-        assert_eq!(&Duration::from_micros(69_000).format_seconds(), "+0.069s");
-        assert_eq!(&Duration::from_micros(69_900).format_seconds(), "+0.070s");
+        assert_eq!(&Duration::from_micros(42_000_000).format_secs(), "+42s");
+        assert_eq!(&Duration::from_micros(69_000).format_secs(), "+0.069s");
+        assert_eq!(&Duration::from_micros(69_900).format_secs(), "+0.070s");
         assert_eq!(
-            &Duration::from_micros(42_123_000_000).format_seconds(),
+            &Duration::from_micros(42_123_000_000).format_secs(),
             "+42 123s"
         );
     }

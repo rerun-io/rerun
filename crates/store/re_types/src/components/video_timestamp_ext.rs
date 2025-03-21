@@ -3,7 +3,7 @@ use super::VideoTimestamp;
 impl VideoTimestamp {
     /// Create new timestamp from seconds since video start.
     #[inline]
-    pub fn from_seconds(seconds: f64) -> Self {
+    pub fn from_secs(seconds: f64) -> Self {
         crate::datatypes::VideoTimestamp::from_nanos((seconds * 1e9).round() as i64).into()
     }
 

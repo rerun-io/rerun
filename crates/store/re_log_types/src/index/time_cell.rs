@@ -47,8 +47,8 @@ impl TimeCell {
 
     /// Create a timestamp from number of seconds since the unix epoch, 1970-01-01 00:00:00 UTC.
     #[inline]
-    pub fn from_timestamp_seconds_since_epoch(seconds_since_epoch: f64) -> Self {
-        Self::from_timestamp_nanos_since_epoch((1e9 * seconds_since_epoch).round() as i64)
+    pub fn from_timestamp_secs_since_epoch(secs_since_epoch: f64) -> Self {
+        Self::from_timestamp_nanos_since_epoch((1e9 * secs_since_epoch).round() as i64)
     }
 
     /// A timestamp of the current clock time.

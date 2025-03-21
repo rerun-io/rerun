@@ -176,7 +176,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             let y_green = 60.0;
             let time_point = TimePoint::default().with(
                 timeline,
-                TimeInt::from_seconds(i.try_into().expect("unexpected min value")),
+                TimeInt::from_secs(i.try_into().expect("unexpected min value")),
             );
 
             for y in [y_green, y_red] {
@@ -224,7 +224,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
 
     let mut time_ctrl = test_context.recording_config.time_ctrl.write();
     time_ctrl.set_timeline(timeline);
-    time_ctrl.set_time(TimeReal::from_seconds(4.5));
+    time_ctrl.set_time(TimeReal::from_secs(4.5));
 }
 
 #[test]

@@ -6,7 +6,7 @@ mod time;
 
 use std::{cmp::PartialOrd, fmt::Display};
 
-pub use time::{format_timestamp_seconds, next_grid_tick_magnitude_ns, parse_timestamp_seconds};
+pub use time::{format_timestamp_secs, next_grid_tick_magnitude_ns, parse_timestamp_secs};
 
 // --- Numbers ---
 

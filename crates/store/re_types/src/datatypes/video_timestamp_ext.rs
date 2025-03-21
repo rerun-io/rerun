@@ -15,7 +15,7 @@ impl VideoTimestamp {
 
     /// Returns the timestamp as seconds.
     #[inline]
-    pub fn as_seconds(self) -> f64 {
+    pub fn as_secs(self) -> f64 {
         self.0 as f64 / 1e9
     }
 }

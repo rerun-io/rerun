@@ -28,7 +28,7 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn from_seconds_since_epoch(secs: f64) -> Self {
+    pub fn from_secs_since_epoch(secs: f64) -> Self {
         Self::from_nanos_since_epoch((secs * 1e9).round() as _)
     }
 
