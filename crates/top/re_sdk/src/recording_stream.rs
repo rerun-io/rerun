@@ -15,9 +15,9 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    entity_path, ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand,
-    EntityPath, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt,
-    TimePoint, Timeline, TimelineName,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeCell, TimeInt, TimePoint, Timeline,
+    TimelineName,
 };
 use re_types::archetypes::RecordingProperties;
 use re_types::components::Timestamp;

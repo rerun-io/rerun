@@ -8,10 +8,24 @@ rec.spawn()
 # Overwrites the name from above.
 rec.send_recording_name("My recording")
 
-# Overwrites the start time from above.
-rec.send_recording_start_time_nanos(42)
+# Start time is set automatically, but we can overwrite it at any time.
+rec.send_recording_start_time_nanos(1742539110661000000)
 
+# Adds a user-defined property to the recording.
 rec.send_property(
     "camera_left",
-    rr.archetypes.Points3D([1.0, 0.1, 1.0]),
+    rr.archetypes.Points3D([[1.0, 0.1, 1.0]]),
 )
+
+# Adds another property, this time with user-defined data.
+rec.send_property(
+    "situation",
+    rr.AnyValues(
+        robot_serial_number=1337,
+        traffic="low",
+        weather="sunny",
+    ),
+)
+
+# Properties, including the name, can be overwritten at any time.
+rec.send_recording_name("My episode")

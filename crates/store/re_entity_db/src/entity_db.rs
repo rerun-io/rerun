@@ -143,7 +143,7 @@ impl EntityDb {
     pub fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
         self.latest_at_component::<C>(
             &EntityPath::recording_properties(),
-            &LatestAtQuery::latest(*Timeline::log_tick().name()),
+            &LatestAtQuery::latest(TimelineName::log_tick()),
         )
         .map(|(_, value)| value)
     }
