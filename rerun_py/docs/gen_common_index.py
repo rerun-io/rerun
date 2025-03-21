@@ -194,9 +194,9 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Plotting",
         class_list=[
             "archetypes.BarChart",
-            "archetypes.Scalar",
-            "archetypes.SeriesLine",
-            "archetypes.SeriesPoint",
+            "archetypes.Scalars",
+            "archetypes.SeriesLines",
+            "archetypes.SeriesPoints",
         ],
         gen_page=False,
     ),
