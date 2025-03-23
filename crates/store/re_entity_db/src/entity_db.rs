@@ -140,11 +140,10 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
-    pub fn property<C: re_types_core::Component>(&self) -> Option<C> {
+    pub fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
         self.latest_at_component::<C>(
-            &EntityPath::partition_properties(),
-            // TODO(grtlr): Does `log_time` make sense here?
-            &LatestAtQuery::latest(*Timeline::log_tick().name()),
+            &EntityPath::recording_properties(),
+            &LatestAtQuery::latest(TimelineName::log_tick()),
         )
         .map(|(_, value)| value)
     }
