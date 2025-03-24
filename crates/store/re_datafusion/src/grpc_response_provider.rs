@@ -16,7 +16,7 @@ use datafusion::{
 use futures::{ready, Stream};
 
 #[async_trait]
-pub trait GrpcResultToTable:
+pub trait GrpcResponseToTable:
     std::fmt::Debug + 'static + Send + Sync + Clone + std::marker::Unpin
 {
     type GrpcResponse;
@@ -32,12 +32,12 @@ pub trait GrpcResultToTable:
 }
 
 #[derive(Debug)]
-pub struct GrpcTableProvider<T: GrpcResultToTable> {
+pub struct GrpcResponseProvider<T: GrpcResponseToTable> {
     schema: SchemaRef,
     client: T,
 }
 
-impl<T: GrpcResultToTable> From<T> for GrpcTableProvider<T> {
+impl<T: GrpcResponseToTable> From<T> for GrpcResponseProvider<T> {
     fn from(client: T) -> Self {
         let schema = T::create_schema();
         Self { schema, client }
@@ -45,7 +45,7 @@ impl<T: GrpcResultToTable> From<T> for GrpcTableProvider<T> {
 }
 
 #[async_trait]
-impl<T: GrpcResultToTable> TableProvider for GrpcTableProvider<T> {
+impl<T: GrpcResponseToTable> TableProvider for GrpcResponseProvider<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -67,7 +67,7 @@ impl<T: GrpcResultToTable> TableProvider for GrpcTableProvider<T> {
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         StreamingTableExec::try_new(
             Arc::clone(&self.schema),
-            vec![Arc::new(GrpcTablePartitionStream::new(
+            vec![Arc::new(GrpcResponsePartitionStream::new(
                 &self.schema,
                 self.client.clone(),
             ))],
@@ -81,12 +81,12 @@ impl<T: GrpcResultToTable> TableProvider for GrpcTableProvider<T> {
 }
 
 #[derive(Debug)]
-pub struct GrpcTablePartitionStream<T: GrpcResultToTable> {
+pub struct GrpcResponsePartitionStream<T: GrpcResponseToTable> {
     schema: SchemaRef,
     client: T,
 }
 
-impl<T: GrpcResultToTable> GrpcTablePartitionStream<T> {
+impl<T: GrpcResponseToTable> GrpcResponsePartitionStream<T> {
     fn new(schema: &SchemaRef, client: T) -> Self {
         Self {
             schema: Arc::clone(schema),
@@ -95,27 +95,27 @@ impl<T: GrpcResultToTable> GrpcTablePartitionStream<T> {
     }
 }
 
-impl<T: GrpcResultToTable> PartitionStream for GrpcTablePartitionStream<T> {
+impl<T: GrpcResponseToTable> PartitionStream for GrpcResponsePartitionStream<T> {
     fn schema(&self) -> &SchemaRef {
         &self.schema
     }
 
     fn execute(&self, _ctx: Arc<TaskContext>) -> SendableRecordBatchStream {
-        Box::pin(GrpcTableStream::new(&self.schema, self.client.clone()))
+        Box::pin(GrpcResponseStream::new(&self.schema, self.client.clone()))
     }
 }
 
 type FutureGrpcResponse<T> =
     Pin<Box<dyn Future<Output = Result<tonic::Response<T>, tonic::Status>> + Send>>;
 
-pub struct GrpcTableStream<T: GrpcResultToTable> {
+pub struct GrpcResponseStream<T: GrpcResponseToTable> {
     schema: SchemaRef,
     client: T,
     is_complete: bool,
     response_future: Option<FutureGrpcResponse<T::GrpcResponse>>,
 }
 
-impl<T: GrpcResultToTable> GrpcTableStream<T> {
+impl<T: GrpcResponseToTable> GrpcResponseStream<T> {
     fn new(schema: &SchemaRef, client: T) -> Self {
         Self {
             is_complete: false,
@@ -126,13 +126,13 @@ impl<T: GrpcResultToTable> GrpcTableStream<T> {
     }
 }
 
-impl<T: GrpcResultToTable> RecordBatchStream for GrpcTableStream<T> {
+impl<T: GrpcResponseToTable> RecordBatchStream for GrpcResponseStream<T> {
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
 }
 
-impl<T: GrpcResultToTable> Stream for GrpcTableStream<T> {
+impl<T: GrpcResponseToTable> Stream for GrpcResponseStream<T> {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(
