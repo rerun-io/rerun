@@ -518,25 +518,54 @@ impl ResolvedEntityPathFilter {
         }
     }
 
-    /// Iterate over the raw expressions of the rules, displaying the raw unresolved expressions.
-    ///
-    /// Note that they are iterated in the order of the resolved rules in contrast to [`EntityPathFilter::iter_expressions`].
-    pub fn iter_unresolved_expressions(&self) -> impl Iterator<Item = String> + '_ {
+    fn iter_unresolved_expressions_impl(
+        &self,
+        with_properties: bool,
+    ) -> impl Iterator<Item = String> + '_ {
         // Do **not** call `unresolved()` because this would yield a different order!
 
-        self.rules.iter().map(|(filter, effect)| {
+        self.rules.iter().filter_map(move |(filter, effect)| {
+            if !with_properties
+                && filter.rule
+                    == EntityPathRule::including_entity_subtree(&EntityPath::properties())
+                && effect == &RuleEffect::Exclude
+            {
+                return None;
+            }
+
             let mut s = String::new();
             s.push_str(match effect {
                 RuleEffect::Include => "+ ",
                 RuleEffect::Exclude => "- ",
             });
             s.push_str(&filter.rule);
-            s
+            Some(s)
         })
+    }
+
+    /// Iterate over the raw expressions of the rules, displaying the raw unresolved expressions.
+    ///
+    /// Note that they are iterated in the order of the resolved rules in contrast to [`EntityPathFilter::iter_expressions`].
+    pub fn iter_unresolved_expressions(&self) -> impl Iterator<Item = String> + '_ {
+        self.iter_unresolved_expressions_impl(true)
+    }
+
+    /// Iterate over the raw expressions of the rules, displaying the raw unresolved expressions.
+    ///
+    /// Note that they are iterated in the order of the resolved rules in contrast to [`EntityPathFilter::iter_expressions`].
+    pub fn iter_unresolved_expressions_without_properties(
+        &self,
+    ) -> impl Iterator<Item = String> + '_ {
+        self.iter_unresolved_expressions_impl(false)
     }
 
     pub fn formatted(&self) -> String {
         self.iter_unresolved_expressions().join("\n")
+    }
+
+    pub fn formatted_without_properties(&self) -> String {
+        self.iter_unresolved_expressions_without_properties()
+            .join("\n")
     }
 
     /// Find the most specific matching rule and return its effect.
@@ -1218,6 +1247,30 @@ mod tests {
         assert_eq!(
             split_whitespace_smart(r"+ world/** - /world/points"),
             vec!["+ world/**", "- /world/points"]
+        );
+    }
+
+    #[test]
+    fn test_formatted() {
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /__properties/**
+        "#,
+        )
+        .resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(filter.formatted_without_properties(), "+ /**");
+
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        + /__properties/**
+        "#,
+        )
+        .resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            filter.formatted_without_properties(),
+            "+ /**\n+ /__properties/**"
         );
     }
 }
