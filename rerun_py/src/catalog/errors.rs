@@ -9,6 +9,9 @@
 //! - Don't hesitate to introduce new error classes if this could help the user catch specific
 //!   errors. Use the [`pyo3::create_exception`] macro for that and update [`super::register`] to
 //!   expose it.
+//!
+//! - Error type (either built-in such as [`pyo3::exceptions::PyValueError`] or custom) can always
+//!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
 use std::error::Error as _;
 
@@ -22,7 +25,10 @@ use re_grpc_client::redap::ConnectionError;
 // Custom exception classes.
 create_exception!(catalog, MissingGrpcFieldError, PyValueError);
 
-/// Private type meant as
+// ---
+
+/// Private error type to server as a bridge between various external error type and the
+/// [`to_py_err`] function.
 #[expect(clippy::enum_variant_names)] // this is by design
 enum Error {
     ConnectionError(ConnectionError),
@@ -49,6 +55,8 @@ impl From<re_uri::Error> for Error {
 }
 
 /// Global mapping of all our internal error to user-facing Python errors.
+///
+/// Use as `.map_err(to_py_err)?`.
 #[expect(private_bounds)] // this is by design
 pub fn to_py_err(err: impl Into<Error>) -> PyErr {
     match err.into() {
