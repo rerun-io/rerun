@@ -123,25 +123,23 @@ impl PyCatalogClient {
                 "No dataset handle in response",
             ))?;
 
-        Python::with_gil(|py| {
-            let entry_id = Py::new(
-                py,
-                entry_details
-                    .id
-                    .ok_or(MissingGrpcFieldError::new_err("No id in entry"))
-                    .map(PyEntryId::from)?,
-            )?;
+        let entry_id = Py::new(
+            py,
+            entry_details
+                .id
+                .ok_or(MissingGrpcFieldError::new_err("No id in entry"))
+                .map(PyEntryId::from)?,
+        )?;
 
-            let entry = PyEntry {
-                client: self_.clone_ref(py),
-                id: entry_id,
-                details: entry_details,
-            };
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: entry_details,
+        };
 
-            let dataset = PyDataset { dataset_handle };
+        let dataset = PyDataset { dataset_handle };
 
-            Py::new(py, (dataset, entry))
-        })
+        Py::new(py, (dataset, entry))
     }
 
     //TODO(#9360): `dataset_from_url()`

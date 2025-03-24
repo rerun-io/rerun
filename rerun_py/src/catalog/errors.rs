@@ -30,27 +30,51 @@ create_exception!(catalog, MissingGrpcFieldError, PyValueError);
 /// Private error type to server as a bridge between various external error type and the
 /// [`to_py_err`] function.
 #[expect(clippy::enum_variant_names)] // this is by design
-enum Error {
+enum ExternalError {
     ConnectionError(ConnectionError),
     TonicStatusError(tonic::Status),
     UriError(re_uri::Error),
 }
 
-impl From<ConnectionError> for Error {
+impl From<ConnectionError> for ExternalError {
     fn from(value: ConnectionError) -> Self {
         Self::ConnectionError(value)
     }
 }
 
-impl From<tonic::Status> for Error {
+impl From<tonic::Status> for ExternalError {
     fn from(value: tonic::Status) -> Self {
         Self::TonicStatusError(value)
     }
 }
 
-impl From<re_uri::Error> for Error {
+impl From<re_uri::Error> for ExternalError {
     fn from(value: re_uri::Error) -> Self {
         Self::UriError(value)
+    }
+}
+
+impl From<ExternalError> for PyErr {
+    fn from(err: ExternalError) -> Self {
+        match err {
+            ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
+
+            ExternalError::TonicStatusError(status) => {
+                let mut msg = format!(
+                    "tonic status error: {} (code: {}",
+                    status.message(),
+                    status.code()
+                );
+                if let Some(source) = status.source() {
+                    msg.push_str(&format!(", source: {source})"));
+                } else {
+                    msg.push(')');
+                }
+                PyConnectionError::new_err(msg)
+            }
+
+            ExternalError::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
+        }
     }
 }
 
@@ -58,24 +82,6 @@ impl From<re_uri::Error> for Error {
 ///
 /// Use as `.map_err(to_py_err)?`.
 #[expect(private_bounds)] // this is by design
-pub fn to_py_err(err: impl Into<Error>) -> PyErr {
-    match err.into() {
-        Error::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
-
-        Error::TonicStatusError(status) => {
-            let mut msg = format!(
-                "tonic status error: {} (code: {}",
-                status.message(),
-                status.code()
-            );
-            if let Some(source) = status.source() {
-                msg.push_str(&format!(", source: {source})"));
-            } else {
-                msg.push(')');
-            }
-            PyConnectionError::new_err(msg)
-        }
-
-        Error::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
-    }
+pub fn to_py_err(err: impl Into<ExternalError>) -> PyErr {
+    err.into().into()
 }
