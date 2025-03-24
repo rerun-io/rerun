@@ -1,0 +1,139 @@
+use std::{collections::HashMap, sync::Arc};
+
+use async_trait::async_trait;
+
+use arrow::{
+    array::RecordBatch,
+    datatypes::{DataType, Field, Fields, Schema, SchemaRef},
+};
+use datafusion::{
+    catalog::TableProvider,
+    error::{DataFusionError, Result as DataFusionResult},
+};
+use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_protos::manifest_registry::v1alpha1::{
+    manifest_registry_service_client::ManifestRegistryServiceClient, ListPartitionsRequest,
+    ListPartitionsResponse,
+};
+use tonic::transport::Channel;
+
+use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+
+#[derive(Debug, Clone)]
+pub struct PartitionListProvider {
+    client: ManifestRegistryServiceClient<Channel>,
+}
+
+impl PartitionListProvider {
+    pub fn new(conn: Channel) -> Self {
+        Self {
+            client: ManifestRegistryServiceClient::new(conn),
+        }
+    }
+
+    /// This is a convenience function
+    pub fn as_provider(self) -> Arc<dyn TableProvider> {
+        let provider: GrpcStreamProvider<PartitionListProvider> = self.into();
+
+        Arc::new(provider)
+    }
+}
+
+#[async_trait]
+impl GrpcStreamToTable for PartitionListProvider {
+    type GrpcStreamData = ListPartitionsResponse;
+
+    fn create_schema() -> SchemaRef {
+        Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new(
+                    "id",
+                    DataType::Struct(Fields::from([
+                        Arc::new(Field::new("time_ns", DataType::UInt64, true)),
+                        Arc::new(Field::new("inc", DataType::UInt64, true)),
+                    ])),
+                    true,
+                ),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("entry_type", DataType::Int32, true),
+                Field::new("created_at", DataType::Int64, true),
+                Field::new("updated_at", DataType::Int64, true),
+            ],
+            HashMap::default(),
+        ))
+    }
+
+    async fn send_streaming_request(
+        &mut self,
+    ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status> {
+        let request = ListPartitionsRequest {
+            entry: None,
+            scan_parameters: None,
+        };
+
+        self.client.list_partitions(request).await
+    }
+
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+    ) -> DataFusionResult<RecordBatch> {
+        response
+            .data
+            .ok_or(DataFusionError::Execution(
+                "DataFrame missing from PartitionList response".to_owned(),
+            ))?
+            .decode()
+            .map_err(|err| DataFusionError::External(Box::new(err)))
+
+        // let (id_time_ns, id_inc, name, entry_type, created_at, updated_at): (
+        //     Vec<_>,
+        //     Vec<_>,
+        //     Vec<_>,
+        //     Vec<_>,
+        //     Vec<_>,
+        //     Vec<_>,
+        // ) = multiunzip(response.data.entries.into_iter().map(|entry| {
+        //     (
+        //         entry.id.map(|id| id.time_ns),
+        //         entry.id.map(|id| id.inc),
+        //         entry.name,
+        //         entry.entry_type,
+        //         entry
+        //             .created_at
+        //             .map(|t| t.seconds * 1_000_000_000 + t.nanos as i64),
+        //         entry
+        //             .updated_at
+        //             .map(|t| t.seconds * 1_000_000_000 + t.nanos as i64),
+        //     )
+        // }));
+
+        // let id_time_ns: ArrayRef = Arc::new(UInt64Array::from(id_time_ns));
+        // let id_inc: ArrayRef = Arc::new(UInt64Array::from(id_inc));
+        // let name: ArrayRef = Arc::new(StringArray::from(name));
+        // let entry_type: ArrayRef = Arc::new(Int32Array::from(entry_type));
+        // let created_at: ArrayRef = Arc::new(Int64Array::from(created_at));
+        // let updated_at: ArrayRef = Arc::new(Int64Array::from(updated_at));
+
+        // let id: ArrayRef = Arc::new(StructArray::from(vec![
+        //     (
+        //         Arc::new(Field::new("time_ns", DataType::UInt64, true)),
+        //         id_time_ns,
+        //     ),
+        //     (Arc::new(Field::new("inc", DataType::UInt64, true)), id_inc),
+        // ]));
+
+        // let record_batch = match RecordBatch::try_from_iter(vec![
+        //     ("id", id),
+        //     ("name", name),
+        //     ("entry_type", entry_type),
+        //     ("created_at", created_at),
+        //     ("updated_at", updated_at),
+        // ]) {
+        //     Ok(rb) => rb,
+        //     Err(err) => return Poll::Ready(Some(Err(err.into()))),
+        // };
+
+        // Poll::Ready(Some(Ok(record_batch)))
+    }
+}

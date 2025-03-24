@@ -19,5 +19,11 @@ async fn main() -> anyhow::Result<()> {
 
     df.show().await?;
 
+    let _ = ctx.register_table("partition_list", df_connector.get_partition_list())?;
+
+    let df = ctx.table("redap_catalog").await?;
+
+    df.show().await?;
+
     Ok(())
 }
