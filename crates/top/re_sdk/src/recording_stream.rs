@@ -195,16 +195,12 @@ impl RecordingStreamBuilder {
     /// unique `RecordingId`s.
     ///
     /// The default is to use a random `RecordingId`.
-    ///
-    /// When explicitly setting a `RecordingId`, the initial chunk that contains the recording
-    /// properties will not be sent.
     #[inline]
     pub fn recording_id(mut self, recording_id: impl Into<String>) -> Self {
         self.store_id = Some(StoreId::from_string(
             StoreKind::Recording,
             recording_id.into(),
         ));
-        self.should_send_properties = false;
         self
     }
 
