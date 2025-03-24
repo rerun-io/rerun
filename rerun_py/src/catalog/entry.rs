@@ -132,4 +132,13 @@ impl PyEntry {
             .updated_at
             .and_then(|t| chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32))
     }
+
+    // ---
+
+    fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
+        let entry_id = self.id.borrow(py).id;
+        let mut connection = self.client.borrow_mut(py).connection().clone();
+
+        py.allow_threads(move || connection.delete_entry(entry_id))
+    }
 }

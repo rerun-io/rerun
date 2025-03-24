@@ -7,7 +7,7 @@ use pyo3::{create_exception, exceptions::PyRuntimeError, PyResult};
 use re_grpc_client::redap::catalog_client;
 use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
 use re_protos::catalog::v1alpha1::{
-    CreateDatasetEntryRequest, DatasetEntry, DeleteDatasetEntryRequest, EntryDetails, EntryFilter,
+    CreateDatasetEntryRequest, DatasetEntry, DeleteEntryRequest, EntryDetails, EntryFilter,
     ReadDatasetEntryRequest,
 };
 use re_tuid::Tuid;
@@ -58,6 +58,18 @@ impl ConnectionHandle {
         Ok(entries)
     }
 
+    pub fn delete_entry(&mut self, entry_id: Tuid) -> PyResult<()> {
+        let _response = wait_for_future(
+            py,
+            self.client.delete_entry(DeleteEntryRequest {
+                id: Some(entry_id.into()),
+            }),
+        )
+            .map_err(to_py_err)?;
+
+        Ok(())
+    }
+
     //TODO(ab): return nicer wrapper object over the gRPC message
     pub fn create_dataset(
         &mut self,
@@ -91,17 +103,5 @@ impl ConnectionHandle {
             .into_inner()
             .dataset
             .ok_or(PyRuntimeError::new_err("No dataset in response"))
-    }
-
-    pub fn delete_dataset(&mut self, py: Python<'_>, entry_id: Tuid) -> PyResult<()> {
-        let _response = wait_for_future(
-            py,
-            self.client.delete_dataset_entry(DeleteDatasetEntryRequest {
-                id: Some(entry_id.into()),
-            }),
-        )
-        .map_err(to_py_err)?;
-
-        Ok(())
     }
 }
