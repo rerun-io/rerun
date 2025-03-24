@@ -81,6 +81,18 @@ impl ViewContents {
     }
 }
 
+fn maybe_add_properties(
+    mut entity_path_filter: ResolvedEntityPathFilter,
+) -> ResolvedEntityPathFilter {
+    if !entity_path_filter.is_anything_in_subtree_included(&EntityPath::properties()) {
+        entity_path_filter.add_rule(
+            RuleEffect::Exclude,
+            ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
+        );
+    }
+    entity_path_filter
+}
+
 impl ViewContents {
     /// The prefix for entity override paths.
     ///
@@ -101,7 +113,7 @@ impl ViewContents {
         Self {
             view_id,
             view_class_identifier,
-            entity_path_filter,
+            entity_path_filter: maybe_add_properties(entity_path_filter),
             new_entity_path_filter,
         }
     }
@@ -157,7 +169,7 @@ impl ViewContents {
         Self {
             view_id,
             view_class_identifier,
-            entity_path_filter,
+            entity_path_filter: maybe_add_properties(entity_path_filter),
             new_entity_path_filter,
         }
     }
