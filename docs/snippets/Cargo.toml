@@ -28,7 +28,7 @@ itertools.workspace = true
 rust-format.workspace = true
 
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 # false positives because they aren't used until codegen is run:
 ignored = [
   "itertools",
