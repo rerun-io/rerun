@@ -1,6 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
-use std::{any::Any, collections::HashMap, pin::Pin, sync::Arc, task::Poll};
+use std::{any::Any, collections::HashMap, future::Future, pin::Pin, sync::Arc, task::Poll};
 
 use async_trait::async_trait;
 
@@ -39,49 +39,42 @@ impl DataFusionConnector {
 
 impl DataFusionConnector {
     pub fn get_datasets(&self) -> Arc<dyn TableProvider> {
-        let table_provider: DataSetTableProvider = self.catalog.clone().into();
+        let table_provider: DataSetTableProvider<CatalogServiceClient<Channel>> =
+            self.catalog.clone().into();
 
         Arc::new(table_provider)
     }
 }
 
+#[async_trait]
+trait GrpcTableProvider: std::fmt::Debug + 'static + Send + Sync + Clone + std::marker::Unpin {
+    type GrpcResponse;
+
+    fn create_schema() -> SchemaRef;
+
+    fn process_response(
+        &mut self,
+        response: Self::GrpcResponse,
+    ) -> std::task::Poll<Option<DataFusionResult<RecordBatch>>>;
+
+    async fn send_request(&mut self) -> Result<tonic::Response<Self::GrpcResponse>, tonic::Status>;
+}
+
 #[derive(Debug)]
-struct DataSetTableProvider {
+struct DataSetTableProvider<T: GrpcTableProvider> {
     schema: SchemaRef,
-    client: CatalogServiceClient<Channel>,
+    client: T,
 }
 
-impl DataSetTableProvider {
-    fn create_schema() -> SchemaRef {
-        Arc::new(Schema::new_with_metadata(
-            vec![
-                Field::new(
-                    "id",
-                    DataType::Struct(Fields::from([
-                        Arc::new(Field::new("time_ns", DataType::UInt64, true)),
-                        Arc::new(Field::new("inc", DataType::UInt64, true)),
-                    ])),
-                    true,
-                ),
-                Field::new("name", DataType::Utf8, true),
-                Field::new("entry_type", DataType::Int32, true),
-                Field::new("created_at", DataType::Int64, true),
-                Field::new("updated_at", DataType::Int64, true),
-            ],
-            HashMap::default(),
-        ))
-    }
-}
-
-impl From<CatalogServiceClient<Channel>> for DataSetTableProvider {
-    fn from(client: CatalogServiceClient<Channel>) -> Self {
-        let schema = Self::create_schema();
+impl<T: GrpcTableProvider> From<T> for DataSetTableProvider<T> {
+    fn from(client: T) -> Self {
+        let schema = T::create_schema();
         Self { schema, client }
     }
 }
 
 #[async_trait]
-impl TableProvider for DataSetTableProvider {
+impl<T: GrpcTableProvider> TableProvider for DataSetTableProvider<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -116,16 +109,16 @@ impl TableProvider for DataSetTableProvider {
     }
 }
 
-type FutureFindEntriesResponse = Result<tonic::Response<FindEntriesResponse>, tonic::Status>;
+type FutureGrpcResponse<T> = Result<tonic::Response<T>, tonic::Status>;
 
 #[derive(Debug)]
-struct DataSetPartitionStream {
+struct DataSetPartitionStream<T: GrpcTableProvider> {
     schema: SchemaRef,
-    client: CatalogServiceClient<Channel>,
+    client: T,
 }
 
-impl DataSetPartitionStream {
-    fn new(schema: &SchemaRef, client: CatalogServiceClient<Channel>) -> Self {
+impl<T: GrpcTableProvider> DataSetPartitionStream<T> {
+    fn new(schema: &SchemaRef, client: T) -> Self {
         Self {
             schema: Arc::clone(schema),
             client,
@@ -133,7 +126,7 @@ impl DataSetPartitionStream {
     }
 }
 
-impl PartitionStream for DataSetPartitionStream {
+impl<T: GrpcTableProvider> PartitionStream for DataSetPartitionStream<T> {
     fn schema(&self) -> &SchemaRef {
         &self.schema
     }
@@ -143,17 +136,17 @@ impl PartitionStream for DataSetPartitionStream {
     }
 }
 
-struct DataSetStream {
+struct DataSetStream<T: GrpcTableProvider> {
     schema: SchemaRef,
-    client: CatalogServiceClient<Channel>,
+    client: T,
     is_complete: bool,
 
     response_future:
-        Option<Pin<Box<dyn futures::Future<Output = FutureFindEntriesResponse> + Send>>>,
+        Option<Pin<Box<dyn Future<Output = FutureGrpcResponse<T::GrpcResponse>> + Send>>>,
 }
 
-impl DataSetStream {
-    fn new(schema: &SchemaRef, client: CatalogServiceClient<Channel>) -> Self {
+impl<T: GrpcTableProvider> DataSetStream<T> {
+    fn new(schema: &SchemaRef, client: T) -> Self {
         Self {
             is_complete: false,
             schema: Arc::clone(schema),
@@ -163,13 +156,13 @@ impl DataSetStream {
     }
 }
 
-impl RecordBatchStream for DataSetStream {
+impl<T: GrpcTableProvider> RecordBatchStream for DataSetStream<T> {
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
 }
 
-impl Stream for DataSetStream {
+impl<T: GrpcTableProvider> Stream for DataSetStream<T> {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(
@@ -184,17 +177,7 @@ impl Stream for DataSetStream {
         if this.response_future.is_none() {
             let mut client = this.client.clone();
 
-            let future = Box::pin(async move {
-                client
-                    .find_entries(tonic::Request::new(FindEntriesRequest {
-                        filter: Some(EntryFilter {
-                            id: None,
-                            name: None,
-                            entry_type: Some(EntryType::Dataset.into()),
-                        }),
-                    }))
-                    .await
-            });
+            let future = Box::pin(async move { client.send_request().await });
 
             this.response_future = Some(future);
         }
@@ -203,7 +186,7 @@ impl Stream for DataSetStream {
             Some(s) => s.as_mut(),
             None => {
                 return std::task::Poll::Ready(Some(Err(DataFusionError::Execution(
-                    "Unable to create Query Catalog request".to_owned(),
+                    "No grpc response received".to_owned(),
                 ))))
             }
         };
@@ -215,6 +198,55 @@ impl Stream for DataSetStream {
             }
         };
 
+        let result = T::process_response(&mut this.client, response);
+
+        if let Poll::Ready(Some(Ok(_))) = &result {
+            this.is_complete = true;
+        }
+
+        result
+    }
+}
+
+#[async_trait]
+impl GrpcTableProvider for CatalogServiceClient<Channel> {
+    type GrpcResponse = FindEntriesResponse;
+
+    fn create_schema() -> SchemaRef {
+        Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new(
+                    "id",
+                    DataType::Struct(Fields::from([
+                        Arc::new(Field::new("time_ns", DataType::UInt64, true)),
+                        Arc::new(Field::new("inc", DataType::UInt64, true)),
+                    ])),
+                    true,
+                ),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("entry_type", DataType::Int32, true),
+                Field::new("created_at", DataType::Int64, true),
+                Field::new("updated_at", DataType::Int64, true),
+            ],
+            HashMap::default(),
+        ))
+    }
+
+    async fn send_request(&mut self) -> Result<tonic::Response<Self::GrpcResponse>, tonic::Status> {
+        self.find_entries(tonic::Request::new(FindEntriesRequest {
+            filter: Some(EntryFilter {
+                id: None,
+                name: None,
+                entry_type: Some(EntryType::Dataset.into()),
+            }),
+        }))
+        .await
+    }
+
+    fn process_response(
+        &mut self,
+        response: Self::GrpcResponse,
+    ) -> std::task::Poll<Option<DataFusionResult<RecordBatch>>> {
         let (id_time_ns, id_inc, name, entry_type, created_at, updated_at): (
             Vec<_>,
             Vec<_>,
@@ -262,8 +294,6 @@ impl Stream for DataSetStream {
             Ok(rb) => rb,
             Err(err) => return Poll::Ready(Some(Err(err.into()))),
         };
-
-        this.is_complete = true;
 
         Poll::Ready(Some(Ok(record_batch)))
     }
