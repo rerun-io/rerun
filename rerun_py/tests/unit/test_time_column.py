@@ -23,6 +23,13 @@ def test_sequence_column(sequence: Iterable[int], expected: pa.Array) -> None:
 
 VALID_DURATION_CASES = [
     ([0, 1, 2, 3], pa.array([0, 1_000_000_000, 2_000_000_000, 3_000_000_000], type=pa.duration("ns"))),
+    (
+        np.arange(10, 15, 1.0),
+        pa.array(
+            [10_000_000_000, 11_000_000_000, 12_000_000_000, 13_000_000_000, 14_000_000_000],
+            type=pa.duration("ns"),
+        ),
+    ),
     ([0.0, 1.5, 2.25, 3.0], pa.array([0, 1_500_000_000, 2_250_000_000, 3_000_000_000], type=pa.duration("ns"))),
     (
         [
