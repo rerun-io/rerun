@@ -208,6 +208,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     make_default=true,
     make_thread_default=true,
     default_enabled=true,
+    send_properties=true,
 ))]
 fn new_recording(
     py: Python<'_>,
@@ -216,6 +217,7 @@ fn new_recording(
     make_default: bool,
     make_thread_default: bool,
     default_enabled: bool,
+    send_properties: bool,
 ) -> PyResult<PyRecordingStream> {
     let recording_id = if let Some(recording_id) = recording_id {
         StoreId::from_string(StoreKind::Recording, recording_id)
@@ -234,6 +236,7 @@ fn new_recording(
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
+        .send_properties(send_properties)
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 

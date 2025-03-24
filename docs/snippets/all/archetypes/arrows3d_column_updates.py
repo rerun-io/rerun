@@ -7,7 +7,7 @@ This is semantically equivalent to the `arrows3d_row_updates` example, albeit mu
 import numpy as np
 import rerun as rr
 
-rr.init("rerun_example_arrows3d_column_updates", spawn=True)
+rr.init("rerun_example_arrows3d_column_updates", spawn=True, send_properties=False)
 
 # Prepare a fixed sequence of arrows over 5 timesteps.
 # Origins stay constant, vectors change magnitude and direction, and each timestep has a unique color.

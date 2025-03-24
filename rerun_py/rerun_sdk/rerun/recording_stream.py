@@ -320,6 +320,7 @@ class RecordingStream:
         make_default: bool = False,
         make_thread_default: bool = False,
         default_enabled: bool = True,
+        send_properties: bool = True,
     ) -> None:
         """
         Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
@@ -379,6 +380,8 @@ class RecordingStream:
         default_enabled : bool
             Should Rerun logging be on by default?
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+        send_properties
+            If false (_not_ the default), the initial recording properties will not be sent to the viewer.
 
         Returns
         -------
@@ -406,6 +409,7 @@ class RecordingStream:
             make_default=make_default,
             make_thread_default=make_thread_default,
             default_enabled=default_enabled,
+            send_properties=send_properties,
         )
 
         self._prev: RecordingStream | None = None
