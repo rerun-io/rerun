@@ -7,7 +7,7 @@ pub struct RegisterPartitionsRequest {
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<super::super::manifest_registry::v1alpha1::Partition>,
     /// what to do if partition is already registered
-    /// TODO: why is this in manifest_registry??
+    /// TODO(cmc): why is this in manifest_registry??
     #[prost(
         enumeration = "super::super::manifest_registry::v1alpha1::IfDuplicateBehavior",
         tag = "3"
