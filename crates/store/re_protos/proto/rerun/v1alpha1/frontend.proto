@@ -9,8 +9,10 @@ import "rerun/v1alpha1/manifest_registry.proto";
 // TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
 // This is bad in the long term (breaking changes to the internal APIs should not result in breaking
 // changes to the public API and, in general, the two being coupled doesn't make much sense).
-// It's the very early days though, we know we're going to completely break all of this in the coming
-// weeks anyway.
+// It's the very early days though, and we're doing major breaking changes on a daily basis, so wasting
+// time on patching `From` implementations on a regular basis doesn't sound like a great use of time
+// at the moment.
+// We can revisit this as we start getting out of `v1alpha1`.
 
 // Redap's public API.
 service FrontendService {
