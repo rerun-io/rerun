@@ -14,7 +14,6 @@ service CatalogService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
-
 }
 
 // ---------------- Services ------------------
@@ -37,7 +36,6 @@ message DeleteEntryRequest {
 
 message DeleteEntryResponse {}
 
-
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
@@ -57,8 +55,6 @@ message ReadDatasetEntryRequest {
 message ReadDatasetEntryResponse {
   DatasetEntry dataset = 1;
 }
-
-
 
 // ---------------- Common ------------------
 
