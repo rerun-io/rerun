@@ -60,9 +60,6 @@ re_format.workspace = true
 re_types = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
-criterion.workspace = true
 insta.workspace = true
-mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
-tinyvec.workspace = true

@@ -85,11 +85,6 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
-re_chunk_store.workspace = true
-
-ndarray-rand.workspace = true
-ndarray.workspace = true
-rand.workspace = true
 similar-asserts.workspace = true
 
 

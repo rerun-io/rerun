@@ -5882,12 +5882,10 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytemuck",
- "criterion",
  "crossbeam",
  "document-features",
  "half",
  "itertools 0.14.0",
- "mimalloc",
  "nohash-hasher",
  "rand",
  "re_arrow_util",
@@ -5912,12 +5910,10 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "criterion",
  "document-features",
  "indent",
  "insta",
  "itertools 0.14.0",
- "mimalloc",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -5937,7 +5933,6 @@ dependencies = [
  "similar-asserts",
  "tap",
  "thiserror 1.0.65",
- "tinyvec",
  "web-time",
 ]
 
@@ -6030,7 +6025,6 @@ dependencies = [
  "rayon",
  "re_arrow_util",
  "re_build_info",
- "re_build_tools",
  "re_chunk",
  "re_crash_handler",
  "re_log",
@@ -6041,7 +6035,6 @@ dependencies = [
  "re_types",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 1.0.65",
  "uuid",
  "walkdir",
@@ -6078,7 +6071,6 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_plot",
- "image",
  "itertools 0.14.0",
  "nohash-hasher",
  "re_byte_size",
@@ -6125,7 +6117,6 @@ dependencies = [
  "similar-asserts",
  "tokio",
  "tokio-stream",
- "unindent",
 ]
 
 [[package]]
@@ -6161,14 +6152,11 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
- "criterion",
  "document-features",
  "emath",
  "itertools 0.14.0",
- "mimalloc",
  "nohash-hasher",
  "parking_lot",
- "rand",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -6312,7 +6300,6 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
- "serde_test",
  "similar-asserts",
  "thiserror 1.0.65",
  "tokio",
@@ -6422,7 +6409,6 @@ dependencies = [
  "re_tuid",
  "thiserror 1.0.65",
  "tonic",
- "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -6517,7 +6503,6 @@ dependencies = [
  "thiserror 1.0.65",
  "tokio-stream",
  "tonic",
- "tonic-web-wasm-client",
  "url",
 ]
 
@@ -6605,18 +6590,14 @@ dependencies = [
  "document-features",
  "itertools 0.14.0",
  "libc",
- "ndarray",
- "ndarray-rand",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
  "percent-encoding",
- "rand",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
  "re_chunk",
- "re_chunk_store",
  "re_data_loader",
  "re_grpc_client",
  "re_grpc_server",
@@ -7066,13 +7047,11 @@ dependencies = [
  "arrow",
  "bitflags 2.8.0",
  "bytemuck",
- "criterion",
  "egui",
  "glam",
  "hexasphere",
  "image",
  "itertools 0.14.0",
- "mimalloc",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -8293,15 +8272,6 @@ name = "serde_spanned"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87607cb1398ed59d48732e575a4c28a7a8ebf2454b964fe3f224f2afc07909e1"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_test"
-version = "1.0.177"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f901ee573cab6b3060453d2d5f0bae4e6d628c23c0a962ff9b5f1d7c8d4f1ed"
 dependencies = [
  "serde",
 ]
