@@ -74,13 +74,13 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
 
-                if let Some(name) = db.property::<components::Name>() {
+                if let Some(name) = db.recording_property::<components::Name>() {
                      ui.grid_left_hand_label("Name");
                      ui.label(name.to_string());
                      ui.end_row();
                 }
 
-                if let Some(started) = db.property::<components::Timestamp>() {
+                if let Some(started) = db.recording_property::<components::Timestamp>() {
                     ui.grid_left_hand_label("Created");
                     ui.label(Timestamp::from(started.0).format(ctx.app_options().timestamp_format));
                     ui.end_row();
@@ -91,7 +91,7 @@ impl crate::DataUi for EntityDb {
                 if let Ok(nanos_since_epoch) =
                     i64::try_from(latest_row_id.nanoseconds_since_epoch())
                 {
-                    let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
+                    let time = re_log_types::Timestamp::from_ns_since_epoch(nanos_since_epoch);
                     ui.grid_left_hand_label("Modified");
                     ui.label(time.format(ctx.app_options().timestamp_format));
                     ui.end_row();

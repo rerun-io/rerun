@@ -96,11 +96,12 @@ pub struct ResolvedEntityPathFilter {
 }
 
 impl ResolvedEntityPathFilter {
-    /// Creates an filter that matches [`EntityPath::partition_properties`].
+    /// Creates an filter that matches [`EntityPath::properties`].
     pub fn properties() -> Self {
+        // TODO(grtlr): Consider using `OnceCell` here to cache this.
         Self {
             rules: std::iter::once((
-                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
                 RuleEffect::Include,
             ))
             .collect(),
@@ -427,7 +428,7 @@ impl EntityPathFilter {
 
     /// Resolve variables & parse paths, ignoring any errors.
     ///
-    /// If there is no mention of [`EntityPath::partition_properties`] in the filter, it will be added.
+    /// If there is no mention of [`EntityPath::properties`] in the filter, it will be added.
     pub fn resolve_forgiving(&self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
         let mut seen_properties = false;
 
@@ -441,7 +442,7 @@ impl EntityPathFilter {
                 )
             })
             .inspect(|(ResolvedEntityPathRule { resolved_path, .. }, _)| {
-                if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                if resolved_path.starts_with(&EntityPath::properties()) {
                     seen_properties = true;
                 }
             })
@@ -449,7 +450,7 @@ impl EntityPathFilter {
 
         if !seen_properties {
             rules.insert(
-                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
                 RuleEffect::Exclude,
             );
         }
@@ -472,7 +473,7 @@ impl EntityPathFilter {
             })
             .inspect(|maybe_rule| {
                 if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule {
-                    if resolved_path.starts_with(&EntityPath::partition_properties()) {
+                    if resolved_path.starts_with(&EntityPath::properties()) {
                         seen_properties = true;
                     }
                 }
@@ -481,7 +482,7 @@ impl EntityPathFilter {
 
         if !seen_properties {
             rules.insert(
-                ResolvedEntityPathRule::including_subtree(&EntityPath::partition_properties()),
+                ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
                 RuleEffect::Exclude,
             );
         }
@@ -977,7 +978,7 @@ mod tests {
     fn test_entity_path_filter() {
         let subst_env = EntityPathSubs::empty();
 
-        let properties = format!("{}/**", EntityPath::partition_properties());
+        let properties = format!("{}/**", EntityPath::properties());
 
         let filter = EntityPathFilter::parse_forgiving(format!(
             r#"
@@ -1021,7 +1022,7 @@ mod tests {
         // We can't do in-place substitution.
         let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
 
-        let properties = format!("{}/**", EntityPath::partition_properties());
+        let properties = format!("{}/**", EntityPath::properties());
 
         let filter = EntityPathFilter::parse_forgiving(format!(
             r#"

@@ -159,14 +159,14 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
                 .with_name(format!("dynamic_{step}"))
         };
 
-        let (scalars_static, scalars_dymamic) = scalars_for_properties_test(step, multiple_scalars);
+        let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
         test_context.log_entity("entity_static_props".into(), |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
         });
         test_context.log_entity("entity_dynamic_props".into(), |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalars_dymamic)
+                .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
         });
     }
 
@@ -255,14 +255,14 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
                 .with_name(format!("dynamic_{step}"))
         };
 
-        let (scalars_static, scalars_dymamic) = scalars_for_properties_test(step, multiple_scalars);
+        let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
         test_context.log_entity("entity_static_props".into(), |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
         });
         test_context.log_entity("entity_dynamic_props".into(), |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalars_dymamic)
+                .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
         });
     }
 

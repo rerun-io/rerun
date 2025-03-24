@@ -65,7 +65,7 @@ pub struct UnregisterPartitionsRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partitions to remove
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// What to do if partition is not found
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfMissingBehavior",
@@ -142,7 +142,7 @@ pub struct CreatePartitionManifestsRequest {
     /// Create manifest for specific partitions. All will be
     /// created if left unspecified (empty list)
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Define what happens if create is called multiple times for the same
     /// Dataset / partitions
     #[prost(enumeration = "IfDuplicateBehavior", tag = "3")]
@@ -181,7 +181,7 @@ pub struct QueryDatasetRequest {
     /// Client can specify what partitions are queried. If left unspecified (empty list),
     /// all partitions will be queried.
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
@@ -290,7 +290,7 @@ pub struct FetchPartitionRequest {
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
     /// Partition for which we want to get chunks
     #[prost(message, optional, tag = "2")]
-    pub partition_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub partition_id: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
 }
 impl ::prost::Name for FetchPartitionRequest {
     const NAME: &'static str = "FetchPartitionRequest";
@@ -326,7 +326,7 @@ pub struct GetChunksRequest {
     /// Client can specify from which partitions to get chunks. If left unspecified (empty list),
     /// data from all partition (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Client can specify chunk ids to include. If left unspecified (empty list),
     /// all chunks (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "3")]
@@ -368,7 +368,7 @@ pub struct CreatePartitionIndexesRequest {
     /// List of specific partitions that will be indexes.
     /// All partitions will be indexed if left unspecified (empty list)
     #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// what kind of index do we want to create and what are
     /// its index specific properties
     #[prost(message, optional, tag = "3")]

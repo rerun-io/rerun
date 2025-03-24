@@ -6,7 +6,6 @@ use re_log_types::{
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
 
-use crate::Callbacks;
 use crate::NeedsRepaint;
 
 /// The time range we are currently zoomed in on.
@@ -184,6 +183,40 @@ impl Default for TimeControl {
     }
 }
 
+pub struct TimeControlResponse {
+    pub needs_repaint: NeedsRepaint,
+
+    /// Set if play state changed.
+    ///
+    /// * `Some(true)` if playing changed to `true`
+    /// * `Some(false)` if playing changed to `false`
+    /// * `None` if playing did not change
+    pub playing_change: Option<bool>,
+
+    /// Set if timeline changed.
+    ///
+    /// Contains the timeline name and the current time.
+    pub timeline_change: Option<(Timeline, TimeReal)>,
+
+    /// Set if the time changed.
+    pub time_change: Option<TimeReal>,
+}
+
+impl TimeControlResponse {
+    fn no_repaint() -> Self {
+        Self::new(NeedsRepaint::No)
+    }
+
+    fn new(needs_repaint: NeedsRepaint) -> Self {
+        Self {
+            needs_repaint,
+            playing_change: None,
+            timeline_change: None,
+            time_change: None,
+        }
+    }
+}
+
 impl TimeControl {
     /// Move the time forward (if playing), and perhaps pause if we've reached the end.
     #[must_use]
@@ -192,12 +225,11 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
-        callbacks: Option<&Callbacks>,
-    ) -> NeedsRepaint {
+    ) -> TimeControlResponse {
         self.select_a_valid_timeline(times_per_timeline);
 
         let Some(full_range) = self.full_range(times_per_timeline) else {
-            return NeedsRepaint::No; // we have no data on this timeline yet, so bail
+            return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
         };
 
         let needs_repaint = match self.play_state() {
@@ -229,10 +261,10 @@ impl TimeControl {
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
-                        return NeedsRepaint::No; // ui will wake up when more data arrives
+                        return TimeControlResponse::no_repaint(); // ui will wake up when more data arrives
                     } else {
                         self.pause();
-                        return NeedsRepaint::No;
+                        return TimeControlResponse::no_repaint();
                     }
                 }
 
@@ -277,22 +309,22 @@ impl TimeControl {
             }
         };
 
-        if let Some(callbacks) = callbacks {
-            self.handle_callbacks(callbacks);
-        }
+        let mut response = TimeControlResponse::new(needs_repaint);
 
-        needs_repaint
+        self.diff_last_frame(&mut response);
+
+        response
     }
 
     /// Handle updating last frame state and trigger callbacks on changes.
-    pub fn handle_callbacks(&mut self, callbacks: &Callbacks) {
+    fn diff_last_frame(&mut self, response: &mut TimeControlResponse) {
         if self.last_frame.playing != self.playing {
             self.last_frame.playing = self.playing;
 
             if self.playing {
-                (callbacks.on_play)();
+                response.playing_change = Some(true);
             } else {
-                (callbacks.on_pause)();
+                response.playing_change = Some(false);
             }
         }
 
@@ -303,7 +335,7 @@ impl TimeControl {
                 .time_for_timeline(*self.timeline.name())
                 .unwrap_or(TimeReal::MIN);
 
-            (callbacks.on_timeline_change)(*self.timeline, time);
+            response.timeline_change = Some((*self.timeline, time));
         }
 
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
@@ -311,7 +343,7 @@ impl TimeControl {
             if state.prev.time != state.current.time {
                 state.prev.time = state.current.time;
 
-                (callbacks.on_time_update)(state.current.time);
+                response.time_change = Some(state.current.time);
             }
         }
     }

@@ -241,7 +241,7 @@ Let's add our custom timeline:
 for i in 0..400 {
     let time = i as f32 * 0.01;
 
-    rec.set_time("stable_time", duration=time as f64);
+    rec.set_duration_secs("stable_time", time);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
@@ -280,7 +280,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, add this at the beginning of the main function:
 
 ```rust
-rec.set_time("stable_time", duration=0f64);
+rec.set_duration_secs("stable_time", 0.0);
 ```
 
 <picture>

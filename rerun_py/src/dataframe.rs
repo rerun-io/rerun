@@ -958,8 +958,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_sdk::Time::from_seconds_since_epoch(start);
-        let end = re_sdk::Time::from_seconds_since_epoch(end);
+        let start = re_log_types::Timestamp::from_seconds_since_epoch(start);
+        let end = re_log_types::Timestamp::from_seconds_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 
@@ -1010,8 +1010,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_sdk::Time::from_ns_since_epoch(start);
-        let end = re_sdk::Time::from_ns_since_epoch(end);
+        let start = re_log_types::Timestamp::from_ns_since_epoch(start);
+        let end = re_log_types::Timestamp::from_ns_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 

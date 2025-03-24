@@ -26,6 +26,8 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+[package.metadata.cargo-shear]
+ignored = ["strum"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -108,6 +110,7 @@ egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
 ehttp.workspace = true
+glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 parking_lot.workspace = true
