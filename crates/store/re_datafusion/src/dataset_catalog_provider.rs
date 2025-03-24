@@ -14,10 +14,10 @@ use re_protos::catalog::v1alpha1::{
 };
 use tonic::transport::Channel;
 
-use crate::grpc_table_provider::GrpcResultToTable;
+use crate::grpc_response_provider::GrpcResponseToTable;
 
 #[async_trait]
-impl GrpcResultToTable for CatalogServiceClient<Channel> {
+impl GrpcResponseToTable for CatalogServiceClient<Channel> {
     type GrpcResponse = FindEntriesResponse;
 
     fn create_schema() -> SchemaRef {
