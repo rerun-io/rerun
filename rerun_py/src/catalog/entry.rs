@@ -14,8 +14,6 @@ pub struct PyEntryId {
     pub id: Tuid,
 }
 
-//TODO(ab): __str__ + properties
-
 #[pymethods]
 impl PyEntryId {
     #[new]
@@ -115,6 +113,7 @@ impl PyEntry {
 
     #[getter]
     pub fn entry_type(&self) -> PyResult<PyEntryType> {
+        //TODO(ab): make this less annoying thanks to a wrapper over grpc messages.
         EntryType::try_from(self.details.entry_type)
             .map_err(|err| PyTypeError::new_err(format!("cannot deserialize EntryType: {err}")))?
             .try_into()
@@ -133,6 +132,4 @@ impl PyEntry {
             .updated_at
             .and_then(|t| chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32))
     }
-
-    //TODO(ab): delete() (need delete entry grpc)
 }

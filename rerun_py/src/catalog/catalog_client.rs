@@ -3,7 +3,9 @@ use pyo3::{pyclass, pymethods, Py, PyResult, Python};
 
 use re_protos::catalog::v1alpha1::{DatasetEntry, EntryDetails, EntryFilter};
 
-use crate::catalog::{ConnectionHandle, PyDataset, PyEntry, PyEntryId};
+use crate::catalog::{
+    to_py_err, ConnectionHandle, MissingGrpcFieldError, PyDataset, PyEntry, PyEntryId,
+};
 
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
@@ -22,10 +24,10 @@ impl PyCatalogClient {
 
 #[pymethods]
 impl PyCatalogClient {
+    /// Create a new catalog client object.
     #[new]
     fn new(addr: String) -> PyResult<Self> {
-        let origin = re_uri::Origin::try_from(addr.as_str())
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        let origin = re_uri::Origin::try_from(addr.as_str()).map_err(to_py_err)?;
 
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -80,11 +82,11 @@ impl PyCatalogClient {
 
         let details = dataset_entry
             .details
-            .ok_or(PyRuntimeError::new_err("No details in entry"))?;
+            .ok_or(MissingGrpcFieldError::new_err("No details in entry"))?;
 
         let dataset_handle = dataset_entry
             .dataset_handle
-            .ok_or(PyRuntimeError::new_err("No dataset handle in entry"))?;
+            .ok_or(MissingGrpcFieldError::new_err("No dataset handle in entry"))?;
 
         let entry = PyEntry {
             client,
@@ -97,7 +99,7 @@ impl PyCatalogClient {
         Py::new(py, (dataset, entry))
     }
 
-    //TODO: `datasets` (needs FindDatasetsEntry)
+    //TODO(#9369): `datasets()` (needs FindDatasetsEntries rpc)
 
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow_mut(py).connection.clone();
@@ -115,18 +117,20 @@ impl PyCatalogClient {
         //TODO(ab): proper error management + wrapping in helper objects
         let entry_details = response
             .details
-            .ok_or(PyRuntimeError::new_err("No details in response"))?;
+            .ok_or(MissingGrpcFieldError::new_err("No details in response"))?;
 
         let dataset_handle = response
             .dataset_handle
-            .ok_or(PyRuntimeError::new_err("No dataset handle in response"))?;
+            .ok_or(MissingGrpcFieldError::new_err(
+                "No dataset handle in response",
+            ))?;
 
         Python::with_gil(|py| {
             let entry_id = Py::new(
                 py,
                 entry_details
                     .id
-                    .ok_or(PyRuntimeError::new_err("No id in entry"))
+                    .ok_or(MissingGrpcFieldError::new_err("No id in entry"))
                     .map(PyEntryId::from)?,
             )?;
 
@@ -142,5 +146,5 @@ impl PyCatalogClient {
         })
     }
 
-    //TODO: dataset from url
+    //TODO(#9360): `dataset_from_url()`
 }
