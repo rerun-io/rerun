@@ -163,8 +163,8 @@ impl<T: GrpcResponseToTable> Stream for GrpcResponseStream<T> {
 
         let response = match ready!(response.poll(cx)) {
             Ok(r) => r.into_inner(),
-            Err(e) => {
-                return std::task::Poll::Ready(Some(Err(DataFusionError::External(Box::new(e)))))
+            Err(err) => {
+                return std::task::Poll::Ready(Some(Err(DataFusionError::External(Box::new(err)))))
             }
         };
 
