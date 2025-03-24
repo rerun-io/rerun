@@ -167,9 +167,9 @@ impl<T: GrpcStreamToTable> Stream for GrpcStream<T> {
 
             let stream = match ready!(response.poll(cx)) {
                 Ok(r) => r.into_inner(),
-                Err(e) => {
+                Err(err) => {
                     return std::task::Poll::Ready(Some(Err(DataFusionError::External(Box::new(
-                        e,
+                        err,
                     )))))
                 }
             };
@@ -186,7 +186,7 @@ impl<T: GrpcStreamToTable> Stream for GrpcStream<T> {
                                 .process_response(result)
                                 .map_err(|err| tonic::Status::internal(err.to_string()))
                         })
-                        .map_err(|e| DataFusionError::External(Box::new(e)))
+                        .map_err(|err| DataFusionError::External(Box::new(err)))
                 });
 
                 stream.poll_next_unpin(cx)

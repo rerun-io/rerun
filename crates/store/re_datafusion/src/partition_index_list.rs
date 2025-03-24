@@ -15,8 +15,8 @@ use re_log_types::external::re_tuid::Tuid;
 use re_protos::{
     common::v1alpha1::DatasetHandle,
     manifest_registry::v1alpha1::{
-        manifest_registry_service_client::ManifestRegistryServiceClient, ListPartitionsRequest,
-        ListPartitionsResponse,
+        manifest_registry_service_client::ManifestRegistryServiceClient,
+        ListPartitionIndexesRequest, ListPartitionIndexesResponse,
     },
 };
 use tonic::transport::Channel;
@@ -24,12 +24,12 @@ use tonic::transport::Channel;
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
-pub struct PartitionListProvider {
+pub struct PartitionIndexListProvider {
     client: ManifestRegistryServiceClient<Channel>,
     tuid: Tuid,
 }
 
-impl PartitionListProvider {
+impl PartitionIndexListProvider {
     pub fn new(conn: Channel, tuid: Tuid) -> Self {
         Self {
             client: ManifestRegistryServiceClient::new(conn),
@@ -46,8 +46,8 @@ impl PartitionListProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for PartitionListProvider {
-    type GrpcStreamData = ListPartitionsResponse;
+impl GrpcStreamToTable for PartitionIndexListProvider {
+    type GrpcStreamData = ListPartitionIndexesResponse;
 
     fn create_schema() -> SchemaRef {
         Arc::new(Schema::new_with_metadata(
@@ -72,7 +72,7 @@ impl GrpcStreamToTable for PartitionListProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status> {
-        let request = ListPartitionsRequest {
+        let request = ListPartitionIndexesRequest {
             entry: Some(DatasetHandle {
                 entry_id: Some(self.tuid.into()),
                 dataset_url: Some("file:///tmp/unknown_location.rrd".to_owned()),
@@ -80,7 +80,7 @@ impl GrpcStreamToTable for PartitionListProvider {
             scan_parameters: None,
         };
 
-        self.client.list_partitions(request).await
+        self.client.list_partition_indexes(request).await
     }
 
     fn process_response(
