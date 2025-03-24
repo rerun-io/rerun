@@ -1,6 +1,5 @@
 use datafusion::prelude::SessionContext;
 use re_datafusion::DataFusionConnector;
-use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -9,9 +8,8 @@ async fn main() -> anyhow::Result<()> {
     let conn = tonic::transport::Endpoint::new(format!("http://{local_addr}"))?
         .connect()
         .await?;
-    let client = CatalogServiceClient::new(conn);
 
-    let df_connector = DataFusionConnector::new(client);
+    let df_connector = DataFusionConnector::new(&conn);
 
     let ctx = SessionContext::default();
 
