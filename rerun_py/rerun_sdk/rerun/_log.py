@@ -53,7 +53,7 @@ class IndicatorComponentBatch:
 
 @catch_and_log_exceptions()
 def log(
-    entity_path: str | list[str],
+    entity_path: str | list[object],
     entity: AsComponents | Iterable[DescribedComponentBatch],
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
@@ -121,7 +121,7 @@ def log(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -172,7 +172,7 @@ def log(
 
 
 def _log_components(
-    entity_path: str | list[str],
+    entity_path: str | list[object],
     components: list[DescribedComponentBatch],
     *,
     static: bool = False,
@@ -206,7 +206,7 @@ def _log_components(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -286,7 +286,7 @@ def log_file_from_path(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -340,7 +340,7 @@ def log_file_from_contents(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,

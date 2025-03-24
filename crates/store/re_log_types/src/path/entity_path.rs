@@ -112,6 +112,21 @@ impl EntityPath {
         Self::from(vec![])
     }
 
+    /// The reserved namespace for properties.
+    #[inline]
+    pub fn properties() -> Self {
+        Self::from(vec![EntityPathPart::properties()])
+    }
+
+    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
+    #[inline]
+    pub fn recording_properties() -> Self {
+        Self::from(vec![
+            EntityPathPart::properties(),
+            EntityPathPart::recording(),
+        ])
+    }
+
     #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
@@ -547,6 +562,24 @@ impl std::fmt::Display for EntityPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_root() {
+        assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
+
+    #[test]
+    fn test_properties() {
+        assert_eq!(EntityPath::properties(), EntityPath::from("/__properties"),);
+    }
+
+    #[test]
+    fn test_recording_properties() {
+        assert_eq!(
+            EntityPath::recording_properties(),
+            EntityPath::from("/__properties/recording"),
+        );
+    }
 
     #[test]
     fn test_incremental_walk() {

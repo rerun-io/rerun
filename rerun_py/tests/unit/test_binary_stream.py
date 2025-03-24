@@ -61,10 +61,12 @@ def test_binary_stream() -> None:
             with open(f"{tmpdir}/output_{name}.rrd", "a+b") as f:
                 f.write(data)
 
-        subprocess.run(
-            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
-            check=True,
+        process = subprocess.run(
+            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"], capture_output=True
         )
+        if process.returncode != 0:
+            print(process.stderr.decode("utf-8"))
+            raise Exception("Rerun failed")
 
     # Restore the previous value of RERUN_FLUSH_NUM_ROWS
     if prev_flush_num_rows is not None:

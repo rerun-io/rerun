@@ -58,9 +58,7 @@ pub fn open_recording(
             store_id,
             store_source,
             store_version,
-
             cloned_from: _,
-            started: _,
         } = store_info;
 
         let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");

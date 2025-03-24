@@ -10,7 +10,7 @@ import rerun as rr
 rr.init("rerun_example_image_row_updates", spawn=True)
 
 for t in range(20):
-    rr.set_index("time", sequence=t)
+    rr.set_time("time", sequence=t)
 
     image = np.zeros((200, 300, 3), dtype=np.uint8)
     image[:, :, 2] = 255

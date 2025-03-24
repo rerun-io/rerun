@@ -18,6 +18,7 @@ ND = "ND"       # np.NDArray
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
 trak = "trak"   # mp4 crate spelling
+typ = "typ"     # We cannot write "type" in rust
 
 # Use the more common spelling
 adaptor = "adapter"

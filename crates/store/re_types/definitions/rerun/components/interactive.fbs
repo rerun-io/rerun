@@ -1,12 +1,10 @@
-namespace rerun.blueprint.components;
-
-// ---
+namespace rerun.components;
 
 /// Whether the entity can be interacted with.
 ///
 /// Non interactive components are still visible, but mouse interactions in the view are disabled.
 struct Interactive (
-    "attr.rerun.scope": "blueprint",
+    "attr.docs.unreleased",
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"

@@ -2,20 +2,21 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use ahash::HashMap;
+use egui::Context;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-
-use re_chunk::{Chunk, ChunkBuilder};
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
-use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
     StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
+use re_chunk::{Chunk, ChunkBuilder};
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
+use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
+use re_types_core::reflection::Reflection;
+use re_ui::Help;
 
 pub trait HarnessExt {
     /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
@@ -117,6 +118,11 @@ impl Default for TestContext {
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+
+        recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(Timeline::log_tick());
 
         Self {
             recording_store,
@@ -486,6 +492,23 @@ impl TestContext {
             if !handled {
                 eprintln!("Ignored system command: {command_name:?}",);
             }
+        }
+    }
+
+    pub fn test_help_view(help: impl Fn(&Context) -> Help) {
+        use egui::os::OperatingSystem;
+        for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
+            let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
+                ui.ctx().set_os(os);
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+                help(ui.ctx()).ui(ui);
+            });
+            let help_view = help(&harness.ctx);
+            let name = format!("help_view_{}_{os:?}", help_view.title())
+                .replace(' ', "_")
+                .to_lowercase();
+            harness.fit_contents();
+            harness.snapshot(&name);
         }
     }
 }

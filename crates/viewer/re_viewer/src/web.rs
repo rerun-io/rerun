@@ -4,6 +4,7 @@
 
 use ahash::HashMap;
 use serde::Deserialize;
+use std::rc::Rc;
 use std::str::FromStr as _;
 use wasm_bindgen::prelude::*;
 
@@ -13,7 +14,9 @@ use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender a
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
+use crate::web_tools::{
+    string_from_js_value, url_to_receiver, Callback, JsResultExt as _, StringOrStringArray,
+};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -574,7 +577,7 @@ pub struct AppOptions {
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
-    timeline: Option<TimelineOptions>,
+    callbacks: Option<Callbacks>,
     fullscreen: Option<FullscreenOptions>,
     enable_history: Option<bool>,
 
@@ -582,9 +585,16 @@ pub struct AppOptions {
     persist: Option<bool>,
 }
 
-// Keep in sync with the `TimelineOptions` interface in `rerun_js/web-viewer/index.ts`
+// Keep in sync with `index.ts`.
 #[derive(Clone, Deserialize)]
-pub struct TimelineOptions {
+pub struct Callbacks {
+    /// Fired when the selection changes.
+    ///
+    /// This event is fired each time any part of the event payload changes,
+    /// this includes for example clicking on different parts of the same
+    /// entity in a 2D or 3D view.
+    pub on_selectionchange: Callback,
+
     /// Fired when the a different timeline is selected.
     pub on_timelinechange: Callback,
 
@@ -646,7 +656,7 @@ fn create_app(
         video_decoder,
         hide_welcome_screen,
         panel_state_overrides,
-        timeline,
+        callbacks,
         fullscreen,
         enable_history,
 
@@ -676,7 +686,48 @@ fn create_app(
         force_wgpu_backend: render_backend.clone(),
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
-        timeline_options: timeline.clone(),
+
+        callbacks: callbacks.clone().map(|opts| crate::Callbacks {
+            on_selection_change: Rc::new(move |selection| {
+                // Express the collection as a flat list of items.
+                let array = js_sys::Array::new_with_length(selection.len() as u32);
+                for (i, item) in selection.into_iter().enumerate() {
+                    let Some(value) = serde_wasm_bindgen::to_value(&item)
+                        .map_err(|v| v.into())
+                        .ok_or_log_js_error()
+                    else {
+                        continue;
+                    };
+                    array.set(i as u32, value);
+                }
+                opts.on_selectionchange.call1(&array).ok_or_log_js_error();
+            }),
+
+            on_timeline_change: Rc::new(move |timeline, time| {
+                if let Err(err) = opts.on_timelinechange.call2(
+                    &JsValue::from_str(timeline.name().as_str()),
+                    &JsValue::from_f64(time.as_f64()),
+                ) {
+                    re_log::error!("{}", string_from_js_value(err));
+                };
+            }),
+            on_time_update: Rc::new(move |time| {
+                if let Err(err) = opts.on_timeupdate.call1(&JsValue::from_f64(time.as_f64())) {
+                    re_log::error!("{}", string_from_js_value(err));
+                }
+            }),
+            on_play: Rc::new(move || {
+                if let Err(err) = opts.on_play.call0() {
+                    re_log::error!("{}", string_from_js_value(err));
+                }
+            }),
+            on_pause: Rc::new(move || {
+                if let Err(err) = opts.on_pause.call0() {
+                    re_log::error!("{}", string_from_js_value(err));
+                }
+            }),
+        }),
+
         fullscreen_options: fullscreen.clone(),
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 

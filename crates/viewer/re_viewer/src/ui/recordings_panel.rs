@@ -4,6 +4,7 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_types::components::Timestamp;
 use re_ui::{icons, UiExt as _};
 use re_viewer_context::{
     Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
@@ -59,8 +60,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         let string = match source.as_ref() {
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::RedapGrpcStream { url } => format!("Loading {url}…"),
+            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
+            SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
@@ -162,7 +163,7 @@ fn app_and_its_recordings_ui(
     app_id: &ApplicationId,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+    entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);

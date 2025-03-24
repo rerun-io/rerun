@@ -2,7 +2,10 @@
 title = "IMU signals"
 tags = ["Plots"]
 description = "Log multi dimensional signals under a single entity."
+thumbnail = "https://static.rerun.io/imu_signals/64f773d238a0456a0f233abeea7e521cfb871b67/480w.jpg"
 thumbnail_dimensions = [480, 480]
+channel = "main"
+build_args = ["--seconds=10"]
 -->
 
 This example demonstrates how to log multi dimensional signals with the Rerun SDK, using the [TUM VI Benchmark](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset).
@@ -31,7 +34,7 @@ imu_data = pd.read_csv(
     comment="#",
 )
 
-times = rr.IndexColumn("timestamp", datetime=imu_data["timestamp"])
+times = rr.TimeColumn("timestamp", timestamp=imu_data["timestamp"])
 
 # Extract gyroscope data (x, y, z axes) and log it to a single entity.
 gyro = imu_data[["gyro.x", "gyro.y", "gyro.z"]]
@@ -55,3 +58,11 @@ To experiment with the provided example, simply execute the main Python script:
 ```bash
 python -m imu_signals
 ```
+
+## Attribution
+
+This example uses a scene from the **TUM VI Benchmark dataset**, originally provided by [Technical University of Munich (TUM)](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset).
+The dataset is licensed under **Creative Commons Attribution 4.0 (CC BY 4.0)**.
+
+- Original dataset: [TUM VI Benchmark](https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset)
+- License details: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)

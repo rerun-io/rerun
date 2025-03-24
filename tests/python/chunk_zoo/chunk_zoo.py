@@ -15,18 +15,18 @@ import numpy as np
 import rerun as rr
 
 
-def frame_times(t: int | Sequence[int], *args: int) -> list[rr.IndexColumn]:
+def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeColumn]:
     if isinstance(t, int):
         t = [t]
     else:
         t = list(t)
     if args:
         t.extend(args)
-    return [rr.IndexColumn("frame", sequence=t)]
+    return [rr.TimeColumn("frame", sequence=t)]
 
 
 def set_frame_time(t: int) -> None:
-    rr.set_index("frame", sequence=t)
+    rr.set_time("frame", sequence=t)
 
 
 def specimen_two_rows_span_two_chunks() -> None:

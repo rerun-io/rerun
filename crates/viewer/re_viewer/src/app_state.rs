@@ -11,9 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry,
-    ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
+    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _,
+    ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -157,7 +157,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+        callbacks: Option<&crate::callback::Callbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -207,7 +207,7 @@ impl AppState {
             return;
         }
 
-        selection_state.on_frame_start(
+        let selection_change = selection_state.on_frame_start(
             |item| {
                 if let re_viewer_context::Item::StoreId(store_id) = item {
                     if store_id.is_empty_recording() {
@@ -221,6 +221,12 @@ impl AppState {
                 store_context.recording.store_id().clone(),
             )),
         );
+
+        if let SelectionChange::SelectionChanged(selection) = selection_change {
+            if let Some(callbacks) = callbacks {
+                callbacks.on_selection_change(selection, &viewport_ui.blueprint);
+            }
+        }
 
         // The root container cannot be dragged.
         let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
@@ -260,7 +266,6 @@ impl AppState {
                             store_context,
                             view_class_registry,
                             &blueprint_query,
-                            view.id,
                             &visualizable_entities,
                         ),
                     )
@@ -302,7 +307,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx, timeline_callbacks);
+        move_time(&ctx, recording, rx, callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -645,7 +650,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+    callbacks: Option<&crate::callback::Callbacks>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -656,20 +661,26 @@ fn move_time(
         false
     };
 
-    let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+    let recording_time_ctrl_response = ctx.rec_cfg.time_ctrl.write().update(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        timeline_callbacks,
     );
 
+    handle_time_ctrl_callbacks(callbacks, &recording_time_ctrl_response);
+
+    let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
+
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
-        ctx.blueprint_cfg.time_ctrl.write().update(
-            ctx.store_context.blueprint.times_per_timeline(),
-            dt,
-            more_data_is_coming,
-            None,
-        )
+        ctx.blueprint_cfg
+            .time_ctrl
+            .write()
+            .update(
+                ctx.store_context.blueprint.times_per_timeline(),
+                dt,
+                more_data_is_coming,
+            )
+            .needs_repaint
     } else {
         re_viewer_context::NeedsRepaint::No
     };
@@ -678,6 +689,31 @@ fn move_time(
         || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
     {
         ctx.egui_ctx().request_repaint();
+    }
+}
+
+fn handle_time_ctrl_callbacks(
+    callbacks: Option<&crate::callback::Callbacks>,
+    response: &re_viewer_context::TimeControlResponse,
+) {
+    let Some(callbacks) = callbacks else {
+        return;
+    };
+
+    if let Some(playing) = response.playing_change {
+        if playing {
+            callbacks.on_play();
+        } else {
+            callbacks.on_pause();
+        }
+    }
+
+    if let Some((timeline, time)) = response.timeline_change {
+        callbacks.on_timeline_change(timeline, time);
+    }
+
+    if let Some(time) = response.time_change {
+        callbacks.on_time_update(time);
     }
 }
 

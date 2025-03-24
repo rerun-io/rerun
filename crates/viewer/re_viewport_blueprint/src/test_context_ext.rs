@@ -96,7 +96,6 @@ impl TestContextExt for TestContext {
                                 ctx.store_context,
                                 ctx.view_class_registry(),
                                 ctx.blueprint_query,
-                                *view_id,
                                 &visualizable_entities,
                             );
 

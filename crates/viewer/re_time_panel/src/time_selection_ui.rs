@@ -164,7 +164,7 @@ fn initial_time_selection(
             let range = &segment.tight_time;
             if range.min() < range.max() {
                 match time_type {
-                    TimeType::Time => {
+                    TimeType::DurationNs | TimeType::TimestampNs => {
                         let seconds = Duration::from(range.max() - range.min()).as_secs_f64();
                         if seconds > min_duration {
                             let one_sec =
@@ -350,7 +350,7 @@ fn paint_range_text(
 /// Human-readable description of a duration
 fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     match time_typ {
-        TimeType::Time => Duration::from(duration).to_string(),
+        TimeType::DurationNs | TimeType::TimestampNs => Duration::from(duration).to_string(),
         TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
     }
 }

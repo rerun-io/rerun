@@ -17,7 +17,7 @@ use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::sink::CallbackSink;
-use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, IndexCell};
+use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
@@ -177,6 +177,11 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
+
+    // properties
+    m.add_function(wrap_pyfunction!(new_property_entity_path, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording_name, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording_start_time_nanos, m)?)?;
 
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
@@ -808,7 +813,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
             let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
-            let bytes = PyBytes::new_bound(py, &data);
+            let bytes = PyBytes::new(py, &data);
             callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
         });
@@ -876,7 +881,7 @@ impl PyMemorySinkStorage {
 
             concat_bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
@@ -906,7 +911,7 @@ impl PyMemorySinkStorage {
 
             bytes
         })
-        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
@@ -925,7 +930,7 @@ impl PyBinarySinkStorage {
     #[pyo3(signature = (*, flush = true))]
     fn read<'p>(&self, flush: bool, py: Python<'p>) -> Bound<'p, PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        PyBytes::new_bound(
+        PyBytes::new(
             py,
             py.allow_threads(|| {
                 if flush {
@@ -1054,7 +1059,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_sequence(sequence));
+    recording.set_time(timeline, TimeCell::from_sequence(sequence));
 }
 
 /// Set the current duration for this thread in nanoseconds.
@@ -1064,7 +1069,7 @@ fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyReco
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_duration_nanos(nanos));
+    recording.set_time(timeline, TimeCell::from_duration_nanos(nanos));
 }
 
 /// Set the current time for this thread in nanoseconds.
@@ -1078,7 +1083,7 @@ fn set_time_timestamp_nanos_since_epoch(
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.set_index(timeline, IndexCell::from_timestamp_nanos_since_epoch(nanos));
+    recording.set_time(timeline, TimeCell::from_timestamp_nanos_since_epoch(nanos));
 }
 
 /// Clear time information for the specified timeline on this thread.
@@ -1367,6 +1372,48 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
     Ok(path.to_string())
 }
 
+// --- Properties ---
+
+/// Create a property entity path.
+#[pyfunction]
+fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
+    let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
+    let path = EntityPath::from(
+        parts?
+            .into_iter()
+            .map(|part| EntityPathPart::from(part.borrow()))
+            .collect_vec(),
+    );
+    Ok(EntityPath::properties().join(&path).to_string())
+}
+
+/// Send the name of the recording.
+#[pyfunction]
+#[pyo3(signature = (name, recording=None))]
+fn send_recording_name(name: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+    recording
+        .send_recording_name(name)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Send the start time of the recording.
+#[pyfunction]
+#[pyo3(signature = (nanos, recording=None))]
+fn send_recording_start_time_nanos(
+    nanos: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+    recording
+        .send_recording_start_time(nanos)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
 // --- Helpers ---
 
 fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
@@ -1419,10 +1466,10 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
 }
 
 fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
-    let locals = PyDict::new_bound(py);
+    let locals = PyDict::new(py);
 
-    py.run_bound(
-        r#"
+    py.run(
+        cr#"
 import multiprocessing
 # authkey is the same for child and parent processes, so this is how we know we're the same
 authkey = multiprocessing.current_process().authkey

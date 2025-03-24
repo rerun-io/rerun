@@ -7,6 +7,7 @@ use re_ui::Help;
 use re_ui::UiExt as _;
 use re_view::suggest_view_for_each_entity;
 
+use re_viewer_context::external::re_log_types::ResolvedEntityPathFilter;
 use re_viewer_context::Item;
 use re_viewer_context::{
     external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
@@ -61,7 +62,7 @@ impl ViewClass for TextDocumentView {
         &re_ui::icons::VIEW_TEXT
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text document view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
             .markdown("Supports raw text and markdown.")
@@ -105,10 +106,14 @@ impl ViewClass for TextDocumentView {
         Ok(())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, suggested_filter)
     }
 
     fn ui(
@@ -198,4 +203,9 @@ fn text_document_ui(
             text_document.text_entries.len()
         ));
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
 }

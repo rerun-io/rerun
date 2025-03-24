@@ -140,7 +140,7 @@ rec.log(entity_name,
 void Viewer::Plot(std::string plot_name, double value, unsigned long maxkeyframe_id)
 {
     // …
-    rec.set_index("max_keyframe_id", sequence=maxkeyframe_id);
+    rec.set_time_sequence("max_keyframe_id", maxkeyframe_id);
     rec.log(plot_name, rerun::Scalar(value));
 }
 ```

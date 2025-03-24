@@ -37,9 +37,8 @@ use re_byte_size::SizeBytes;
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
     index::{
-        Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
-        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TryFromIntError,
+        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
+        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -357,11 +356,6 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    pub started: Time,
-
     pub store_source: StoreSource,
 
     /// The Rerun version used to encoded the RRD data.
@@ -626,7 +620,7 @@ impl std::fmt::Display for StoreSource {
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {
     (
         Timeline::log_time(),
         TimeInt::new_temporal(log_time.nanos_since_epoch()),
@@ -638,7 +632,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        TimeInt::saturated_nonstatic(frame_nr),
+        TimeInt::saturated_temporal(frame_nr),
     )
 }
 
@@ -716,7 +710,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            started: _,
             store_source,
             store_version,
         } = self;

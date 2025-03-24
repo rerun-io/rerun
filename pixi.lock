@@ -2574,6 +2574,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -2955,6 +2956,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -3326,6 +3328,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -3751,6 +3754,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -4085,6 +4089,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -4416,6 +4421,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -7395,6 +7401,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -7869,6 +7876,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -8321,6 +8329,7 @@ environments:
       - pypi: examples/python/graph_lattice
       - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -11407,10 +11416,10 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
-  - dataclasses ; python_full_version < '3.7'
-  - backports-datetime-fromisoformat ; python_full_version < '3.7'
   - grpclib
   - stringcase
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
   - black ; extra == 'compiler'
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
@@ -11605,12 +11614,12 @@ packages:
 - pypi: examples/python/blueprint_stocks
   name: blueprint-stocks
   version: 0.1.0
-  sha256: 7c8b6805f08610837014175d9d0212815a91c3197756cdbbce836a2f15e40eea
+  sha256: 931c90b4c05a2f881a1c68dcb9a84887e1a185ff0fc9d366fd7e5e60e1738b50
   requires_dist:
   - humanize
   - rerun-sdk
   - yfinance
-  requires_python: '>=3.8'
+  requires_python: '>=3.9'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/buf-1.50.0-ha8f183a_0.conda
   sha256: 6c0d6daaf3afc0ef8e57cdc3528cc4cafdc71fc6e1293cef60694065a760eedb
@@ -15379,6 +15388,18 @@ packages:
   - importlib-resources>=1.3 ; python_full_version < '3.9' and extra == 'test'
   - pytest-mypy ; extra == 'type'
   requires_python: '>=3.8'
+- pypi: examples/python/imu_signals
+  name: imu-signals
+  version: 0.1.0
+  sha256: 75508db835c17913b995958c786a75cff8b309fee80913fc343992fb0c7a79c2
+  requires_dist:
+  - numpy
+  - requests>=2.31,<3
+  - rerun-sdk
+  - pandas
+  - tqdm
+  requires_python: <3.12
+  editable: true
 - pypi: examples/python/incremental_logging
   name: incremental-logging
   version: 0.1.0
@@ -21972,11 +21993,11 @@ packages:
   - isort ; extra == 'dev'
   - autoflake ; extra == 'dev'
   - twine>=1.13.0 ; extra == 'dev'
-  - twine>=1.13.0 ; extra == 'release'
   - pytest ; extra == 'test'
   - black ; extra == 'test'
   - isort ; extra == 'test'
   - autoflake ; extra == 'test'
+  - twine>=1.13.0 ; extra == 'release'
   requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/80/b6/4ee320d7c313da3774eff225875eb278f7e6bb26a9cd8e680b8dbc38fdea/mkdocstrings-0.26.2-py3-none-any.whl
   name: mkdocstrings
@@ -25171,9 +25192,9 @@ packages:
   version: 1.16.2
   sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
   requires_dist:
-  - dataclasses ; python_full_version == '3.6.*'
   - dataclasses-json>=0.0.25
   - deprecated
+  - dataclasses ; python_full_version == '3.6.*'
   requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl
   name: pygments
@@ -26011,7 +26032,7 @@ packages:
 - pypi: rerun_py
   name: rerun-sdk
   version: 0.23.0a1+dev
-  sha256: 71b678331f64040e2ae0bd8ffe91328213f3b5f3c45a2d3fce30fc04fe882fe8
+  sha256: 84f92827c50721fde5b07431c4a9c3f6cc27d0ea1c8b43251e4997761c1fcefd
   requires_dist:
   - attrs>=23.1.0
   - numpy>=1.23

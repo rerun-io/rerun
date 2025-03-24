@@ -18,10 +18,10 @@ rr.log("scatter/lcg", rr.SeriesPoint(), static=True)
 
 # Log the data on a timeline called "step".
 for t in range(int(tau * 2 * 100.0)):
-    rr.set_index("step", sequence=t)
+    rr.set_time("step", sequence=t)
 
     rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
     rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
 
     lcg_state = (1140671485 * lcg_state + 128201163) % 16777216  # simple linear congruency generator
-    rr.log("scatter/lcg", rr.Scalar(lcg_state))
+    rr.log("scatter/lcg", rr.Scalar(lcg_state.astype(np.float64)))

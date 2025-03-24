@@ -114,3 +114,19 @@ viewer.stop();
 This action also removes the canvas from the page.
 
 You can `start` and `stop` the same `WebViewer` instance multiple times.
+
+### Callbacks
+
+The Viewer API also allows registering callbacks for certain events.
+
+For example, here is how you would react to entities being selected in the Viewer:
+```js
+viewer.on("selectionchange", (items) => {
+  for (const item of items) {
+    if (item.kind === "entity") {
+      console.log(item.entity_path);
+    }
+  }
+});
+```
+

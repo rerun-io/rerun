@@ -8,7 +8,7 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use comfy_table::{presets, Cell, Row, Table};
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_tuid::Tuid;
@@ -218,7 +218,7 @@ pub struct RecordBatchFormatOpts {
     ///
     /// This is particularly useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
     ///
-    /// Setting this to `true` will also disable all per-column metadata.
+    /// Setting this to `true` will also disable all per-column metadata (`include_column_metadata=false`).
     pub transposed: bool,
 
     /// If specified, displays the dataframe with the given fixed width.
@@ -228,6 +228,9 @@ pub struct RecordBatchFormatOpts {
 
     /// If `true`, displays the dataframe's metadata too.
     pub include_metadata: bool,
+
+    /// If `true`, displays the individual columns' metadata too.
+    pub include_column_metadata: bool,
 }
 
 impl Default for RecordBatchFormatOpts {
@@ -236,6 +239,7 @@ impl Default for RecordBatchFormatOpts {
             transposed: false,
             width: None,
             include_metadata: true,
+            include_column_metadata: true,
         }
     }
 }
@@ -274,6 +278,7 @@ pub fn format_record_batch_with_width(
             transposed: false,
             width,
             include_metadata: true,
+            include_column_metadata: true,
         },
     )
 }
@@ -288,6 +293,7 @@ fn format_dataframe_with_metadata(
         transposed: _,
         width,
         include_metadata,
+        include_column_metadata: _,
     } = opts;
 
     let (num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
@@ -337,6 +343,7 @@ fn format_dataframe_without_metadata(
         transposed,
         width,
         include_metadata: _,
+        include_column_metadata,
     } = opts;
 
     let mut table = Table::new();
@@ -411,25 +418,33 @@ fn format_dataframe_without_metadata(
 
         columns.first().map_or(0, |list_array| list_array.len())
     } else {
-        let header = fields.iter().map(|field| {
-            if field.metadata().is_empty() {
-                Cell::new(format!(
-                    "{}\n---\ntype: \"{}\"", // NOLINT
-                    trim_name(field.name()),
-                    DisplayDatatype(field.data_type()),
-                ))
-            } else {
-                Cell::new(format!(
-                    "{}\n---\ntype: \"{}\"\n{}", // NOLINT
-                    trim_name(field.name()),
-                    DisplayDatatype(field.data_type()),
-                    DisplayMetadata {
-                        prefix: "",
-                        metadata: field.metadata().clone().into_iter().collect()
-                    },
-                ))
-            }
-        });
+        let header = if include_column_metadata {
+            Either::Left(fields.iter().map(|field| {
+                if field.metadata().is_empty() {
+                    Cell::new(format!(
+                        "{}\n---\ntype: \"{}\"", // NOLINT
+                        trim_name(field.name()),
+                        DisplayDatatype(field.data_type()),
+                    ))
+                } else {
+                    Cell::new(format!(
+                        "{}\n---\ntype: \"{}\"\n{}", // NOLINT
+                        trim_name(field.name()),
+                        DisplayDatatype(field.data_type()),
+                        DisplayMetadata {
+                            prefix: "",
+                            metadata: field.metadata().clone().into_iter().collect()
+                        },
+                    ))
+                }
+            }))
+        } else {
+            Either::Right(
+                fields
+                    .iter()
+                    .map(|field| Cell::new(trim_name(field.name()).to_owned())),
+            )
+        };
 
         table.set_header(header);
 

@@ -68,6 +68,7 @@ exclude_path = [
   "scripts/screenshot_compare/assets/templates/",
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "crates/utils/re_uri/src/lib.rs",                # Contains some malformed URLs, but they are not actual links.
+  "docs/snippets/INDEX.md",                        # The snippet index is guaranteed should be correct by design.
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -149,18 +150,11 @@ exclude = [
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://pyo3.rs',                                                # Temporarily down, should remove this again once it is up again.
+  'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
 
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://anaconda.org/conda-forge/arrow-cpp',
 
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
-
-  # Snippets that haven't been released yet.
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.cpp",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
 ]

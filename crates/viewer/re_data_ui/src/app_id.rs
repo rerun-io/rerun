@@ -2,6 +2,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
+use re_types::components::Timestamp;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
@@ -40,7 +41,7 @@ impl crate::DataUi for ApplicationId {
             .bundle
             .recordings()
             .filter(|db| db.app_id() == Some(self))
-            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
+            .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
             .collect();
 
         // Using the same content ui also for tooltips even if it can't be interacted with.

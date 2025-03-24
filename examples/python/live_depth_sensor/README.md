@@ -67,7 +67,7 @@ rr.log(
 )
 ```
 ```python
-rr.set_index("frame_nr", sequence=frame_nr)
+rr.set_time("frame_nr", sequence=frame_nr)
 rr.log("realsense/rgb/image", rr.Image(color_image))
 ```
 
@@ -87,7 +87,7 @@ rr.log(
 )
 ```
 ```python
-rr.set_index("frame_nr", sequence=frame_nr)
+rr.set_time("frame_nr", sequence=frame_nr)
 rr.log("realsense/depth/image", rr.DepthImage(depth_image, meter=1.0 / depth_units))
 ```
 

@@ -236,11 +236,9 @@ impl DataSource {
                     endpoint.origin
                 );
 
-                let url = endpoint.to_string();
-
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
@@ -256,12 +254,16 @@ impl DataSource {
                 });
 
                 spawn_future(async move {
-                    if let Err(err) =
-                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_cmd, on_msg)
-                            .await
+                    if let Err(err) = re_grpc_client::redap::stream_recording_async(
+                        tx,
+                        endpoint.clone(),
+                        on_cmd,
+                        on_msg,
+                    )
+                    .await
                     {
                         re_log::warn!(
-                            "Error while streaming {url}: {}",
+                            "Error while streaming {endpoint}: {}",
                             re_error::format_ref(&err)
                         );
                     }

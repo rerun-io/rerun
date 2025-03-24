@@ -1,10 +1,10 @@
 use egui::ahash::{HashMap, HashSet};
-
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeInt, TimestampFormat};
+use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
     archetypes::{SeriesLine, SeriesPoint},
     blueprint::{
@@ -15,26 +15,27 @@ use re_types::{
     datatypes::TimeRange,
     ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText, MouseButtonText, UiExt as _};
-use re_view::controls::{
-    ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-    ZOOM_SCROLL_MODIFIER,
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
+use re_view::{
+    controls::{
+        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
+        ZOOM_SCROLL_MODIFIER,
+    },
+    view_property_ui,
 };
-use re_view::{controls, view_property_ui};
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
+    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
+    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
-use smallvec::SmallVec;
 
-use crate::line_visualizer_system::SeriesLineSystem;
-use crate::point_visualizer_system::SeriesPointSystem;
-use crate::PlotSeriesKind;
+use crate::{
+    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
+    PlotSeriesKind,
+};
 
 // ---
 
@@ -64,6 +65,9 @@ pub struct TimeSeriesViewState {
     /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
     /// forwarded to the default providers.
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+
+    /// Whether to reset the plot bounds next frame.
+    reset_bounds_next_frame: bool,
 }
 
 impl Default for TimeSeriesViewState {
@@ -71,10 +75,16 @@ impl Default for TimeSeriesViewState {
         Self {
             is_dragging_time_cursor: false,
             was_dragging_time_cursor: false,
-            saved_auto_bounds: Default::default(),
+            saved_auto_bounds: egui::Vec2b {
+                // Default x bounds to automatically show all time values.
+                x: true,
+                // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+                y: false,
+            },
             scalar_range: [0.0, 0.0].into(),
             time_offset: 0,
             default_names_for_entities: Default::default(),
+            reset_bounds_next_frame: false,
         }
     }
 }
@@ -107,29 +117,21 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                icon_text!(
-                    ModifiersText(ASPECT_SCROLL_MODIFIER, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
             .control(
                 "Move time cursor",
@@ -144,9 +146,7 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    ModifiersText(egui::Modifiers::ALT, egui_ctx),
-                    "+",
-                    icons::LEFT_MOUSE_CLICK,
+                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend"
                 ),
             )
@@ -199,7 +199,11 @@ impl ViewClass for TimeSeriesView {
         Ok(())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
@@ -224,6 +228,15 @@ impl ViewClass for TimeSeriesView {
             indicated_entities
                 .0
                 .extend(maybe_visualizable.iter().cloned());
+        }
+
+        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        let indicated_entities = indicated_entities;
+        if indicated_entities
+            .iter()
+            .all(|e| suggested_filter.matches(e))
+        {
+            return ViewSpawnHeuristics::default();
         }
 
         if indicated_entities.0.is_empty() {
@@ -376,12 +389,13 @@ impl ViewClass for TimeSeriesView {
 
         // …then use that as an offset to avoid nasty precision issues with
         // large times (nanos since epoch does not fit into a f64).
-        let time_offset = if timeline.typ() == TimeType::Time {
-            // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
-            // we need to round to a whole day:
-            round_ns_to_start_of_day(min_time)
-        } else {
-            min_time
+        let time_offset = match timeline.typ() {
+            TimeType::Sequence => min_time,
+            TimeType::TimestampNs | TimeType::DurationNs => {
+                // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
+                // we need to round to a whole day:
+                round_ns_to_start_of_day(min_time)
+            }
         };
         state.time_offset = time_offset;
 
@@ -406,14 +420,14 @@ impl ViewClass for TimeSeriesView {
 
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
-            .auto_bounds([true, false]) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+            .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
-                format_time(
+                re_log_types::TimeCell::new(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
-                    timestamp_format,
                 )
+                .format_compact(timestamp_format)
             })
             .y_axis_formatter(move |mark, _| format_y_axis(mark))
             .label_formatter(move |name, value| {
@@ -439,13 +453,15 @@ impl ViewClass for TimeSeriesView {
             plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 
-        if timeline.typ() == TimeType::Time {
-            let canvas_size = ui.available_size();
-            plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+        match timeline.typ() {
+            TimeType::Sequence => {}
+            TimeType::DurationNs | TimeType::TimestampNs => {
+                let canvas_size = ui.available_size();
+                plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+            }
         }
 
-        let mut is_resetting = false;
-
+        let mut plot_double_clicked = false;
         let egui_plot::PlotResponse {
             inner: _,
             response,
@@ -462,19 +478,13 @@ impl ViewClass for TimeSeriesView {
                 time_ctrl_write.pause();
             }
 
-            is_resetting = plot_ui.response().double_clicked();
+            plot_double_clicked = plot_ui.response().double_clicked();
 
             let current_bounds = plot_ui.plot_bounds();
             plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
                 [current_bounds.min()[0], y_range.start()],
                 [current_bounds.max()[0], y_range.end()],
             ));
-
-            let current_auto = plot_ui.auto_bounds();
-            plot_ui.set_auto_bounds([
-                current_auto[0] || is_resetting,
-                is_resetting && !y_zoom_lock,
-            ]);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -489,12 +499,20 @@ impl ViewClass for TimeSeriesView {
                 if !state.was_dragging_time_cursor {
                     state.saved_auto_bounds = plot_ui.auto_bounds();
                 }
-                // Freeze any change to the plot boundaries to avoid weird interaction with the time
-                // cursor.
-                plot_ui.set_plot_bounds(plot_ui.plot_bounds());
+                // Freeze any change to the plot boundaries to avoid weird interaction with the time cursor.
+                plot_ui.set_auto_bounds([false, false]);
             } else if state.was_dragging_time_cursor {
                 plot_ui.set_auto_bounds(state.saved_auto_bounds);
+            } else {
+                plot_ui.set_auto_bounds([
+                    // X bounds are handled by egui plot - either to auto or manually controlled.
+                    plot_ui.auto_bounds()[0] || state.reset_bounds_next_frame,
+                    // Y bounds are always handled by the blueprint.
+                    false,
+                ]);
             }
+
+            state.reset_bounds_next_frame = false;
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
 
             add_series_to_plot(
@@ -506,12 +524,39 @@ impl ViewClass for TimeSeriesView {
             );
         });
 
+        // Interact with the plot items (lines, scatters, etc.)
+        let hovered_data_result = hovered_plot_item
+            .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
+            .map(|instance_path| {
+                let mut instance_path = instance_path.clone();
+                if response.double_clicked() {
+                    // Select entire entity on double-click:
+                    instance_path.instance = re_log_types::Instance::ALL;
+                }
+                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+            });
+        if let Some(hovered) = hovered_data_result.clone().or_else(|| {
+            if response.hovered() {
+                Some(re_viewer_context::Item::View(query.view_id))
+            } else {
+                None
+            }
+        }) {
+            ctx.handle_select_hover_drag_interactions(&response, hovered, false);
+        }
+
+        // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
+        let is_resetting = plot_double_clicked && hovered_data_result.is_none();
+
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
             scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            state.reset_bounds_next_frame = true;
+            ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
             scalar_axis.save_blueprint_component(ctx, &new_y_range);
+            ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
         }
 
         // Decide if the time cursor should be displayed, and if so where:
@@ -522,25 +567,6 @@ impl ViewClass for TimeSeriesView {
                 transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
             })
             .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
-
-        // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
-        if !is_resetting {
-            if let Some(hovered) = hovered_plot_item
-                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
-                .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone())
-                })
-                .or_else(|| {
-                    if response.hovered() {
-                        Some(re_viewer_context::Item::View(query.view_id))
-                    } else {
-                        None
-                    }
-                })
-            {
-                ctx.handle_select_hover_drag_interactions(&response, hovered, false);
-            }
-        }
 
         // Sync visibility of hidden items with the blueprint (user can hide items via the legend).
         update_series_visibility_overrides_from_plot(
@@ -737,15 +763,6 @@ fn add_series_to_plot(
     }
 }
 
-fn format_time(time_type: TimeType, time_int: i64, timestamp_format: TimestampFormat) -> String {
-    if time_type == TimeType::Time {
-        let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        time.format_time_compact(timestamp_format)
-    } else {
-        time_type.format(TimeInt::new_temporal(time_int), timestamp_format)
-    }
-}
-
 fn format_y_axis(mark: egui_plot::GridMark) -> String {
     // Example: If the step to the next tick is `0.01`, we should use 2 decimals of precision:
     let num_decimals = -mark.step_size.log10().round() as usize;
@@ -854,3 +871,8 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
 }
 
 re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}

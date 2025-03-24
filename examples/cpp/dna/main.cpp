@@ -19,7 +19,7 @@ int main() {
     color_spiral(NUM_POINTS, 2.0f, 0.02f, 0.0f, 0.1f, points1, colors1);
     color_spiral(NUM_POINTS, 2.0f, 0.02f, TAU * 0.5f, 0.1f, points2, colors2);
 
-    rec.set_index_duration("stable_time", 0s);
+    rec.set_time_duration("stable_time", 0s);
 
     rec.log_static(
         "dna/structure/left",
@@ -51,7 +51,7 @@ int main() {
     for (int t = 0; t < 400; t++) {
         auto time = std::chrono::duration<float>(t) * 0.01f;
 
-        rec.set_index_duration("stable_time", time);
+        rec.set_time_duration("stable_time", time);
 
         for (size_t i = 0; i < lines.size(); ++i) {
             float time_offset = time.count() + offsets[i];

@@ -55,7 +55,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 

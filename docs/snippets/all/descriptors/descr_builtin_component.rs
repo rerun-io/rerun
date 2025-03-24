@@ -44,7 +44,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();
-        let chunks = store.iter_chunks().collect::<Vec<_>>();
+        // Skip the first two chunks, as they represent the `RecordingProperties`.
+        let chunks = store.iter_chunks().skip(2).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();

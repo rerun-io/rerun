@@ -8,6 +8,22 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
+
+try:
+    from rerun_notebook import (
+        ContainerSelection as ContainerSelection,
+        EntitySelection as EntitySelection,
+        SelectionItem as SelectionItem,
+        ViewerCallbacks as ViewerCallbacks,
+        ViewSelection as ViewSelection,
+    )
+except ImportError:
+    # The notebook package is an optional dependency, so we ignore
+    # the import error. If the user is trying to use the notebook
+    # part of rerun, they'll be notified when they try to init a
+    # `Viewer` instance.
+    pass
+
 from rerun import bindings
 
 from .recording_stream import RecordingStream, get_data_recording
@@ -310,6 +326,9 @@ class Viewer:
             time = None
 
         self._viewer.set_time_ctrl(timeline, time, play)
+
+    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+        self._viewer.register_callbacks(callbacks)
 
 
 def notebook_show(

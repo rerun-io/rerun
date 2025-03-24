@@ -31,7 +31,7 @@ impl LatestAtQuery {
     pub fn new(timeline: TimelineName, at: impl TryInto<TimeInt>) -> Self {
         Self {
             timeline,
-            at: TimeInt::saturated_nonstatic(at),
+            at: TimeInt::saturated_temporal(at),
         }
     }
 

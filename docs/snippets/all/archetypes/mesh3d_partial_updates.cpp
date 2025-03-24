@@ -25,7 +25,7 @@ int main() {
     };
 
     // Log the initial state of our triangle:
-    rec.set_index_sequence("frame", 0);
+    rec.set_time_sequence("frame", 0);
     rec.log(
         "triangle",
         rerun::Mesh3D(vertex_positions)
@@ -35,7 +35,7 @@ int main() {
 
     // Only update its vertices' positions each frame
     for (int i = 1; i < 300; ++i) {
-        rec.set_index_sequence("frame", i);
+        rec.set_time_sequence("frame", i);
 
         const auto factor = fabsf(sinf(static_cast<float>(i) * 0.04f));
         const auto modified_vertex_positions = {

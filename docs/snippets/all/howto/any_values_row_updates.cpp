@@ -13,7 +13,7 @@ arrow::Status run_main() {
     rec.spawn().exit_on_failure();
 
     for (int64_t i = 0; i < 64; i++) {
-        rec.set_index_sequence("step", i);
+        rec.set_time_sequence("step", i);
 
         std::shared_ptr<arrow::Array> arrow_array;
 

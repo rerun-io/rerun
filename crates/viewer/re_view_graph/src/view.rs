@@ -1,4 +1,4 @@
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{
         self,
@@ -9,7 +9,7 @@ use re_types::{
     },
     ViewClassIdentifier,
 };
-use re_ui::{self, icon_text, icons, Help, ModifiersText, MouseButtonText, UiExt as _};
+use re_ui::{self, icon_text, icons, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -46,16 +46,16 @@ impl ViewClass for GraphView {
         &re_ui::icons::VIEW_GRAPH
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(
                 "Pan",
-                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+ drag"),
+                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
             )
             .control(
                 "Zoom",
-                icon_text!(ModifiersText(ZOOM_SCROLL_MODIFIER, egui_ctx), icons::SCROLL),
+                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
@@ -94,17 +94,21 @@ impl ViewClass for GraphView {
         Default::default()
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
+        // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
         {
-            ViewSpawnHeuristics::new(
-                maybe_visualizable
-                    .iter()
-                    .cloned()
-                    .map(RecommendedView::new_single_entity),
-            )
+            ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
+                suggested_filter
+                    .matches(&entity)
+                    .then_some(RecommendedView::new_single_entity(entity))
+            }))
         } else {
             ViewSpawnHeuristics::empty()
         }
@@ -232,4 +236,9 @@ impl ViewClass for GraphView {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| GraphView.help(ctx));
 }

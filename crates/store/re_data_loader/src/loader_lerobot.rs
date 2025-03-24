@@ -126,7 +126,22 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                for chunk in chunks {
+                let properties = re_types::archetypes::RecordingProperties::new()
+                    .with_name(format!("Episode {}", episode.0));
+
+                debug_assert!(TimePoint::default().is_static());
+                let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
+                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                    .build()
+                else {
+                    re_log::error!(
+                        "Failed to build recording properties chunk for episode {}",
+                        episode.0
+                    );
+                    return;
+                };
+
+                for chunk in std::iter::once(initial).chain(chunks.into_iter()) {
                     let data = LoadedData::Chunk(
                         LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
                         store_id.clone(),

@@ -684,6 +684,7 @@ detect_and_track_objects = { path = "examples/python/detect_and_track_objects", 
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
 drone_lidar = { path = "examples/python/drone_lidar", editable = true }
+imu_signals = { path = "examples/python/imu_signals", editable = true }
 incremental_logging = { path = "examples/python/incremental_logging", editable = true }
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }

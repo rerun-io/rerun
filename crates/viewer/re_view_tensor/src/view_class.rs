@@ -2,7 +2,7 @@ use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{
         archetypes::{TensorScalarMapping, TensorViewFit},
@@ -64,7 +64,7 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(
@@ -192,10 +192,14 @@ Set the displayed dimensions in a selection panel.",
         Ok(())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, self, suggested_filter)
     }
 
     fn ui(
@@ -695,3 +699,8 @@ impl TypedComponentFallbackProvider<Colormap> for TensorView {
 
 // Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
 re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
+}

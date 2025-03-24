@@ -2,7 +2,7 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
-use re_log_types::EntityPathSubs;
+use re_log_types::{EntityPathSubs, ResolvedEntityPathFilter};
 use smallvec::SmallVec;
 use std::ops::ControlFlow;
 use std::{
@@ -300,7 +300,13 @@ impl ViewportBlueprint {
 
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
-            let mut recommended_views = entry.class.spawn_heuristics(ctx).into_vec();
+
+            let suggested_filter = ResolvedEntityPathFilter::properties();
+
+            let mut recommended_views = entry
+                .class
+                .spawn_heuristics(ctx, &suggested_filter)
+                .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
 

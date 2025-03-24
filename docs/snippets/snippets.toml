@@ -18,6 +18,12 @@
 [snippets_ref]
 features = [
   [
+    "Setting recording properties",
+    [
+      "concepts/recording_properties",
+    ],
+  ],
+  [
     "Update rows",
     [
       "archetypes/arrows3d_row_updates",
@@ -70,9 +76,17 @@ features = [
 
 # These entries won't run at all.
 #
+# NOTE: Non-runnable python snippets will have to also be added the `rerun_py/pyproject.toml`
+# file as mypy excluded.
+#
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",
@@ -134,6 +148,10 @@ features = [
 "archetypes/image_advanced" = [
   "cpp",  # Missing examples
   "rust", # Missing examples
+]
+"archetypes/entity_behavior" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
@@ -210,6 +228,11 @@ features = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = ["cpp", "rust"] # Only python
 "concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
 "concepts/different_data_per_timeline" = [

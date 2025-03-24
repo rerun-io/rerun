@@ -5,19 +5,19 @@ import rerun.blueprint as rrb
 
 rr.init("rerun_example_different_data_per_timeline", spawn=True)
 
-rr.set_index("blue timeline", sequence=0)
-rr.set_index("red timeline", timedelta=0.0)
+rr.set_time("blue timeline", sequence=0)
+rr.set_time("red timeline", duration=0.0)
 rr.log("points", rr.Points2D([[0, 0], [1, 1]], radii=rr.Radius.ui_points(10.0)))
 
 # Log a red color on one timeline.
 rr.reset_time()  # Clears all set timeline info.
-rr.set_index("red timeline", timedelta=1.0)
-rr.log("points", [rr.components.Color(0xFF0000FF)])
+rr.set_time("red timeline", duration=1.0)
+rr.log("points", rr.Points2D.from_fields(colors=[255, 0, 0]))
 
 # And a blue color on the other.
 rr.reset_time()  # Clears all set timeline info.
-rr.set_index("blue timeline", sequence=1)
-rr.log("points", [rr.components.Color(0x0000FFFF)])
+rr.set_time("blue timeline", sequence=1)
+rr.log("points", rr.Points2D.from_fields(colors=[0, 0, 255]))
 
 
 # Set view bounds:

@@ -4,7 +4,7 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
@@ -14,7 +14,7 @@ use re_types::{
     },
     View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, Help, ModifiersText};
+use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
 use re_viewer_context::{
     gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -102,17 +102,13 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag"))
+            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                icon_text!(
-                    ModifiersText(Modifiers::COMMAND, egui_ctx),
-                    "+",
-                    icons::SCROLL
-                ),
+                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
@@ -146,7 +142,11 @@ impl ViewClass for MapView {
         true
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // Spawn a single map view at the root if any geospatial entity exists.
@@ -156,9 +156,15 @@ impl ViewClass for MapView {
         ]
         .iter()
         .any(|system_id| {
+            // TODO(grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
-                .is_some_and(|indicated_entities| !indicated_entities.is_empty())
+                .is_some_and(|indicated_entities| {
+                    !indicated_entities.is_empty()
+                        && !indicated_entities
+                            .iter()
+                            .all(|e| suggested_filter.matches(e))
+                })
         });
 
         if any_map_entity {
@@ -627,4 +633,9 @@ fn picking_gpu(
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         *last_gpu_picking_result
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }

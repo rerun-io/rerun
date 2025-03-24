@@ -1,13 +1,10 @@
-use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
-use re_log_types::EntityPath;
-use re_types::View as _;
+use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
-    archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-    ComponentName, ViewClassIdentifier,
+    View as _, ViewClassIdentifier,
 };
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
@@ -20,7 +17,7 @@ use re_viewer_context::{
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::MaxDimensions,
+    max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
@@ -58,7 +55,7 @@ impl ViewClass for SpatialView2D {
         &re_ui::icons::VIEW_2D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, egui_ctx: &egui::Context) -> Help {
         super::ui_2d::help(egui_ctx)
     }
 
@@ -169,13 +166,18 @@ impl ViewClass for SpatialView2D {
         Box::new(context.unwrap_or_default())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
+            suggested_filter,
         );
 
         let image_dimensions =
@@ -273,78 +275,57 @@ impl ViewClass for SpatialView2D {
     }
 }
 
-// Count the number of image entities with the given component exist that aren't
-// children of other entities in the bucket.
-fn count_non_nested_images_with_component(
-    image_dimensions: &IntMap<EntityPath, MaxDimensions>,
-    entity_bucket: &IntSet<EntityPath>,
-    entity_db: &re_entity_db::EntityDb,
-    subtree: &EntityTree,
-    component_name: &ComponentName,
-) -> usize {
-    if image_dimensions.contains_key(&subtree.path) {
-        // bool true -> 1
-        entity_db
-            .storage_engine()
-            .store()
-            .entity_has_component(&subtree.path, component_name) as usize
-    } else if !entity_bucket
-        .iter()
-        .any(|e| e.is_descendant_of(&subtree.path))
-    {
-        0 // early-out optimization
-    } else {
-        subtree
-            .children
-            .values()
-            .map(|child| {
-                count_non_nested_images_with_component(
-                    image_dimensions,
-                    entity_bucket,
-                    entity_db,
-                    child,
-                    component_name,
-                )
-            })
-            .sum()
-    }
+#[derive(Default, Debug)]
+struct ImageCounts {
+    image: usize,
+    encoded_image: usize,
+    depth: usize,
+    video: usize,
+    // Don't need segmentation image since we allow them to be stacked.
 }
 
-// Find the image dimensions of every image-entity in the bucket that is not
+// Find the shared image dimensions of every image-entity that is not
 // not nested under another image.
-//
-// We track a set of just height/width as different channels could be allowed to
-// stack.
-fn find_non_nested_image_dimensions(
+fn has_single_shared_image_dimensionn(
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
-    entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
-    found_image_dimensions: &mut HashSet<[u64; 2]>,
-) {
-    if let Some(dimensions) = image_dimensions.get(&subtree.path) {
-        // If we found an image entity, add its dimensions to the set.
-        found_image_dimensions.insert([dimensions.height as _, dimensions.width as _]);
-    } else if entity_bucket
-        .iter()
-        .any(|e| e.is_descendant_of(&subtree.path))
-    {
-        // Otherwise recurse
-        for child in subtree.children.values() {
-            find_non_nested_image_dimensions(
-                image_dimensions,
-                entity_bucket,
-                child,
-                found_image_dimensions,
-            );
+    image_counts: &mut ImageCounts,
+) -> bool {
+    let mut image_dimension = None;
+
+    let mut pending_subtrees = vec![subtree];
+
+    while let Some(subtree) = pending_subtrees.pop() {
+        if let Some(dimensions) = image_dimensions.get(&subtree.path) {
+            let new_dimension = [dimensions.height, dimensions.width];
+            if let Some(existing_dimension) = image_dimension {
+                if existing_dimension != new_dimension {
+                    return false;
+                }
+            } else {
+                image_dimension = Some(new_dimension);
+            }
+
+            image_counts.image += dimensions.image_types.contains(ImageTypes::IMAGE) as usize;
+            image_counts.encoded_image +=
+                dimensions.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
+            image_counts.depth += dimensions.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+            image_counts.video += dimensions.image_types.contains(ImageTypes::VIDEO) as usize;
+
+            // Ignore any nested images.
+        } else {
+            pending_subtrees.extend(subtree.children.values());
         }
     }
+
+    true
 }
 
 fn recommended_views_with_image_splits(
     ctx: &ViewerContext<'_>,
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
     recommended_root: &EntityPath,
-    entities: &IntSet<EntityPath>,
+    visualizable_entities: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedView>,
 ) {
     re_tracing::profile_function!();
@@ -358,43 +339,16 @@ fn recommended_views_with_image_splits(
         return;
     };
 
-    let mut found_image_dimensions = Default::default();
+    let mut image_counts = ImageCounts::default();
 
-    find_non_nested_image_dimensions(
-        image_dimensions,
-        entities,
-        subtree,
-        &mut found_image_dimensions,
-    );
-
-    let image_count = count_non_nested_images_with_component(
-        image_dimensions,
-        entities,
-        ctx.recording(),
-        subtree,
-        &Image::descriptor_indicator().component_name,
-    );
-
-    let depth_count = count_non_nested_images_with_component(
-        image_dimensions,
-        entities,
-        ctx.recording(),
-        subtree,
-        &DepthImage::descriptor_indicator().component_name,
-    );
-
-    let video_count = count_non_nested_images_with_component(
-        image_dimensions,
-        entities,
-        ctx.recording(),
-        subtree,
-        &re_types::archetypes::AssetVideo::descriptor_indicator().component_name,
-    );
-
-    let all_have_same_size = found_image_dimensions.len() <= 1;
+    // Note that since this only finds entities with image dimensions, it naturally filters for `visualizable_entities`.
+    let all_have_same_size =
+        has_single_shared_image_dimensionn(image_dimensions, subtree, &mut image_counts);
 
     // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
-    let overlap = all_have_same_size && image_count + video_count <= 1 && depth_count <= 1;
+    let overlap = all_have_same_size
+        && image_counts.encoded_image + image_counts.image + image_counts.video <= 1
+        && image_counts.depth <= 1;
 
     if overlap {
         // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
@@ -405,27 +359,19 @@ fn recommended_views_with_image_splits(
 
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
-        if entities.contains(recommended_root) {
+        if visualizable_entities.contains(recommended_root) {
             recommended.push(RecommendedView::new_single_entity(recommended_root.clone()));
         }
 
         // And then recurse into the children
         for child in subtree.children.values() {
-            let sub_bucket: IntSet<_> = entities
-                .iter()
-                .filter(|e| e.starts_with(&child.path))
-                .cloned()
-                .collect();
-
-            if !sub_bucket.is_empty() {
-                recommended_views_with_image_splits(
-                    ctx,
-                    image_dimensions,
-                    &child.path,
-                    &sub_bucket,
-                    recommended,
-                );
-            }
+            recommended_views_with_image_splits(
+                ctx,
+                image_dimensions,
+                &child.path,
+                visualizable_entities,
+                recommended,
+            );
         }
     }
 }

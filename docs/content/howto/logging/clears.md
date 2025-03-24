@@ -13,7 +13,7 @@ For example, if you have an object tracking application, your code might look so
 …
 for frame in sensors.read():
     # Associate the following logs with `frame == frame.id`
-    rr.set_index("frame", sequence=frame.id)
+    rr.set_time("frame", sequence=frame.id)
     # Do the actual tracking update
     tracker.update(frame)
     if tracker.is_lost:
@@ -33,7 +33,7 @@ In some cases, the best approach may be to rethink how you log data to better ex
 …
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
-    rr.set_index("frame", sequence=frame.id)
+    rr.set_time("frame", sequence=frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
     if frame.id % 10 == 0:
@@ -63,7 +63,7 @@ class Detector:
 …
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
-    rr.set_index("frame", sequence=frame.id)
+    rr.set_time("frame", sequence=frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
     if frame.id % 10 == 0:
@@ -81,12 +81,12 @@ Follow the issue [here](https://github.com/rerun-io/rerun/issues/3008).
 For now the best workaround is to manually clear data when it is no longer valid.
 ```python
 # Associate the following data with `start_time` on the `time` timeline
-rr.set_index("time", timedelta=start_time)
+rr.set_time("time", duration=start_time)
 # Log the data as usual
 rr.log("short_lived", rr.Tensor(one_second_tensor))
 # Associate the following clear with `start_time + 1.0` on the `time` timeline
-rr.set_index("time", timedelta=start_time + 1.0)
+rr.set_time("time", duration=start_time + 1.0)
 rr.log("short_lived", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
 # Set the time back so other data isn't accidentally logged in the future.
-rr.set_index("time", timedelta=start_time)
+rr.set_time("time", duration=start_time)
 ```

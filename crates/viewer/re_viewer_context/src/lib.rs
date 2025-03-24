@@ -62,12 +62,12 @@ pub use self::{
     query_range::QueryRange,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemContext, SelectionHighlight,
+        ItemContext, SelectionChange, SelectionHighlight,
     },
     store_context::StoreContext,
     store_hub::StoreHub,
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeView, TimelineCallbacks},
+    time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
     time_drag_value::TimeDragValue,
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,

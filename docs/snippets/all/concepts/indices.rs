@@ -6,10 +6,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.set_time_sequence("frame_nr", 42);
     rec.set_duration_seconds("elapsed", 12.0);
     rec.set_timestamp_seconds_since_epoch("time", 1_741_017_564.0);
-    rec.set_index(
+    rec.set_time(
         "precise_time",
         std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_nanos(1_741_017_564_987_654_321),
+            + std::time::Duration::from_nanos(1_741_017_564_987_654_000),
     );
 
     // All following logged data will be timestamped with the above times:

@@ -16,7 +16,9 @@ use re_types::{
     components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
-use re_ui::{icon_text, icons, ContextExt as _, Help, ModifiersText, MouseButtonText};
+use re_ui::{
+    icon_text, icons, modifiers_text, shortcut_with_icon, ContextExt as _, Help, MouseButtonText,
+};
 use re_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
@@ -386,33 +388,33 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help(egui_ctx: &egui::Context) -> Help<'static> {
+pub fn help(egui_ctx: &egui::Context) -> Help {
     Help::new("3D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
         .control(
             "Pan",
-            icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+ drag"),
+            icon_text!(MouseButtonText(DRAG_PAN3D_BUTTON), "+", "drag"),
         )
         .control("Zoom", icon_text!(icons::SCROLL))
         .control(
             "Rotate",
-            icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+ drag"),
+            icon_text!(MouseButtonText(ROTATE3D_BUTTON), "+", "drag"),
         )
         .control(
             "Roll",
-            icon_text!(
+            shortcut_with_icon(
+                egui_ctx,
+                ROLL_MOUSE_MODIFIER,
                 MouseButtonText(ROLL_MOUSE_ALT),
-                "+",
-                ModifiersText(ROLL_MOUSE_MODIFIER, egui_ctx)
             ),
         )
-        .control("Navigate", icon_text!("WASD / QE"))
+        .control("Navigate", icon_text!("WASD", "/", "QE"))
         .control(
             "Slow down / speed up",
             icon_text!(
-                ModifiersText(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+                modifiers_text(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
                 "/",
-                ModifiersText(SPEED_UP_3D_MODIFIER, egui_ctx)
+                modifiers_text(SPEED_UP_3D_MODIFIER, egui_ctx)
             ),
         )
         .control(
@@ -995,4 +997,9 @@ fn default_eye(
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
         eye_up,
     )
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

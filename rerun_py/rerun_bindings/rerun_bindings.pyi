@@ -1040,6 +1040,18 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
+def send_recording_name(
+    name: str,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Send the name of the recording."""
+
+def send_recording_start_time_nanos(
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Send the start time of the recording."""
+
 def disable_timeline(
     timeline: str,
     recording: Optional[PyRecordingStream] = None,
@@ -1128,6 +1140,9 @@ def escape_entity_path_part(part: str) -> str:
 
 def new_entity_path(parts: list[str]) -> str:
     """Create an entity path."""
+
+def new_property_entity_path(parts: list[str]) -> str:
+    """Create a property entity path."""
 
 def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
     """

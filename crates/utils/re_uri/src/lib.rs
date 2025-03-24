@@ -36,14 +36,14 @@
 mod endpoints;
 mod error;
 
-use re_log_types::{IndexCell, TimeInt};
+use re_log_types::{TimeCell, TimeInt};
 
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
     error::Error,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeRange {
     pub timeline: re_log_types::Timeline,
     pub range: re_log_types::ResolvedTimeRangeF,
@@ -58,8 +58,8 @@ impl std::fmt::Display for TimeRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { timeline, range } = self;
 
-        let min = IndexCell::new(timeline.typ(), range.min.floor());
-        let max = IndexCell::new(timeline.typ(), range.max.ceil());
+        let min = TimeCell::new(timeline.typ(), range.min.floor());
+        let max = TimeCell::new(timeline.typ(), range.max.ceil());
 
         let name = timeline.name();
         write!(f, "{name}@{min}..{max}")
@@ -78,10 +78,10 @@ impl TryFrom<&str> for TimeRange {
             .split_once("..")
             .ok_or_else(|| Error::InvalidTimeRange("Missing ..".to_owned()))?;
 
-        let min = min.parse::<IndexCell>().map_err(|err| {
+        let min = min.parse::<TimeCell>().map_err(|err| {
             Error::InvalidTimeRange(format!("Failed to parse time index '{min}': {err}"))
         })?;
-        let max = max.parse::<IndexCell>().map_err(|err| {
+        let max = max.parse::<TimeCell>().map_err(|err| {
             Error::InvalidTimeRange(format!("Failed to parse time index '{max}': {err}"))
         })?;
 
@@ -227,7 +227,7 @@ impl std::fmt::Display for Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
     Catalog(CatalogEndpoint),
