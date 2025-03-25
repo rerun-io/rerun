@@ -43,14 +43,14 @@ fn test_line_properties_with_deprecated_types() {
             .with_width((32.0 - step as f32) * 0.5)
             .with_name(format!("dynamic_{step}"));
 
-        let (scalar_static, scalar_dymamic) = scalar_for_properties_test(step);
+        let (scalar_static, scalar_dynamic) = scalar_for_properties_test(step);
         test_context.log_entity("entity_static_props".into(), |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalar_static)
         });
         test_context.log_entity("entity_dynamic_props".into(), |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalar_dymamic)
+                .with_archetype(RowId::new(), timepoint, &scalar_dynamic)
         });
     }
 
@@ -100,14 +100,14 @@ fn test_point_properties_with_deprecated_types() {
             .with_marker(MARKER_LIST[step as usize % MARKER_LIST.len()])
             .with_name(format!("dynamic_{step}"));
 
-        let (scalar_static, scalar_dymamic) = scalar_for_properties_test(step);
+        let (scalar_static, scalar_dynamic) = scalar_for_properties_test(step);
         test_context.log_entity("entity_static_props".into(), |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalar_static)
         });
         test_context.log_entity("entity_dynamic_props".into(), |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
-                .with_archetype(RowId::new(), timepoint, &scalar_dymamic)
+                .with_archetype(RowId::new(), timepoint, &scalar_dynamic)
         });
     }
 
