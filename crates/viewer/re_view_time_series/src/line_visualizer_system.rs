@@ -47,14 +47,8 @@ impl VisualizerSystem for SeriesLineSystem {
                 .map(|descr| descr.component_name),
         );
 
-        query_info.indicators = [
-            // Support deprecated `SeriesLine` archetype.
-            #[allow(deprecated)]
-            archetypes::SeriesLine::descriptor_indicator().component_name,
-            archetypes::SeriesLines::descriptor_indicator().component_name,
-        ]
-        .into_iter()
-        .collect();
+        query_info.indicators =
+            [archetypes::SeriesLines::descriptor_indicator().component_name].into();
 
         query_info
     }

@@ -47,14 +47,8 @@ impl VisualizerSystem for SeriesPointSystem {
                 .map(|descr| descr.component_name),
         );
 
-        query_info.indicators = [
-            // Support deprecated `SeriesPoint` archetype.
-            #[allow(deprecated)]
-            archetypes::SeriesPoint::descriptor_indicator().component_name,
-            archetypes::SeriesPoints::descriptor_indicator().component_name,
-        ]
-        .into_iter()
-        .collect();
+        query_info.indicators =
+            [archetypes::SeriesPoints::descriptor_indicator().component_name].into();
 
         query_info
     }
