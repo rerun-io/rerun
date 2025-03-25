@@ -840,13 +840,11 @@ fn binary_stream(
 
     // The call to memory may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    let inner = py
-        .allow_threads(|| {
-            let storage = recording.binary_stream();
-            flush_garbage_queue();
-            storage
-        })
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let inner = py.allow_threads(|| {
+        let storage = recording.binary_stream();
+        flush_garbage_queue();
+        storage
+    });
     Ok(Some(PyBinarySinkStorage { inner }))
 }
 

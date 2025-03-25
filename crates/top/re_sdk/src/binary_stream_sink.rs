@@ -1,55 +1,13 @@
-use std::sync::mpsc::{Receiver, Sender, SyncSender};
 use std::sync::Arc;
 
 use parking_lot::Mutex;
 
 use re_log::ResultExt;
-use re_log_encoding::encoder::{encode_as_bytes_local, encode_ref_as_bytes_local};
+use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_types::LogMsg;
 
 use crate::sink::LogSink;
 use crate::RecordingStream;
-
-/// Errors that can occur when creating a [`BinaryStreamSink`].
-#[derive(thiserror::Error, Debug)]
-pub enum BinaryStreamSinkError {
-    /// Error spawning the writer thread.
-    #[error("Failed to spawn thread: {0}")]
-    SpawnThread(std::io::Error),
-
-    /// Error encoding a log message.
-    #[error("Failed to encode LogMsg: {0}")]
-    LogMsgEncode(#[from] re_log_encoding::encoder::EncodeError),
-}
-
-enum Command {
-    Send(LogMsg),
-    Flush(SyncSender<()>),
-}
-
-impl Command {
-    fn flush() -> (Self, Receiver<()>) {
-        let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
-        (Self::Flush(tx), rx)
-    }
-}
-
-/// The inner storage used by [`BinaryStreamStorage`].
-///
-/// Although this implements Clone so that it can be shared between the encoder thread and the outer
-/// storage, the model is that reading from it consumes the buffer.
-#[derive(Clone, Default)]
-struct BinaryStreamStorageInner(Arc<Mutex<std::io::Cursor<Vec<u8>>>>);
-
-impl std::io::Write for BinaryStreamStorageInner {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.0.lock().flush()
-    }
-}
 
 /// The storage used by [`BinaryStreamSink`].
 ///
@@ -115,15 +73,15 @@ pub struct BinaryStreamSink {
 
 impl BinaryStreamSink {
     /// Create a pair of a new [`BinaryStreamSink`] and the associated [`BinaryStreamStorage`].
-    pub fn new(rec: RecordingStream) -> Result<(Self, BinaryStreamStorage), BinaryStreamSinkError> {
+    pub fn new(rec: RecordingStream) -> (Self, BinaryStreamStorage) {
         let storage = BinaryStreamStorage::new(rec);
 
-        Ok((
+        (
             Self {
                 buffer: storage.inner.clone(),
             },
             storage,
-        ))
+        )
     }
 }
 
