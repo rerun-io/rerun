@@ -1,6 +1,6 @@
-use eframe::emath::NumExt as _;
-
 use crate::{DesignTokens, UiExt as _};
+use eframe::emath::NumExt as _;
+use egui::Frame;
 
 /// Helper object to handle a [`ModalWrapper`] window.
 ///
@@ -173,100 +173,106 @@ impl ModalWrapper {
         }
 
         let modal_response = egui::Modal::new(id.with("modal"))
-            .frame(egui::Frame::new().fill(ctx.style().visuals.panel_fill))
+            .frame(Frame::new())
             .area(area)
             .show(ctx, |ui| {
                 prevent_shrinking(ui);
-
-                ui.set_clip_rect(ui.max_rect());
-
-                let item_spacing_y = ui.spacing().item_spacing.y;
-                ui.spacing_mut().item_spacing.y = 0.0;
-
-                if let Some(min_width) = self.min_width {
-                    ui.set_min_width(min_width);
+                egui::Frame {
+                    fill: ctx.style().visuals.panel_fill,
+                    ..Default::default()
                 }
-
-                if let Some(min_height) = self.min_height {
-                    ui.set_min_height(min_height);
-                }
-
-                //
-                // Title bar
-                //
-
-                view_padding_frame(&ViewPaddingFrameParams {
-                    left_and_right: true,
-                    top: true,
-                    bottom: false,
-                })
                 .show(ui, |ui| {
-                    Self::title_bar(ui, &self.title, &mut open);
-                    ui.add_space(DesignTokens::view_padding() as f32);
-                    ui.full_span_separator();
-                });
+                    ui.set_clip_rect(ui.max_rect());
 
-                //
-                // Inner content
-                //
+                    let item_spacing_y = ui.spacing().item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = 0.0;
 
-                let wrapped_content_ui = |ui: &mut egui::Ui, open: &mut bool| -> R {
-                    // We always have side margin, but these must happen _inside_ the scroll area
-                    // (if any). Otherwise, the scroll bar is not snug with the right border and
-                    // may interfere with the action buttons of `ListItem`s.
+                    if let Some(min_width) = self.min_width {
+                        ui.set_min_width(min_width);
+                    }
+
+                    if let Some(min_height) = self.min_height {
+                        ui.set_min_height(min_height);
+                    }
+
+                    //
+                    // Title bar
+                    //
+
                     view_padding_frame(&ViewPaddingFrameParams {
-                        left_and_right: self.set_side_margins,
-                        top: false,
+                        left_and_right: true,
+                        top: true,
                         bottom: false,
                     })
                     .show(ui, |ui| {
-                        if self.full_span_content {
-                            // no further spacing for the content UI
-                            content_ui(ui, open)
-                        } else {
-                            // we must restore vertical spacing and add view padding at the bottom
-                            ui.add_space(item_spacing_y);
+                        Self::title_bar(ui, &self.title, &mut open);
+                        ui.add_space(DesignTokens::view_padding() as f32);
+                        ui.full_span_separator();
+                    });
 
-                            view_padding_frame(&ViewPaddingFrameParams {
-                                left_and_right: false,
-                                top: false,
-                                bottom: true,
-                            })
-                            .show(ui, |ui| {
-                                ui.spacing_mut().item_spacing.y = item_spacing_y;
-                                content_ui(ui, open)
-                            })
-                            .inner
-                        }
-                    })
-                    .inner
-                };
+                    //
+                    // Inner content
+                    //
 
-                //
-                // Optional scroll area
-                //
-
-                if self.scrollable.any() {
-                    // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                    let max_height = 0.85 * ui.ctx().screen_rect().height();
-                    let min_height = 0.3 * ui.ctx().screen_rect().height().at_most(max_height);
-
-                    egui::ScrollArea::new(self.scrollable)
-                        .min_scrolled_height(max_height)
-                        .max_height(max_height)
+                    let wrapped_content_ui = |ui: &mut egui::Ui, open: &mut bool| -> R {
+                        // We always have side margin, but these must happen _inside_ the scroll area
+                        // (if any). Otherwise, the scroll bar is not snug with the right border and
+                        // may interfere with the action buttons of `ListItem`s.
+                        view_padding_frame(&ViewPaddingFrameParams {
+                            left_and_right: self.set_side_margins,
+                            top: false,
+                            bottom: false,
+                        })
                         .show(ui, |ui| {
-                            let res = wrapped_content_ui(ui, &mut open);
+                            if self.full_span_content {
+                                // no further spacing for the content UI
+                                content_ui(ui, open)
+                            } else {
+                                // we must restore vertical spacing and add view padding at the bottom
+                                ui.add_space(item_spacing_y);
 
-                            if ui.min_rect().height() < min_height {
-                                ui.add_space(min_height - ui.min_rect().height());
+                                view_padding_frame(&ViewPaddingFrameParams {
+                                    left_and_right: false,
+                                    top: false,
+                                    bottom: true,
+                                })
+                                .show(ui, |ui| {
+                                    ui.spacing_mut().item_spacing.y = item_spacing_y;
+                                    content_ui(ui, open)
+                                })
+                                .inner
                             }
-
-                            res
                         })
                         .inner
-                } else {
-                    wrapped_content_ui(ui, &mut open)
-                }
+                    };
+
+                    //
+                    // Optional scroll area
+                    //
+
+                    if self.scrollable.any() {
+                        // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
+                        let max_height = 0.85 * ui.ctx().screen_rect().height();
+                        let min_height = 0.3 * ui.ctx().screen_rect().height().at_most(max_height);
+
+                        egui::ScrollArea::new(self.scrollable)
+                            .min_scrolled_height(max_height)
+                            .max_height(max_height)
+                            .show(ui, |ui| {
+                                let res = wrapped_content_ui(ui, &mut open);
+
+                                if ui.min_rect().height() < min_height {
+                                    ui.add_space(min_height - ui.min_rect().height());
+                                }
+
+                                res
+                            })
+                            .inner
+                    } else {
+                        wrapped_content_ui(ui, &mut open)
+                    }
+                })
+                .inner
             });
 
         if modal_response.should_close() {
