@@ -19,6 +19,10 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+# Work-around for https://github.com/Smithay/wayland-rs/issues/767
+ignored = ["wayland-sys"]
+
 
 [features]
 default = []

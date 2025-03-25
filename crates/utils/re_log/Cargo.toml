@@ -18,6 +18,9 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+ignored = ["js-sys", "env_filter"]
+
 
 [features]
 default = []

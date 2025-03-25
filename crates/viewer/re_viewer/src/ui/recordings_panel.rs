@@ -60,8 +60,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         let string = match source.as_ref() {
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::RedapGrpcStream { url } => format!("Loading {url}…"),
+            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
+            SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
@@ -163,7 +163,7 @@ fn app_and_its_recordings_ui(
     app_id: &ApplicationId,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.property::<Timestamp>());
+    entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);

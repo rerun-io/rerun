@@ -1210,7 +1210,7 @@ impl TimePanel {
         } else {
             let space_needed_for_current_time = match timeline.typ() {
                 re_chunk_store::TimeType::Sequence => 100.0,
-                re_chunk_store::TimeType::DurationNs => 200.0, // TODO(#8635): verify this is correct
+                re_chunk_store::TimeType::DurationNs => 200.0,
                 re_chunk_store::TimeType::TimestampNs => 220.0,
             };
 

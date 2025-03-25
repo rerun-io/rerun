@@ -1,6 +1,6 @@
 use crate::{Origin, TimeRange};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct RecordingEndpoint {
     pub origin: Origin,
     pub recording_id: String,
@@ -24,6 +24,15 @@ impl RecordingEndpoint {
             recording_id,
             time_range,
         }
+    }
+
+    /// Returns a [`RecordingEndpoint`] without the optional query part.
+    pub fn without_query(&self) -> std::borrow::Cow<'_, Self> {
+        let mut cow = std::borrow::Cow::Borrowed(self);
+        if self.time_range.is_some() {
+            cow.to_mut().time_range = None;
+        }
+        cow
     }
 }
 

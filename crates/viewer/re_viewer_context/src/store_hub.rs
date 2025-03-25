@@ -271,8 +271,8 @@ impl StoreHub {
 
         recs.sort_by_key(|entity_db| {
             let maybe_app_id = entity_db.app_id().map(|id| id.0.as_str());
-            let maybe_name = entity_db.property::<re_types::components::Name>();
-            let maybe_started = entity_db.property::<re_types::components::Timestamp>();
+            let maybe_name = entity_db.recording_property::<re_types::components::Name>();
+            let maybe_started = entity_db.recording_property::<re_types::components::Timestamp>();
             (maybe_app_id, maybe_started, maybe_name)
         });
 
@@ -392,7 +392,7 @@ impl StoreHub {
         for rec in self
             .store_bundle
             .recordings()
-            .sorted_by_key(|entity_db| entity_db.property::<Timestamp>())
+            .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
         {
             if rec.app_id() == Some(&app_id) {
                 self.active_rec_id = Some(rec.store_id().clone());
@@ -726,8 +726,10 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
-                | re_smart_channel::SmartChannelSource::RedapGrpcStream { url } => url != uri,
+                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
+                re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
+                    endpoint.to_string() != uri
+                }
                 _ => true,
             }
         });
