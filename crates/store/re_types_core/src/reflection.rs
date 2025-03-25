@@ -228,6 +228,9 @@ pub struct ComponentReflection {
     /// Markdown docstring for the component.
     pub docstring_md: &'static str,
 
+    /// If deprecated, this is the deprecation message.
+    pub deprecation_notice: Option<&'static str>,
+
     /// Custom placeholder value, used when not fallback was provided.
     ///
     /// This is usually the default value of the component (if any), serialized.
@@ -253,6 +256,9 @@ pub type ArchetypeReflectionMap = nohash_hasher::IntMap<ArchetypeName, Archetype
 pub struct ArchetypeReflection {
     /// The name of the field in human case.
     pub display_name: &'static str,
+
+    /// If deprecated, this is the deprecation message.
+    pub deprecation_notice: Option<&'static str>,
 
     /// The views that this archetype can be added to.
     ///
