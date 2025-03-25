@@ -18,4 +18,5 @@ mod catalog;
 mod dataframe;
 mod python_bridge;
 mod remote;
+mod utils;
 mod video;

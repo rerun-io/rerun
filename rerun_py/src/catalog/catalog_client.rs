@@ -26,14 +26,10 @@ impl PyCatalogClient {
 impl PyCatalogClient {
     /// Create a new catalog client object.
     #[new]
-    fn new(addr: String) -> PyResult<Self> {
+    fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
         let origin = re_uri::Origin::try_from(addr.as_str()).map_err(to_py_err)?;
 
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-
-        let connection = ConnectionHandle::new(origin.clone(), runtime)?;
+        let connection = ConnectionHandle::new(py, origin.clone())?;
 
         Ok(Self { origin, connection })
     }
@@ -41,13 +37,14 @@ impl PyCatalogClient {
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let mut connection = self_.borrow(py).connection.clone();
 
-        let entry_details = py.allow_threads(|| {
-            connection.find_entries(EntryFilter {
+        let entry_details = connection.find_entries(
+            py,
+            EntryFilter {
                 id: None,
                 name: None,
                 entry_type: None,
-            })
-        })?;
+            },
+        )?;
 
         // Generate entry objects.
         entry_details
@@ -78,7 +75,7 @@ impl PyCatalogClient {
         let entry_id = id.borrow(py).id;
         let client = self_.clone_ref(py);
 
-        let dataset_entry = py.allow_threads(|| connection.read_dataset(entry_id))?;
+        let dataset_entry = connection.read_dataset(py, entry_id)?;
 
         let details = dataset_entry
             .details
@@ -104,15 +101,16 @@ impl PyCatalogClient {
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow_mut(py).connection.clone();
 
-        let response = py.allow_threads(|| {
-            connection.create_dataset(DatasetEntry {
+        let response = connection.create_dataset(
+            py,
+            DatasetEntry {
                 details: Some(EntryDetails {
                     name: Some(name.to_owned()),
                     ..Default::default()
                 }),
                 dataset_handle: None,
-            })
-        })?;
+            },
+        )?;
 
         //TODO(ab): proper error management + wrapping in helper objects
         let entry_details = response

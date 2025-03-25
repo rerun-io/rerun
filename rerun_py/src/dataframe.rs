@@ -752,6 +752,7 @@ impl PyRecordingView {
                 let borrowed_recording = recording.borrow(py);
                 let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
+                    py,
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
                 )
@@ -842,6 +843,7 @@ impl PyRecordingView {
                 let borrowed_recording = recording.borrow(py);
                 let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
                 borrowed_client.exec_query(
+                    py,
                     borrowed_recording.store_info.store_id.clone(),
                     query_expression,
                 )

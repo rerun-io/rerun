@@ -17,7 +17,7 @@ impl PyDataset {
         let entry_id = super_.id.borrow(py).id;
         let mut connection = super_.client.borrow_mut(py).connection().clone();
 
-        py.allow_threads(move || connection.delete_dataset(entry_id))
+        connection.delete_dataset(py, entry_id)
     }
 
     #[getter]

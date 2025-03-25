@@ -85,7 +85,7 @@ uuid.workspace = true
 # Deps for remote feature
 object_store = { workspace = true, features = ["aws"] }
 re_protos.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-stream.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
