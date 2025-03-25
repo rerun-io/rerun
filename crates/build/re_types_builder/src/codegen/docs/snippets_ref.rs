@@ -242,6 +242,9 @@ impl SnippetsRefCodeGenerator {
                     if opt_outs.contains_key(&snippet.name_qualified) {
                         return false;
                     }
+                    if obj.deprecation_notice().is_some() {
+                        return false; // ignore deprecated objects
+                    }
 
                     if obj.kind == ObjectKind::Archetype {
                         if let Some(opt_outs) = archetype_opt_outs.get(&obj.name) {
