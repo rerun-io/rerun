@@ -68,7 +68,6 @@ impl CallbackSelectionItem {
             }
             Item::View(view_id) => Some(Self::View {
                 view_id: *view_id,
-                // view_id: view_id.uuid().to_string(),
                 view_name: if let Some(name) = get_view_name(blueprint, view_id) {
                     name
                 } else {
@@ -78,7 +77,6 @@ impl CallbackSelectionItem {
             }),
             Item::Container(container_id) => Some(Self::Container {
                 container_id: *container_id,
-                // container_id: container_id.uuid().to_string(),
                 container_name: if let Some(name) = get_container_name(blueprint, container_id) {
                     name
                 } else {
@@ -88,16 +86,12 @@ impl CallbackSelectionItem {
             }),
 
             Item::DataResult(view_id, instance_path) => Some(Self::Entity {
-                // entity_path: instance_path.entity_path.to_string(),
-                // instance_id: instance_path.instance.specific_index().map(|id| id.get()),
                 entity_path: instance_path.entity_path.clone(),
                 instance_id: instance_path.instance,
                 view_name: get_view_name(blueprint, view_id),
                 position: get_position(context),
             }),
             Item::InstancePath(instance_path) => Some(Self::Entity {
-                // entity_path: instance_path.entity_path.to_string(),
-                // instance_id: instance_path.instance.specific_index().map(|id| id.get()),
                 entity_path: instance_path.entity_path.clone(),
                 instance_id: instance_path.instance,
                 view_name: None,
