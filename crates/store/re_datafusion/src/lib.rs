@@ -10,11 +10,11 @@ use re_log_types::external::re_tuid::Tuid;
 use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
 use tonic::transport::Channel;
 
-mod dataset_catalog_provider;
-mod grpc_response_provider;
-mod grpc_streaming_provider;
-mod partition_index_list;
-mod partition_list;
+pub mod dataset_catalog_provider;
+pub mod grpc_response_provider;
+pub mod grpc_streaming_provider;
+pub mod partition_index_list;
+pub mod partition_list;
 
 pub struct DataFusionConnector {
     // catalog: CatalogServiceClient<Channel>,
