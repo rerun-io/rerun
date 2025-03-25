@@ -33,7 +33,7 @@ impl AddViewOrContainerModal {
                     .full_span_content(true)
                     .scrollable([false, true])
             },
-            |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
+            |ui| modal_ui(ui, ctx, viewport, self.target_container),
         );
     }
 }
@@ -43,7 +43,6 @@ fn modal_ui(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     target_container: Option<ContainerId>,
-    keep_open: &mut bool,
 ) {
     let container_data = [
         (
@@ -99,7 +98,7 @@ fn modal_ui(
         if resp.clicked() {
             viewport.add_container(kind, target_container);
             viewport.mark_user_interaction(ctx);
-            *keep_open = false;
+            ui.close();
         }
     }
 
@@ -118,7 +117,7 @@ fn modal_ui(
         if row_ui(ui, icon, title, &subtitle).clicked() {
             viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
-            *keep_open = false;
+            ui.close();
         }
     }
 }

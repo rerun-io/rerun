@@ -45,7 +45,7 @@ pub fn top_panel(
             }
         }
 
-        egui::menu::bar(ui, |ui| {
+        egui::containers::menu::Bar::new().ui(ui, |ui| {
             ui.set_height(top_bar_style.height);
             ui.add_space(top_bar_style.indent);
 

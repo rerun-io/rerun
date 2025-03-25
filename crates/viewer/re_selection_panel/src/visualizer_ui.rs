@@ -459,7 +459,7 @@ fn menu_more(
         .clicked()
     {
         ctx.clear_blueprint_component_by_name(override_path, component_name);
-        ui.close_menu();
+        ui.close();
     }
 
     if ui
@@ -473,12 +473,12 @@ fn menu_more(
         if let Some(raw_default) = raw_default {
             ctx.save_blueprint_array(override_path, component_name, raw_default);
         }
-        ui.close_menu();
+        ui.close();
     }
 
     if ui.button("Set to fallback value").clicked() {
         ctx.save_blueprint_array(override_path, component_name, raw_fallback);
-        ui.close_menu();
+        ui.close();
     }
 
     let override_differs_from_default = raw_override
@@ -495,7 +495,7 @@ fn menu_more(
         .clicked()
     {
         ctx.reset_blueprint_component_by_name(override_path, component_name);
-        ui.close_menu();
+        ui.close();
     }
 
     if ui.button("Make default for current view").clicked() {
@@ -504,7 +504,7 @@ fn menu_more(
             component_name,
             raw_current_value,
         );
-        ui.close_menu();
+        ui.close();
     }
 }
 
@@ -531,7 +531,7 @@ fn menu_add_new_visualizer(
 
             ctx.save_blueprint_archetype(override_path, &archetype);
 
-            ui.close_menu();
+            ui.close();
         }
     }
 }
