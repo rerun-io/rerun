@@ -70,6 +70,8 @@ impl BinaryStreamStorage {
 
     /// Read and consume the current contents of the buffer.
     ///
+    /// This returns a fully encoded RRD file.
+    ///
     /// This does not flush the underlying batcher.
     /// Use [`BinaryStreamStorage::flush`] if you want to guarantee that all
     /// logged messages have been written to the stream before you read them.
