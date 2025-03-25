@@ -26,15 +26,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_time_sequence("step", t);
 
         // Log two time series under a shared root so that they show in the same plot by default.
-        rec.log("trig/sin", &rerun::Scalars::new([(t as f64 / 100.0).sin()]))?;
-        rec.log("trig/cos", &rerun::Scalars::new([(t as f64 / 100.0).cos()]))?;
+        rec.log("trig/sin", &rerun::Scalars::one((t as f64 / 100.0).sin()))?;
+        rec.log("trig/cos", &rerun::Scalars::one((t as f64 / 100.0).cos()))?;
 
         // Log scattered points under a different root so that it shows in a different plot by default.
         lcg_state = (1140671485_i64
             .wrapping_mul(lcg_state)
             .wrapping_add(128201163))
             % 16777216; // simple linear congruency generator
-        rec.log("scatter/lcg", &rerun::Scalars::new([lcg_state as f64]))?;
+        rec.log("scatter/lcg", &rerun::Scalars::one(lcg_state as f64))?;
     }
 
     Ok(())

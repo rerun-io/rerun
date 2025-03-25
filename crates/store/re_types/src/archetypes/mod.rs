@@ -44,6 +44,7 @@ mod points3d_ext;
 mod recording_properties;
 mod scalar;
 mod scalars;
+mod scalars_ext;
 mod segmentation_image;
 mod segmentation_image_ext;
 mod series_line;

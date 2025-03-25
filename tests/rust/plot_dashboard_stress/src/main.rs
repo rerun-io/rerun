@@ -159,7 +159,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                         rerun::Scalars::new(values.copied()).columns_of_unit_batches()?,
                     )?;
                 } else {
-                    rec.log(path, &rerun::Scalars::new([series_values[offset]]))?;
+                    rec.log(path, &rerun::Scalars::one(series_values[offset]))?;
                 }
             }
         }
