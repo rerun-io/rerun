@@ -139,6 +139,6 @@ impl PyEntry {
         let entry_id = self.id.borrow(py).id;
         let mut connection = self.client.borrow_mut(py).connection().clone();
 
-        py.allow_threads(move || connection.delete_entry(entry_id))
+        connection.delete_entry(py, entry_id)
     }
 }

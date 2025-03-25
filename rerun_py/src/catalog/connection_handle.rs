@@ -58,14 +58,14 @@ impl ConnectionHandle {
         Ok(entries)
     }
 
-    pub fn delete_entry(&mut self, entry_id: Tuid) -> PyResult<()> {
+    pub fn delete_entry(&mut self, py: Python<'_>, entry_id: Tuid) -> PyResult<()> {
         let _response = wait_for_future(
             py,
             self.client.delete_entry(DeleteEntryRequest {
                 id: Some(entry_id.into()),
             }),
         )
-            .map_err(to_py_err)?;
+        .map_err(to_py_err)?;
 
         Ok(())
     }
