@@ -144,9 +144,16 @@ fn generate_component_reflection(
             quote! { None }
         };
 
+        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+            quote! { Some(#notice) }
+        } else {
+            quote! { None }
+        };
+
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
+                deprecation_notice: #deprecation_notice,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
                 verify_arrow_array: #type_name::verify_arrow_array,
@@ -247,9 +254,17 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             })
             .collect_vec();
 
+        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+            quote! { Some(#notice) }
+        } else {
+            quote! { None }
+        };
+
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,
+
+                deprecation_notice: #deprecation_notice,
 
                 scope: #scope,
 

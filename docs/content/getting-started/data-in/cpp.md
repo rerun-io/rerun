@@ -291,7 +291,7 @@ Replace the section that logs the beads with a loop that logs the beads at diffe
 for (int t = 0; t < 400; t++) {
     auto time = std::chrono::duration<float>(t) * 0.01f;
 
-    rec.set_time("stable_time");
+    rec.set_time_duration("stable_time", time);
 
     for (size_t i = 0; i < lines.size(); ++i) {
         float time_offset = time.count() + offsets[i];

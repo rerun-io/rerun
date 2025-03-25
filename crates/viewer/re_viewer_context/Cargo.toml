@@ -18,6 +18,9 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+ignored = ["home"]
+
 [features]
 ## Enable for testing utilities.
 testing = ["dep:pollster", "dep:egui_kittest"]
