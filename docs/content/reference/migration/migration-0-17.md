@@ -38,11 +38,11 @@ This release introduces new Python APIs to set component overrides, visualizer o
 For example, setting color and enabling the `SeriesPoint` visualizer was previously done using `rr.log()`:
 
 ```python
-rr.log("data", rr.SeriesPoints(color=[255, 255, 0]), static=True)
+rr.log("data", rr.SeriesPoint(color=[255, 255, 0]), static=True)
 
 for t in range(1000):
     rr.set_time_sequence("frame_nr", t)
-    rr.log("data",rr.Scalars(get_data(t))),
+    rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(
     rr.blueprint.TimeSeriesView(origin="data")
@@ -54,7 +54,7 @@ Now the override can be specified from the blueprint, removing the need to inclu
 ```python
 for t in range(1000):
     rr.set_time_sequence("frame_nr", t)
-    rr.log("data",rr.Scalars(get_data(t))),
+    rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(
     rr.blueprint.TimeSeriesView(
