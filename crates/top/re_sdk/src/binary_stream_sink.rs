@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
+use re_log::ResultExt;
 use re_log_encoding::encoder::{encode_as_bytes_local, encode_ref_as_bytes_local};
 use re_log_types::LogMsg;
 
@@ -74,8 +75,9 @@ impl BinaryStreamStorage {
     /// logged messages have been written to the stream before you read them.
     #[inline]
     pub fn read(&self) -> Vec<u8> {
-        // TODO(jan, gijs): handle error here?
-        encode_as_bytes_local(self.inner.lock().drain(..).map(Ok)).unwrap_or_default()
+        encode_as_bytes_local(self.inner.lock().drain(..).map(Ok))
+            .ok_or_log_error()
+            .unwrap_or_default()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
