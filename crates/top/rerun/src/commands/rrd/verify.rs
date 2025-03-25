@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use arrow::array::AsArray as _;
 
+use itertools::Itertools as _;
 use re_log_types::LogMsg;
 use re_types::reflection::Reflection;
 
@@ -124,7 +125,7 @@ impl Verifier {
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
             if let Some(deprecation_notice) = component_reflection.deprecation_notice {
-                anyhow::bail!("Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprcation notice: {deprecation_notice:?}");
+                anyhow::bail!("Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_notice:?}");
             }
 
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
@@ -151,7 +152,7 @@ impl Verifier {
 
                 if let Some(deprecation_notice) = archetype_reflection.deprecation_notice {
                     anyhow::bail!(
-                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprcation notice: {deprecation_notice:?}"
+                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_notice:?}"
                     );
                 }
 
@@ -162,8 +163,8 @@ impl Verifier {
                         .get_field(archetype_field_name)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
-                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {:?}",
-                                archetype_reflection.fields.iter().map(|field| field.name)
+                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {}",
+                                archetype_reflection.fields.iter().map(|field| field.name).join(" ")
                             )
                         })?;
 
