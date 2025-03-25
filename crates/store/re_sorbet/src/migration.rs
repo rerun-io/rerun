@@ -12,10 +12,6 @@ use arrow::{
 pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
-    let num_columns = batch.num_columns();
-    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
-    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
-
     struct ArchetypeRename {
         new_name: &'static str,
         field_renames: BTreeMap<&'static str, &'static str>,
@@ -50,6 +46,10 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
             },
         ),
     ]);
+
+    let num_columns = batch.num_columns();
+    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
+    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let mut metadata = field.metadata().clone();
