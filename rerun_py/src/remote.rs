@@ -39,9 +39,12 @@ use re_protos::{
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind};
 
-use crate::dataframe::{
-    ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
-    PyRecordingHandle, PyRecordingView, PySchema,
+use crate::{
+    dataframe::{
+        ComponentLike, PyComponentColumnSelector, PyIndexColumnSelector, PyRecording,
+        PyRecordingHandle, PyRecordingView, PySchema,
+    },
+    utils::{get_tokio_runtime, wait_for_future},
 };
 
 /// Register the `rerun.remote` module.
@@ -88,78 +91,67 @@ async fn connect_async(
 /// StorageNodeClient
 ///     The connected client.
 #[pyfunction]
-pub fn connect(addr: String) -> PyResult<PyStorageNodeClient> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
+pub fn connect(py: Python<'_>, addr: String) -> PyResult<PyStorageNodeClient> {
+    let client = wait_for_future(py, connect_async(addr))?;
 
-    let client = runtime.block_on(connect_async(addr))?;
-
-    Ok(PyStorageNodeClient { runtime, client })
+    Ok(PyStorageNodeClient { client })
 }
 
 /// A connection to a remote storage node.
 #[pyclass(name = "StorageNodeClient")]
 pub struct PyStorageNodeClient {
-    /// A tokio runtime for async operations. This connection will currently
-    /// block the Python interpreter while waiting for responses.
-    /// This runtime must be persisted for the lifetime of the connection.
-    runtime: tokio::runtime::Runtime,
-
     /// The actual tonic connection.
     client: StorageNodeServiceClient<tonic::transport::Channel>,
 }
 
 impl PyStorageNodeClient {
     /// Get the [`StoreInfo`] for a single recording in the storage node.
-    fn get_store_info(&mut self, id: &str) -> PyResult<StoreInfo> {
-        let store_info = self
-            .runtime
-            .block_on(async {
-                let resp = self
-                    .client
-                    .query_catalog(QueryCatalogRequest {
-                        entry: Some(CatalogEntry {
-                            name: "default".to_owned(), /* TODO(zehiko) 9116 */
-                        }),
-                        column_projection: None, // fetch all columns
-                        filter: Some(CatalogFilter {
-                            recording_ids: vec![RecordingId { id: id.to_owned() }],
-                        }),
+    fn get_store_info(&mut self, py: Python<'_>, id: &str) -> PyResult<StoreInfo> {
+        let store_info = wait_for_future(py, async {
+            let resp = self
+                .client
+                .query_catalog(QueryCatalogRequest {
+                    entry: Some(CatalogEntry {
+                        name: "default".to_owned(), /* TODO(zehiko) 9116 */
+                    }),
+                    column_projection: None, // fetch all columns
+                    filter: Some(CatalogFilter {
+                        recording_ids: vec![RecordingId { id: id.to_owned() }],
+                    }),
+                })
+                .await
+                .map_err(re_grpc_client::TonicStatusError)?
+                .into_inner()
+                .map(|resp| {
+                    resp.and_then(|r| {
+                        r.data
+                            .ok_or_else(|| {
+                                tonic::Status::internal(
+                                    "missing DataframePart in QueryCatalogResponse",
+                                )
+                            })?
+                            .decode()
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
-                    .await
-                    .map_err(re_grpc_client::TonicStatusError)?
-                    .into_inner()
-                    .map(|resp| {
-                        resp.and_then(|r| {
-                            r.data
-                                .ok_or_else(|| {
-                                    tonic::Status::internal(
-                                        "missing DataframePart in QueryCatalogResponse",
-                                    )
-                                })?
-                                .decode()
-                                .map_err(|err| tonic::Status::internal(err.to_string()))
-                        })
-                    })
-                    .collect::<Result<Vec<_>, tonic::Status>>()
-                    .await
-                    .map_err(re_grpc_client::TonicStatusError)?;
+                })
+                .collect::<Result<Vec<_>, tonic::Status>>()
+                .await
+                .map_err(re_grpc_client::TonicStatusError)?;
 
-                if resp.len() != 1 || resp[0].num_rows() != 1 {
-                    return Err(re_grpc_client::StreamError::ChunkError(
-                        re_chunk::ChunkError::Malformed {
-                            reason: format!(
-                                "expected exactly one recording with id {id}, got {}",
-                                resp.len()
-                            ),
-                        },
-                    ));
-                }
+            if resp.len() != 1 || resp[0].num_rows() != 1 {
+                return Err(re_grpc_client::StreamError::ChunkError(
+                    re_chunk::ChunkError::Malformed {
+                        reason: format!(
+                            "expected exactly one recording with id {id}, got {}",
+                            resp.len()
+                        ),
+                    },
+                ));
+            }
 
-                re_grpc_client::redap::store_info_from_catalog_chunk(&resp[0], id)
-            })
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            re_grpc_client::redap::store_info_from_catalog_chunk(&resp[0], id)
+        })
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         Ok(store_info)
     }
@@ -167,12 +159,13 @@ impl PyStorageNodeClient {
     /// Execute a [`QueryExpression`] for a single recording in the storage node.
     pub(crate) fn exec_query(
         &mut self,
+        py: Python<'_>,
         id: StoreId,
         query: QueryExpression,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let query: re_protos::common::v1alpha1::Query = query.into();
 
-        let batches = self.runtime.block_on(async {
+        let batches = wait_for_future(py, async {
             // TODO(#8536): Avoid the need to collect here.
             // This means we shouldn't be blocking on
             let batches = self
@@ -235,10 +228,11 @@ impl PyStorageNodeClient {
     ))]
     fn query_catalog(
         &mut self,
+        py: Python<'_>,
         columns: Option<Vec<String>>,
         recording_ids: Option<Vec<String>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let reader = self.runtime.block_on(async {
+        let reader = wait_for_future(py, async {
             let column_projection = columns.map(|columns| ColumnProjection { columns });
             let filter = recording_ids.map(|recording_ids| CatalogFilter {
                 recording_ids: recording_ids
@@ -306,8 +300,8 @@ impl PyStorageNodeClient {
     /// -------
     /// Schema
     ///     The schema of the recording.
-    fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
-        self.runtime.block_on(async {
+    fn get_recording_schema(&mut self, py: Python<'_>, id: String) -> PyResult<PySchema> {
+        wait_for_future(py, async {
             let request = GetRecordingSchemaRequest {
                 entry: Some(CatalogEntry {
                     name: "default".to_owned(), /* TODO(zehiko) 9116 */
@@ -354,11 +348,12 @@ impl PyStorageNodeClient {
     ))]
     fn register(
         &mut self,
+        py: Python<'_>,
         entry: &str,
         storage_url: &str,
         metadata: Option<MetadataLike>,
     ) -> PyResult<String> {
-        self.runtime.block_on(async {
+        wait_for_future(py, async {
             let storage_url = url::Url::parse(storage_url)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -438,6 +433,7 @@ impl PyStorageNodeClient {
     ///     The number of sub-vectors for the index.
     /// distance_metric : VectorDistanceMetric
     ///     The distance metric to use for the index.
+    #[expect(clippy::too_many_arguments)]
     #[pyo3(signature = (
         entry,
         column,
@@ -448,6 +444,7 @@ impl PyStorageNodeClient {
     ))]
     fn create_vector_index(
         &mut self,
+        py: Python<'_>,
         entry: String,
         column: PyComponentColumnSelector,
         time_index: PyIndexColumnSelector,
@@ -455,7 +452,7 @@ impl PyStorageNodeClient {
         num_sub_vectors: u32,
         distance_metric: VectorDistanceMetricLike,
     ) -> PyResult<()> {
-        self.runtime.block_on(async {
+        wait_for_future(py, async {
             let time_selector: TimeColumnSelector = time_index.into();
             let column_selector: ComponentColumnSelector = column.into();
             let distance_metric: re_protos::remote_store::v1alpha1::VectorDistanceMetric =
@@ -519,13 +516,14 @@ impl PyStorageNodeClient {
     ))]
     fn create_fts_index(
         &mut self,
+        py: Python<'_>,
         entry: String,
         column: PyComponentColumnSelector,
         time_index: PyIndexColumnSelector,
         store_position: bool,
         base_tokenizer: &str,
     ) -> PyResult<()> {
-        self.runtime.block_on(async {
+        wait_for_future(py, async {
             let time_selector: TimeColumnSelector = time_index.into();
             let column_selector: ComponentColumnSelector = column.into();
 
@@ -595,52 +593,55 @@ impl PyStorageNodeClient {
         column: PyComponentColumnSelector,
         top_k: u32,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let reader = self.runtime.block_on(async {
+        // We will block all python threads because NumPy is cannot
+        // release the gil
+
+        let reader = get_tokio_runtime().block_on(async {
             let column_selector: ComponentColumnSelector = column.into();
             let query = query.to_record_batch()?;
 
             let transport_chunks = self
-                .client
-                .search_index(SearchIndexRequest {
-                    entry: Some(CatalogEntry { name: entry }),
-                    column: Some(IndexColumn {
-                        entity_path: Some(EntityPath {
-                            path: column_selector.entity_path.to_string(),
+                    .client
+                    .search_index(SearchIndexRequest {
+                        entry: Some(CatalogEntry { name: entry }),
+                        column: Some(IndexColumn {
+                            entity_path: Some(EntityPath {
+                                path: column_selector.entity_path.to_string(),
+                            }),
+                            archetype_name: None,
+                            archetype_field_name: None,
+                            component_name: column_selector.component_name,
                         }),
-                        archetype_name: None,
-                        archetype_field_name: None,
-                        component_name: column_selector.component_name,
-                    }),
-                    properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
-                        props: Some(
-                            re_protos::remote_store::v1alpha1::index_query_properties::Props::Vector(
-                                re_protos::remote_store::v1alpha1::VectorIndexQuery { top_k },
+                        properties: Some(re_protos::remote_store::v1alpha1::IndexQueryProperties {
+                            props: Some(
+                                re_protos::remote_store::v1alpha1::index_query_properties::Props::Vector(
+                                    re_protos::remote_store::v1alpha1::VectorIndexQuery { top_k },
+                                ),
                             ),
+                        }),
+                        query: Some(
+                            query
+                                .encode()
+                                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                         ),
-                    }),
-                    query: Some(
-                        query
-                            .encode()
-                            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                    ),
-                    limit: None,
-                })
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                .into_inner()
-                .map(|resp| {
-                    resp.and_then(|r| {
-                        r.data
-                            .ok_or_else(|| {
-                                tonic::Status::internal("missing DataframePart in SearchIndexResponse")
-                            })?
-                            .decode()
-                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                        limit: None,
                     })
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                    .await
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                    .into_inner()
+                    .map(|resp| {
+                        resp.and_then(|r| {
+                            r.data
+                                .ok_or_else(|| {
+                                    tonic::Status::internal("missing DataframePart in SearchIndexResponse")
+                                })?
+                                .decode()
+                                .map_err(|err| tonic::Status::internal(err.to_string()))
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .await
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
                 transport_chunks.into_iter().map(Ok).collect();
@@ -686,12 +687,13 @@ impl PyStorageNodeClient {
     ))]
     fn search_fts_index(
         &mut self,
+        py: Python<'_>,
         entry: String,
         query: String,
         column: PyComponentColumnSelector,
         limit: Option<u32>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let reader = self.runtime.block_on(async {
+        let reader = wait_for_future(py, async {
             let column_selector: ComponentColumnSelector = column.into();
 
             let schema = arrow::datatypes::Schema::new_with_metadata(
@@ -779,8 +781,8 @@ impl PyStorageNodeClient {
         metadata
     ))]
     #[allow(clippy::needless_pass_by_value)]
-    fn update_catalog(&mut self, metadata: MetadataLike) -> PyResult<()> {
-        self.runtime.block_on(async {
+    fn update_catalog(&mut self, py: Python<'_>, metadata: MetadataLike) -> PyResult<()> {
+        wait_for_future(py, async {
             let metadata = metadata.into_record_batch()?;
 
             // TODO(jleibs): This id name should probably come from `re_protos`
@@ -834,7 +836,7 @@ impl PyStorageNodeClient {
     fn open_recording(slf: Bound<'_, Self>, id: &str) -> PyResult<PyRemoteRecording> {
         let mut borrowed_self = slf.borrow_mut();
 
-        let store_info = borrowed_self.get_store_info(id)?;
+        let store_info = borrowed_self.get_store_info(slf.py(), id)?;
 
         let client = slf.unbind();
 
@@ -860,9 +862,9 @@ impl PyStorageNodeClient {
     #[pyo3(signature = (
         id,
     ))]
-    fn download_recording(&mut self, id: &str) -> PyResult<PyRecording> {
+    fn download_recording(&mut self, py: Python<'_>, id: &str) -> PyResult<PyRecording> {
         use tokio_stream::StreamExt as _;
-        let store = self.runtime.block_on(async {
+        let store = wait_for_future(py, async {
             let mut resp = self
                 .client
                 .fetch_recording(FetchRecordingRequest {

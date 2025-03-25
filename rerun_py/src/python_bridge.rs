@@ -104,7 +104,7 @@ fn global_web_viewer_server(
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
-fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
@@ -191,6 +191,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // remote
     crate::remote::register(m)?;
+    crate::catalog::register(py, m)?;
 
     Ok(())
 }
