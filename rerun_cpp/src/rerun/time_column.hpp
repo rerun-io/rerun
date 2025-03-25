@@ -129,7 +129,7 @@ namespace rerun {
         /// Already sorted time points may perform better.
         [[deprecated("Use 'from_duration_secs' or `from_secs_since_epoch' instead"
         )]] static TimeColumn
-            from_secs(
+            from_seconds(
                 std::string timeline_name, Collection<double> times_in_secs,
                 SortingStatus sorting_status = SortingStatus::Unknown
             );
