@@ -433,6 +433,7 @@ impl PyStorageNodeClient {
     ///     The number of sub-vectors for the index.
     /// distance_metric : VectorDistanceMetric
     ///     The distance metric to use for the index.
+    #[expect(clippy::too_many_arguments)]
     #[pyo3(signature = (
         entry,
         column,
