@@ -5,11 +5,11 @@ thumbnail_dimensions = [480, 290]
 -->
 
 
-Example showing how to wrap the Rerun Viewer in your own GUI, and register callbacks to the Viewer.
+Example showing how to wrap the Rerun Viewer in your own UI, and register callbacks to the Viewer.
 
 You create your own [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe) app and write your own GUI using [`egui`](https://github.com/emilk/egui).
 
-The example is really basic, but should be something you can build upon.
+The example is basic, but should be something you can build upon.
 
 The example starts an SDK server which the Python or Rust logging SDK can connect to.
 
