@@ -123,6 +123,10 @@ impl Verifier {
                 .get(component_name)
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
+            if let Some(deprecation_notice) = component_reflection.deprecation_notice {
+                anyhow::bail!("Component is deprecated: {deprecation_notice}");
+            }
+
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
                 anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
             })?;
@@ -144,6 +148,12 @@ impl Verifier {
                     .archetypes
                     .get(archetype_name)
                     .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
+
+                if let Some(deprecation_notice) = archetype_reflection.deprecation_notice {
+                    anyhow::bail!(
+                        "Archetype {archetype_name:?} is deprecated: {deprecation_notice}"
+                    );
+                }
 
                 if let Some(archetype_field_name) = archetype_field_name {
                     // Verify archetype field.
