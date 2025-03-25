@@ -31,7 +31,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
 /// Generates reflection about all known components.
 ///
 /// Call only once and reuse the results.
-#[allow(deprecated)]
+
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
     let array = [

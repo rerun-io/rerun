@@ -1,5 +1,5 @@
 //! Copy & pasted code from `basic.rs` to test that the deprecated "singular" types are still working.
-#![allow(deprecated)]
+#![expect(deprecated)]
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;

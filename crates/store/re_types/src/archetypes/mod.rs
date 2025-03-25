@@ -97,9 +97,9 @@ pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
 pub use self::view_coordinates::ViewCoordinates;
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use self::scalar::Scalar;
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use self::series_line::SeriesLine;
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use self::series_point::SeriesPoint;

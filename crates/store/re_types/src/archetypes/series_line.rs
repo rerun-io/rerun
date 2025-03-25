@@ -11,7 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
-#![allow(deprecated)]
+#![expect(deprecated)]
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
