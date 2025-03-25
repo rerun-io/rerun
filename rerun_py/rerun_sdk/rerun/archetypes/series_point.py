@@ -92,6 +92,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
     ) -> None:
         """
@@ -107,6 +108,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -114,7 +121,9 @@ class SeriesPoint(Archetype):
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, marker=marker, name=name, marker_size=marker_size)
+            self.__attrs_init__(
+                color=color, marker=marker, name=name, visible_series=visible_series, marker_size=marker_size
+            )
             return
         self.__attrs_clear__()
 
@@ -124,6 +133,7 @@ class SeriesPoint(Archetype):
             color=None,
             marker=None,
             name=None,
+            visible_series=None,
             marker_size=None,
         )
 
@@ -142,6 +152,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32Like | None = None,
     ) -> SeriesPoint:
         """
@@ -159,6 +170,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -170,6 +187,7 @@ class SeriesPoint(Archetype):
                 "color": color,
                 "marker": marker,
                 "name": name,
+                "visible_series": visible_series,
                 "marker_size": marker_size,
             }
 
@@ -194,6 +212,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32ArrayLike | None = None,
         marker: components.MarkerShapeArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
+        visible_series: datatypes.BoolArrayLike | None = None,
         marker_size: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -214,6 +233,12 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
+        visible_series:
+            Which point series are visible.
+
+            If not set, all point series on this entity are visible.
+            Unlike with the regular visibility property of the entire entity, any series that is hidden
+            via this property will still be visible in the legend.
         marker_size:
             Size of the marker.
 
@@ -225,6 +250,7 @@ class SeriesPoint(Archetype):
                 color=color,
                 marker=marker,
                 name=name,
+                visible_series=visible_series,
                 marker_size=marker_size,
             )
 
@@ -232,7 +258,13 @@ class SeriesPoint(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"color": color, "marker": marker, "name": name, "marker_size": marker_size}
+        kwargs = {
+            "color": color,
+            "marker": marker,
+            "name": name,
+            "visible_series": visible_series,
+            "marker_size": marker_size,
+        }
         columns = []
 
         for batch in batches:
@@ -288,6 +320,19 @@ class SeriesPoint(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    visible_series: components.SeriesVisibleBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
+    )
+    # Which point series are visible.
+    #
+    # If not set, all point series on this entity are visible.
+    # Unlike with the regular visibility property of the entire entity, any series that is hidden
+    # via this property will still be visible in the legend.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

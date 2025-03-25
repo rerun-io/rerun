@@ -24,5 +24,7 @@ boolean
 
 ## Used by
 
+* [`SeriesLine`](../archetypes/series_line.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
+* [`SeriesPoint`](../archetypes/series_point.md)
 * [`SeriesPoints`](../archetypes/series_points.md)

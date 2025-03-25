@@ -14,7 +14,7 @@ when possible. The underlying data needs to be logged to the same entity-path us
 
 ## Components
 
-**Optional**: [`Color`](../components/color.md), [`MarkerShape`](../components/marker_shape.md), [`Name`](../components/name.md), [`MarkerSize`](../components/marker_size.md)
+**Optional**: [`Color`](../components/color.md), [`MarkerShape`](../components/marker_shape.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`MarkerSize`](../components/marker_size.md)
 
 ## Shown in
 * [TimeSeriesView](../views/time_series_view.md)

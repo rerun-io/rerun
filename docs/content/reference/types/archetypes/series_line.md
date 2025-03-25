@@ -14,7 +14,7 @@ when possible. The underlying data needs to be logged to the same entity-path us
 
 ## Components
 
-**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md), [`AggregationPolicy`](../components/aggregation_policy.md)
+**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`AggregationPolicy`](../components/aggregation_policy.md)
 
 ## Shown in
 * [TimeSeriesView](../views/time_series_view.md)

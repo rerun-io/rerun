@@ -11,6 +11,7 @@
 #include "../components/marker_shape.hpp"
 #include "../components/marker_size.hpp"
 #include "../components/name.hpp"
+#include "../components/series_visible.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -86,6 +87,13 @@ namespace rerun::archetypes {
         /// Used in the legend.
         std::optional<ComponentBatch> name;
 
+        /// Which point series are visible.
+        ///
+        /// If not set, all point series on this entity are visible.
+        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
+        /// via this property will still be visible in the legend.
+        std::optional<ComponentBatch> visible_series;
+
         /// Size of the marker.
         std::optional<ComponentBatch> marker_size;
 
@@ -110,6 +118,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
             ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `visible_series` field.
+        static constexpr auto Descriptor_visible_series = ComponentDescriptor(
+            ArchetypeName, "visible_series",
+            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `marker_size` field.
         static constexpr auto Descriptor_marker_size = ComponentDescriptor(
@@ -176,6 +189,20 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         SeriesPoint with_many_name(const Collection<rerun::components::Name>& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Which point series are visible.
+        ///
+        /// If not set, all point series on this entity are visible.
+        /// Unlike with the regular visibility property of the entire entity, any series that is hidden
+        /// via this property will still be visible in the legend.
+        SeriesPoint with_visible_series(
+            const Collection<rerun::components::SeriesVisible>& _visible_series
+        ) && {
+            visible_series =
+                ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)
+                    .value_or_throw();
             return std::move(*this);
         }
 
