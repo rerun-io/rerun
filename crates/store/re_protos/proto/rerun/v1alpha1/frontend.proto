@@ -21,13 +21,11 @@ service FrontendService {
 
   rpc FindEntries(rerun.catalog.v1alpha1.FindEntriesRequest) returns (rerun.catalog.v1alpha1.FindEntriesResponse) {}
 
-  rpc DeleteDatasetEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
+  rpc DeleteEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
 
   rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
 
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
-
-
 
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.

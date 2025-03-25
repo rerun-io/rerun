@@ -166,7 +166,7 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn delete_dataset_entry(
+        pub async fn delete_entry(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
         ) -> std::result::Result<
@@ -178,12 +178,12 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteDatasetEntry",
+                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.frontend.v1alpha1.FrontendService",
-                "DeleteDatasetEntry",
+                "DeleteEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -329,7 +329,7 @@ pub mod frontend_service_server {
             tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
             tonic::Status,
         >;
-        async fn delete_dataset_entry(
+        async fn delete_entry(
             &self,
             request: tonic::Request<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
         ) -> std::result::Result<
@@ -507,13 +507,13 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteDatasetEntry" => {
+                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct DeleteDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
+                    struct DeleteEntrySvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
                         tonic::server::UnaryService<
                             super::super::super::catalog::v1alpha1::DeleteEntryRequest,
-                        > for DeleteDatasetEntrySvc<T>
+                        > for DeleteEntrySvc<T>
                     {
                         type Response = super::super::super::catalog::v1alpha1::DeleteEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
@@ -525,7 +525,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::delete_dataset_entry(&inner, request).await
+                                <T as FrontendService>::delete_entry(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -536,7 +536,7 @@ pub mod frontend_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = DeleteDatasetEntrySvc(inner);
+                        let method = DeleteEntrySvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
