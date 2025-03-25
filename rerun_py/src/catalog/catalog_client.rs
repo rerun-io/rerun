@@ -60,6 +60,15 @@ impl PyCatalogClient {
             .collect()
     }
 
+    fn entries_table(&self) -> PyResult<PyDataFusionTable> {
+        let table: GrpcResponseProvider<CatalogServiceClient<tonic::transport::Channel>> =
+            self.connection.client().into();
+
+        Ok(PyDataFusionTable {
+            provider: Arc::new(table),
+        })
+    }
+
     fn get_dataset(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow(py).connection.clone();
         let entry_id = id.borrow(py).id;
