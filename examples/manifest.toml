@@ -179,4 +179,5 @@ examples = [
   "spawn_viewer",
   "stdio",
   "template",
+  "viewer_callbacks",
 ]
