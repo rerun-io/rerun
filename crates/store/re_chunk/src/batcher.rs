@@ -254,7 +254,7 @@ impl ChunkBatcherConfig {
         }
 
         // Deprecated
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         if let Ok(s) = std::env::var(Self::ENV_MAX_CHUNK_ROWS_IF_UNSORTED) {
             new.chunk_max_rows_if_unsorted =
                 s.parse().map_err(|err| ChunkBatcherError::ParseConfig {

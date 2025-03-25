@@ -171,7 +171,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     if obj.deprecation_notice().is_some() {
-        code.push_str("#![allow(deprecated)]\n");
+        code.push_str("#![expect(deprecated)]\n");
     }
 
     if obj.is_enum() {
@@ -248,7 +248,7 @@ fn generate_mod_file(
         let type_name = &obj.name;
 
         if obj.deprecation_notice().is_some() {
-            code.push_str("#[allow(deprecated)]\n");
+            code.push_str("#[expect(deprecated)]\n");
         }
 
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
