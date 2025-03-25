@@ -49,8 +49,7 @@ message RegisterPartitionsRequest {
   repeated rerun.manifest_registry.v1alpha1.Partition partitions = 2;
 
   // what to do if partition is already registered
-  // TODO(cmc): why is this in manifest_registry??
-  rerun.manifest_registry.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
 message UnregisterPartitionsRequest {
