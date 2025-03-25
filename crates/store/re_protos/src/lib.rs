@@ -39,6 +39,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.manifest_registry.v1alpha1.rs"]
     pub mod rerun_manifest_registry_v1alpha1;
+
+    #[path = "./rerun.frontend.v1alpha1.rs"]
+    pub mod rerun_frontend_v1alpha1;
 }
 
 pub mod common {
@@ -92,6 +95,12 @@ pub mod remote_store {
 pub mod catalog {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_catalog_v1alpha1::*;
+    }
+}
+
+pub mod frontend {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_frontend_v1alpha1::*;
     }
 }
 
