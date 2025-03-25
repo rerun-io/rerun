@@ -279,6 +279,21 @@ enum IfMissingBehavior {
   IF_MISSING_BEHAVIOR_ERROR = 2;
 }
 
+// Specify how the relevant creation call behaves
+// in case of previously created (duplicate) items
+enum IfDuplicateBehavior {
+  IF_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
+
+  // Overwrite the existing item
+  IF_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
+
+  // Skip if the item already exists
+  IF_DUPLICATE_BEHAVIOR_SKIP = 2;
+
+  // Return an error if the item already exists
+  IF_DUPLICATE_BEHAVIOR_ERROR = 3;
+}
+
 message ScanParametersOrderClause {
   bool descending = 1;
   bool nulls_last = 2;

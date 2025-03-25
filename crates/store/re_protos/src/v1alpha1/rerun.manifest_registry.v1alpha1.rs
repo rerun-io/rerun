@@ -30,7 +30,10 @@ pub struct RegisterPartitionsRequest {
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<Partition>,
     /// what to do if partition is already registered
-    #[prost(enumeration = "IfDuplicateBehavior", tag = "3")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
+        tag = "3"
+    )]
     pub on_duplicate: i32,
 }
 impl ::prost::Name for RegisterPartitionsRequest {
@@ -145,7 +148,10 @@ pub struct CreatePartitionManifestsRequest {
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Define what happens if create is called multiple times for the same
     /// Dataset / partitions
-    #[prost(enumeration = "IfDuplicateBehavior", tag = "3")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
+        tag = "3"
+    )]
     pub on_duplicate: i32,
 }
 impl ::prost::Name for CreatePartitionManifestsRequest {
@@ -383,7 +389,10 @@ pub struct CreatePartitionIndexesRequest {
     #[prost(message, optional, tag = "5")]
     pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// Specify behavior when index for a partition was already created
-    #[prost(enumeration = "IfDuplicateBehavior", tag = "6")]
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
+        tag = "6"
+    )]
     pub on_duplicate: i32,
 }
 impl ::prost::Name for CreatePartitionIndexesRequest {
@@ -779,43 +788,6 @@ impl VectorDistanceMetric {
             "VECTOR_DISTANCE_METRIC_COSINE" => Some(Self::Cosine),
             "VECTOR_DISTANCE_METRIC_DOT" => Some(Self::Dot),
             "VECTOR_DISTANCE_METRIC_HAMMING" => Some(Self::Hamming),
-            _ => None,
-        }
-    }
-}
-/// Specify how the relevant creation call behaves
-/// in case of previously created (duplicate) items
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum IfDuplicateBehavior {
-    Unspecified = 0,
-    /// Overwrite the existing item
-    Overwrite = 1,
-    /// Skip if the item already exists
-    Skip = 2,
-    /// Return an error if the item already exists
-    Error = 3,
-}
-impl IfDuplicateBehavior {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED",
-            Self::Overwrite => "IF_DUPLICATE_BEHAVIOR_OVERWRITE",
-            Self::Skip => "IF_DUPLICATE_BEHAVIOR_SKIP",
-            Self::Error => "IF_DUPLICATE_BEHAVIOR_ERROR",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
-            "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
-            "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
-            "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }

@@ -697,3 +697,40 @@ impl IfMissingBehavior {
         }
     }
 }
+/// Specify how the relevant creation call behaves
+/// in case of previously created (duplicate) items
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum IfDuplicateBehavior {
+    Unspecified = 0,
+    /// Overwrite the existing item
+    Overwrite = 1,
+    /// Skip if the item already exists
+    Skip = 2,
+    /// Return an error if the item already exists
+    Error = 3,
+}
+impl IfDuplicateBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED",
+            Self::Overwrite => "IF_DUPLICATE_BEHAVIOR_OVERWRITE",
+            Self::Skip => "IF_DUPLICATE_BEHAVIOR_SKIP",
+            Self::Error => "IF_DUPLICATE_BEHAVIOR_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
+            "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
+            _ => None,
+        }
+    }
+}

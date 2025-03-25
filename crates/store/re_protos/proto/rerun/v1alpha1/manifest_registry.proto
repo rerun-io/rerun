@@ -77,7 +77,7 @@ message RegisterPartitionsRequest {
   repeated Partition partitions = 2;
 
   // what to do if partition is already registered
-  IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
 message RegisterPartitionsResponse {
@@ -123,7 +123,7 @@ message CreatePartitionManifestsRequest {
 
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
-  IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
 message CreatePartitionManifestsResponse {
@@ -251,7 +251,7 @@ message CreatePartitionIndexesRequest {
   rerun.common.v1alpha1.IndexColumnSelector time_index = 5;
 
   // Specify behavior when index for a partition was already created
-  IfDuplicateBehavior on_duplicate = 6;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 6;
 }
 
 // used to define which column we want to index
@@ -396,16 +396,4 @@ message Query {
 
   // If specified, will perform a range query with the given parameters.
   QueryManifestRangeRelevantChunks range = 12;
-}
-
-// Specify how the relevant creation call behaves
-// in case of previously created (duplicate) items
-enum IfDuplicateBehavior {
-  IF_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
-  // Overwrite the existing item
-  IF_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
-  // Skip if the item already exists
-  IF_DUPLICATE_BEHAVIOR_SKIP = 2;
-  // Return an error if the item already exists
-  IF_DUPLICATE_BEHAVIOR_ERROR = 3;
 }
