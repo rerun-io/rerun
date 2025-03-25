@@ -21,7 +21,6 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
-
 [features]
 default = [
   "analytics",
@@ -173,6 +172,6 @@ unindent = { workspace = true, optional = true }
 re_build_tools.workspace = true
 
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 # We only depend on re_video so we can enable extra features for it
-ignored = ["re_video"]
+ignored = ["re_video", "puffin"]
