@@ -55,9 +55,6 @@ web-time.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
 anyhow.workspace = true
-criterion.workspace = true
-mimalloc.workspace = true
-rand.workspace = true
 similar-asserts.workspace = true
 
 [lib]

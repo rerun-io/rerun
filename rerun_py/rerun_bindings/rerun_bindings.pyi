@@ -1040,41 +1040,17 @@ def set_time_timestamp_nanos_since_epoch(
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
-class RecordingProperties:
-    """A helper class for setting recording properties."""
-
-    name: Optional[str]
-    start_time: Optional[int]
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        start_time: Optional[int] = None,
-    ) -> None:
-        """
-        Create new `RecordingProperties`.
-
-        Parameters
-        ----------
-        name : `Optional[str]`
-            The name of the recording.
-
-        start_time : `Optional[int]`
-            The start time of the recording in nanoseconds.
-
-        """
-
-def set_properties(
-    properties: RecordingProperties,
-    recording: Optional[PyRecordingStream] = None,
-) -> None:
-    """Set the properties of the recording."""
-
-def set_name(
+def send_recording_name(
     name: str,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Set the name of the recording."""
+    """Send the name of the recording."""
+
+def send_recording_start_time_nanos(
+    nanos: int,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Send the start time of the recording."""
 
 def disable_timeline(
     timeline: str,
@@ -1164,6 +1140,9 @@ def escape_entity_path_part(part: str) -> str:
 
 def new_entity_path(parts: list[str]) -> str:
     """Create an entity path."""
+
+def new_property_entity_path(parts: list[str]) -> str:
+    """Create a property entity path."""
 
 def asset_video_read_frame_timestamps_nanos(
     video_bytes_arrow_array: Any, media_type: Optional[str] = None

@@ -307,7 +307,7 @@ impl Chunk {
         }
 
         // Handle edge case: recording time on partition properties should ignore start time.
-        if entity_path == &EntityPath::partition_properties() {
+        if entity_path == &EntityPath::recording_properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
             if components.len() != rhs.components.len() {
