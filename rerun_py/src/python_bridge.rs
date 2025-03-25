@@ -834,9 +834,7 @@ fn binary_stream(
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> Option<PyBinarySinkStorage> {
-    let Some(recording) = get_data_recording(recording) else {
-        return None;
-    };
+    let recording = get_data_recording(recording)?;
 
     // The call to memory may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
