@@ -1,4 +1,7 @@
 //! Copy & pasted code from `basic.rs` to test that the deprecated "singular" types are still working.
+//!
+//! The types were deprecated in 0.23 and has a migration path in `crates/store/re_sorbet/src/migration.rs`
+
 #![expect(deprecated)]
 
 use re_chunk_store::RowId;
