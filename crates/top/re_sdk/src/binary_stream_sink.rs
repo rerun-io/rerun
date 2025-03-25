@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_types::LogMsg;
 
