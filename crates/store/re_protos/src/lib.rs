@@ -5,8 +5,6 @@
 //! to use gRPC types in the rerun viewer codebase. That's why we implement all the
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 
-mod protobuf_conversions;
-
 pub mod external {
     pub use prost;
 }
@@ -27,6 +25,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
+
+    #[path = "./rerun.common.v1alpha1.ext.rs"]
+    pub mod rerun_common_v1alpha1_ext;
 
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;

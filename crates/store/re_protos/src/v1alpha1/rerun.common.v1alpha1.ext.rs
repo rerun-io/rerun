@@ -1,6 +1,47 @@
-use crate::TypeConversionError;
-use crate::{invalid_field, missing_field};
 use std::sync::Arc;
+
+use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+
+use crate::{invalid_field, missing_field, TypeConversionError};
+
+// ---
+
+impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
+    type Error = ArrowError;
+
+    fn try_from(value: &crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        Ok(Self::clone(
+            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
+        ))
+    }
+}
+
+impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
+    type Error = ArrowError;
+
+    fn try_from(value: &ArrowSchema) -> Result<Self, Self::Error> {
+        Ok(Self {
+            arrow_schema: re_sorbet::ipc_from_schema(value)?,
+        })
+    }
+}
+
+// ---
+
+impl From<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
+    fn from(value: crate::common::v1alpha1::Tuid) -> Self {
+        Self::from_nanos_and_inc(value.time_ns, value.inc)
+    }
+}
+
+impl From<re_tuid::Tuid> for crate::common::v1alpha1::Tuid {
+    fn from(value: re_tuid::Tuid) -> Self {
+        Self {
+            time_ns: value.nanoseconds_since_epoch(),
+            inc: value.inc(),
+        }
+    }
+}
 
 impl From<re_log_types::EntityPath> for crate::common::v1alpha1::EntityPath {
     fn from(value: re_log_types::EntityPath) -> Self {
@@ -668,5 +709,13 @@ mod tests {
         let blueprint_activation_command2: re_log_types::BlueprintActivationCommand =
             proto_blueprint_activation_command.try_into().unwrap();
         assert_eq!(blueprint_activation_command, blueprint_activation_command2);
+    }
+
+    #[test]
+    fn test_tuid_conversion() {
+        let tuid = re_tuid::Tuid::new();
+        let proto_tuid: crate::common::v1alpha1::Tuid = tuid.into();
+        let tuid2: re_tuid::Tuid = proto_tuid.into();
+        assert_eq!(tuid, tuid2);
     }
 }
