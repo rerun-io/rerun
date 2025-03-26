@@ -16,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
 
     let ctx = SessionContext::default();
 
-    let _ = ctx.register_table("redap_catalog", df_connector.get_datasets())?;
+    let _ = ctx.register_table("redap_catalog", df_connector.get_all_datasets())?;
 
     let df = ctx.table("redap_catalog").await?;
 
