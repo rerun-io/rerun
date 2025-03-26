@@ -30,7 +30,7 @@ pub struct SeriesPointSystem {
 
 impl IdentifiedViewSystem for SeriesPointSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesPoint".into()
+        "SeriesPoints".into()
     }
 }
 

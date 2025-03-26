@@ -212,7 +212,7 @@ rrb.TimeSeriesView(
     origin="/classification",
     overrides={
         "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/samples": [rrb.VisualizerOverrides("SeriesPoints")], # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -233,7 +233,7 @@ rrb.TimeSeriesView(
     origin="/classification",
     overrides={
         "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
-        "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/samples": rrb.VisualizerOverrides("SeriesPoints"), # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -338,7 +338,7 @@ overrides={
 
 ## Types for time series plots are now plural
 
-The `Scalar`/`SeriesPoint`/`SeriesLines` archetypess have been deprecated in favor of
+The `Scalar`/`SeriesPoints`/`SeriesLines` archetypess have been deprecated in favor of
 `Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
 scatter plots or lines on the same archetype.
 

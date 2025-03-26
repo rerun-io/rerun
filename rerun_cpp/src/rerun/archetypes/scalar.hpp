@@ -46,7 +46,7 @@ namespace rerun::archetypes {
     ///
     ///     for (int step = 0; step <64; ++step) {
     ///         rec.set_time_sequence("step", step);
-    ///         rec.log("scalars", rerun::Scalar(sin(static_cast<double>(step) / 10.0)));
+    ///         rec.log("scalars", rerun::Scalars(sin(static_cast<double>(step) / 10.0)));
     ///     }
     /// }
     /// ```

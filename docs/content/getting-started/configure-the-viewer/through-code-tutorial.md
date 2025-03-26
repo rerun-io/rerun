@@ -86,7 +86,7 @@ def style_plot(symbol: str) -> rr.SeriesLines:
     )
 
 
-def style_peak(symbol: str) -> rr.SeriesPoint:
+def style_peak(symbol: str) -> rr.SeriesPoints:
     return rr.SeriesPoints(
         color=0xFF0000FF,
         name=f"{symbol} (peak)",

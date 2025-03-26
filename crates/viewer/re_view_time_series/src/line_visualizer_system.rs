@@ -32,7 +32,7 @@ pub struct SeriesLineSystem {
 
 impl IdentifiedViewSystem for SeriesLineSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesLine".into()
+        "SeriesLines".into()
     }
 }
 

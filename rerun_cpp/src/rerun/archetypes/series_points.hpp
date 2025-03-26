@@ -50,27 +50,27 @@ namespace rerun::archetypes {
     ///     // Log two point series under a shared root so that they show in the same plot by default.
     ///     rec.log_static(
     ///         "trig/sin",
-    ///         rerun::SeriesPoint()
-    ///             .with_color({255, 0, 0})
-    ///             .with_name("sin(0.01t)")
-    ///             .with_marker(rerun::components::MarkerShape::Circle)
-    ///             .with_marker_size(4.0f)
+    ///         rerun::SeriesPoints()
+    ///             .with_colors({255, 0, 0})
+    ///             .with_names("sin(0.01t)")
+    ///             .with_markers(rerun::components::MarkerShape::Circle)
+    ///             .with_marker_sizes(4.0f)
     ///     );
     ///     rec.log_static(
     ///         "trig/cos",
-    ///         rerun::SeriesPoint()
-    ///             .with_color({0, 255, 0})
-    ///             .with_name("cos(0.01t)")
-    ///             .with_marker(rerun::components::MarkerShape::Cross)
-    ///             .with_marker_size(2.0f)
+    ///         rerun::SeriesPoints()
+    ///             .with_colors({0, 255, 0})
+    ///             .with_names("cos(0.01t)")
+    ///             .with_markers(rerun::components::MarkerShape::Cross)
+    ///             .with_marker_sizes(2.0f)
     ///     );
     ///
     ///     // Log the data on a timeline called "step".
     ///     for (int t = 0; t <static_cast<int>(TAU * 2.0 * 10.0); ++t) {
     ///         rec.set_time_sequence("step", t);
     ///
-    ///         rec.log("trig/sin", rerun::Scalar(sin(static_cast<double>(t) / 10.0)));
-    ///         rec.log("trig/cos", rerun::Scalar(cos(static_cast<double>(t) / 10.0)));
+    ///         rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 10.0)));
+    ///         rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 10.0)));
     ///     }
     /// }
     /// ```

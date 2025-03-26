@@ -46,11 +46,11 @@ def run(args: Namespace) -> None:
             rrb.TextDocumentView(origin="readme", name="Instructions"),
             rrb.TimeSeriesView(
                 name="Plots",
-                defaults=[rr.SeriesPoint.from_fields(color=[0, 0, 255])],
+                defaults=[rr.SeriesPoints.from_fields(colors=[0, 0, 255])],
                 overrides={
                     "plots/cos": [
-                        rrb.VisualizerOverrides("SeriesPoint"),
-                        rr.SeriesPoint.from_fields(color=[0, 255, 0], marker="cross"),
+                        rrb.VisualizerOverrides("SeriesPoints"),
+                        rr.SeriesPoints.from_fields(colors=[0, 255, 0], markers="cross"),
                     ],
                 },
             ),

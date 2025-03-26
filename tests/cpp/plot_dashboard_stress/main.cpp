@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
                             .columns()
                     );
                 } else {
-                    rec.log(path, rerun::Scalar(series_values[time_step]));
+                    rec.log(path, rerun::Scalars(series_values[time_step]));
                 }
             }
         }

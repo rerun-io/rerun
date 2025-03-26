@@ -15,10 +15,16 @@ int main() {
     // Set up plot styling:
     // They are logged static as they don't change over time and apply to all timelines.
     // Log two lines series under a shared root so that they show in the same plot by default.
-    rec.log_static("trig/sin", rerun::SeriesLine().with_color({255, 0, 0}).with_name("sin(0.01t)"));
-    rec.log_static("trig/cos", rerun::SeriesLine().with_color({0, 255, 0}).with_name("cos(0.01t)"));
+    rec.log_static(
+        "trig/sin",
+        rerun::SeriesLines().with_colors({255, 0, 0}).with_names("sin(0.01t)")
+    );
+    rec.log_static(
+        "trig/cos",
+        rerun::SeriesLines().with_colors({0, 255, 0}).with_names("cos(0.01t)")
+    );
     // Log scattered points under a different root so that they show in a different plot by default.
-    rec.log_static("scatter/lcg", rerun::SeriesPoint());
+    rec.log_static("scatter/lcg", rerun::SeriesPoints());
 
     // Log the data on a timeline called "step".
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {
