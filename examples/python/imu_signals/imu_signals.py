@@ -42,7 +42,7 @@ def main() -> None:
                 name="Gyroscope",
                 overrides={
                     # TODO(#9022): Pluralize series line type.
-                    "/gyroscope": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                    "/gyroscope": rr.SeriesLines.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
             rrb.TimeSeriesView(
@@ -50,7 +50,7 @@ def main() -> None:
                 name="Accelerometer",
                 overrides={
                     # TODO(#9022): Pluralize series line type.
-                    "/accelerometer": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                    "/accelerometer": rr.SeriesLines.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
         ),

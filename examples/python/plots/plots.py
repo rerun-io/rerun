@@ -40,7 +40,7 @@ def log_bar_chart() -> None:
 
 def log_parabola() -> None:
     # Time-independent styling can be achieved by logging static components to the data store. Here, by using the
-    # `SeriesLine` archetype, we further hint the viewer to use the line plot visualizer.
+    # `SeriesLines` archetype, we further hint the viewer to use the line plot visualizer.
     # Alternatively, you can achieve time-independent styling using overrides, as is everywhere else in this example
     # (see the `main()` function).
     rr.log("curves/parabola", rr.SeriesLines(names="f(t) = (0.01t - 3)³ + 1"), static=True)
@@ -57,7 +57,7 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
-        # Note: by using the `rr.SeriesLine` archetype, we hint the viewer to use the line plot visualizer.
+        # Note: by using the `rr.SeriesLines` archetype, we hint the viewer to use the line plot visualizer.
         rr.log(
             "curves/parabola",
             rr.Scalars(f_of_t),
@@ -137,15 +137,15 @@ def main() -> None:
                         name="Trig",
                         origin="/trig",
                         overrides={
-                            "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
-                            "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+                            "/trig/sin": rr.SeriesLines.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
+                            "/trig/cos": rr.SeriesLines.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
                         },
                     ),
                     rrb.TimeSeriesView(
                         name="Classification",
                         origin="/classification",
                         overrides={
-                            "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
+                            "classification/line": rr.SeriesLines.from_fields(color=[255, 255, 0], width=3.0),
                             # This ensures that the `SeriesPoint` visualizers is used for this entity.
                             "classification/samples": rrb.VisualizerOverrides("SeriesPoint"),
                         },
@@ -155,7 +155,7 @@ def main() -> None:
                     name="Spiral",
                     origin="/spiral",
                     # TODO(#9022): Pluralize series line type.
-                    overrides={"spiral": rr.SeriesLine.from_fields(name=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
+                    overrides={"spiral": rr.SeriesLines.from_fields(name=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
                 ),
                 row_shares=[2, 1],
             ),
