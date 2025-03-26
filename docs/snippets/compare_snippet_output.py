@@ -163,10 +163,11 @@ def main() -> None:
     print(f"Active languages: {active_languages}")
     print(f"Comparing {len(examples)} examples…")
 
+    errors = []
+
     for example in examples:
         print()
-        print("----------------------------------------------------------")
-        print(f"Comparing example '{example}'…")
+        print(f"Comparing '{example}'…")
 
         example_opt_out_entirely = example.opt_out_entirely()
         example_opt_out_compare = example.opt_out_compare()
@@ -185,7 +186,10 @@ def main() -> None:
             elif "cpp" in example_opt_out_compare:
                 print("Skipping cpp compare")
             else:
-                run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                try:
+                    run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                except Exception as e:
+                    errors.append((example, e))
 
         if "py" in active_languages:
             if "py" in example_opt_out_entirely:
@@ -193,11 +197,32 @@ def main() -> None:
             elif "py" in example_opt_out_compare:
                 print("Skipping py compare")
             else:
-                run_comparison(python_output_path, rust_output_path, args.full_dump)
+                try:
+                    run_comparison(python_output_path, rust_output_path, args.full_dump)
+                except Exception as e:
+                    errors.append((example, e))
 
-    print()
-    print("----------------------------------------------------------")
-    print("All tests passed!")
+    if len(errors) == 0:
+        print("All tests passed!")
+    else:
+        print(f"{len(errors)} errors found:")
+
+        for example, _error in errors:
+            print(f"❌ {example}")
+
+        for _example, error in errors:
+            print()
+            print(error)
+            print("--------------------------------------")
+
+        print()
+        print("----------------------------------------------------------")
+        print()
+
+        for example, _error in errors:
+            print(f"❌ {example}")
+
+        sys.exit(1)
 
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
