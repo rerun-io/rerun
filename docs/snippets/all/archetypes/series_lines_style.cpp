@@ -15,11 +15,17 @@ int main() {
     // Log two lines series under a shared root so that they show in the same plot by default.
     rec.log_static(
         "trig/sin",
-        rerun::SeriesLines().with_colors({255, 0, 0}).with_names("sin(0.01t)").with_widths(2.0f)
+        rerun::SeriesLines()
+            .with_colors(rerun::Rgba32{255, 0, 0})
+            .with_names("sin(0.01t)")
+            .with_widths(2.0f)
     );
     rec.log_static(
         "trig/cos",
-        rerun::SeriesLines().with_colors({0, 255, 0}).with_names("cos(0.01t)").with_widths(4.0f)
+        rerun::SeriesLines()
+            .with_colors(rerun::Rgba32{0, 255, 0})
+            .with_names("cos(0.01t)")
+            .with_widths(4.0f)
     );
 
     // Log the data on a timeline called "step".
