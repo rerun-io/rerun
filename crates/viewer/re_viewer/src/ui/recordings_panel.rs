@@ -271,7 +271,7 @@ impl DatasetKind {
                 .as_ref()
                 .is_some_and(|source| match source {
                     SmartChannelSource::RedapGrpcStream(endpoint) => {
-                        &endpoint.origin == origin // TODO: Also check for dataset
+                        &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
                     }
                     _ => false,
                 }),
@@ -319,8 +319,8 @@ fn dataset_and_its_recordings_ui(
             icons::DATASET.as_image().tint(color).paint_at(ui, rect);
         });
 
-    // TODO: Comparing name is brittle
-    let mut item_response = if kind.name() == StoreHub::welcome_screen_app_id().as_str() {
+    let mut item_response = if matches!(&kind, DatasetKind::Local(id) if id == &StoreHub::welcome_screen_app_id())
+    {
         // Special case: the welcome screen never has any recordings
         debug_assert!(
             entity_dbs.is_empty(),
