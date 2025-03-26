@@ -172,7 +172,7 @@ impl EntityData {
 
             let is_this_a_match = !children.is_empty();
             let default_open = filter_matcher.is_active()
-                || (entity_tree.path.len() <= 1 && entity_tree.path != EntityPath::properties());
+                || (entity_tree.path.len() <= 1 && !entity_tree.path.is_reserved());
 
             NodeInfo {
                 is_leaf: false,

@@ -127,6 +127,14 @@ impl EntityPath {
         ])
     }
 
+    /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
+    #[inline]
+    pub fn is_reserved(&self) -> bool {
+        self.iter()
+            .next()
+            .is_some_and(|part| part.unescaped_str().starts_with(RESERVED_NAMESPACE_PREFIX))
+    }
+
     #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
@@ -433,6 +441,8 @@ where
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;
+
+use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
 
 re_types_core::macros::impl_into_cow!(EntityPath);
 

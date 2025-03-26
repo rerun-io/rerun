@@ -2,6 +2,7 @@ use re_string_interner::InternedString;
 
 use crate::PathParseError;
 
+pub const RESERVED_NAMESPACE_PREFIX: &str = "__";
 const PROPERTIES_PART: &str = "__properties";
 const RECORDING_PART: &str = "recording";
 
