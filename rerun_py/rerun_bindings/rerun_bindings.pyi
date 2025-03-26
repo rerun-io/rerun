@@ -231,7 +231,7 @@ class RecordingView:
 
         """
 
-    def filter_range_seconds(self, start: float, end: float) -> RecordingView:
+    def filter_range_secs(self, start: float, end: float) -> RecordingView:
         """
         Filter the view to only include data between the given index values expressed as seconds.
 
