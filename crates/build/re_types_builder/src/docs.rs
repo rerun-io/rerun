@@ -376,6 +376,13 @@ mod doclink_translation {
 
             scope = object.scope().unwrap_or_default();
             is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+
+            if let Some(deprecation_notice) = object.deprecation_notice() {
+                return Err(format!(
+                    "Found doclink to deprecated object '{}': {deprecation_notice}",
+                    object.fqname,
+                ));
+            }
         }
 
         Ok(match target {
