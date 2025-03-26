@@ -1,6 +1,6 @@
 use pyo3::{pyclass, pymethods};
 
-use re_protos::common::v1alpha1::DatasetHandle;
+use re_protos::common::v1alpha1::ext::DatasetHandle;
 
 use crate::catalog::PyEntry;
 
@@ -12,7 +12,7 @@ pub struct PyDataset {
 #[pymethods]
 impl PyDataset {
     #[getter]
-    fn manifest_url(&self) -> Option<String> {
-        self.dataset_handle.dataset_url.clone()
+    fn manifest_url(&self) -> String {
+        self.dataset_handle.url.clone()
     }
 }
