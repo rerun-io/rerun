@@ -9,7 +9,7 @@ This archetype only provides styling information.
 Changes over time are supported for most but not all its fields (see respective fields for details),
 it's generally recommended to log this type as static.
 
-The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
+The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
 Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 
 ## Components
@@ -21,9 +21,9 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `SeriesPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoints.html)
- * 🐍 [Python API docs for `SeriesPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesPoints)
- * 🦀 [Rust API docs for `SeriesPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesPoints.html)
+ * 🌊 [C++ API docs for `SeriesPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoints.html?speculative-link)
+ * 🐍 [Python API docs for `SeriesPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.SeriesPoints)
+ * 🦀 [Rust API docs for `SeriesPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesPoints.html?speculative-link)
 
 ## Example
 
