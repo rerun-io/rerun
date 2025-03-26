@@ -21,7 +21,7 @@ from ..api import View, ViewContentsLike
 
 class TimeSeriesView(View):
     """
-    **View**: A time series view for scalars over time, for use with [`archetypes.Scalar`][rerun.archetypes.Scalar].
+    **View**: A time series view for scalars over time, for use with [`archetypes.Scalars`][rerun.archetypes.Scalars].
 
     Example
     -------

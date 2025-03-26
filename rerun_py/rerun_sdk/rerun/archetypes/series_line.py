@@ -30,7 +30,7 @@ class SeriesLine(Archetype):
 
     This archetype only provides styling information and should be logged as static
     when possible. The underlying data needs to be logged to the same entity-path using
-    [`archetypes.Scalar`][rerun.archetypes.Scalar].
+    [`archetypes.Scalars`][rerun.archetypes.Scalars].
 
     Example
     -------

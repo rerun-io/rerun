@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// This archetype only provides styling information and should be logged as static
 /// when possible. The underlying data needs to be logged to the same entity-path using
-/// [`archetypes::Scalar`][crate::archetypes::Scalar].
+/// [`archetypes::Scalars`][crate::archetypes::Scalars].
 ///
 /// ## Example
 ///
