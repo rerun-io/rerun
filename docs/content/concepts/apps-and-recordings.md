@@ -12,7 +12,7 @@ Similarly, there is no such thing as "closing" a recording: as long as there exi
 
 This design naturally allows for both the production and the storage of recordings to be horizontally distributed:
 * Production can be handled by multiple producers that all log data to the same _Recording ID_, independently.
-* Storage can be sharded over multiple independent files (or any other storage medium).
+* Storage can be shared over multiple independent files (or any other storage medium).
 
 You can learn more about sharding in the [dedicated documentation page](../howto/logging/shared-recordings.md).
 
