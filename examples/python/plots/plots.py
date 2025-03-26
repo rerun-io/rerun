@@ -146,8 +146,8 @@ def main() -> None:
                         origin="/classification",
                         overrides={
                             "classification/line": rr.SeriesLines.from_fields(color=[255, 255, 0], width=3.0),
-                            # This ensures that the `SeriesPoint` visualizers is used for this entity.
-                            "classification/samples": rrb.VisualizerOverrides("SeriesPoint"),
+                            # This ensures that the `SeriesPoints` visualizers is used for this entity.
+                            "classification/samples": rrb.VisualizerOverrides("SeriesPoints"),
                         },
                     ),
                 ),
