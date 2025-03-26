@@ -3,7 +3,10 @@ from __future__ import annotations
 import warnings
 
 import pytest
-from rerun.error_utils import deprecated_param  # Import your decorator
+from rerun.error_utils import deprecated_param, set_strict_mode, strict_mode
+
+was_strict_mode = strict_mode()
+set_strict_mode(False)
 
 
 # Define a function with a deprecated parameter for testing
@@ -53,3 +56,6 @@ def test_positional_args_handling() -> None:
     # No warning should be raised
     assert len(record) == 0
     assert result == "positional_value"
+
+
+set_strict_mode(was_strict_mode)
