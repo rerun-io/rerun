@@ -230,7 +230,7 @@ namespace rerun {
                 );
                 nanos_since_epoch.push_back(nanos.count());
             }
-            return TimeColumn::from_nanoseconds_since_epoch(
+            return TimeColumn::from_nanos_since_epoch(
                 std::move(timeline_name),
                 nanos_since_epoch,
                 sorting_status
@@ -244,7 +244,7 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_nanoseconds_since_epoch(
+        static TimeColumn from_nanos_since_epoch(
             std::string timeline_name, Collection<int64_t> timestamp_in_nanos,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
@@ -271,7 +271,7 @@ namespace rerun {
             for (auto time_in_secs : timestamp_in_secs) {
                 timestamp_in_nanos.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
             }
-            return TimeColumn::from_nanoseconds_since_epoch(
+            return TimeColumn::from_nanos_since_epoch(
                 std::move(timeline_name),
                 std::move(timestamp_in_nanos),
                 sorting_status
