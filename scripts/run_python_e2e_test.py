@@ -78,6 +78,10 @@ def main() -> None:
 
 def run_example(example: str, extra_args: list[str]) -> None:
     env = os.environ.copy()
+
+    # raise exception on warnings, e.g. when using a @deprecated function:
+    env["PYTHONWARNINGS"] = "error"
+
     env["RERUN_STRICT"] = "1"
     env["RERUN_PANIC_ON_WARN"] = "1"
 

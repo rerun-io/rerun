@@ -49,7 +49,7 @@ rr.log(
     rr.Transform3D(
         translation=rgb_from_depth.translation,
         mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
-        from_parent=True,
+        relation=rr.TransformRelation.ChildFromParent,
     ),
     static=True,
 )
