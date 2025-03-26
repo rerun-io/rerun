@@ -38,6 +38,9 @@ service FrontendService {
 
   // List partitions in the Dataset
   rpc ListPartitions(ListPartitionsRequest) returns (stream rerun.manifest_registry.v1alpha1.ListPartitionsResponse) {}
+
+  // Fetch partition from the Dataset
+  rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
 }
 
 // --- Manifest Registry ---
@@ -67,4 +70,11 @@ message ListPartitionsRequest {
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message FetchPartitionRequest {
+  rerun.common.v1alpha1.Tuid dataset_id = 1;
+
+  // Partition for which we want to get chunks
+  rerun.common.v1alpha1.PartitionId partition_id = 2;
 }
