@@ -47,7 +47,7 @@ def main() -> None:
         video_asset = rr.AssetVideo(path=file)
         rr.log("video", video_asset)
 
-        frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+        frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
         rr.send_columns(
             "video",
             # Note timeline values don't have to be the same as the video timestamps.

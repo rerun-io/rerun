@@ -64,7 +64,7 @@ class AssetVideoExt:
 
         self.__attrs_clear__()
 
-    def read_frame_timestamps_ns(self: Any) -> npt.NDArray[np.int64]:
+    def read_frame_timestamps_nanos(self: Any) -> npt.NDArray[np.int64]:
         """
         Determines the presentation timestamps of all frames inside the video.
 

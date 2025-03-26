@@ -52,7 +52,7 @@ class AssetVideo(AssetVideoExt, Archetype):
     rr.log("video", video_asset, static=True)
 
     # Send automatically determined video frame timestamps.
-    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+    frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.

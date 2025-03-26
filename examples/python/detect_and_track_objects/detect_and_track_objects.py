@@ -345,7 +345,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     logging.info("Detector initialized.")
 
     video_asset = rr.AssetVideo(path=video_path)
-    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+    frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
 
     rr.log("video", video_asset, static=True)
 
