@@ -6,18 +6,50 @@ use arrow::{
     array::{ArrayRef, Int32Array, Int64Array, RecordBatch, StringArray, StructArray, UInt64Array},
     datatypes::{DataType, Field, Fields, Schema, SchemaRef},
 };
-use datafusion::error::Result as DataFusionResult;
+use datafusion::{catalog::TableProvider, error::Result as DataFusionResult};
 use itertools::multiunzip;
+use re_log_types::external::re_tuid::Tuid;
 use re_protos::catalog::v1alpha1::{
     catalog_service_client::CatalogServiceClient, EntryFilter, EntryType, FindEntriesRequest,
     FindEntriesResponse,
 };
 use tonic::transport::Channel;
 
-use crate::grpc_response_provider::GrpcResponseToTable;
+use crate::grpc_response_provider::{GrpcResponseProvider, GrpcResponseToTable};
+
+#[derive(Debug, Clone)]
+pub struct CatalogFindEntryProvider {
+    client: CatalogServiceClient<Channel>,
+    tuid_filter: Option<Tuid>,
+    name_filter: Option<String>,
+    entry_type_filter: Option<EntryType>,
+}
+
+impl CatalogFindEntryProvider {
+    pub fn new(
+        conn: Channel,
+        tuid_filter: Option<Tuid>,
+        name_filter: Option<String>,
+        entry_type_filter: Option<EntryType>,
+    ) -> Self {
+        Self {
+            client: CatalogServiceClient::new(conn),
+            tuid_filter,
+            name_filter,
+            entry_type_filter,
+        }
+    }
+
+    /// This is a convenience function
+    pub fn into_provider(self) -> Arc<dyn TableProvider> {
+        let provider: GrpcResponseProvider<Self> = self.into();
+
+        Arc::new(provider)
+    }
+}
 
 #[async_trait]
-impl GrpcResponseToTable for CatalogServiceClient<Channel> {
+impl GrpcResponseToTable for CatalogFindEntryProvider {
     type GrpcResponse = FindEntriesResponse;
 
     fn create_schema() -> SchemaRef {
@@ -41,14 +73,15 @@ impl GrpcResponseToTable for CatalogServiceClient<Channel> {
     }
 
     async fn send_request(&mut self) -> Result<tonic::Response<Self::GrpcResponse>, tonic::Status> {
-        self.find_entries(tonic::Request::new(FindEntriesRequest {
-            filter: Some(EntryFilter {
-                id: None,
-                name: None,
-                entry_type: Some(EntryType::Dataset.into()),
-            }),
-        }))
-        .await
+        self.client
+            .find_entries(tonic::Request::new(FindEntriesRequest {
+                filter: Some(EntryFilter {
+                    id: self.tuid_filter.map(Into::into),
+                    name: self.name_filter.clone(),
+                    entry_type: self.entry_type_filter.map(Into::into),
+                }),
+            }))
+            .await
     }
 
     fn process_response(
