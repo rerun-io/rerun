@@ -857,6 +857,7 @@ def new_recording(
     make_default: bool = True,
     make_thread_default: bool = True,
     default_enabled: bool = True,
+    send_properties: bool = True,
 ) -> PyRecordingStream:
     """Create a new recording stream."""
 

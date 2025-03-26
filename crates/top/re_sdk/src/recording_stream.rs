@@ -127,7 +127,8 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<ChunkBatcherConfig>,
 
     // Optional user-defined recording properties.
-    properties: Option<RecordingProperties>,
+    should_send_properties: bool,
+    properties: RecordingProperties,
 }
 
 impl RecordingStreamBuilder {
@@ -157,9 +158,9 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
 
-            properties: Some(
-                RecordingProperties::new().with_start_time(re_types::components::Timestamp::now()),
-            ),
+            should_send_properties: true,
+            properties: RecordingProperties::new()
+                .with_start_time(re_types::components::Timestamp::now()),
         }
     }
 
@@ -203,35 +204,35 @@ impl RecordingStreamBuilder {
             StoreKind::Recording,
             recording_id.into(),
         ));
-        self.disable_properties()
+        self.send_properties(false)
     }
 
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_name(mut self, name: impl Into<String>) -> Self {
-        self.properties = if let Some(props) = self.properties.take() {
-            Some(props.with_name(name.into()))
-        } else {
-            Some(RecordingProperties::new().with_name(name.into()))
-        };
+        self.properties = self.properties.with_name(name.into());
         self
     }
 
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_started(mut self, started: impl Into<Timestamp>) -> Self {
-        self.properties = if let Some(props) = self.properties.take() {
-            Some(props.with_start_time(started))
-        } else {
-            Some(RecordingProperties::new().with_start_time(started))
-        };
+        self.properties = self.properties.with_start_time(started);
         self
     }
 
+    #[deprecated(since = "0.22.0", note = "use `send_properties` instead")]
     /// Disables sending the [`RecordingProperties`] chunk.
     #[inline]
     pub fn disable_properties(mut self) -> Self {
-        self.properties = None;
+        self.should_send_properties = false;
+        self
+    }
+
+    /// Whether the [`RecordingProperties`] chunk should be sent.
+    #[inline]
+    pub fn send_properties(mut self, should_send: bool) -> Self {
+        self.should_send_properties = should_send;
         self
     }
 
@@ -655,6 +656,7 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
+            should_send_properties,
             properties,
         } = self;
 
@@ -681,7 +683,12 @@ impl RecordingStreamBuilder {
                 }
             });
 
-        (enabled, store_info, properties, batcher_config)
+        (
+            enabled,
+            store_info,
+            should_send_properties.then_some(properties),
+            batcher_config,
+        )
     }
 
     /// Internal check for whether or not logging is enabled using explicit/default settings & env var.
@@ -1881,10 +1888,10 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn binary_stream(&self) -> Result<BinaryStreamStorage, crate::sink::BinaryStreamSinkError> {
-        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone())?;
+    pub fn binary_stream(&self) -> BinaryStreamStorage {
+        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone());
         self.set_sink(Box::new(sink));
-        Ok(storage)
+        storage
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
