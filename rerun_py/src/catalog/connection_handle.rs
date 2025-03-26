@@ -5,12 +5,12 @@ use pyo3::Python;
 use pyo3::{create_exception, exceptions::PyRuntimeError, PyResult};
 
 use re_grpc_client::redap::catalog_client;
-use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
 use re_protos::catalog::v1alpha1::{
-    CreateDatasetEntryRequest, DatasetEntry, DeleteEntryRequest, EntryDetails, EntryFilter,
-    ReadDatasetEntryRequest,
+    catalog_service_client::CatalogServiceClient,
+    ext::{DatasetEntry, EntryDetails},
+    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
 };
-use re_tuid::Tuid;
+use re_protos::common::v1alpha1::ext::EntryId;
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -38,7 +38,6 @@ impl ConnectionHandle {
 // TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
 // used in e.g. the redap browser, etc. The present connection handle should just forward them.
 impl ConnectionHandle {
-    //TODO(ab): return nicer wrapper object over the gRPC message
     pub fn find_entries(
         &mut self,
         py: Python<'_>,
@@ -53,12 +52,17 @@ impl ConnectionHandle {
         )
         .map_err(to_py_err)?;
 
-        let entries = response.into_inner().entries;
+        let entries: Result<Vec<_>, _> = response
+            .into_inner()
+            .entries
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect();
 
-        Ok(entries)
+        Ok(entries?)
     }
 
-    pub fn delete_entry(&mut self, py: Python<'_>, entry_id: Tuid) -> PyResult<()> {
+    pub fn delete_entry(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         let _response = wait_for_future(
             py,
             self.client.delete_entry(DeleteEntryRequest {
@@ -70,27 +74,29 @@ impl ConnectionHandle {
         Ok(())
     }
 
-    //TODO(ab): return nicer wrapper object over the gRPC message
-    pub fn create_dataset(
-        &mut self,
-        py: Python<'_>,
-        entry: DatasetEntry,
-    ) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(&mut self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
             self.client.create_dataset_entry(CreateDatasetEntryRequest {
-                dataset: Some(entry),
+                dataset: Some(re_protos::catalog::v1alpha1::DatasetEntry {
+                    details: Some(re_protos::catalog::v1alpha1::EntryDetails {
+                        name: Some(name),
+                        ..Default::default()
+                    }),
+                    dataset_handle: None,
+                }),
             }),
         )
         .map_err(to_py_err)?;
 
-        response
+        Ok(response
             .into_inner()
             .dataset
-            .ok_or(PyRuntimeError::new_err("No dataset in response"))
+            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
+            .try_into()?)
     }
 
-    pub fn read_dataset(&mut self, py: Python<'_>, entry_id: Tuid) -> PyResult<DatasetEntry> {
+    pub fn read_dataset(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
             self.client.read_dataset_entry(ReadDatasetEntryRequest {
@@ -99,9 +105,10 @@ impl ConnectionHandle {
         )
         .map_err(to_py_err)?;
 
-        response
+        Ok(response
             .into_inner()
             .dataset
-            .ok_or(PyRuntimeError::new_err("No dataset in response"))
+            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
+            .try_into()?)
     }
 }

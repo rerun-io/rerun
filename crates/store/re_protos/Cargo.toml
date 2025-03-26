@@ -12,6 +12,14 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+
+[features]
+default = []
+
+# Enable Python integration with `pyo3`.
+py = ["dep:pyo3"]
+
+
 [dependencies]
 re_build_info.workspace = true
 re_byte_size.workspace = true
@@ -21,8 +29,10 @@ re_tuid.workspace = true
 
 # External
 arrow.workspace = true
-prost.workspace = true
+jiff.workspace = true
 prost-types.workspace = true
+prost.workspace = true
+pyo3 = { workspace = true, optional = true }
 thiserror.workspace = true
 
 # Native dependencies:
