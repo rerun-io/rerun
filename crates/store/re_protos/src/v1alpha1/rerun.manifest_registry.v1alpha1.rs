@@ -525,6 +525,9 @@ pub struct FetchChunkManifestRequest {
     /// Chunk manifest is index speicific
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
+    /// Scan parameters
+    #[prost(message, optional, tag = "3")]
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
 impl ::prost::Name for FetchChunkManifestRequest {
     const NAME: &'static str = "FetchChunkManifestRequest";

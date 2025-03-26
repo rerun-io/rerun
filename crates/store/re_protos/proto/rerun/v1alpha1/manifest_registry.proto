@@ -311,6 +311,9 @@ message FetchChunkManifestRequest {
 
   // Chunk manifest is index speicific
   IndexColumn column = 2;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
 }
 
 message FetchChunkManifestResponse {
