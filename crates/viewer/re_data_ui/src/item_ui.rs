@@ -637,6 +637,10 @@ pub fn instance_hover_card_ui(
         ui.label(instance_path.syntax_highlighted(ui.style()));
     });
 
+    if instance_path.entity_path.is_reserved() {
+        ui.label("This entity is part of a reserved namespace.");
+    }
+
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
 
