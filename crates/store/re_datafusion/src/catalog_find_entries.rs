@@ -27,13 +27,13 @@ pub struct CatalogFindEntryProvider {
 
 impl CatalogFindEntryProvider {
     pub fn new(
-        conn: Channel,
+        client: CatalogServiceClient<Channel>,
         tuid_filter: Option<Tuid>,
         name_filter: Option<String>,
         entry_kind_filter: Option<EntryKind>,
     ) -> Self {
         Self {
-            client: CatalogServiceClient::new(conn),
+            client,
             tuid_filter,
             name_filter,
             entry_kind_filter,
@@ -97,8 +97,10 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
             Vec<_>,
         ) = multiunzip(response.entries.into_iter().map(|entry| {
             (
-                entry.id.and_then(|id| id.time_ns),
-                entry.id.and_then(|id| id.inc),
+                entry
+                    .id
+                    .and_then(|entry_id| entry_id.id.map(|id| id.time_ns())),
+                entry.id.and_then(|entry_id| entry_id.id.map(|id| id.inc())),
                 entry.name,
                 entry.entry_kind,
                 entry
