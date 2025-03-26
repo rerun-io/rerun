@@ -35,9 +35,15 @@ impl From<Tuid> for PyEntryId {
     }
 }
 
-impl From<re_protos::common::v1alpha1::Tuid> for PyEntryId {
-    fn from(id: re_protos::common::v1alpha1::Tuid) -> Self {
-        Self { id: id.into() }
+impl TryFrom<re_protos::common::v1alpha1::Tuid> for PyEntryId {
+    type Error = pyo3::PyErr;
+
+    fn try_from(value: re_protos::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value
+                .try_into()
+                .map_err(|err| PyTypeError::new_err(format!("invalid Tuid: {err}")))?,
+        })
     }
 }
 

@@ -28,17 +28,26 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
 // ---
 
-impl From<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
-    fn from(value: crate::common::v1alpha1::Tuid) -> Self {
-        Self::from_nanos_and_inc(value.time_ns, value.inc)
+impl TryFrom<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        let time_ns = value
+            .time_ns
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "time_ns"))?;
+        let inc = value
+            .inc
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "inc"))?;
+
+        Ok(Self::from_nanos_and_inc(time_ns, inc))
     }
 }
 
 impl From<re_tuid::Tuid> for crate::common::v1alpha1::Tuid {
     fn from(value: re_tuid::Tuid) -> Self {
         Self {
-            time_ns: value.nanoseconds_since_epoch(),
-            inc: value.inc(),
+            time_ns: Some(value.nanoseconds_since_epoch()),
+            inc: Some(value.inc()),
         }
     }
 }
@@ -486,7 +495,7 @@ impl TryFrom<crate::log_msg::v1alpha1::SetStoreInfo> for re_log_types::SetStoreI
                     crate::log_msg::v1alpha1::SetStoreInfo,
                     "row_id",
                 ))?
-                .into(),
+                .try_into()?,
             info: value
                 .info
                 .ok_or(missing_field!(
@@ -715,7 +724,7 @@ mod tests {
     fn test_tuid_conversion() {
         let tuid = re_tuid::Tuid::new();
         let proto_tuid: crate::common::v1alpha1::Tuid = tuid.into();
-        let tuid2: re_tuid::Tuid = proto_tuid.into();
+        let tuid2: re_tuid::Tuid = proto_tuid.try_into().unwrap();
         assert_eq!(tuid, tuid2);
     }
 }
