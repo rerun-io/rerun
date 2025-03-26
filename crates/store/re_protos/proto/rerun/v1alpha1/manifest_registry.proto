@@ -309,7 +309,7 @@ message FetchChunkManifestRequest {
   // Dataset for which we want to fetch chunk manifest
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Chunk manifest is index speicific
+  // Chunk manifest is index specific
   IndexColumn column = 2;
 
   // Scan parameters

@@ -522,7 +522,7 @@ pub struct FetchChunkManifestRequest {
     /// Dataset for which we want to fetch chunk manifest
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    /// Chunk manifest is index speicific
+    /// Chunk manifest is index specific
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
     /// Scan parameters
