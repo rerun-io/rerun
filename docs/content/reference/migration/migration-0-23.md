@@ -224,15 +224,15 @@ rrb.TimeSeriesView(
     name="Trig",
     origin="/trig",
     overrides={
-        "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
-        "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+        "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
+        "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
     },
 ),
 rrb.TimeSeriesView(
     name="Classification",
     origin="/classification",
     overrides={
-        "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
+        "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
         "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
     },
 ),
@@ -338,14 +338,14 @@ overrides={
 
 ## Types for time series plots are now plural
 
-The `Scalar`/`SeriesPoint`/`SeriesLine` archetypes have been deprecated in favor of
+The `Scalar`/`SeriesPoint`/`SeriesLines` archetypess have been deprecated in favor of
 `Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
 scatter plots or lines on the same archetype.
 
 
 Before:
 ```py
-rr.log("trig/sin", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
+rr.log("trig/sin", rr.SeriesLines(color=[s0, 255, 0], name="cos(0.01t)", width=4), static=True)
 
 for t in range(int(tau * 2 * 100.0)):
     rr.set_time("step", sequence=t)

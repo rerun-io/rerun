@@ -79,7 +79,7 @@ brand_colors = {
 }
 
 
-def style_plot(symbol: str) -> rr.SeriesLine:
+def style_plot(symbol: str) -> rr.SeriesLines:
     return rr.SeriesLines(
         color=brand_colors[symbol],
         name=symbol,
