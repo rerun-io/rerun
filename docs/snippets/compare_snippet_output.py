@@ -89,7 +89,7 @@ def main() -> None:
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
-    parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified examples")
+    parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified example(s)")
 
     args = parser.parse_args()
 
