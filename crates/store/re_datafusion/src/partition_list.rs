@@ -27,13 +27,15 @@ use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 pub struct PartitionListProvider {
     client: ManifestRegistryServiceClient<Channel>,
     tuid: Tuid,
+    url: String,
 }
 
 impl PartitionListProvider {
-    pub fn new(conn: Channel, tuid: Tuid) -> Self {
+    pub fn new(conn: Channel, tuid: Tuid, url: String) -> Self {
         Self {
             client: ManifestRegistryServiceClient::new(conn),
             tuid,
+            url,
         }
     }
 
@@ -75,7 +77,7 @@ impl GrpcStreamToTable for PartitionListProvider {
         let request = ListPartitionsRequest {
             entry: Some(DatasetHandle {
                 entry_id: Some(self.tuid.into()),
-                dataset_url: Some("file:///tmp/unknown_location.rrd".to_owned()),
+                dataset_url: Some(self.url.clone()),
             }),
             scan_parameters: None,
         };
