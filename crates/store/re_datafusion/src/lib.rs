@@ -7,7 +7,7 @@ use datafusion::catalog::TableProvider;
 use partition_index_list::PartitionIndexListProvider;
 use partition_list::PartitionListProvider;
 use re_log_types::external::re_tuid::Tuid;
-use re_protos::catalog::v1alpha1::EntryType;
+use re_protos::catalog::v1alpha1::EntryKind;
 use tonic::transport::Channel;
 
 pub mod catalog_find_entries;
@@ -35,7 +35,7 @@ impl DataFusionConnector {
         //     CatalogServiceClient::new(self.channel.clone()).into();
 
         // Arc::new(table_provider)
-        CatalogFindEntryProvider::new(self.channel.clone(), None, None, Some(EntryType::Dataset))
+        CatalogFindEntryProvider::new(self.channel.clone(), None, None, Some(EntryKind::Dataset))
             .into_provider()
     }
 
