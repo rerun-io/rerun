@@ -7,7 +7,7 @@ use datafusion::catalog::TableProvider;
 use partition_index_list::PartitionIndexListProvider;
 use partition_list::PartitionListProvider;
 use re_log_types::external::re_tuid::Tuid;
-use re_protos::catalog::v1alpha1::EntryKind;
+use re_protos::catalog::v1alpha1::{catalog_service_client::CatalogServiceClient, EntryKind};
 use tonic::transport::Channel;
 
 pub mod catalog_find_entries;
@@ -31,12 +31,9 @@ impl DataFusionConnector {
 
 impl DataFusionConnector {
     pub fn get_all_datasets(&self) -> Arc<dyn TableProvider> {
-        // let table_provider: GrpcResponseProvider<CatalogServiceClient<Channel>> =
-        //     CatalogServiceClient::new(self.channel.clone()).into();
+        let client = CatalogServiceClient::new(self.channel.clone());
 
-        // Arc::new(table_provider)
-        CatalogFindEntryProvider::new(self.channel.clone(), None, None, Some(EntryKind::Dataset))
-            .into_provider()
+        CatalogFindEntryProvider::new(client, None, None, Some(EntryKind::Dataset)).into_provider()
     }
 
     pub fn get_partition_list(&self, tuid: Tuid) -> Arc<dyn TableProvider> {
