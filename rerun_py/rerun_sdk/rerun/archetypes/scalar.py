@@ -114,6 +114,7 @@ class Scalar(Archetype):
         )
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def _clear(cls) -> Scalar:
         """Produce an empty Scalar, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -121,6 +122,7 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def from_fields(
         cls,
         *,
@@ -160,6 +162,7 @@ class Scalar(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def columns(
         cls,
         *,

@@ -43,6 +43,17 @@ const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
 
 // ---
 
+fn classmethod_decorators(obj: &Object) -> String {
+    // We need to decorate all class methods as deprecated
+    if let Some(deprecation_notice) = obj.deprecation_notice() {
+        format!(r#"@deprecated("""{deprecation_notice}""")"#)
+    } else {
+        Default::default()
+    }
+}
+
+// ---
+
 /// Python-specific helpers for [`Object`].
 trait PythonObjectExt {
     /// Returns `true` if the object is a delegating component.
@@ -909,7 +920,9 @@ fn code_for_enum(
     code.push_indented(
         1,
         format!(
-            r#"@classmethod
+            r#"
+@classmethod
+{extra_decorators}
 def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     '''Best-effort converter, including a case-insensitive string matcher.'''
     if isinstance(val, {enum_name}):
@@ -924,7 +937,8 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
             if variant.name.lower() == val_lower:
                 return variant
     raise ValueError(f"Cannot convert {{val}} to {{cls.__name__}}")
-        "#
+        "#,
+            extra_decorators = classmethod_decorators(obj)
         ),
         1,
     );
@@ -2482,12 +2496,14 @@ fn quote_clear_methods(obj: &Object) -> String {
             )
 
         @classmethod
+        {extra_decorators}
         def _clear(cls) -> {classname}:
             """Produce an empty {classname}, bypassing `__init__`."""
             inst = cls.__new__(cls)
             inst.__attrs_clear__()
             return inst
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
@@ -2538,6 +2554,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     unindent(&format!(
         r#"
         @classmethod
+        {extra_decorators}
         def from_fields(
             cls,
             *,
@@ -2564,7 +2581,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         def cleared(cls) -> {name}:
             """Clear all the fields of a `{name}`."""
             return cls.from_fields(clear_unset=True)
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
@@ -2625,6 +2643,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     unindent(&format!(
         r#"
         @classmethod
+        {extra_decorators}
         def columns(
             cls,
             *,
@@ -2672,7 +2691,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
             indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
             return ComponentColumnList([indicator_column] + columns)
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
