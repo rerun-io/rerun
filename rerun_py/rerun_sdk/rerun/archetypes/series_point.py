@@ -137,16 +137,16 @@ class SeriesPoint(Archetype):
             marker_size=None,
         )
 
-    @deprecated("""Use `SeriesPoints` instead.""")
     @classmethod
+    @deprecated("""Use `SeriesPoints` instead.""")
     def _clear(cls) -> SeriesPoint:
         """Produce an empty SeriesPoint, bypassing `__init__`."""
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
         return inst
 
-    @deprecated("""Use `SeriesPoints` instead.""")
     @classmethod
+    @deprecated("""Use `SeriesPoints` instead.""")
     def from_fields(
         cls,
         *,
@@ -207,8 +207,8 @@ class SeriesPoint(Archetype):
         """Clear all the fields of a `SeriesPoint`."""
         return cls.from_fields(clear_unset=True)
 
-    @deprecated("""Use `SeriesPoints` instead.""")
     @classmethod
+    @deprecated("""Use `SeriesPoints` instead.""")
     def columns(
         cls,
         *,

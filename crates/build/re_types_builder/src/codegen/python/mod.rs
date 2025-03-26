@@ -921,8 +921,8 @@ fn code_for_enum(
         1,
         format!(
             r#"
-{extra_decorators}
 @classmethod
+{extra_decorators}
 def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     '''Best-effort converter, including a case-insensitive string matcher.'''
     if isinstance(val, {enum_name}):
@@ -2495,8 +2495,8 @@ fn quote_clear_methods(obj: &Object) -> String {
                 {param_nones}
             )
 
-        {extra_decorators}
         @classmethod
+        {extra_decorators}
         def _clear(cls) -> {classname}:
             """Produce an empty {classname}, bypassing `__init__`."""
             inst = cls.__new__(cls)
@@ -2553,8 +2553,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
 
     unindent(&format!(
         r#"
-        {extra_decorators}
         @classmethod
+        {extra_decorators}
         def from_fields(
             cls,
             *,
@@ -2642,8 +2642,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     // plural data, even to singular fields (mono-components).
     unindent(&format!(
         r#"
-        {extra_decorators}
         @classmethod
+        {extra_decorators}
         def columns(
             cls,
             *,
