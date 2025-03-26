@@ -580,15 +580,16 @@ mod tests {
 
     #[test]
     fn test_properties() {
-        assert_eq!(EntityPath::properties(), EntityPath::from("/__properties"),);
+        let path = EntityPath::properties();
+        assert_eq!(path, EntityPath::from("/__properties"));
+        assert!(path.is_reserved());
     }
 
     #[test]
     fn test_recording_properties() {
-        assert_eq!(
-            EntityPath::recording_properties(),
-            EntityPath::from("/__properties/recording"),
-        );
+        let path = EntityPath::recording_properties();
+        assert_eq!(path, EntityPath::from("/__properties/recording"),);
+        assert!(path.is_reserved());
     }
 
     #[test]
