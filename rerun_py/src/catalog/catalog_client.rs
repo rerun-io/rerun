@@ -42,7 +42,7 @@ impl PyCatalogClient {
             EntryFilter {
                 id: None,
                 name: None,
-                entry_type: None,
+                entry_kind: None,
             },
         )?;
 

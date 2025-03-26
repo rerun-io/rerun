@@ -2,7 +2,7 @@ use std::str::FromStr as _;
 
 use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
 
-use re_protos::catalog::v1alpha1::{EntryDetails, EntryType};
+use re_protos::catalog::v1alpha1::{EntryDetails, EntryKind};
 use re_tuid::Tuid;
 
 use crate::catalog::PyCatalogClient;
@@ -45,7 +45,7 @@ impl From<re_protos::common::v1alpha1::Tuid> for PyEntryId {
 
 #[pyclass(name = "EntryType", eq, eq_int)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PyEntryType {
+pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
     Dataset = 1,
     #[pyo3(name = "DATASET_VIEW")]
@@ -57,7 +57,7 @@ pub enum PyEntryType {
 }
 
 #[pymethods]
-impl PyEntryType {
+impl PyEntryKind {
     // This allows for EntryType.DATASET syntax in Python
     #[classattr]
     pub const DATASET: Self = Self::Dataset;
@@ -69,16 +69,16 @@ impl PyEntryType {
     pub const TABLE_VIEW: Self = Self::TableView;
 }
 
-impl TryFrom<EntryType> for PyEntryType {
+impl TryFrom<EntryKind> for PyEntryKind {
     type Error = PyErr;
 
-    fn try_from(value: EntryType) -> Result<Self, Self::Error> {
+    fn try_from(value: EntryKind) -> Result<Self, Self::Error> {
         match value {
-            EntryType::Unspecified => Err(PyTypeError::new_err("EntryType is unspecified")),
-            EntryType::Dataset => Ok(Self::Dataset),
-            EntryType::DatasetView => Ok(Self::DatasetView),
-            EntryType::Table => Ok(Self::Table),
-            EntryType::TableView => Ok(Self::TableView),
+            EntryKind::Unspecified => Err(PyTypeError::new_err("EntryType is unspecified")),
+            EntryKind::Dataset => Ok(Self::Dataset),
+            EntryKind::DatasetView => Ok(Self::DatasetView),
+            EntryKind::Table => Ok(Self::Table),
+            EntryKind::TableView => Ok(Self::TableView),
         }
     }
 }
@@ -112,9 +112,9 @@ impl PyEntry {
     }
 
     #[getter]
-    pub fn entry_type(&self) -> PyResult<PyEntryType> {
+    pub fn kind(&self) -> PyResult<PyEntryKind> {
         //TODO(ab): make this less annoying thanks to a wrapper over grpc messages.
-        EntryType::try_from(self.details.entry_type)
+        EntryKind::try_from(self.details.entry_kind)
             .map_err(|err| PyTypeError::new_err(format!("cannot deserialize EntryType: {err}")))?
             .try_into()
     }

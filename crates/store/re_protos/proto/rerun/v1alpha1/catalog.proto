@@ -61,18 +61,18 @@ message ReadDatasetEntryResponse {
 message EntryFilter {
   optional rerun.common.v1alpha1.Tuid id = 1;
   optional string name = 2;
-  optional EntryType entry_type = 3;
+  optional EntryKind entry_kind = 3;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
-enum EntryType {
+enum EntryKind {
   // Always reserve unspecified as default value
-  ENTRY_TYPE_UNSPECIFIED = 0;
+  ENTRY_KIND_UNSPECIFIED = 0;
   // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
-  ENTRY_TYPE_DATASET = 1;
-  ENTRY_TYPE_DATASET_VIEW = 2;
-  ENTRY_TYPE_TABLE = 3;
-  ENTRY_TYPE_TABLE_VIEW = 4;
+  ENTRY_KIND_DATASET = 1;
+  ENTRY_KIND_DATASET_VIEW = 2;
+  ENTRY_KIND_TABLE = 3;
+  ENTRY_KIND_TABLE_VIEW = 4;
 }
 
 // Minimal info about an Entry for high-level catalog summary
@@ -84,8 +84,8 @@ message EntryDetails {
   // TODO(jleibs): Define valid name constraints
   optional string name = 2;
 
-  // The type of entry
-  EntryType entry_type = 3;
+  // The kind of entry
+  EntryKind entry_kind = 3;
 
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;

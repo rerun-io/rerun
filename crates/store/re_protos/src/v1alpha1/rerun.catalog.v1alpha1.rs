@@ -122,8 +122,8 @@ pub struct EntryFilter {
     pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(enumeration = "EntryType", optional, tag = "3")]
-    pub entry_type: ::core::option::Option<i32>,
+    #[prost(enumeration = "EntryKind", optional, tag = "3")]
+    pub entry_kind: ::core::option::Option<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -145,9 +145,9 @@ pub struct EntryDetails {
     /// TODO(jleibs): Define valid name constraints
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    /// The type of entry
-    #[prost(enumeration = "EntryType", tag = "3")]
-    pub entry_type: i32,
+    /// The kind of entry
+    #[prost(enumeration = "EntryKind", tag = "3")]
+    pub entry_kind: i32,
     #[prost(message, optional, tag = "4")]
     pub created_at: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "5")]
@@ -184,7 +184,7 @@ impl ::prost::Name for DatasetEntry {
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum EntryType {
+pub enum EntryKind {
     /// Always reserve unspecified as default value
     Unspecified = 0,
     /// Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
@@ -193,28 +193,28 @@ pub enum EntryType {
     Table = 3,
     TableView = 4,
 }
-impl EntryType {
+impl EntryKind {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "ENTRY_TYPE_UNSPECIFIED",
-            Self::Dataset => "ENTRY_TYPE_DATASET",
-            Self::DatasetView => "ENTRY_TYPE_DATASET_VIEW",
-            Self::Table => "ENTRY_TYPE_TABLE",
-            Self::TableView => "ENTRY_TYPE_TABLE_VIEW",
+            Self::Unspecified => "ENTRY_KIND_UNSPECIFIED",
+            Self::Dataset => "ENTRY_KIND_DATASET",
+            Self::DatasetView => "ENTRY_KIND_DATASET_VIEW",
+            Self::Table => "ENTRY_KIND_TABLE",
+            Self::TableView => "ENTRY_KIND_TABLE_VIEW",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "ENTRY_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-            "ENTRY_TYPE_DATASET" => Some(Self::Dataset),
-            "ENTRY_TYPE_DATASET_VIEW" => Some(Self::DatasetView),
-            "ENTRY_TYPE_TABLE" => Some(Self::Table),
-            "ENTRY_TYPE_TABLE_VIEW" => Some(Self::TableView),
+            "ENTRY_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENTRY_KIND_DATASET" => Some(Self::Dataset),
+            "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
+            "ENTRY_KIND_TABLE" => Some(Self::Table),
+            "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
             _ => None,
         }
     }
