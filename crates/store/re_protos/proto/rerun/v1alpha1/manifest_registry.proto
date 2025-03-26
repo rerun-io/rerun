@@ -14,7 +14,8 @@ service ManifestRegistryService {
   // List partitions in the Dataset
   rpc ListPartitions(ListPartitionsRequest) returns (stream ListPartitionsResponse) {}
 
-  // Create manifests for all partitions in the Dataset
+  // Create manifests for all partitions in the Dataset. Partition manifest contains information about
+  // the chunks in the partitions.
   rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
 
   // Query Dataset and return a dataframe containing relevant chunk IDs
@@ -28,8 +29,13 @@ service ManifestRegistryService {
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Create index for partitions in the Dataset. Index can be created for all or specific
-  // partitions
+  // partitions. Creating an index will create a new index-specific chunk manifest for the Dataset.
+  // Chunk manifest contains information about individual chunk rows for all chunks containing relevant
+  // index data.
   rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (CreatePartitionIndexesResponse) {}
+
+  // Fetch chunk manifest for a specific index
+  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
   // List indexes for the Dataset
   rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (stream ListPartitionIndexesResponse) {}
@@ -297,6 +303,22 @@ message BTreeIndex {
 
 message CreatePartitionIndexesResponse {
   optional uint64 indexed_rows = 1;
+}
+
+message FetchChunkManifestRequest {
+  // Dataset for which we want to fetch chunk manifest
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Chunk manifest is index specific
+  IndexColumn column = 2;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+}
+
+message FetchChunkManifestResponse {
+  // Chunk manifest as arrow RecordBatches
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message ListPartitionIndexesRequest {
