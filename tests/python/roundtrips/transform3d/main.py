@@ -20,7 +20,7 @@ def main() -> None:
 
     rr.log(
         "transform/translation",
-        rr.Transform3D(translation=[1, 2, 3], from_parent=True),
+        rr.Transform3D(translation=[1, 2, 3], relation=rr.TransformRelation.ChildFromParent),
     )
 
     rr.log(
@@ -30,7 +30,7 @@ def main() -> None:
 
     rr.log(
         "transform/translation_scale",
-        rr.Transform3D(translation=[1, 2, 3], scale=42, from_parent=True),
+        rr.Transform3D(translation=[1, 2, 3], scale=42, relation=rr.TransformRelation.ChildFromParent),
     )
 
     rr.log(
@@ -47,7 +47,7 @@ def main() -> None:
             translation=[1, 2, 3],
             rotation=RotationAxisAngle([0.2, 0.2, 0.8], pi),
             scale=42,
-            from_parent=True,
+            relation=rr.TransformRelation.ChildFromParent,
         ),
     )
 
