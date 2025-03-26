@@ -146,6 +146,7 @@ impl ListItem {
 
     /// Set the item's vertical offset.
     ///
+    /// NOTE: Can only be positive.
     /// Default is 0.0.
     #[inline]
     pub fn with_y_offset(mut self, y_offset: f32) -> Self {
@@ -306,10 +307,15 @@ impl ListItem {
             force_hovered,
             force_background,
             collapse_openness,
-            height,
+            mut height,
             y_offset,
             render_offscreen,
         } = self;
+
+        if y_offset != 0.0 {
+            ui.add_space(y_offset);
+            height -= y_offset;
+        }
 
         let collapse_extra = if collapse_openness.is_some() {
             DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
@@ -350,8 +356,6 @@ impl ListItem {
         // extend.
         let layout_info = LayoutInfoStack::top(ui.ctx());
         let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
-        // Offset has to happen after bg_rect is calculated.
-        rect = rect.translate(egui::Vec2::new(0.0, y_offset));
 
         // Record the max allocated width.
         layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
