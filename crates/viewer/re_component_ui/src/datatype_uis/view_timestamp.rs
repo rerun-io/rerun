@@ -8,7 +8,7 @@ pub fn view_timestamp(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::TimeInt>>,
 ) -> egui::Response {
-    let value = value.deref();
+    let value: &datatypes::TimeInt = value;
     UiLayout::List.data_label(
         ui,
         Timestamp::from(*value).format(ctx.app_options().timestamp_format),
