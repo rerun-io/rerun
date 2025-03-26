@@ -502,10 +502,10 @@ impl ::prost::Name for BTreeIndex {
         "/rerun.manifest_registry.v1alpha1.BTreeIndex".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreatePartitionIndexesResponse {
-    #[prost(uint64, optional, tag = "1")]
-    pub indexed_rows: ::core::option::Option<u64>,
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for CreatePartitionIndexesResponse {
     const NAME: &'static str = "CreatePartitionIndexesResponse";
