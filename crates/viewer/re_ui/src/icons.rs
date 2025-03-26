@@ -122,6 +122,7 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.png");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
+pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.png");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 

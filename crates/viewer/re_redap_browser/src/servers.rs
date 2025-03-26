@@ -150,6 +150,18 @@ impl RedapServers {
         let _ = self.command_sender.send(Command::AddServer(origin));
     }
 
+    pub fn select_server(&self, origin: re_uri::Origin) {
+        let _ = self
+            .command_sender
+            .send(Command::SelectCollection(CollectionId::from(&origin)));
+    }
+
+    pub fn select_dataset(&self, origin: re_uri::Origin, _dataset: String) {
+        let _ = self
+            .command_sender
+            .send(Command::SelectCollection(CollectionId::from(&origin)));
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.

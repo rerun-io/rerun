@@ -553,6 +553,12 @@ impl App {
                 self.state.display_mode = DisplayMode::RedapBrowser;
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
+            SystemCommand::SelectRedapServer { origin } => {
+                self.state.redap_servers.select_server(origin);
+            }
+            SystemCommand::SelectRedapDataset { origin, dataset } => {
+                self.state.redap_servers.select_dataset(origin, dataset);
+            }
 
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = egui_ctx.clone();
