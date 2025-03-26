@@ -126,6 +126,7 @@ class SeriesLine(Archetype):
             aggregation_policy=None,
         )
 
+    @deprecated("""Use `SeriesLines` instead.""")
     @classmethod
     def _clear(cls) -> SeriesLine:
         """Produce an empty SeriesLine, bypassing `__init__`."""
@@ -133,6 +134,7 @@ class SeriesLine(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @deprecated("""Use `SeriesLines` instead.""")
     @classmethod
     def from_fields(
         cls,
@@ -198,6 +200,7 @@ class SeriesLine(Archetype):
         """Clear all the fields of a `SeriesLine`."""
         return cls.from_fields(clear_unset=True)
 
+    @deprecated("""Use `SeriesLines` instead.""")
     @classmethod
     def columns(
         cls,
