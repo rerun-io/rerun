@@ -10,7 +10,7 @@ use datafusion::{catalog::TableProvider, error::Result as DataFusionResult};
 use itertools::multiunzip;
 use re_log_types::external::re_tuid::Tuid;
 use re_protos::catalog::v1alpha1::{
-    catalog_service_client::CatalogServiceClient, EntryFilter, EntryType, FindEntriesRequest,
+    catalog_service_client::CatalogServiceClient, EntryFilter, EntryKind, FindEntriesRequest,
     FindEntriesResponse,
 };
 use tonic::transport::Channel;
@@ -22,7 +22,7 @@ pub struct CatalogFindEntryProvider {
     client: CatalogServiceClient<Channel>,
     tuid_filter: Option<Tuid>,
     name_filter: Option<String>,
-    entry_type_filter: Option<EntryType>,
+    entry_kind_filter: Option<EntryKind>,
 }
 
 impl CatalogFindEntryProvider {
@@ -30,13 +30,13 @@ impl CatalogFindEntryProvider {
         conn: Channel,
         tuid_filter: Option<Tuid>,
         name_filter: Option<String>,
-        entry_type_filter: Option<EntryType>,
+        entry_kind_filter: Option<EntryKind>,
     ) -> Self {
         Self {
             client: CatalogServiceClient::new(conn),
             tuid_filter,
             name_filter,
-            entry_type_filter,
+            entry_kind_filter,
         }
     }
 
@@ -64,7 +64,7 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
                     true,
                 ),
                 Field::new("name", DataType::Utf8, true),
-                Field::new("entry_type", DataType::Int32, true),
+                Field::new("entry_kind", DataType::Int32, true),
                 Field::new("created_at", DataType::Int64, true),
                 Field::new("updated_at", DataType::Int64, true),
             ],
@@ -78,7 +78,7 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
                 filter: Some(EntryFilter {
                     id: self.tuid_filter.map(Into::into),
                     name: self.name_filter.clone(),
-                    entry_type: self.entry_type_filter.map(Into::into),
+                    entry_kind: self.entry_kind_filter.map(Into::into),
                 }),
             }))
             .await
@@ -88,7 +88,7 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
         &mut self,
         response: Self::GrpcResponse,
     ) -> std::task::Poll<Option<DataFusionResult<RecordBatch>>> {
-        let (id_time_ns, id_inc, name, entry_type, created_at, updated_at): (
+        let (id_time_ns, id_inc, name, entry_kind, created_at, updated_at): (
             Vec<_>,
             Vec<_>,
             Vec<_>,
@@ -97,10 +97,10 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
             Vec<_>,
         ) = multiunzip(response.entries.into_iter().map(|entry| {
             (
-                entry.id.map(|id| id.time_ns),
-                entry.id.map(|id| id.inc),
+                entry.id.and_then(|id| id.time_ns),
+                entry.id.and_then(|id| id.inc),
                 entry.name,
-                entry.entry_type,
+                entry.entry_kind,
                 entry
                     .created_at
                     .map(|t| t.seconds * 1_000_000_000 + t.nanos as i64),
@@ -113,7 +113,7 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
         let id_time_ns: ArrayRef = Arc::new(UInt64Array::from(id_time_ns));
         let id_inc: ArrayRef = Arc::new(UInt64Array::from(id_inc));
         let name: ArrayRef = Arc::new(StringArray::from(name));
-        let entry_type: ArrayRef = Arc::new(Int32Array::from(entry_type));
+        let entry_kind: ArrayRef = Arc::new(Int32Array::from(entry_kind));
         let created_at: ArrayRef = Arc::new(Int64Array::from(created_at));
         let updated_at: ArrayRef = Arc::new(Int64Array::from(updated_at));
 
@@ -128,7 +128,7 @@ impl GrpcResponseToTable for CatalogFindEntryProvider {
         let record_batch = match RecordBatch::try_from_iter(vec![
             ("id", id),
             ("name", name),
-            ("entry_type", entry_type),
+            ("entry_kind", entry_kind),
             ("created_at", created_at),
             ("updated_at", updated_at),
         ]) {
