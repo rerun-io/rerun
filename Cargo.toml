@@ -246,7 +246,7 @@ notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.23"
-object_store = { version = "0.12.0" }
+object_store = { version = "0.11.0" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
