@@ -19,7 +19,7 @@ pub struct CollectionId(egui::Id);
 
 impl From<&re_uri::Origin> for CollectionId {
     fn from(origin: &re_uri::Origin) -> Self {
-        CollectionId(egui::Id::new(origin.clone()).with("__top_level_collection__"))
+        Self(egui::Id::new(origin.clone()).with("__top_level_collection__"))
     }
 }
 

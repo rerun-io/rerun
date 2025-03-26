@@ -122,22 +122,20 @@ fn recording_list_ui(
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry("default".to_string())
+                .entry("default".to_owned())
                 .or_default();
 
             if entity_db.store_kind() == StoreKind::Recording {
                 dataset_recordings.push(entity_db);
             }
-        } else {
-            if entity_db.store_kind() == StoreKind::Recording {
-                if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
-                {
-                    let recordings = example_recordings.entry(app_id).or_default();
-                    recordings.push(entity_db);
-                } else {
-                    let recordings = local_recordings.entry(app_id).or_default();
-                    recordings.push(entity_db);
-                }
+        } else if entity_db.store_kind() == StoreKind::Recording {
+            if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
+            {
+                let recordings = example_recordings.entry(app_id).or_default();
+                recordings.push(entity_db);
+            } else {
+                let recordings = local_recordings.entry(app_id).or_default();
+                recordings.push(entity_db);
             }
         }
     }
@@ -164,7 +162,7 @@ fn recording_list_ui(
                     dataset_and_its_recordings_ui(
                         ctx,
                         ui,
-                        DatasetKind::Remote(origin.clone(), dataset.clone()),
+                        &DatasetKind::Remote(origin.clone(), dataset.clone()),
                         entity_dbs,
                     );
                 }
@@ -183,7 +181,7 @@ fn recording_list_ui(
                     dataset_and_its_recordings_ui(
                         ctx,
                         ui,
-                        DatasetKind::Local(app_id.clone()),
+                        &DatasetKind::Local(app_id.clone()),
                         entity_dbs,
                     );
                 }
@@ -208,7 +206,7 @@ fn recording_list_ui(
                     dataset_and_its_recordings_ui(
                         ctx,
                         ui,
-                        DatasetKind::Local(app_id.clone()),
+                        &DatasetKind::Local(app_id.clone()),
                         entity_dbs,
                     );
                 }
@@ -230,14 +228,14 @@ enum DatasetKind {
 impl DatasetKind {
     fn name(&self) -> &str {
         match self {
-            DatasetKind::Remote(_, dataset) => dataset,
-            DatasetKind::Local(app_id) => app_id.as_str(),
+            Self::Remote(_, dataset) => dataset,
+            Self::Local(app_id) => app_id.as_str(),
         }
     }
 
     fn select(&self, ctx: &ViewerContext<'_>) {
         match self {
-            DatasetKind::Remote(origin, dataset) => {
+            Self::Remote(origin, dataset) => {
                 ctx.command_sender()
                     .send_system(SystemCommand::SelectRedapDataset {
                         origin: origin.clone(),
@@ -246,25 +244,25 @@ impl DatasetKind {
                 ctx.command_sender()
                     .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
             }
-            DatasetKind::Local(app) => {
+            Self::Local(app) => {
                 ctx.command_sender()
                     .send_system(re_viewer_context::SystemCommand::ActivateApp(app.clone()));
                 ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())))
+                    .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())));
             }
         }
     }
 
     fn item(&self) -> Option<Item> {
         match self {
-            DatasetKind::Remote(_, _) => None,
-            DatasetKind::Local(app_id) => Some(Item::AppId(app_id.clone())),
+            Self::Remote(_, _) => None,
+            Self::Local(app_id) => Some(Item::AppId(app_id.clone())),
         }
     }
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            DatasetKind::Remote(origin, _dataset) => ctx
+            Self::Remote(origin, _dataset) => ctx
                 .store_context
                 .recording
                 .data_source
@@ -275,19 +273,19 @@ impl DatasetKind {
                     }
                     _ => false,
                 }),
-            DatasetKind::Local(app_id) => &ctx.store_context.app_id == app_id,
+            Self::Local(app_id) => &ctx.store_context.app_id == app_id,
         }
     }
 
     fn close(&self, ctx: &ViewerContext<'_>, dbs: &Vec<&EntityDb>) {
         match self {
-            DatasetKind::Remote(origin, dataset) => {
+            Self::Remote(..) => {
                 for db in dbs {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseStore(db.store_id()));
                 }
             }
-            DatasetKind::Local(app_id) => {
+            Self::Local(app_id) => {
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
             }
@@ -298,7 +296,7 @@ impl DatasetKind {
 fn dataset_and_its_recordings_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    kind: DatasetKind,
+    kind: &DatasetKind,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
     entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
@@ -329,7 +327,7 @@ fn dataset_and_its_recordings_ui(
         app_list_item.show_hierarchical(ui, app_list_item_content)
     } else {
         // Normal application
-        let id = ui.make_persistent_id(&kind);
+        let id = ui.make_persistent_id(kind);
         let app_list_item_content = app_list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
@@ -363,19 +361,12 @@ fn dataset_and_its_recordings_ui(
             .item_response
     };
 
-    match &kind {
-        DatasetKind::Local(app) => {
-            item_response = item_response.on_hover_ui(|ui| {
-                app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-            });
+    if let DatasetKind::Local(app) = &kind {
+        item_response = item_response.on_hover_ui(|ui| {
+            app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+        });
 
-            ctx.handle_select_hover_drag_interactions(
-                &item_response,
-                Item::AppId(app.clone()),
-                false,
-            );
-        }
-        _ => {}
+        ctx.handle_select_hover_drag_interactions(&item_response, Item::AppId(app.clone()), false);
     }
 
     if item_response.clicked() {
