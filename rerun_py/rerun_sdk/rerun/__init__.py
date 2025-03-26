@@ -215,6 +215,7 @@ def init(
     default_enabled: bool = True,
     strict: bool | None = None,
     default_blueprint: BlueprintLike | None = None,
+    send_properties: bool = True,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -289,6 +290,8 @@ def init(
         already has an active blueprint, the new blueprint won't become active until the user
         clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
+    send_properties
+            Immediately send the recording properties to the viewer (default: True)
 
     """
 
@@ -314,6 +317,7 @@ def init(
             make_default=True,
             make_thread_default=False,
             default_enabled=default_enabled,
+            send_properties=send_properties,
         )
 
     if spawn:
