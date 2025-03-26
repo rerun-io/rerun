@@ -834,21 +834,18 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 fn binary_stream(
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
-) -> PyResult<Option<PyBinarySinkStorage>> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(None);
-    };
+) -> Option<PyBinarySinkStorage> {
+    let recording = get_data_recording(recording)?;
 
     // The call to memory may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    let inner = py
-        .allow_threads(|| {
-            let storage = recording.binary_stream();
-            flush_garbage_queue();
-            storage
-        })
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    Ok(Some(PyBinarySinkStorage { inner }))
+    let inner = py.allow_threads(|| {
+        let storage = recording.binary_stream();
+        flush_garbage_queue();
+        storage
+    });
+
+    Some(PyBinarySinkStorage { inner })
 }
 
 #[pyclass(frozen)]

@@ -1881,10 +1881,10 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn binary_stream(&self) -> Result<BinaryStreamStorage, crate::sink::BinaryStreamSinkError> {
-        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone())?;
+    pub fn binary_stream(&self) -> BinaryStreamStorage {
+        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone());
         self.set_sink(Box::new(sink));
-        Ok(storage)
+        storage
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
