@@ -210,10 +210,14 @@ message Tuid {
   optional fixed64 inc = 2;
 }
 
+message EntryId {
+  Tuid id = 1;
+}
+
 // Entry point for all ManifestRegistryService APIs
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
-  Tuid entry_id = 1;
+  EntryId entry_id = 1;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   optional string dataset_url = 2;

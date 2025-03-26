@@ -2,7 +2,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterPartitionsRequest {
     #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Partitions to add
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<super::super::manifest_registry::v1alpha1::Partition>,
@@ -26,7 +26,7 @@ impl ::prost::Name for RegisterPartitionsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UnregisterPartitionsRequest {
     #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Partitions to remove
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
@@ -50,7 +50,7 @@ impl ::prost::Name for UnregisterPartitionsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListPartitionsRequest {
     #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Scan parameters
     #[prost(message, optional, tag = "2")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
