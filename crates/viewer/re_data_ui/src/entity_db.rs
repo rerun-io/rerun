@@ -1,9 +1,8 @@
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreKind, Timestamp};
-use re_types::components;
-use re_ui::UiExt as _;
+use re_log_types::{EntityPath, StoreKind};
+use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
@@ -14,7 +13,7 @@ impl crate::DataUi for EntityDb {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
@@ -73,18 +72,6 @@ impl crate::DataUi for EntityDb {
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
-
-                if let Some(name) = db.recording_property::<components::Name>() {
-                     ui.grid_left_hand_label("Name");
-                     ui.label(name.to_string());
-                     ui.end_row();
-                }
-
-                if let Some(started) = db.recording_property::<components::Timestamp>() {
-                    ui.grid_left_hand_label("Created");
-                    ui.label(Timestamp::from(started.0).format(ctx.app_options().timestamp_format));
-                    ui.end_row();
-                }
             }
 
             if let Some(latest_row_id) = self.latest_row_id() {
@@ -174,10 +161,9 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
-                // TODO(#9188): Create a dedicated UI for the recording properties.
                 if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
-                    ui.label("This is the active recording");
+                    ui.label("This is the active recording.");
                 }
             }
             StoreKind::Blueprint => {
@@ -227,5 +213,32 @@ impl crate::DataUi for EntityDb {
                 }
             }
         }
+
+        ui.section_collapsing_header("Properties").show(ui, |ui| {
+            let filtered = db
+                .entity_paths()
+                .into_iter()
+                .filter(|entity_path| {
+                    // Only check for properties, but skip the recording properties,
+                    // because we display them already elsewhere in the UI.
+                    entity_path.is_descendant_of(&EntityPath::properties())
+                })
+                .collect::<Vec<_>>();
+
+            if filtered.is_empty() {
+                ui.label("No properties found for this recording.");
+            } else {
+                for entity_path in filtered {
+                    // We strip the property part
+                    let name = entity_path
+                        .to_string()
+                        .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                        .map(re_case::to_human_case)
+                        .unwrap_or("<unknown>".to_owned());
+                    ui.label(name);
+                    entity_path.data_ui(ctx, ui, ui_layout, query, db);
+                }
+            }
+        });
     }
 }

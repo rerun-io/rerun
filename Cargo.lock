@@ -6078,6 +6078,7 @@ dependencies = [
  "nohash-hasher",
  "re_byte_size",
  "re_capabilities",
+ "re_case",
  "re_chunk_store",
  "re_entity_db",
  "re_format",
