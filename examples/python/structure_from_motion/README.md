@@ -58,7 +58,7 @@ This defines how to go from the 3D camera frame to the 2D image plane. The extri
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the `camera` entity.
 
 ```python
-rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True))
+rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), relation=rr.TransformRelation.ChildFromParent))
 ```
 
 ```python

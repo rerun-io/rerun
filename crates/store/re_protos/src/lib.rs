@@ -5,8 +5,6 @@
 //! to use gRPC types in the rerun viewer codebase. That's why we implement all the
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 
-mod protobuf_conversions;
-
 pub mod external {
     pub use prost;
 }
@@ -27,6 +25,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
+
+    #[path = "./rerun.common.v1alpha1.ext.rs"]
+    pub mod rerun_common_v1alpha1_ext;
 
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
@@ -119,6 +120,8 @@ pub mod redap_tasks {
     }
 }
 
+// ---
+
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
     #[error("missing required field: {package_name}.{type_name}.{field_name}")]
@@ -168,6 +171,13 @@ impl TypeConversionError {
     }
 }
 
+impl From<TypeConversionError> for tonic::Status {
+    #[inline]
+    fn from(value: TypeConversionError) -> Self {
+        Self::invalid_argument(value.to_string())
+    }
+}
+
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -182,6 +192,7 @@ macro_rules! invalid_field {
     };
 }
 
+// TODO(cmc): move this somewhere else
 mod sizes {
     use re_byte_size::SizeBytes;
 

@@ -7,9 +7,8 @@ pub struct RegisterPartitionsRequest {
     #[prost(message, repeated, tag = "2")]
     pub partitions: ::prost::alloc::vec::Vec<super::super::manifest_registry::v1alpha1::Partition>,
     /// what to do if partition is already registered
-    /// TODO(cmc): why is this in manifest_registry??
     #[prost(
-        enumeration = "super::super::manifest_registry::v1alpha1::IfDuplicateBehavior",
+        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
         tag = "3"
     )]
     pub on_duplicate: i32,
@@ -167,6 +166,27 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn delete_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "DeleteEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn create_dataset_entry(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -210,29 +230,6 @@ pub mod frontend_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.frontend.v1alpha1.FrontendService",
                 "ReadDatasetEntry",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn delete_dataset_entry(
-            &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::DeleteDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteDatasetEntryResponse>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteDatasetEntry",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
-                "DeleteDatasetEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -332,6 +329,13 @@ pub mod frontend_service_server {
             tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
             tonic::Status,
         >;
+        async fn delete_entry(
+            &self,
+            request: tonic::Request<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
+            tonic::Status,
+        >;
         async fn create_dataset_entry(
             &self,
             request: tonic::Request<
@@ -348,15 +352,6 @@ pub mod frontend_service_server {
             >,
         ) -> std::result::Result<
             tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
-            tonic::Status,
-        >;
-        async fn delete_dataset_entry(
-            &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::DeleteDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteDatasetEntryResponse>,
             tonic::Status,
         >;
         /// Register new partitions with the Dataset
@@ -512,6 +507,51 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteEntrySvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<
+                            super::super::super::catalog::v1alpha1::DeleteEntryRequest,
+                        > for DeleteEntrySvc<T>
+                    {
+                        type Response = super::super::super::catalog::v1alpha1::DeleteEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::super::super::catalog::v1alpha1::DeleteEntryRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::delete_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.frontend.v1alpha1.FrontendService/CreateDatasetEntry" => {
                     #[allow(non_camel_case_types)]
                     struct CreateDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
@@ -589,52 +629,6 @@ pub mod frontend_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadDatasetEntrySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteDatasetEntry" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::DeleteDatasetEntryRequest,
-                        > for DeleteDatasetEntrySvc<T>
-                    {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::DeleteDatasetEntryResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::DeleteDatasetEntryRequest,
-                            >,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as FrontendService>::delete_dataset_entry(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = DeleteDatasetEntrySvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

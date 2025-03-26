@@ -29,6 +29,33 @@ impl ::prost::Name for FindEntriesResponse {
         "/rerun.catalog.v1alpha1.FindEntriesResponse".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+}
+impl ::prost::Name for DeleteEntryRequest {
+    const NAME: &'static str = "DeleteEntryRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.DeleteEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.DeleteEntryRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryResponse {}
+impl ::prost::Name for DeleteEntryResponse {
+    const NAME: &'static str = "DeleteEntryResponse";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.DeleteEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.DeleteEntryResponse".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetEntryRequest {
     #[prost(message, optional, tag = "1")]
@@ -89,41 +116,14 @@ impl ::prost::Name for ReadDatasetEntryResponse {
         "/rerun.catalog.v1alpha1.ReadDatasetEntryResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct DeleteDatasetEntryRequest {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
-}
-impl ::prost::Name for DeleteDatasetEntryRequest {
-    const NAME: &'static str = "DeleteDatasetEntryRequest";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.DeleteDatasetEntryRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.DeleteDatasetEntryRequest".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct DeleteDatasetEntryResponse {}
-impl ::prost::Name for DeleteDatasetEntryResponse {
-    const NAME: &'static str = "DeleteDatasetEntryResponse";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.DeleteDatasetEntryResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.DeleteDatasetEntryResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryFilter {
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(enumeration = "EntryType", optional, tag = "3")]
-    pub entry_type: ::core::option::Option<i32>,
+    #[prost(enumeration = "EntryKind", optional, tag = "3")]
+    pub entry_kind: ::core::option::Option<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -145,9 +145,9 @@ pub struct EntryDetails {
     /// TODO(jleibs): Define valid name constraints
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    /// The type of entry
-    #[prost(enumeration = "EntryType", tag = "3")]
-    pub entry_type: i32,
+    /// The kind of entry
+    #[prost(enumeration = "EntryKind", tag = "3")]
+    pub entry_kind: i32,
     #[prost(message, optional, tag = "4")]
     pub created_at: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "5")]
@@ -184,7 +184,7 @@ impl ::prost::Name for DatasetEntry {
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum EntryType {
+pub enum EntryKind {
     /// Always reserve unspecified as default value
     Unspecified = 0,
     /// Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
@@ -193,28 +193,28 @@ pub enum EntryType {
     Table = 3,
     TableView = 4,
 }
-impl EntryType {
+impl EntryKind {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "ENTRY_TYPE_UNSPECIFIED",
-            Self::Dataset => "ENTRY_TYPE_DATASET",
-            Self::DatasetView => "ENTRY_TYPE_DATASET_VIEW",
-            Self::Table => "ENTRY_TYPE_TABLE",
-            Self::TableView => "ENTRY_TYPE_TABLE_VIEW",
+            Self::Unspecified => "ENTRY_KIND_UNSPECIFIED",
+            Self::Dataset => "ENTRY_KIND_DATASET",
+            Self::DatasetView => "ENTRY_KIND_DATASET_VIEW",
+            Self::Table => "ENTRY_KIND_TABLE",
+            Self::TableView => "ENTRY_KIND_TABLE_VIEW",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "ENTRY_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-            "ENTRY_TYPE_DATASET" => Some(Self::Dataset),
-            "ENTRY_TYPE_DATASET_VIEW" => Some(Self::DatasetView),
-            "ENTRY_TYPE_TABLE" => Some(Self::Table),
-            "ENTRY_TYPE_TABLE_VIEW" => Some(Self::TableView),
+            "ENTRY_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENTRY_KIND_DATASET" => Some(Self::Dataset),
+            "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
+            "ENTRY_KIND_TABLE" => Some(Self::Table),
+            "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
             _ => None,
         }
     }
@@ -317,6 +317,25 @@ pub mod catalog_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn delete_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.catalog.v1alpha1.CatalogService/DeleteEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.catalog.v1alpha1.CatalogService",
+                "DeleteEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn create_dataset_entry(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateDatasetEntryRequest>,
@@ -355,25 +374,6 @@ pub mod catalog_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn delete_dataset_entry(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteDatasetEntryRequest>,
-        ) -> std::result::Result<tonic::Response<super::DeleteDatasetEntryResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.catalog.v1alpha1.CatalogService/DeleteDatasetEntry",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.catalog.v1alpha1.CatalogService",
-                "DeleteDatasetEntry",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
     }
 }
 /// Generated server implementations.
@@ -393,6 +393,10 @@ pub mod catalog_service_server {
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
         ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>;
+        async fn delete_entry(
+            &self,
+            request: tonic::Request<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>;
         async fn create_dataset_entry(
             &self,
             request: tonic::Request<super::CreateDatasetEntryRequest>,
@@ -401,10 +405,6 @@ pub mod catalog_service_server {
             &self,
             request: tonic::Request<super::ReadDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>;
-        async fn delete_dataset_entry(
-            &self,
-            request: tonic::Request<super::DeleteDatasetEntryRequest>,
-        ) -> std::result::Result<tonic::Response<super::DeleteDatasetEntryResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct CatalogServiceServer<T> {
@@ -520,6 +520,47 @@ pub mod catalog_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.catalog.v1alpha1.CatalogService/DeleteEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteEntrySvc<T: CatalogService>(pub Arc<T>);
+                    impl<T: CatalogService> tonic::server::UnaryService<super::DeleteEntryRequest>
+                        for DeleteEntrySvc<T>
+                    {
+                        type Response = super::DeleteEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteEntryRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as CatalogService>::delete_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.catalog.v1alpha1.CatalogService/CreateDatasetEntry" => {
                     #[allow(non_camel_case_types)]
                     struct CreateDatasetEntrySvc<T: CatalogService>(pub Arc<T>);
@@ -589,48 +630,6 @@ pub mod catalog_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadDatasetEntrySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.catalog.v1alpha1.CatalogService/DeleteDatasetEntry" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteDatasetEntrySvc<T: CatalogService>(pub Arc<T>);
-                    impl<T: CatalogService>
-                        tonic::server::UnaryService<super::DeleteDatasetEntryRequest>
-                        for DeleteDatasetEntrySvc<T>
-                    {
-                        type Response = super::DeleteDatasetEntryResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::DeleteDatasetEntryRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as CatalogService>::delete_dataset_entry(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = DeleteDatasetEntrySvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

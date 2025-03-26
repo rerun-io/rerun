@@ -21,11 +21,11 @@ service FrontendService {
 
   rpc FindEntries(rerun.catalog.v1alpha1.FindEntriesRequest) returns (rerun.catalog.v1alpha1.FindEntriesResponse) {}
 
+  rpc DeleteEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
+
   rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
 
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
-
-  rpc DeleteDatasetEntry(rerun.catalog.v1alpha1.DeleteDatasetEntryRequest) returns (rerun.catalog.v1alpha1.DeleteDatasetEntryResponse) {}
 
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.
@@ -49,8 +49,7 @@ message RegisterPartitionsRequest {
   repeated rerun.manifest_registry.v1alpha1.Partition partitions = 2;
 
   // what to do if partition is already registered
-  // TODO(cmc): why is this in manifest_registry??
-  rerun.manifest_registry.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
 message UnregisterPartitionsRequest {
