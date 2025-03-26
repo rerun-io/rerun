@@ -183,6 +183,57 @@ impl ::prost::Name for DatasetEntry {
         "/rerun.catalog.v1alpha1.DatasetEntry".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TableEntry {
+    #[prost(message, optional, tag = "1")]
+    pub details: ::core::option::Option<EntryDetails>,
+    /// The known schema of this table
+    #[prost(message, optional, tag = "2")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Details specific to the table-provider
+    #[prost(message, optional, tag = "3")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for TableEntry {
+    const NAME: &'static str = "TableEntry";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.TableEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.TableEntry".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SystemTable {
+    #[prost(enumeration = "SystemTableKind", tag = "1")]
+    pub kind: i32,
+}
+impl ::prost::Name for SystemTable {
+    const NAME: &'static str = "SystemTable";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.SystemTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.SystemTable".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LanceTable {
+    #[prost(string, optional, tag = "1")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for LanceTable {
+    const NAME: &'static str = "LanceTable";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.LanceTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.LanceTable".into()
+    }
+}
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -217,6 +268,38 @@ impl EntryKind {
             "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
             "ENTRY_KIND_TABLE" => Some(Self::Table),
             "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SystemTableKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Not used yet
+    Namespaces = 1,
+    /// All of the entries in the associated namespace
+    Entries = 2,
+}
+impl SystemTableKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "SYSTEM_TABLE_KIND_UNSPECIFIED",
+            Self::Namespaces => "SYSTEM_TABLE_KIND_NAMESPACES",
+            Self::Entries => "SYSTEM_TABLE_KIND_ENTRIES",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SYSTEM_TABLE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "SYSTEM_TABLE_KIND_NAMESPACES" => Some(Self::Namespaces),
+            "SYSTEM_TABLE_KIND_ENTRIES" => Some(Self::Entries),
             _ => None,
         }
     }
