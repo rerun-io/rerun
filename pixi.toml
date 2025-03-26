@@ -457,13 +457,13 @@ cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release 
 cpp-build-plot-dashboard-stress = { cmd = "cmake --build build/release --config Release --target plot_dashboard_stress", depends-on = [
   "cpp-prepare-release",
 ] }
-cpp-test = { cmd = "export RERUN_STRICT=1 PYTHONWARNINGS=error && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends-on = [
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends-on = [
   "cpp-build-tests",
 ] }
-cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 PYTHONWARNINGS=error && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends-on = [
+cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends-on = [
   "cpp-build-log-benchmark",
 ] }
-cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 PYTHONWARNINGS=error && ./build/release/tests/cpp/plot_dashboard_stress/plot_dashboard_stress", depends-on = [
+cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/plot_dashboard_stress/plot_dashboard_stress", depends-on = [
   "cpp-build-plot-dashboard-stress",
 ] }
 cpp-build-and-test-all = { depends-on = ["cpp-build-all", "cpp-test"] }

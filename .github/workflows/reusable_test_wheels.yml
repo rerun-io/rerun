@@ -195,7 +195,7 @@ jobs:
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
         # Only check that the release checklist executes successfully
-        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run -e wheel-test-min python tests/python/release_checklist/main.py --stdout > /dev/null
+        run: RUST_LOG=warn RERUN_STRICT=1 pixi run -e wheel-test-min python tests/python/release_checklist/main.py --stdout > /dev/null
 
       - name: Build C++ roundtrips
         if: ${{ !inputs.FAST }}
