@@ -2,7 +2,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreKind};
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
