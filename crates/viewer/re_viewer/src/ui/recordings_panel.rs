@@ -149,14 +149,15 @@ fn recording_list_ui(
         );
     }
 
-    let title = |title| egui::RichText::new(title).size(11.0).strong();
+    let title =
+        |title| re_ui::list_item::LabelContent::new(egui::RichText::new(title).size(11.0).strong());
 
     for (origin, dataset_recordings) in remote_recordings {
         ui.list_item().show_hierarchical_with_children(
             ui,
             egui::Id::new(&origin),
             true,
-            re_ui::list_item::LabelContent::new(title(origin.host.to_string())),
+            title(origin.host.to_string()),
             |ui| {
                 for (dataset, entity_dbs) in dataset_recordings {
                     dataset_and_its_recordings_ui(
@@ -175,7 +176,7 @@ fn recording_list_ui(
             ui,
             egui::Id::new("local items"),
             true,
-            re_ui::list_item::LabelContent::new(title("Local recordings".to_owned())),
+            title("Local recordings".to_owned()),
             |ui| {
                 for (app_id, entity_dbs) in local_recordings {
                     dataset_and_its_recordings_ui(
@@ -190,30 +191,37 @@ fn recording_list_ui(
     }
 
     // Always show welcome screen last, if at all:
-    if ctx
+    if (ctx
         .app_options()
         .include_welcome_screen_button_in_recordings_panel
-        && !welcome_screen_state.hide
-        && !example_recordings.is_empty()
+        && !welcome_screen_state.hide)
+        || !example_recordings.is_empty()
     {
-        let response = ui.list_item().show_hierarchical_with_children(
-            ui,
-            egui::Id::new("example items"),
-            true,
-            re_ui::list_item::LabelContent::new(title("Rerun examples".to_owned())),
-            |ui| {
-                for (app_id, entity_dbs) in example_recordings {
-                    dataset_and_its_recordings_ui(
-                        ctx,
-                        ui,
-                        &DatasetKind::Local(app_id.clone()),
-                        entity_dbs,
-                    );
-                }
-            },
-        );
+        let response = if example_recordings.is_empty() {
+            ui.list_item()
+                .show_flat(ui, title("Rerun examples".to_owned()))
+        } else {
+            ui.list_item()
+                .show_hierarchical_with_children(
+                    ui,
+                    egui::Id::new("example items"),
+                    true,
+                    title("Rerun examples".to_owned()),
+                    |ui| {
+                        for (app_id, entity_dbs) in example_recordings {
+                            dataset_and_its_recordings_ui(
+                                ctx,
+                                ui,
+                                &DatasetKind::Local(app_id.clone()),
+                                entity_dbs,
+                            );
+                        }
+                    },
+                )
+                .item_response
+        };
 
-        if response.item_response.clicked() {
+        if response.clicked() {
             DatasetKind::Local(StoreHub::welcome_screen_app_id()).select(ctx);
         }
     }
@@ -301,12 +309,13 @@ fn dataset_and_its_recordings_ui(
 ) {
     entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
+    // TODO(lucasmerlin): Can we select a dataset?
     let selected = kind
         .item()
         .is_some_and(|i| ctx.selection().contains_item(&i));
 
-    let app_list_item = ui.list_item().selected(selected);
-    let app_list_item_content =
+    let dataset_list_item = ui.list_item().selected(selected);
+    let dataset_list_item_content =
         re_ui::list_item::LabelContent::new(kind.name()).with_icon_fn(|ui, rect, visuals| {
             // Color icon based on whether this is the active dataset or not:
             let color = if kind.is_active(ctx) {
@@ -317,49 +326,39 @@ fn dataset_and_its_recordings_ui(
             icons::DATASET.as_image().tint(color).paint_at(ui, rect);
         });
 
-    let mut item_response = if matches!(&kind, DatasetKind::Local(id) if id == &StoreHub::welcome_screen_app_id())
-    {
-        // Special case: the welcome screen never has any recordings
-        debug_assert!(
-            entity_dbs.is_empty(),
-            "There shouldn't be any recording for the welcome screen, but there are!"
-        );
-        app_list_item.show_hierarchical(ui, app_list_item_content)
-    } else {
-        // Normal application
-        let id = ui.make_persistent_id(kind);
-        let app_list_item_content = app_list_item_content.with_buttons(|ui| {
-            // Close-button:
-            let resp = ui
-                .small_icon_button(&icons::REMOVE)
-                .on_hover_text("Close this dataset and all its recordings. This cannot be undone.");
-            if resp.clicked() {
-                kind.close(ctx, &entity_dbs);
-            }
-            resp
-        });
-        app_list_item
-            .show_hierarchical_with_children(ui, id, true, app_list_item_content, |ui| {
-                // Show all the recordings for this application:
-                if entity_dbs.is_empty() {
-                    ui.weak("(no recordings)").on_hover_ui(|ui| {
-                        ui.label("No recordings loaded for this application");
-                    });
-                } else {
-                    for entity_db in &entity_dbs {
-                        let include_app_id = false; // we already show it in the parent
-                        entity_db_button_ui(
-                            ctx,
-                            ui,
-                            entity_db,
-                            UiLayout::SelectionPanel,
-                            include_app_id,
-                        );
-                    }
+    let id = ui.make_persistent_id(kind);
+    let app_list_item_content = dataset_list_item_content.with_buttons(|ui| {
+        // Close-button:
+        let resp = ui
+            .small_icon_button(&icons::REMOVE)
+            .on_hover_text("Close this dataset and all its recordings. This cannot be undone.");
+        if resp.clicked() {
+            kind.close(ctx, &entity_dbs);
+        }
+        resp
+    });
+
+    let mut item_response = dataset_list_item
+        .show_hierarchical_with_children(ui, id, true, app_list_item_content, |ui| {
+            // Show all the recordings for this application:
+            if entity_dbs.is_empty() {
+                ui.weak("(no recordings)").on_hover_ui(|ui| {
+                    ui.label("No recordings loaded for this application");
+                });
+            } else {
+                for entity_db in &entity_dbs {
+                    let include_app_id = false; // we already show it in the parent
+                    entity_db_button_ui(
+                        ctx,
+                        ui,
+                        entity_db,
+                        UiLayout::SelectionPanel,
+                        include_app_id,
+                    );
                 }
-            })
-            .item_response
-    };
+            }
+        })
+        .item_response;
 
     if let DatasetKind::Local(app) = &kind {
         item_response = item_response.on_hover_ui(|ui| {
