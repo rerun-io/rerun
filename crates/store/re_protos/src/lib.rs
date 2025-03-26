@@ -192,7 +192,7 @@ macro_rules! invalid_field {
     };
 }
 
-// TODO: move this somewhere else
+// TODO(cmc): move this somewhere else
 mod sizes {
     use re_byte_size::SizeBytes;
 
