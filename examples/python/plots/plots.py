@@ -88,7 +88,7 @@ def log_spiral() -> None:
     rr.send_columns(
         "spiral",
         indexes=[rr.TimeColumn("frame_nr", sequence=times)],
-        columns=[*rr.Scalar.columns(scalar=scalars)],
+        columns=[*rr.Scalars.columns(scalars=scalars)],
     )
 
 

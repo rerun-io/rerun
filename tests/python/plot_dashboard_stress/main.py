@@ -186,7 +186,7 @@ def main() -> None:
                     rr.send_columns(
                         f"{plot_path}/{series_path}",
                         indexes=[cast(rr.TimeColumn, time_column)],
-                        columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),
+                        columns=rr.Scalars.columns(scalars=values[value_index, plot_idx, series_idx]),
                     )
 
         # Measure how long this took and how high the load was.

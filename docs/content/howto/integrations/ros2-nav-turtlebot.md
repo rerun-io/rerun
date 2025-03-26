@@ -214,9 +214,9 @@ Note that because we previously called `set_time_nanos` in this callback, this t
 be logged to the same point on the timeline as the data, using a timestamp looked up from TF at the
 matching timepoint.
 
-### Odometry to rr.Scalar and rr.Transform3D
+### Odometry to rr.Scalars and rr.Transform3D
 
-When receiving odometry messages, we log the linear and angular velocities using `rr.Scalar`.
+When receiving odometry messages, we log the linear and angular velocities using `rr.Scalars`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
 
