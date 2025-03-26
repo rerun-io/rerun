@@ -26,19 +26,9 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
-re_arrow_util.workspace = true
-re_chunk.workspace = true
-re_chunk_store.workspace = true
-re_format_arrow.workspace = true
-re_grpc_client.workspace = true
-re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
-re_query.workspace = true
-re_sorbet.workspace = true
-re_tracing.workspace = true
-re_types_core.workspace = true
 
 # External dependencies:
 anyhow.workspace = true
@@ -47,16 +37,5 @@ async-trait = "0.1.83"
 datafusion.workspace = true
 futures.workspace = true
 itertools.workspace = true
-nohash-hasher.workspace = true
-rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
-tokio-stream.workspace = true
 tonic.workspace = true
-
-[dev-dependencies]
-# # Rerun dependencies:
-# re_types.workspace = true
-# # External dependencies:
-# insta.workspace = true
-# similar-asserts.workspace = true
-# unindent.workspace = true
