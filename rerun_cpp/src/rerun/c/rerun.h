@@ -563,7 +563,7 @@ extern void rr_recording_stream_send_columns(
 // ----------------------------------------------------------------------------
 // Other utilities
 
-/// Allocation method for `rr_video_asset_read_frame_timestamps_ns`.
+/// Allocation method for `rr_video_asset_read_frame_timestamps_nanos`.
 typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timestamps);
 
 /// Determines the presentation timestamps of all frames inside the video.
@@ -575,7 +575,7 @@ typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timest
 /// \param alloc_func
 /// Function used to allocate memory for the returned timestamps.
 /// Guaranteed to be called exactly once with the `alloc_context` pointer as argument.
-extern int64_t* rr_video_asset_read_frame_timestamps_ns(
+extern int64_t* rr_video_asset_read_frame_timestamps_nanos(
     const uint8_t* video_bytes, uint64_t video_bytes_len, rr_string media_type, void* alloc_context,
     rr_alloc_timestamps alloc_timestamps, rr_error* error
 );

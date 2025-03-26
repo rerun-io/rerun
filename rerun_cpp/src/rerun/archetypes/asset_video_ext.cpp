@@ -109,7 +109,7 @@ namespace rerun::archetypes {
         std::vector<std::chrono::nanoseconds> frame_timestamps;
 
         rr_error status = {};
-        rr_video_asset_read_frame_timestamps_ns(
+        rr_video_asset_read_frame_timestamps_nanos(
             blob_array_data->data(),
             static_cast<uint64_t>(blob_array_data->size()),
             media_type_c,
