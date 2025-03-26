@@ -5,7 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
-use re_ui::{icons, UiExt as _};
+use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
 };
@@ -149,15 +149,12 @@ fn recording_list_ui(
         );
     }
 
-    let title =
-        |title| re_ui::list_item::LabelContent::new(egui::RichText::new(title).size(11.0).strong());
-
     for (origin, dataset_recordings) in remote_recordings {
-        ui.list_item().show_hierarchical_with_children(
+        ui.list_item().header().show_hierarchical_with_children(
             ui,
             egui::Id::new(&origin),
             true,
-            title(origin.host.to_string()),
+            list_item::LabelContent::header(origin.host.to_string()),
             |ui| {
                 for (dataset, entity_dbs) in dataset_recordings {
                     dataset_and_its_recordings_ui(
@@ -172,11 +169,11 @@ fn recording_list_ui(
     }
 
     if !local_recordings.is_empty() {
-        ui.list_item().show_hierarchical_with_children(
+        ui.list_item().header().show_hierarchical_with_children(
             ui,
             egui::Id::new("local items"),
             true,
-            title("Local recordings".to_owned()),
+            list_item::LabelContent::header("Local Recordings"),
             |ui| {
                 for (app_id, entity_dbs) in local_recordings {
                     dataset_and_its_recordings_ui(
@@ -197,28 +194,28 @@ fn recording_list_ui(
         && !welcome_screen_state.hide)
         || !example_recordings.is_empty()
     {
+        let item = ui.list_item().header();
+        let title = list_item::LabelContent::header("Rerun examples");
         let response = if example_recordings.is_empty() {
-            ui.list_item()
-                .show_flat(ui, title("Rerun examples".to_owned()))
+            item.show_flat(ui, title)
         } else {
-            ui.list_item()
-                .show_hierarchical_with_children(
-                    ui,
-                    egui::Id::new("example items"),
-                    true,
-                    title("Rerun examples".to_owned()),
-                    |ui| {
-                        for (app_id, entity_dbs) in example_recordings {
-                            dataset_and_its_recordings_ui(
-                                ctx,
-                                ui,
-                                &DatasetKind::Local(app_id.clone()),
-                                entity_dbs,
-                            );
-                        }
-                    },
-                )
-                .item_response
+            item.show_hierarchical_with_children(
+                ui,
+                egui::Id::new("example items"),
+                true,
+                title,
+                |ui| {
+                    for (app_id, entity_dbs) in example_recordings {
+                        dataset_and_its_recordings_ui(
+                            ctx,
+                            ui,
+                            &DatasetKind::Local(app_id.clone()),
+                            entity_dbs,
+                        );
+                    }
+                },
+            )
+            .item_response
         };
 
         if response.clicked() {

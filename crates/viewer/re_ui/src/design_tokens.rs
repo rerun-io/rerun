@@ -337,6 +337,14 @@ impl DesignTokens {
         24.0
     }
 
+    pub fn list_header_vertical_offset() -> f32 {
+        2.0
+    }
+
+    pub fn list_header_font_size() -> f32 {
+        11.0
+    }
+
     pub fn native_window_corner_radius() -> u8 {
         10
     }
