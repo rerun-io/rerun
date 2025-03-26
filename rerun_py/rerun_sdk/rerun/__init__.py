@@ -290,7 +290,7 @@ def init(
         clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     send_properties
-            If false (_not_ the default), the initial recording properties will not be sent to the viewer.
+            Immediately send the recording properties to the viewer (default: True)
 
     """
 
