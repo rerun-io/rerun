@@ -30,11 +30,11 @@ int main() {
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {
         rec.set_time_sequence("step", t);
 
-        rec.log("trig/sin", rerun::Scalars(sin(t / 100.0)));
-        rec.log("trig/cos", rerun::Scalars(cos(static_cast<float>(t) / 100.0f)));
+        rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 100.0)));
+        rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 100.0)));
 
         lcg_state =
-            1140671485 * lcg_state + 128201163 % 16777216; // simple linear congruency generator
-        rec.log("scatter/lcg", rerun::Scalars(static_cast<float>(lcg_state)));
+            (1140671485 * lcg_state + 128201163) % 16777216; // simple linear congruency generator
+        rec.log("scatter/lcg", rerun::Scalars(static_cast<double>(lcg_state)));
     }
 }
