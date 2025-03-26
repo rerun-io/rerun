@@ -306,7 +306,6 @@ fn dataset_and_its_recordings_ui(
 ) {
     entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
-    // TODO(lucasmerlin): Can we select a dataset?
     let selected = kind
         .item()
         .is_some_and(|i| ctx.selection().contains_item(&i));
