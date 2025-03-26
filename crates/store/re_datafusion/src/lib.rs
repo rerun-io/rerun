@@ -36,8 +36,8 @@ impl DataFusionConnector {
         CatalogFindEntryProvider::new(client, None, None, Some(EntryKind::Dataset)).into_provider()
     }
 
-    pub fn get_partition_list(&self, tuid: Tuid) -> Arc<dyn TableProvider> {
-        PartitionListProvider::new(self.channel.clone(), tuid).into_provider()
+    pub fn get_partition_list(&self, tuid: Tuid, url: String) -> Arc<dyn TableProvider> {
+        PartitionListProvider::new(self.channel.clone(), tuid, url).into_provider()
     }
 
     pub fn get_partition_index_list(&self, tuid: Tuid) -> Arc<dyn TableProvider> {

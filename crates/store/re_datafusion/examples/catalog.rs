@@ -52,8 +52,10 @@ async fn main() -> anyhow::Result<()> {
             if let (Some(time_ns), Some(inc), Some(name)) = time_inc_tuple {
                 let tuid = Tuid::from_nanos_and_inc(time_ns, inc);
                 println!("Partitions for dataset: {name}");
-                let _ =
-                    ctx.register_table("partition_index", df_connector.get_partition_list(tuid))?;
+                let _ = ctx.register_table(
+                    "partition_index",
+                    df_connector.get_partition_list(tuid, "file:///tmp/file.rrd".to_string()),
+                )?;
 
                 let df = ctx.table("partition_index").await?;
 
