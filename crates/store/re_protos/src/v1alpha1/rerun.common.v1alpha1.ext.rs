@@ -1,6 +1,56 @@
-use crate::TypeConversionError;
-use crate::{invalid_field, missing_field};
 use std::sync::Arc;
+
+use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+
+use crate::{invalid_field, missing_field, TypeConversionError};
+
+// ---
+
+impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
+    type Error = ArrowError;
+
+    fn try_from(value: &crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        Ok(Self::clone(
+            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
+        ))
+    }
+}
+
+impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
+    type Error = ArrowError;
+
+    fn try_from(value: &ArrowSchema) -> Result<Self, Self::Error> {
+        Ok(Self {
+            arrow_schema: re_sorbet::ipc_from_schema(value)?,
+        })
+    }
+}
+
+// ---
+
+impl TryFrom<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        let time_ns = value
+            .time_ns
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "time_ns"))?;
+        let inc = value
+            .inc
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "inc"))?;
+
+        Ok(Self::from_nanos_and_inc(time_ns, inc))
+    }
+}
+
+impl From<re_tuid::Tuid> for crate::common::v1alpha1::Tuid {
+    fn from(value: re_tuid::Tuid) -> Self {
+        Self {
+            time_ns: Some(value.nanoseconds_since_epoch()),
+            inc: Some(value.inc()),
+        }
+    }
+}
 
 impl From<re_log_types::EntityPath> for crate::common::v1alpha1::EntityPath {
     fn from(value: re_log_types::EntityPath) -> Self {
@@ -445,7 +495,7 @@ impl TryFrom<crate::log_msg::v1alpha1::SetStoreInfo> for re_log_types::SetStoreI
                     crate::log_msg::v1alpha1::SetStoreInfo,
                     "row_id",
                 ))?
-                .into(),
+                .try_into()?,
             info: value
                 .info
                 .ok_or(missing_field!(
@@ -668,5 +718,13 @@ mod tests {
         let blueprint_activation_command2: re_log_types::BlueprintActivationCommand =
             proto_blueprint_activation_command.try_into().unwrap();
         assert_eq!(blueprint_activation_command, blueprint_activation_command2);
+    }
+
+    #[test]
+    fn test_tuid_conversion() {
+        let tuid = re_tuid::Tuid::new();
+        let proto_tuid: crate::common::v1alpha1::Tuid = tuid.into();
+        let tuid2: re_tuid::Tuid = proto_tuid.try_into().unwrap();
+        assert_eq!(tuid, tuid2);
     }
 }

@@ -5,8 +5,6 @@
 //! to use gRPC types in the rerun viewer codebase. That's why we implement all the
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 
-mod protobuf_conversions;
-
 pub mod external {
     pub use prost;
 }
@@ -28,6 +26,9 @@ mod v1alpha1 {
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
 
+    #[path = "./rerun.common.v1alpha1.ext.rs"]
+    pub mod rerun_common_v1alpha1_ext;
+
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
@@ -39,6 +40,12 @@ mod v1alpha1 {
 
     #[path = "./rerun.manifest_registry.v1alpha1.rs"]
     pub mod rerun_manifest_registry_v1alpha1;
+
+    #[path = "./rerun.frontend.v1alpha1.rs"]
+    pub mod rerun_frontend_v1alpha1;
+
+    #[path = "./rerun.redap_tasks.v1alpha1.rs"]
+    pub mod rerun_redap_tasks_v1alpha1;
 }
 
 pub mod common {
@@ -95,11 +102,25 @@ pub mod catalog {
     }
 }
 
+pub mod frontend {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_frontend_v1alpha1::*;
+    }
+}
+
 pub mod sdk_comms {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_sdk_comms_v1alpha1::*;
     }
 }
+
+pub mod redap_tasks {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_redap_tasks_v1alpha1::*;
+    }
+}
+
+// ---
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
@@ -150,6 +171,13 @@ impl TypeConversionError {
     }
 }
 
+impl From<TypeConversionError> for tonic::Status {
+    #[inline]
+    fn from(value: TypeConversionError) -> Self {
+        Self::invalid_argument(value.to_string())
+    }
+}
+
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -164,6 +192,7 @@ macro_rules! invalid_field {
     };
 }
 
+// TODO(cmc): move this somewhere else
 mod sizes {
     use re_byte_size::SizeBytes;
 

@@ -5,6 +5,7 @@ __MACOSX
 *.a
 *.bin
 *.o
+/.ccls-cache/
 /arrow/
 /build/
 **/build-msvc/

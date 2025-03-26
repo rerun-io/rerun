@@ -48,9 +48,9 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        recordings.sort_by_key(|entity_db| entity_db.property::<Timestamp>());
+        recordings.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
         // TODO(grtlr): Blueprints don't have a time yet. But do we even need that?
-        blueprints.sort_by_key(|entity_db| entity_db.property::<Timestamp>());
+        blueprints.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;

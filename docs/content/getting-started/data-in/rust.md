@@ -241,7 +241,7 @@ Let's add our custom timeline:
 for i in 0..400 {
     let time = i as f32 * 0.01;
 
-    rec.set_time("stable_time", duration=time as f64);
+    rec.set_duration_secs("stable_time", time);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
@@ -280,7 +280,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, add this at the beginning of the main function:
 
 ```rust
-rec.set_time("stable_time", duration=0f64);
+rec.set_duration_secs("stable_time", 0.0);
 ```
 
 <picture>
@@ -373,7 +373,13 @@ let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacu
 
 // … log data to `rec` …
 
-rerun::native_viewer::show(storage.take())?;
+// Blocks until the viewer is closed.
+// For more customizations, refer to `re_viewer::run_native_app`.
+rerun::show(
+    // Show has to be called on the main thread.
+    rerun::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+    storage.take(),
+)?;
 ```
 
 The Viewer will block the main thread until it is closed.

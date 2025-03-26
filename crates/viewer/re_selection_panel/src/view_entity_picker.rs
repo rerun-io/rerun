@@ -42,13 +42,15 @@ impl ViewEntityPicker {
             egui_ctx,
             || {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
-                    .default_height(640.0)
+                    .min_height(f32::min(160.0, egui_ctx.screen_rect().height() * 0.8))
                     .full_span_content(true)
                     // we set the scroll area ourselves
                     .set_side_margin(false)
                     .scrollable([false, false])
             },
             |ui, open| {
+                // 80%, never more than 500px
+                ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     *open = false;
                     return;
@@ -65,22 +67,12 @@ impl ViewEntityPicker {
                 });
                 ui.add_space(5.0);
 
-                let max_height = 0.85 * ui.ctx().screen_rect().height();
-                egui::ScrollArea::new([false, true])
-                    .min_scrolled_height(max_height)
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        ui.panel_content(|ui| {
-                            let matcher = self.filter_state.filter();
-                            add_entities_ui(
-                                ctx,
-                                ui,
-                                view,
-                                &matcher,
-                                self.filter_state.session_id(),
-                            );
-                        });
+                egui::ScrollArea::new([false, true]).show(ui, |ui| {
+                    ui.panel_content(|ui| {
+                        let matcher = self.filter_state.filter();
+                        add_entities_ui(ctx, ui, view, &matcher, self.filter_state.session_id());
                     });
+                });
             },
         );
     }
@@ -123,6 +115,8 @@ fn add_entities_ui(
                 filter_session_id,
             );
         });
+    } else {
+        ui.label("No entities match the filter.");
     }
 }
 
