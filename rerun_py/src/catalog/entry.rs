@@ -124,6 +124,7 @@ impl PyEntry {
     }
 
     #[getter]
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
     pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
         let ts = self.details.updated_at;
         // If the `prost::Timestamp` was legal, then this is also legal.
