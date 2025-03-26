@@ -120,6 +120,8 @@ pub mod redap_tasks {
     }
 }
 
+// ---
+
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
     #[error("missing required field: {package_name}.{type_name}.{field_name}")]
@@ -169,6 +171,13 @@ impl TypeConversionError {
     }
 }
 
+impl From<TypeConversionError> for tonic::Status {
+    #[inline]
+    fn from(value: TypeConversionError) -> Self {
+        Self::invalid_argument(value.to_string())
+    }
+}
+
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -183,6 +192,7 @@ macro_rules! invalid_field {
     };
 }
 
+// TODO: move this somewhere else
 mod sizes {
     use re_byte_size::SizeBytes;
 
