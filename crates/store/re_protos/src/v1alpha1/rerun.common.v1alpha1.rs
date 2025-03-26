@@ -431,12 +431,12 @@ impl ::prost::Name for StoreId {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    #[prost(fixed64, tag = "1")]
-    pub time_ns: u64,
-    /// Initialized to something random on each thread,
-    /// then incremented for each new `Tuid` being allocated.
-    #[prost(fixed64, tag = "2")]
-    pub inc: u64,
+    #[prost(fixed64, optional, tag = "1")]
+    pub time_ns: ::core::option::Option<u64>,
+    /// Initialized to something random on each thread, then incremented for each
+    /// new `Tuid` being allocated.
+    #[prost(fixed64, optional, tag = "2")]
+    pub inc: ::core::option::Option<u64>,
 }
 impl ::prost::Name for Tuid {
     const NAME: &'static str = "Tuid";

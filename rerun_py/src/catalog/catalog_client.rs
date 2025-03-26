@@ -55,7 +55,7 @@ impl PyCatalogClient {
                     entry
                         .id
                         .ok_or(PyRuntimeError::new_err("No id in entry"))
-                        .map(PyEntryId::from)?,
+                        .and_then(PyEntryId::try_from)?,
                 )?;
 
                 Py::new(
@@ -128,7 +128,7 @@ impl PyCatalogClient {
             entry_details
                 .id
                 .ok_or(MissingGrpcFieldError::new_err("No id in entry"))
-                .map(PyEntryId::from)?,
+                .and_then(PyEntryId::try_from)?,
         )?;
 
         let entry = PyEntry {
