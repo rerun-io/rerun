@@ -17,7 +17,7 @@ Use the [MediaPipe](https://github.com/google-ai-edge/mediapipe) Face Detector a
 </picture>
 
 ## Used Rerun types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link)
 
 ## Background
 The face and face landmark detection technology aims to give the ability of the devices to interpret face movements and facial expressions as commands or inputs.
@@ -159,7 +159,7 @@ rr.log(
 )
 ```
 
-### Scalar
+### Scalars
 Blendshapes are essentially predefined facial expressions or configurations that can be detected by the face landmark detection model. Each blendshape typically corresponds to a specific facial movement or expression, such as blinking, squinting, smiling, etc.
 
 The blendshapes are logged along with their corresponding scores.

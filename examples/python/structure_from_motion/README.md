@@ -26,7 +26,7 @@ By using COLMAP in combination with Rerun, a highly-detailed reconstruction of t
 
 ## Used Rerun types
 
-[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Logging and visualizing with Rerun
 
@@ -73,7 +73,7 @@ rr.log(
 ```
 
 ### Reprojection error
-For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype containing the average reprojection error of the keypoints is logged to the
+For each image a [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype containing the average reprojection error of the keypoints is logged to the
 `plot/avg_reproj_err` entity.
 
 ```python

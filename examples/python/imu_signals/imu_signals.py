@@ -105,10 +105,10 @@ def _log_imu_data(max_time_sec: float) -> None:
     times = rr.TimeColumn("timestamp", timestamp=timestamps)
 
     gyro = selected[["gyro.x", "gyro.y", "gyro.z"]].to_numpy()
-    rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
+    rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalars.columns(scalars=gyro))
 
     accel = selected[["accel.x", "accel.y", "accel.z"]]
-    rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalar.columns(scalar=accel))
+    rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalars.columns(scalars=accel))
 
 
 def _log_image_data(max_time_sec: float) -> None:

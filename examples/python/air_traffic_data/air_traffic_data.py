@@ -351,7 +351,7 @@ class MeasurementBatchLogger:
         rr.send_columns(
             entity_path + "/barometric_altitude",
             [timestamps],
-            rr.Scalar.columns(scalar=df["barometric_altitude"].to_numpy()),
+            rr.Scalars.columns(scalars=df["barometric_altitude"].to_numpy()),
         )
 
     def log_ground_status(self, df: polars.DataFrame, icao_id: str) -> None:
