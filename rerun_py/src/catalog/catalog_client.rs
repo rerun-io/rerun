@@ -1,11 +1,8 @@
-use pyo3::exceptions::PyRuntimeError;
 use pyo3::{pyclass, pymethods, Py, PyResult, Python};
 
-use re_protos::catalog::v1alpha1::{DatasetEntry, EntryDetails, EntryFilter};
+use re_protos::catalog::v1alpha1::EntryFilter;
 
-use crate::catalog::{
-    to_py_err, ConnectionHandle, MissingGrpcFieldError, PyDataset, PyEntry, PyEntryId,
-};
+use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId};
 
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
@@ -42,28 +39,21 @@ impl PyCatalogClient {
             EntryFilter {
                 id: None,
                 name: None,
-                entry_type: None,
+                entry_kind: None,
             },
         )?;
 
         // Generate entry objects.
         entry_details
             .into_iter()
-            .map(|entry| {
-                let entry_id = Py::new(
-                    py,
-                    entry
-                        .id
-                        .ok_or(PyRuntimeError::new_err("No id in entry"))
-                        .map(PyEntryId::from)?,
-                )?;
-
+            .map(|details| {
+                let id = Py::new(py, PyEntryId::from(details.id))?;
                 Py::new(
                     py,
                     PyEntry {
                         client: self_.clone_ref(py),
-                        id: entry_id,
-                        details: entry,
+                        id,
+                        details,
                     },
                 )
             })
@@ -77,21 +67,15 @@ impl PyCatalogClient {
 
         let dataset_entry = connection.read_dataset(py, entry_id)?;
 
-        let details = dataset_entry
-            .details
-            .ok_or(MissingGrpcFieldError::new_err("No details in entry"))?;
-
-        let dataset_handle = dataset_entry
-            .dataset_handle
-            .ok_or(MissingGrpcFieldError::new_err("No dataset handle in entry"))?;
-
         let entry = PyEntry {
             client,
             id,
-            details,
+            details: dataset_entry.details,
         };
 
-        let dataset = PyDataset { dataset_handle };
+        let dataset = PyDataset {
+            dataset_handle: dataset_entry.handle,
+        };
 
         Py::new(py, (dataset, entry))
     }
@@ -101,43 +85,19 @@ impl PyCatalogClient {
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow_mut(py).connection.clone();
 
-        let response = connection.create_dataset(
-            py,
-            DatasetEntry {
-                details: Some(EntryDetails {
-                    name: Some(name.to_owned()),
-                    ..Default::default()
-                }),
-                dataset_handle: None,
-            },
-        )?;
+        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
 
-        //TODO(ab): proper error management + wrapping in helper objects
-        let entry_details = response
-            .details
-            .ok_or(MissingGrpcFieldError::new_err("No details in response"))?;
-
-        let dataset_handle = response
-            .dataset_handle
-            .ok_or(MissingGrpcFieldError::new_err(
-                "No dataset handle in response",
-            ))?;
-
-        let entry_id = Py::new(
-            py,
-            entry_details
-                .id
-                .ok_or(MissingGrpcFieldError::new_err("No id in entry"))
-                .map(PyEntryId::from)?,
-        )?;
+        let entry_id = Py::new(py, PyEntryId::from(dataset_entry.details.id))?;
 
         let entry = PyEntry {
             client: self_.clone_ref(py),
             id: entry_id,
-            details: entry_details,
+            details: dataset_entry.details,
         };
 
-        let dataset = PyDataset { dataset_handle };
+        let dataset = PyDataset {
+            dataset_handle: dataset_entry.handle,
+        };
 
         Py::new(py, (dataset, entry))
     }

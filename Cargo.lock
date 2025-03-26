@@ -6404,8 +6404,10 @@ name = "re_protos"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "jiff",
  "prost",
  "prost-types",
+ "pyo3",
  "re_build_info",
  "re_byte_size",
  "re_log_types",

@@ -23,6 +23,9 @@ mod v1alpha1 {
     #[path = "./rerun.catalog.v1alpha1.rs"]
     pub mod rerun_catalog_v1alpha1;
 
+    #[path = "./rerun.catalog.v1alpha1.ext.rs"]
+    pub mod rerun_catalog_v1alpha1_ext;
+
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
 
@@ -51,6 +54,9 @@ mod v1alpha1 {
 pub mod common {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_common_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_common_v1alpha1_ext::*;
+        }
     }
 }
 
@@ -79,7 +85,6 @@ pub mod manifest_registry {
 
 /// Generated types for the remote store gRPC service API v1alpha1.
 pub mod remote_store {
-
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_remote_store_v1alpha1::*;
 
@@ -99,6 +104,9 @@ pub mod remote_store {
 pub mod catalog {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_catalog_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_catalog_v1alpha1_ext::*;
+        }
     }
 }
 
@@ -120,6 +128,8 @@ pub mod redap_tasks {
     }
 }
 
+// ---
+
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
     #[error("missing required field: {package_name}.{type_name}.{field_name}")]
@@ -136,6 +146,9 @@ pub enum TypeConversionError {
         field_name: &'static str,
         reason: String,
     },
+
+    #[error("failed to parse timestamp: {0}")]
+    InvalidTime(#[from] jiff::Error),
 
     #[error("failed to decode: {0}")]
     DecodeError(#[from] prost::DecodeError),
@@ -169,6 +182,21 @@ impl TypeConversionError {
     }
 }
 
+impl From<TypeConversionError> for tonic::Status {
+    #[inline]
+    fn from(value: TypeConversionError) -> Self {
+        Self::invalid_argument(value.to_string())
+    }
+}
+
+#[cfg(feature = "py")]
+impl From<TypeConversionError> for pyo3::PyErr {
+    #[inline]
+    fn from(value: TypeConversionError) -> Self {
+        pyo3::exceptions::PyValueError::new_err(value.to_string())
+    }
+}
+
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -183,6 +211,9 @@ macro_rules! invalid_field {
     };
 }
 
+// ---
+
+// TODO(cmc): move this somewhere else
 mod sizes {
     use re_byte_size::SizeBytes;
 

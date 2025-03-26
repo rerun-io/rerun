@@ -4,7 +4,7 @@ use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
 use crate::{invalid_field, missing_field, TypeConversionError};
 
-// ---
+// --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
     type Error = ArrowError;
@@ -26,19 +26,128 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
     }
 }
 
+// --- EntryId ---
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct EntryId {
+    pub id: re_tuid::Tuid,
+}
+
+impl EntryId {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            id: re_tuid::Tuid::new(),
+        }
+    }
+}
+
+impl std::fmt::Display for EntryId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.id.fmt(f)
+    }
+}
+
+impl From<EntryId> for crate::common::v1alpha1::EntryId {
+    #[inline]
+    fn from(value: EntryId) -> Self {
+        Self {
+            id: Some(value.id.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::EntryId> for EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::EntryId) -> Result<Self, Self::Error> {
+        let id = value
+            .id
+            .ok_or(missing_field!(crate::common::v1alpha1::EntryId, "id"))?;
+        Ok(Self { id: id.try_into()? })
+    }
+}
+
+impl From<re_tuid::Tuid> for EntryId {
+    fn from(id: re_tuid::Tuid) -> Self {
+        Self { id }
+    }
+}
+
+// shortcuts
+
+impl From<re_tuid::Tuid> for crate::common::v1alpha1::EntryId {
+    fn from(id: re_tuid::Tuid) -> Self {
+        let id: EntryId = id.into();
+        Self {
+            id: Some(id.id.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(id: crate::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        let id: re_tuid::Tuid = id.try_into()?;
+        Ok(Self {
+            id: Some(id.into()),
+        })
+    }
+}
+
+// --- DatasetHandle ---
+
+pub struct DatasetHandle {
+    pub id: Option<EntryId>,
+    pub url: String,
+}
+
+impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.entry_id.map(|id| id.try_into()).transpose()?,
+            url: value.dataset_url.ok_or(missing_field!(
+                crate::common::v1alpha1::DatasetHandle,
+                "dataset_url"
+            ))?,
+        })
+    }
+}
+
+impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
+    fn from(value: DatasetHandle) -> Self {
+        Self {
+            entry_id: value.id.map(Into::into),
+            dataset_url: Some(value.url),
+        }
+    }
+}
+
 // ---
 
-impl From<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
-    fn from(value: crate::common::v1alpha1::Tuid) -> Self {
-        Self::from_nanos_and_inc(value.time_ns, value.inc)
+impl TryFrom<crate::common::v1alpha1::Tuid> for re_tuid::Tuid {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        let time_ns = value
+            .time_ns
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "time_ns"))?;
+        let inc = value
+            .inc
+            .ok_or(missing_field!(crate::common::v1alpha1::Tuid, "inc"))?;
+
+        Ok(Self::from_nanos_and_inc(time_ns, inc))
     }
 }
 
 impl From<re_tuid::Tuid> for crate::common::v1alpha1::Tuid {
     fn from(value: re_tuid::Tuid) -> Self {
         Self {
-            time_ns: value.nanoseconds_since_epoch(),
-            inc: value.inc(),
+            time_ns: Some(value.nanoseconds_since_epoch()),
+            inc: Some(value.inc()),
         }
     }
 }
@@ -486,7 +595,7 @@ impl TryFrom<crate::log_msg::v1alpha1::SetStoreInfo> for re_log_types::SetStoreI
                     crate::log_msg::v1alpha1::SetStoreInfo,
                     "row_id",
                 ))?
-                .into(),
+                .try_into()?,
             info: value
                 .info
                 .ok_or(missing_field!(
@@ -715,7 +824,7 @@ mod tests {
     fn test_tuid_conversion() {
         let tuid = re_tuid::Tuid::new();
         let proto_tuid: crate::common::v1alpha1::Tuid = tuid.into();
-        let tuid2: re_tuid::Tuid = proto_tuid.into();
+        let tuid2: re_tuid::Tuid = proto_tuid.try_into().unwrap();
         assert_eq!(tuid, tuid2);
     }
 }

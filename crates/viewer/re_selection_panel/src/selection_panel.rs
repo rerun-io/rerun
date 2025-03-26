@@ -525,8 +525,11 @@ fn entity_path_filter_ui(
     let filter_text_id = ui.id().with("filter_text");
 
     let mut filter_string = ui.data_mut(|data| {
-        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
-            .clone()
+        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || {
+            // We hide the properties filter by default.
+            filter.formatted_without_properties()
+        })
+        .clone()
     });
 
     let response = ui.add(

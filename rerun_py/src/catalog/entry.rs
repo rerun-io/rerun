@@ -2,8 +2,8 @@ use std::str::FromStr as _;
 
 use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
 
-use re_protos::catalog::v1alpha1::{EntryDetails, EntryType};
-use re_tuid::Tuid;
+use re_protos::catalog::v1alpha1::{ext::EntryDetails, EntryKind};
+use re_protos::common::v1alpha1::ext::EntryId;
 
 use crate::catalog::PyCatalogClient;
 
@@ -11,7 +11,7 @@ use crate::catalog::PyCatalogClient;
 #[pyclass(name = "EntryId")]
 #[derive(Clone)]
 pub struct PyEntryId {
-    pub id: Tuid,
+    pub id: EntryId,
 }
 
 #[pymethods]
@@ -19,8 +19,9 @@ impl PyEntryId {
     #[new]
     pub fn new(id: String) -> PyResult<Self> {
         Ok(Self {
-            id: Tuid::from_str(id.as_str())
-                .map_err(|err| PyTypeError::new_err(format!("invalid Tuid: {err}")))?,
+            id: re_tuid::Tuid::from_str(id.as_str())
+                .map_err(|err| PyTypeError::new_err(format!("invalid Tuid: {err}")))?
+                .into(),
         })
     }
 
@@ -29,15 +30,9 @@ impl PyEntryId {
     }
 }
 
-impl From<Tuid> for PyEntryId {
-    fn from(id: Tuid) -> Self {
+impl From<EntryId> for PyEntryId {
+    fn from(id: EntryId) -> Self {
         Self { id }
-    }
-}
-
-impl From<re_protos::common::v1alpha1::Tuid> for PyEntryId {
-    fn from(id: re_protos::common::v1alpha1::Tuid) -> Self {
-        Self { id: id.into() }
     }
 }
 
@@ -45,19 +40,22 @@ impl From<re_protos::common::v1alpha1::Tuid> for PyEntryId {
 
 #[pyclass(name = "EntryType", eq, eq_int)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PyEntryType {
+pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
     Dataset = 1,
+
     #[pyo3(name = "DATASET_VIEW")]
     DatasetView = 2,
+
     #[pyo3(name = "TABLE")]
     Table = 3,
+
     #[pyo3(name = "TABLE_VIEW")]
     TableView = 4,
 }
 
 #[pymethods]
-impl PyEntryType {
+impl PyEntryKind {
     // This allows for EntryType.DATASET syntax in Python
     #[classattr]
     pub const DATASET: Self = Self::Dataset;
@@ -69,16 +67,16 @@ impl PyEntryType {
     pub const TABLE_VIEW: Self = Self::TableView;
 }
 
-impl TryFrom<EntryType> for PyEntryType {
+impl TryFrom<EntryKind> for PyEntryKind {
     type Error = PyErr;
 
-    fn try_from(value: EntryType) -> Result<Self, Self::Error> {
+    fn try_from(value: EntryKind) -> Result<Self, Self::Error> {
         match value {
-            EntryType::Unspecified => Err(PyTypeError::new_err("EntryType is unspecified")),
-            EntryType::Dataset => Ok(Self::Dataset),
-            EntryType::DatasetView => Ok(Self::DatasetView),
-            EntryType::Table => Ok(Self::Table),
-            EntryType::TableView => Ok(Self::TableView),
+            EntryKind::Unspecified => Err(PyTypeError::new_err("EntryType is unspecified")),
+            EntryKind::Dataset => Ok(Self::Dataset),
+            EntryKind::DatasetView => Ok(Self::DatasetView),
+            EntryKind::Table => Ok(Self::Table),
+            EntryKind::TableView => Ok(Self::TableView),
         }
     }
 }
@@ -102,7 +100,7 @@ impl PyEntry {
     }
 
     #[getter]
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> String {
         self.details.name.clone()
     }
 
@@ -112,25 +110,26 @@ impl PyEntry {
     }
 
     #[getter]
-    pub fn entry_type(&self) -> PyResult<PyEntryType> {
-        //TODO(ab): make this less annoying thanks to a wrapper over grpc messages.
-        EntryType::try_from(self.details.entry_type)
-            .map_err(|err| PyTypeError::new_err(format!("cannot deserialize EntryType: {err}")))?
-            .try_into()
+    pub fn kind(&self) -> PyResult<PyEntryKind> {
+        self.details.kind.try_into()
     }
 
     #[getter]
-    pub fn created_at(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        self.details
-            .created_at
-            .and_then(|t| chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32))
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
+        let ts = self.details.created_at;
+        // If the `prost::Timestamp` was legal, then this is also legal.
+        #[allow(clippy::unwrap_used)]
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
     #[getter]
-    pub fn updated_at(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        self.details
-            .updated_at
-            .and_then(|t| chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32))
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
+        let ts = self.details.updated_at;
+        // If the `prost::Timestamp` was legal, then this is also legal.
+        #[allow(clippy::unwrap_used)]
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
     // ---
