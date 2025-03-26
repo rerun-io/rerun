@@ -326,7 +326,7 @@ class MeasurementBatchLogger:
                 # rr.GeoPoints.from_fields(colors=color),
                 static=True,
             )
-            rr.log(entity_path + "/barometric_altitude", rr.SeriesLines.from_fields(color=color), static=True)
+            rr.log(entity_path + "/barometric_altitude", rr.SeriesLines.from_fields(colors=color), static=True)
             self._position_indicators.add(icao_id)
 
         timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
