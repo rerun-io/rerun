@@ -26,7 +26,7 @@ function(rerun_strict_warning_settings target)
         # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
 
-        target_compile_options(${target} PRIVATE /we4996) # Using deprecated functions functions is an error
+        target_compile_options(${target} PRIVATE /we4996) # Using deprecated functions is an error
 
         if(BUILD_SHARED_LIBS)
             # If we are building as shared libs, we are going to have to disable the C4251
