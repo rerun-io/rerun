@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
         .connect()
         .await?;
 
-    let df_connector = DataFusionConnector::new(&conn);
+    let mut df_connector = DataFusionConnector::new(&conn);
 
     let ctx = SessionContext::default();
 
@@ -51,29 +51,33 @@ async fn main() -> anyhow::Result<()> {
         for time_inc_tuple in multizip((time_ns_array, inc_array, name_array)) {
             if let (Some(time_ns), Some(inc), Some(name)) = time_inc_tuple {
                 let tuid = Tuid::from_nanos_and_inc(time_ns, inc);
-                println!("Partitions for dataset: {name}");
-                let _ = ctx.register_table(
-                    "partition_index",
-                    df_connector.get_partition_list(tuid, "file:///tmp/file.rrd".to_string()),
-                )?;
 
-                let df = ctx.table("partition_index").await?;
+                let dataset_entry = df_connector.get_dataset_entry(tuid).await?;
 
-                df.show().await?;
+                if let Some(entry) = dataset_entry {
+                    let url = entry.dataset_handle.unwrap().dataset_url().to_owned();
+                    println!("Partitions for dataset: {name}");
+                    let _ = ctx.register_table(
+                        "partition_list",
+                        df_connector.get_partition_list(tuid, &url),
+                    )?;
+
+                    let df = ctx.table("partition_list").await?;
+
+                    df.show().await?;
+
+                    // Not yet implemented in manifest_registry.rs
+                    // println!("Partitions index:");
+                    // let _ = ctx.register_table(
+                    //     "partition_index",
+                    //     df_connector.get_partition_index_list(tuid, &url),
+                    // )?;
+
+                    // ctx.table("partition_index").await?.show().await?;
+                }
             }
         }
     }
-
-    // partition index list not implemented:  manifest_registry.rs:347
-
-    // let _ = ctx.register_table(
-    //     "partition_index_list",
-    //     df_connector.get_partition_index_list(),
-    // )?;
-
-    // let df = ctx.table("partition_index_list").await?;
-
-    // df.show().await?;
 
     Ok(())
 }
