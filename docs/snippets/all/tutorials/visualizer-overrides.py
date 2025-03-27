@@ -14,7 +14,7 @@ for t in range(int(tau * 2 * 10.0)):
     rr.log("trig/sin", rr.Scalars(sin(float(t) / 10.0)))
     rr.log("trig/cos", rr.Scalars(cos(float(t) / 10.0)))
 
-# Use the SeriesPoint visualizer for the sin series.
+# Use the SeriesPoints visualizer for the sin series.
 rr.send_blueprint(
     rrb.TimeSeriesView(
         overrides={
