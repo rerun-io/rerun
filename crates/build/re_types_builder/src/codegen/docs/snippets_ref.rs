@@ -228,7 +228,7 @@ impl SnippetsRefCodeGenerator {
                     // NOTE: Gotta sort twice to make sure it stays stable after the second one.
                     snippets.sort_by(|a, b| a.name_qualified.cmp(&b.name_qualified));
                     snippets.sort_by(|a, b| {
-                        if a.name_qualified.contains(&obj.snake_case_name()) {
+                        if contains_whole_word(&a.name_qualified, &obj.snake_case_name()) {
                             // Snippets that contain the object in question in their name should
                             // bubble up to the top.
                             Ordering::Less
@@ -563,6 +563,8 @@ fn test_contains_whole_word() {
     assert!(contains_whole_word("foo bar baz", "baz"));
     assert!(!contains_whole_word("foobar", "foo"));
     assert!(!contains_whole_word("foobar", "bar"));
+    assert!(contains_whole_word("underscore_is_breaking", "underscore"));
+    assert!(contains_whole_word("underscore_is_breaking", "is_breaking"));
     assert!(contains_whole_word(
         "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
         "SeriesPoints"
