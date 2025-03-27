@@ -81,8 +81,10 @@ def _build_warning_context_string(skip_first: int) -> str:
 def _send_warning_or_raise(
     message: str,
     depth_to_user_code: int = 1,
+    *,
     recording: RecordingStream | None = None,
     exception_type: type[Exception] = ValueError,
+    warning_type: type[Warning] = RerunWarning,
 ) -> None:
     """
     Sends a warning about the usage of the Rerun SDK.
@@ -106,7 +108,7 @@ def _send_warning_or_raise(
         raise exception_type(message)
 
     # Send the warning to the user first
-    warnings.warn(message, category=RerunWarning, stacklevel=depth_to_user_code + 1)
+    warnings.warn(message, category=warning_type, stacklevel=depth_to_user_code + 1)
 
     # Logging the warning to Rerun is a complex operation could produce another warning. Avoid recursion.
     if not getattr(_rerun_exception_ctx, "sending_warning", False):
@@ -120,7 +122,7 @@ def _send_warning_or_raise(
     else:
         warnings.warn(
             "Encountered Error while sending warning",
-            category=RerunWarning,
+            category=warning_type,
             stacklevel=depth_to_user_code + 1,
         )
 
@@ -231,3 +233,37 @@ class catch_and_log_exceptions:
 
             # Return the local context to the prior value
             _rerun_exception_ctx.strict_mode = self.original_strict
+
+
+T = TypeVar("T", bound=Callable[..., Any])
+
+
+def deprecated_param(name: str, *, use_instead: str | None = None, since: str | None = None) -> Callable[[T], T]:
+    """
+    Marks a parameter as deprecated.
+
+    @deprecated_param(foo, use_instead="bar", since="0.23")
+    def foo(foo: int | None = None, bar: str | None = None) -> None:
+        ...
+    """
+
+    def decorator(func: T) -> T:
+        sig = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            if name in kwargs:
+                message = f"The parameter '{name}' in function '{func.__name__}' is deprecated"
+                if since:
+                    message += f" since version {since}"
+                if use_instead:
+                    message += f", use {use_instead} instead"
+                _send_warning_or_raise(message, depth_to_user_code=2, warning_type=DeprecationWarning)
+            return func(*args, **kwargs)
+
+        # Preserve the original signature
+        wrapper.__signature__ = sig  # type: ignore[attr-defined]
+
+        return cast(T, wrapper)
+
+    return decorator
