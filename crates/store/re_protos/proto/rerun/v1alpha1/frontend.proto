@@ -27,6 +27,8 @@ service FrontendService {
 
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
 
+  rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
+
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.
 
