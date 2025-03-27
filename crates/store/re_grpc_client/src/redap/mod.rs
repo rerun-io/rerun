@@ -159,12 +159,18 @@ pub async fn legacy_client_with_interceptor<I: tonic::service::Interceptor>(
 }
 
 #[cfg(target_arch = "wasm32")]
+pub type Client = FrontendServiceClient<tonic_web_wasm_client::Client>;
+
+#[cfg(target_arch = "wasm32")]
 pub async fn client(
     origin: Origin,
 ) -> Result<FrontendServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let channel = channel(origin).await?;
     Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type Client = FrontendServiceClient<tonic::transport::Channel>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn client(

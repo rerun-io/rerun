@@ -1,6 +1,7 @@
 use std::sync::mpsc::Sender;
 
-use crate::collections::CollectionId;
+use re_protos::common::v1alpha1::ext::EntryId;
+
 use crate::servers::{Command, ServerSelection};
 
 /// Context structure for the redap browser.
