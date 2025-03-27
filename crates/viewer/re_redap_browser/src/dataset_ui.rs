@@ -8,7 +8,8 @@ use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_protos::remote_store::v1alpha1::CATALOG_ID_FIELD_NAME;
+use re_protos::common::v1alpha1::ext::EntryId;
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::UiExt as _;
@@ -45,7 +46,7 @@ pub fn dataset_ui(
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    let table_id_salt = egui::Id::new(dataset.entry_details.id).with("__collection_table__");
+    let table_id_salt = egui::Id::new(dataset.id()).with("__dataset_table__");
 
     let num_rows = dataset
         .partition_table
@@ -64,7 +65,9 @@ pub fn dataset_ui(
     let display_record_batches: Result<Vec<_>, _> = dataset
         .partition_table
         .iter()
-        .map(|sorbet_batch| catalog_sorbet_batch_to_display_record_batch(origin, sorbet_batch))
+        .map(|sorbet_batch| {
+            catalog_sorbet_batch_to_display_record_batch(origin, dataset.id(), sorbet_batch)
+        })
         .collect();
 
     let display_record_batches = match display_record_batches {
@@ -137,16 +140,17 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
 /// fly.
 fn catalog_sorbet_batch_to_display_record_batch(
     origin: &re_uri::Origin,
+    dataset_id: EntryId,
     sorbet_batch: &SorbetBatch,
 ) -> Result<DisplayRecordBatch, CollectionUiError> {
     let rec_ids = sorbet_batch
-        .column_by_name(CATALOG_ID_FIELD_NAME)
+        .column_by_name(DATASET_MANIFEST_ID_FIELD_NAME)
         .map(|rec_ids| {
             let list_array = rec_ids
                 .downcast_array_ref::<ArrowListArray>()
                 .ok_or_else(|| {
                     CollectionUiError::UnexpectedDataError(format!(
-                        "{CATALOG_ID_FIELD_NAME} column is not a list array as expected"
+                        "{DATASET_MANIFEST_ID_FIELD_NAME} column is not a list array as expected"
                     ))
                 })?;
 
@@ -158,13 +162,14 @@ fn catalog_sorbet_batch_to_display_record_batch(
                         list.downcast_array_ref::<ArrowStringArray>()
                             .ok_or_else(|| {
                                 CollectionUiError::UnexpectedDataError(format!(
-                                    "{CATALOG_ID_FIELD_NAME} column inner item is not a string \
+                                    "{DATASET_MANIFEST_ID_FIELD_NAME} column inner item is not a string \
                                      array as expected"
                                 ))
                             })?;
-                    let rec_id = string_array.value(0);
+                    let partition_id = string_array.value(0);
+                    let dataset_id = dataset_id.id.to_string();
 
-                    let recording_uri = format!("{origin}/recording/{rec_id}");
+                    let recording_uri = format!("{origin}/dataset/{dataset_id}/data?partition_id={partition_id}");
 
                     Ok(as_array_ref(ArrowStringArray::from(vec![recording_uri])))
                 })

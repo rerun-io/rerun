@@ -144,13 +144,9 @@ impl RedapServers {
         let _ = self.command_sender.send(Command::AddServer(origin));
     }
 
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn select_server(&self, origin: re_uri::Origin) {
-        // let _ = self
-        //     .command_sender
-        //     .send(Command::SelectCollection(DatasetHandle::from(&origin)));
-
-        //TODO
+    #[expect(clippy::unused_self)]
+    pub fn select_server(&self, _origin: re_uri::Origin) {
+        //TODO(ab): we don't have support for selecting servers yet.
     }
 
     pub fn find_dataset_by_name(

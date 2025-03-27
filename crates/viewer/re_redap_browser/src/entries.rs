@@ -9,14 +9,17 @@ use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
 use re_protos::catalog::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
 };
-use re_protos::common::v1alpha1::ext::{DatasetHandle, EntryId};
-use re_protos::manifest_registry::v1alpha1::ListPartitionsRequest;
+use re_protos::common::v1alpha1::ext::EntryId;
+use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::frontend::v1alpha1::ListPartitionsRequest;
 use re_protos::TypeConversionError;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::context::Context;
 use crate::requested_object::RequestedObject;
+use crate::servers::Command;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
@@ -43,7 +46,7 @@ pub enum EntryError {
 }
 
 pub struct Dataset {
-    pub entry_details: EntryDetails,
+    pub dataset_entry: DatasetEntry,
 
     pub origin: re_uri::Origin,
 
@@ -52,7 +55,18 @@ pub struct Dataset {
 
 impl Dataset {
     pub fn id(&self) -> EntryId {
-        self.entry_details.id
+        self.dataset_entry.details.id
+    }
+
+    pub fn handle(&self) -> crate::context::DatasetHandle {
+        crate::context::DatasetHandle {
+            origin: self.origin.clone(),
+            entry_id: self.id(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        self.dataset_entry.details.name.as_ref()
     }
 }
 
@@ -67,7 +81,7 @@ impl Entries {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let datasets = find_dataset_entries(origin.clone());
+        let datasets = find_dataset_entries(origin);
 
         Self {
             datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets),
@@ -88,49 +102,48 @@ impl Entries {
             .as_ref()
             .ok()?
             .values()
-            .find(|dataset| dataset.entry_details.name == dataset_name)
+            .find(|dataset| dataset.name() == dataset_name)
     }
 
     /// [`list_item::ListItem`]-based UI for the collections.
-    pub fn panel_ui(&self, _ctx: &Context<'_>, _ui: &mut egui::Ui) {
-        //TODO
+    pub fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        match self.datasets.try_as_ref() {
+            None => {
+                ui.list_item_flat_noninteractive(
+                    list_item::LabelContent::new("Loading datasets…").italics(true),
+                );
+            }
 
-        // for collection in self.datasets.values() {
-        //     match collection.try_as_ref() {
-        //         None => {
-        //             ui.list_item_flat_noninteractive(
-        //                 list_item::LabelContent::new("Loading default collection…").italics(true),
-        //             );
-        //         }
-        //
-        //         Some(Ok(collection)) => {
-        //             let is_selected = *ctx.selected_collection == Some(collection.dataset_id);
-        //
-        //             let content = list_item::LabelContent::new(&collection.name);
-        //             let response = ui.list_item().selected(is_selected).show_flat(ui, content);
-        //
-        //             if response.clicked() {
-        //                 let _ = ctx
-        //                     .command_sender
-        //                     .send(Command::SelectCollection(collection.dataset_id));
-        //             }
-        //         }
-        //
-        //         Some(Err(err)) => {
-        //             ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-        //                 egui::RichText::new("Failed to load").color(ui.visuals().error_fg_color),
-        //             ))
-        //                 .on_hover_text(err.to_string());
-        //         }
-        //     }
-        // }
+            Some(Ok(datasets)) => {
+                for dataset in datasets.values() {
+                    let is_selected = ctx.selected_collection == &Some(dataset.handle());
+
+                    let content = list_item::LabelContent::new(dataset.name());
+                    let response = ui.list_item().selected(is_selected).show_flat(ui, content);
+
+                    if response.clicked() {
+                        let _ = ctx
+                            .command_sender
+                            .send(Command::SelectCollection(dataset.handle()));
+                    }
+                }
+            }
+
+            Some(Err(err)) => {
+                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                    egui::RichText::new("Failed to load datasets")
+                        .color(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(err.to_string());
+            }
+        }
     }
 }
 
 async fn find_dataset_entries(
     origin: re_uri::Origin,
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
-    let mut client = redap::catalog_client(origin.clone()).await?;
+    let mut client = redap::client(origin.clone()).await?;
 
     let resp = client
         .find_entries(FindEntriesRequest {
@@ -158,30 +171,27 @@ async fn find_dataset_entries(
             .ok_or(EntryError::FieldNotSet("dataset"))?
             .try_into()?;
 
-        let partition_table =
-            stream_partition_table(origin.clone(), dataset_entry.handle.clone().into()).await?;
+        let partition_table = stream_partition_table(&mut client, entry_details.id).await?;
 
         let entry = Dataset {
-            entry_details,
+            dataset_entry,
             origin: origin.clone(),
             partition_table,
         };
 
-        datasets.insert(entry.entry_details.id, entry);
+        datasets.insert(entry.id(), entry);
     }
 
     Ok(datasets)
 }
 
 async fn stream_partition_table(
-    origin: re_uri::Origin,
-    dataset_handle: DatasetHandle,
+    client: &mut FrontendServiceClient<tonic::transport::Channel>,
+    entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
-    let mut client = redap::manifest_registry_client(origin).await?;
-
     let mut response = client
         .list_partitions(ListPartitionsRequest {
-            entry: Some(dataset_handle.into()),
+            dataset_id: Some(entry_id.into()),
             scan_parameters: None,
         })
         .await?

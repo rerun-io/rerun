@@ -7,6 +7,7 @@ use crate::servers::Command;
 /// An handle for a [`DatasetOld`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DatasetHandle {
+    //TODO(ab): we probably dont need that.
     pub origin: re_uri::Origin,
     pub entry_id: EntryId,
 }
