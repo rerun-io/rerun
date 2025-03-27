@@ -6374,6 +6374,7 @@ dependencies = [
  "re_tuid",
  "thiserror 1.0.65",
  "tonic",
+ "url",
 ]
 
 [[package]]
