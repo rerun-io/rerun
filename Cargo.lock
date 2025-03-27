@@ -6622,6 +6622,7 @@ dependencies = [
  "egui_tiles",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_case",
  "re_chunk",
  "re_chunk_store",
  "re_context_menu",
