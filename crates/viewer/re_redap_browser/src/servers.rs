@@ -5,46 +5,40 @@ use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::add_server_modal::AddServerModal;
-use crate::collections::{Collection, CollectionId, Collections};
-use crate::context::Context;
+use crate::context::{Context, DatasetHandle};
+use crate::entries::{Dataset, Entries};
 
 struct Server {
     origin: re_uri::Origin,
 
-    collections: Collections,
+    entries: Entries,
 }
 
 impl Server {
     fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        //let default_catalog = FetchCollectionTask::new(runtime, origin.clone());
+        let entries = Entries::new(runtime, egui_ctx, origin.clone());
 
-        let mut collections = Collections::default();
-
-        //TODO(ab): For now, we just auto-download the default collection
-        collections.fetch(runtime, egui_ctx, origin.clone());
-
-        Self {
-            origin,
-            collections,
-        }
+        Self { origin, entries }
     }
 
-    //TODO(ab): this should take a collection id in the future
-    fn refresh_default_collection(
-        &mut self,
-        runtime: &AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
-    ) {
-        self.collections
-            .fetch(runtime, egui_ctx, self.origin.clone());
+    fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
-        self.collections.on_frame_start();
+        self.entries.on_frame_start();
     }
 
-    fn find_collection(&self, collection_id: CollectionId) -> Option<&Collection> {
-        self.collections.find(collection_id)
+    fn find_dataset(&self, dataset_handle: &DatasetHandle) -> Option<&Dataset> {
+        if dataset_handle.origin != self.origin {
+            return None;
+        }
+
+        self.entries.find_dataset(dataset_handle.entry_id)
+    }
+
+    fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
+        self.entries.find_dataset_by_name(dataset_name)
     }
 
     fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
@@ -72,7 +66,7 @@ impl Server {
                 true,
                 content,
                 |ui| {
-                    self.collections.panel_ui(ctx, ui);
+                    self.entries.panel_ui(ctx, ui);
                 },
             );
     }
@@ -82,7 +76,7 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_collection: Option<CollectionId>,
+    selected_collection: Option<DatasetHandle>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -137,7 +131,7 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
-    SelectCollection(CollectionId),
+    SelectCollection(DatasetHandle),
     DeselectCollection,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
@@ -152,16 +146,38 @@ impl RedapServers {
 
     #[allow(clippy::needless_pass_by_value)]
     pub fn select_server(&self, origin: re_uri::Origin) {
-        let _ = self
-            .command_sender
-            .send(Command::SelectCollection(CollectionId::from(&origin)));
+        // let _ = self
+        //     .command_sender
+        //     .send(Command::SelectCollection(DatasetHandle::from(&origin)));
+
+        //TODO
+    }
+
+    pub fn find_dataset_by_name(
+        &self,
+        origin: &re_uri::Origin,
+        dataset_name: &str,
+    ) -> Option<&Dataset> {
+        self.servers.get(origin)?.find_dataset_by_name(dataset_name)
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    pub fn select_dataset(&self, origin: re_uri::Origin, _dataset: String) {
+    pub fn select_dataset_by_name(&self, origin: &re_uri::Origin, dataset_name: &str) {
+        let Some(entry_id) = self
+            .find_dataset_by_name(origin, dataset_name)
+            .map(|dataset| dataset.id())
+        else {
+            return;
+        };
+
+        let dataset_handle = DatasetHandle {
+            origin: origin.clone(),
+            entry_id,
+        };
+
         let _ = self
             .command_sender
-            .send(Command::SelectCollection(CollectionId::from(&origin)));
+            .send(Command::SelectCollection(dataset_handle));
     }
 
     /// Per-frame housekeeping.
@@ -211,7 +227,7 @@ impl RedapServers {
 
             Command::RefreshCollection(origin) => {
                 self.servers.entry(origin).and_modify(|server| {
-                    server.refresh_default_collection(runtime, egui_ctx);
+                    server.refresh_entries(runtime, egui_ctx);
                 });
             }
         }
@@ -261,11 +277,11 @@ impl RedapServers {
 
         if let Some(selected_collection) = self.selected_collection.as_ref() {
             for server in self.servers.values() {
-                let collection = server.find_collection(*selected_collection);
+                let collection = server.find_dataset(selected_collection);
 
                 if let Some(collection) = collection {
                     self.with_ctx(|ctx| {
-                        super::collection_ui::collection_ui(
+                        super::dataset_ui::dataset_ui(
                             viewer_ctx,
                             ctx,
                             ui,

@@ -16,8 +16,8 @@ use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordB
 use re_viewer_context::ViewerContext;
 
 use super::servers::Command;
-use crate::collections::Collection;
 use crate::context::Context;
+use crate::entries::Dataset;
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -28,15 +28,15 @@ enum CollectionUiError {
     UnexpectedDataError(String),
 }
 
-pub fn collection_ui(
+pub fn dataset_ui(
     viewer_ctx: &ViewerContext<'_>,
     ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
-    collection: &Collection,
+    dataset: &Dataset,
 ) {
     let sorbet_schema = {
-        let Some(sorbet_batch) = collection.collection.first() else {
+        let Some(sorbet_batch) = dataset.partition_table.first() else {
             ui.label(egui::RichText::new("This collection is empty").italics());
             return;
         };
@@ -45,10 +45,10 @@ pub fn collection_ui(
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    let table_id_salt = egui::Id::new(collection.collection_id).with("__collection_table__");
+    let table_id_salt = egui::Id::new(dataset.entry_details.id).with("__collection_table__");
 
-    let num_rows = collection
-        .collection
+    let num_rows = dataset
+        .partition_table
         .iter()
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
@@ -61,8 +61,8 @@ pub fn collection_ui(
 
     //TODO(ab): better column order?
 
-    let display_record_batches: Result<Vec<_>, _> = collection
-        .collection
+    let display_record_batches: Result<Vec<_>, _> = dataset
+        .partition_table
         .iter()
         .map(|sorbet_batch| catalog_sorbet_batch_to_display_record_batch(origin, sorbet_batch))
         .collect();
