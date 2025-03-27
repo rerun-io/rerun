@@ -111,7 +111,7 @@ def transforms() -> None:
     # Log a transform from parent to child with a translation and skew along y and x.
     rr.log(
         "transforms/child_from_parent_translation",
-        rr.Transform3D(translation=(-1, 0, 0), from_parent=True),
+        rr.Transform3D(translation=(-1, 0, 0), relation=rr.TransformRelation.ChildFromParent),
     )
 
     # Log translation only.

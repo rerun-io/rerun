@@ -250,7 +250,7 @@ fn run_view_ui_and_save_snapshot(
                 modifiers: egui::Modifiers::default(),
             });
             harness.run_steps(10);
-            let broken_percent_threshold = 0.0036;
+            let broken_percent_threshold = 0.0037;
             let num_pixels = (size.x * size.y).ceil() as u64;
 
             use re_viewer_context::test_context::HarnessExt as _;

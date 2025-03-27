@@ -143,12 +143,12 @@ def specimen_scalars_interlaced_in_two_chunks() -> None:
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(0, 2, 5, 6, 8),
-        rr.Scalar.columns(scalar=[0, 2, 5, 6, 8]),
+        rr.Scalars.columns(scalars=[0, 2, 5, 6, 8]),
     )
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(1, 3, 7),
-        rr.Scalar.columns(scalar=[1, 3, 7]),
+        rr.Scalars.columns(scalars=[1, 3, 7]),
     )
 
 

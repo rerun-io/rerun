@@ -49,6 +49,7 @@ pub struct ListItem {
     force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
     height: f32,
+    y_offset: f32,
     render_offscreen: bool,
 }
 
@@ -63,6 +64,7 @@ impl Default for ListItem {
             force_background: None,
             collapse_openness: None,
             height: DesignTokens::list_item_height(),
+            y_offset: 0.0,
             render_offscreen: true,
         }
     }
@@ -139,6 +141,24 @@ impl ListItem {
     #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
         self.height = height;
+        self
+    }
+
+    /// Set the item's vertical offset.
+    ///
+    /// NOTE: Can only be positive.
+    /// Default is 0.0.
+    #[inline]
+    pub fn with_y_offset(mut self, y_offset: f32) -> Self {
+        self.y_offset = y_offset;
+        self
+    }
+
+    /// Set the item's vertical offset to `DesignTokens::list_header_vertical_offset()`.
+    /// For best results, use this with [`super::LabelContent::header`].
+    #[inline]
+    pub fn header(mut self) -> Self {
+        self.y_offset = DesignTokens::list_header_vertical_offset();
         self
     }
 
@@ -287,9 +307,15 @@ impl ListItem {
             force_hovered,
             force_background,
             collapse_openness,
-            height,
+            mut height,
+            y_offset,
             render_offscreen,
         } = self;
+
+        if y_offset != 0.0 {
+            ui.add_space(y_offset);
+            height -= y_offset;
+        }
 
         let collapse_extra = if collapse_openness.is_some() {
             DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()

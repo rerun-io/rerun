@@ -31,7 +31,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
 /// Generates reflection about all known components.
 ///
 /// Call only once and reuse the results.
-#[allow(deprecated)]
+
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
     let array = [
@@ -1979,13 +1979,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Scalar"),
             ArchetypeReflection {
                 display_name: "Scalar",
-                deprecation_notice: None,
+                deprecation_notice: Some("Use `Scalars` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection { name : "scalar", display_name : "Scalar",
                     component_name : "rerun.components.Scalar".into(), docstring_md :
                     "The scalar value to log.", is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Scalars"),
+            ArchetypeReflection {
+                display_name: "Scalars",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "scalars", display_name :
+                    "Scalars", component_name : "rerun.components.Scalar".into(),
+                    docstring_md : "The scalar values to log.", is_required : true, },
                 ],
             },
         ),
@@ -2019,7 +2033,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.SeriesLine"),
             ArchetypeReflection {
                 display_name: "Series line",
-                deprecation_notice: None,
+                deprecation_notice: Some("Use `SeriesLines` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
@@ -2046,10 +2060,42 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.SeriesLines"),
+            ArchetypeReflection {
+                display_name: "Series lines",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
+                    component_name : "rerun.components.Color".into(), docstring_md :
+                    "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "widths",
+                    display_name : "Widths", component_name :
+                    "rerun.components.StrokeWidth".into(), docstring_md :
+                    "Stroke width for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    display_name : "Names", component_name : "rerun.components.Name"
+                    .into(), docstring_md :
+                    "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "visible_series", display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "aggregation_policy", display_name : "Aggregation policy",
+                    component_name : "rerun.components.AggregationPolicy".into(),
+                    docstring_md :
+                    "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.\n\nExpected to be unchanging over time.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.SeriesPoint"),
             ArchetypeReflection {
                 display_name: "Series point",
-                deprecation_notice: None,
+                deprecation_notice: Some("Use `SeriesPoints` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
@@ -2070,6 +2116,37 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "marker_size", display_name : "Marker size", component_name :
                     "rerun.components.MarkerSize".into(), docstring_md :
                     "Size of the marker.", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.SeriesPoints"),
+            ArchetypeReflection {
+                display_name: "Series points",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
+                    component_name : "rerun.components.Color".into(), docstring_md :
+                    "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "markers",
+                    display_name : "Markers", component_name :
+                    "rerun.components.MarkerShape".into(), docstring_md :
+                    "What shape to use to represent the point\n\nMay change over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    display_name : "Names", component_name : "rerun.components.Name"
+                    .into(), docstring_md :
+                    "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "visible_series", display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "marker_sizes", display_name : "Marker sizes", component_name :
+                    "rerun.components.MarkerSize".into(), docstring_md :
+                    "Sizes of the markers.\n\nMay change over time.", is_required :
+                    false, },
                 ],
             },
         ),

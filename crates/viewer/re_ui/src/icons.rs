@@ -113,6 +113,8 @@ pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.png")
 pub const GROUP: Icon = icon_from_path!("../data/icons/group.png");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.png");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.png");
+pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.png");
+pub const ENTITY_RESERVED_EMPTY: Icon = icon_from_path!("../data/icons/entity_reserved_empty.png");
 
 /// Link within the viewer
 pub const INTERNAL_LINK: Icon = icon_from_path!("../data/icons/link.png");
@@ -122,6 +124,7 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.png");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
+pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.png");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 

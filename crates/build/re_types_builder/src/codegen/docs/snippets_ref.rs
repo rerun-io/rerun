@@ -228,7 +228,7 @@ impl SnippetsRefCodeGenerator {
                     // NOTE: Gotta sort twice to make sure it stays stable after the second one.
                     snippets.sort_by(|a, b| a.name_qualified.cmp(&b.name_qualified));
                     snippets.sort_by(|a, b| {
-                        if a.name_qualified.contains(&obj.snake_case_name()) {
+                        if contains_whole_word(&a.name_qualified, &obj.snake_case_name()) {
                             // Snippets that contain the object in question in their name should
                             // bubble up to the top.
                             Ordering::Less
@@ -241,6 +241,10 @@ impl SnippetsRefCodeGenerator {
                 .filter(|(obj, snippet)| {
                     if opt_outs.contains_key(&snippet.name_qualified) {
                         return false;
+                    }
+
+                    if let Some(deprecation_notice) = obj.deprecation_notice() {
+                        panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_notice}", snippet.name_qualified, obj.fqname);
                     }
 
                     if obj.kind == ObjectKind::Archetype {
@@ -460,7 +464,7 @@ fn collect_snippets_recursively<'o>(
             ),
         ] {
             for obj in objs {
-                if contents.contains(&obj.name) {
+                if contains_whole_word(&contents, &obj.name) {
                     set.insert(*obj);
                     continue;
                 }
@@ -526,6 +530,53 @@ fn collect_snippets_recursively<'o>(
     }
 
     Ok(snippets)
+}
+
+/// Does the source text contain the given word as a whole word,
+/// i.e. with word-breaking characters before and after it?
+fn contains_whole_word(contents: &str, needle: &str) -> bool {
+    let Some(pos) = contents.find(needle) else {
+        return false;
+    };
+
+    if 0 < pos {
+        let byte_before = contents.as_bytes()[pos - 1];
+        if byte_before.is_ascii_alphanumeric() || byte_before == b':' {
+            return false;
+        }
+    }
+    if pos + needle.len() < contents.len()
+        && contents.as_bytes()[pos + needle.len()].is_ascii_alphanumeric()
+    {
+        return false;
+    }
+    true
+}
+
+#[test]
+fn test_contains_whole_word() {
+    assert!(contains_whole_word("foo", "foo"));
+    assert!(contains_whole_word("foo bar", "foo"));
+    assert!(contains_whole_word("foo bar", "bar"));
+    assert!(contains_whole_word("foo bar baz", "foo"));
+    assert!(contains_whole_word("foo bar baz", "bar"));
+    assert!(contains_whole_word("foo bar baz", "baz"));
+    assert!(!contains_whole_word("foobar", "foo"));
+    assert!(!contains_whole_word("foobar", "bar"));
+    assert!(contains_whole_word("underscore_is_breaking", "underscore"));
+    assert!(contains_whole_word("underscore_is_breaking", "is_breaking"));
+    assert!(contains_whole_word(
+        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "SeriesPoints" // plural!
+    ));
+    assert!(!contains_whole_word(
+        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "SeriesPoint" // singular!
+    ));
+    assert!(
+        !contains_whole_word("jawOpen:Scalar", "Scalar"),
+        "Special handling"
+    );
 }
 
 /// Neatly organized [`Object`]s (archetypes, components, etc).

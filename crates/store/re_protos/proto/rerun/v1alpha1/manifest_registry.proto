@@ -302,7 +302,7 @@ message BTreeIndex {
 }
 
 message CreatePartitionIndexesResponse {
-  optional uint64 indexed_rows = 1;
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message FetchChunkManifestRequest {

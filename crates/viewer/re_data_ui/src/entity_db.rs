@@ -1,8 +1,7 @@
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreKind, Timestamp};
-use re_types::components;
+use re_log_types::StoreKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -15,7 +14,7 @@ impl crate::DataUi for EntityDb {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
+        _db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
@@ -73,18 +72,6 @@ impl crate::DataUi for EntityDb {
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
-
-                if let Some(name) = db.recording_property::<components::Name>() {
-                     ui.grid_left_hand_label("Name");
-                     ui.label(name.to_string());
-                     ui.end_row();
-                }
-
-                if let Some(started) = db.recording_property::<components::Timestamp>() {
-                    ui.grid_left_hand_label("Created");
-                    ui.label(Timestamp::from(started.0).format(ctx.app_options().timestamp_format));
-                    ui.end_row();
-                }
             }
 
             if let Some(latest_row_id) = self.latest_row_id() {
@@ -174,10 +161,9 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
-                // TODO(#9188): Create a dedicated UI for the recording properties.
                 if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
-                    ui.label("This is the active recording");
+                    ui.label("This is the active recording.");
                 }
             }
             StoreKind::Blueprint => {

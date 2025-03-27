@@ -399,7 +399,7 @@ pub fn start<E: Example + 'static>() {
             });
 
         // TODO(emilk): port this to the winit 0.30 API, using maybe https://docs.rs/winit/latest/winit/platform/web/trait.EventLoopExtWebSys.html ?
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         let window = event_loop.create_window(window).unwrap();
 
         use winit::platform::web::WindowExtWebSys;

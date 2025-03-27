@@ -1,7 +1,7 @@
-use re_entity_db::{EntityDb, StoreBundle};
+use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Caches, StoreHub};
+use crate::{Caches, StoreBundle, StoreHub};
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {

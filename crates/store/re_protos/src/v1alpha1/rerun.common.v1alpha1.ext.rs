@@ -4,7 +4,7 @@ use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
 use crate::{invalid_field, missing_field, TypeConversionError};
 
-// ---
+// --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
     type Error = ArrowError;
@@ -23,6 +23,107 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
         Ok(Self {
             arrow_schema: re_sorbet::ipc_from_schema(value)?,
         })
+    }
+}
+
+// --- EntryId ---
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct EntryId {
+    pub id: re_tuid::Tuid,
+}
+
+impl EntryId {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            id: re_tuid::Tuid::new(),
+        }
+    }
+}
+
+impl std::fmt::Display for EntryId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.id.fmt(f)
+    }
+}
+
+impl From<EntryId> for crate::common::v1alpha1::EntryId {
+    #[inline]
+    fn from(value: EntryId) -> Self {
+        Self {
+            id: Some(value.id.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::EntryId> for EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::EntryId) -> Result<Self, Self::Error> {
+        let id = value
+            .id
+            .ok_or(missing_field!(crate::common::v1alpha1::EntryId, "id"))?;
+        Ok(Self { id: id.try_into()? })
+    }
+}
+
+impl From<re_tuid::Tuid> for EntryId {
+    fn from(id: re_tuid::Tuid) -> Self {
+        Self { id }
+    }
+}
+
+// shortcuts
+
+impl From<re_tuid::Tuid> for crate::common::v1alpha1::EntryId {
+    fn from(id: re_tuid::Tuid) -> Self {
+        let id: EntryId = id.into();
+        Self {
+            id: Some(id.id.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(id: crate::common::v1alpha1::Tuid) -> Result<Self, Self::Error> {
+        let id: re_tuid::Tuid = id.try_into()?;
+        Ok(Self {
+            id: Some(id.into()),
+        })
+    }
+}
+
+// --- DatasetHandle ---
+
+#[derive(Debug, Clone)]
+pub struct DatasetHandle {
+    pub id: Option<EntryId>,
+    pub url: String,
+}
+
+impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.entry_id.map(|id| id.try_into()).transpose()?,
+            url: value.dataset_url.ok_or(missing_field!(
+                crate::common::v1alpha1::DatasetHandle,
+                "dataset_url"
+            ))?,
+        })
+    }
+}
+
+impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
+    fn from(value: DatasetHandle) -> Self {
+        Self {
+            entry_id: value.id.map(Into::into),
+            dataset_url: Some(value.url),
+        }
     }
 }
 

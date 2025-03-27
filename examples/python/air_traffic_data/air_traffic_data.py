@@ -270,8 +270,8 @@ class MeasurementLogger:
         if measurement.barometric_altitude is not None:
             rr.log(
                 entity_path + "/barometric_altitude",
-                rr.Scalar(measurement.barometric_altitude),
-                rr.SeriesLine(color=color),
+                rr.Scalars(measurement.barometric_altitude),
+                rr.SeriesLines(colors=color),
             )
 
     def flush(self) -> None:
@@ -326,7 +326,7 @@ class MeasurementBatchLogger:
                 # rr.GeoPoints.from_fields(colors=color),
                 static=True,
             )
-            rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.from_fields(color=color), static=True)
+            rr.log(entity_path + "/barometric_altitude", rr.SeriesLines.from_fields(colors=color), static=True)
             self._position_indicators.add(icao_id)
 
         timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
@@ -351,7 +351,7 @@ class MeasurementBatchLogger:
         rr.send_columns(
             entity_path + "/barometric_altitude",
             [timestamps],
-            rr.Scalar.columns(scalar=df["barometric_altitude"].to_numpy()),
+            rr.Scalars.columns(scalars=df["barometric_altitude"].to_numpy()),
         )
 
     def log_ground_status(self, df: polars.DataFrame, icao_id: str) -> None:

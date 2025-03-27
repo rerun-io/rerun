@@ -29,11 +29,12 @@ use datatype_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
     edit_or_view_vec3d, edit_singleline_string, edit_u64_range, edit_ui_points, edit_view_enum,
-    edit_view_enum_with_variant_available, edit_view_range1d, view_uuid, view_view_id,
+    edit_view_enum_with_variant_available, edit_view_range1d, view_timestamp, view_uuid,
+    view_view_id,
 };
 
 use re_types::blueprint::components::{RootContainer, ViewMaximized};
-use re_types::components::SeriesVisible;
+use re_types::components::{SeriesVisible, Timestamp};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
@@ -97,6 +98,9 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<SeriesVisible>(edit_bool);
+
+    // Date components:
+    registry.add_singleline_edit_or_view::<Timestamp>(view_timestamp);
 
     // Text components:
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);

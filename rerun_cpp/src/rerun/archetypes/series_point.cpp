@@ -5,6 +5,9 @@
 
 #include "../collection_adapter_builtins.hpp"
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun::archetypes {
     SeriesPoint SeriesPoint::clear_fields() {
         auto archetype = SeriesPoint();
@@ -101,3 +104,5 @@ namespace rerun {
         return rerun::take_ownership(std::move(cells));
     }
 } // namespace rerun
+
+RR_POP_WARNINGS

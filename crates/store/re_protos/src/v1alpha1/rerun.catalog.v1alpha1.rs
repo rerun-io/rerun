@@ -32,7 +32,7 @@ impl ::prost::Name for FindEntriesResponse {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteEntryRequest {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for DeleteEntryRequest {
     const NAME: &'static str = "DeleteEntryRequest";
@@ -58,8 +58,10 @@ impl ::prost::Name for DeleteEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetEntryRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset: ::core::option::Option<DatasetEntry>,
+    /// The name is a short human-readable string
+    /// TODO(jleibs): Define valid name constraints
+    #[prost(string, optional, tag = "1")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for CreateDatasetEntryRequest {
     const NAME: &'static str = "CreateDatasetEntryRequest";
@@ -89,7 +91,7 @@ impl ::prost::Name for CreateDatasetEntryResponse {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ReadDatasetEntryRequest {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for ReadDatasetEntryRequest {
     const NAME: &'static str = "ReadDatasetEntryRequest";
@@ -119,7 +121,7 @@ impl ::prost::Name for ReadDatasetEntryResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryFilter {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "EntryKind", optional, tag = "3")]
@@ -140,7 +142,7 @@ impl ::prost::Name for EntryFilter {
 pub struct EntryDetails {
     /// The EntryId is immutable
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The name is a short human-readable string
     /// TODO(jleibs): Define valid name constraints
     #[prost(string, optional, tag = "2")]

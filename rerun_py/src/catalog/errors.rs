@@ -16,14 +16,9 @@
 use std::error::Error as _;
 
 use pyo3::exceptions::{PyConnectionError, PyValueError};
-use pyo3::{create_exception, PyErr};
+use pyo3::PyErr;
 
 use re_grpc_client::redap::ConnectionError;
-
-// ---
-
-// Custom exception classes.
-create_exception!(catalog, MissingGrpcFieldError, PyValueError);
 
 // ---
 

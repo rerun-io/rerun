@@ -171,7 +171,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     if obj.deprecation_notice().is_some() {
-        code.push_str("#![allow(deprecated)]\n");
+        code.push_str("#![expect(deprecated)]\n");
     }
 
     if obj.is_enum() {
@@ -248,7 +248,7 @@ fn generate_mod_file(
         let type_name = &obj.name;
 
         if obj.deprecation_notice().is_some() {
-            code.push_str("#[allow(deprecated)]\n");
+            code.push_str("#[expect(deprecated)]\n");
         }
 
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
@@ -851,7 +851,7 @@ fn quote_trait_impls_from_obj(
             quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
         }
 
-        ObjectKind::Archetype => quote_trait_impls_for_archetype(obj),
+        ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
 
         ObjectKind::View => quote_trait_impls_for_view(reporter, obj),
     }
@@ -1051,7 +1051,7 @@ fn quote_trait_impls_for_datatype_or_component(
     }
 }
 
-fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
+fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
     #![allow(clippy::collapsible_else_if)]
 
     let Object {
@@ -1094,7 +1094,12 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         .iter()
         .map(|field| {
             let Some(component_name) = field.typ.fqname() else {
-                panic!("Archetype field must be an object/union or an array/vector of such")
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    "Archetype field must be an object/union or an array/vector of such",
+                );
+                return TokenStream::new();
             };
 
             let archetype_name = &obj.fqname;

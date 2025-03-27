@@ -15,7 +15,13 @@ use crate::servers::Command;
 /// An id for a [`Collection`].
 /// //TODO(ab): this should be a properly defined id provided by the redap server
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CollectionId(pub egui::Id);
+pub struct CollectionId(egui::Id);
+
+impl From<&re_uri::Origin> for CollectionId {
+    fn from(origin: &re_uri::Origin) -> Self {
+        Self(egui::Id::new(origin.clone()).with("__top_level_collection__"))
+    }
+}
 
 /// An individual collection of recordings within a catalog.
 pub struct Collection {
@@ -142,8 +148,7 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
         .await?;
 
     //TODO(ab): ideally this is provided by the server
-    let collection_id =
-        CollectionId(egui::Id::new(origin.clone()).with("__top_level_collection__"));
+    let collection_id = CollectionId::from(&origin);
     let collection = Collection {
         collection_id,
         //TODO(ab): this should be provided by the server

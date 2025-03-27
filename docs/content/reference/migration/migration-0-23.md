@@ -3,6 +3,12 @@ title: Migrating from 0.22 to 0.23
 order: 989
 ---
 
+## Reserved namespaces
+Starting with this release, the SDKs will log Rerun-related information to reserved entity path namespaces that are prefixed with `__`.
+Most notably, there is `__warnings/`, which used to be called `rerun/` and can be used to log exceptions that occurred in the SDKs.
+We also introduced `__properties/`, which stores recording-level information that is logged via the new `set_property` methods in the SDKs.
+Reserved namespaces are highlighted with a ⚙️ icon in the viewer UI.
+
 ## Timelines are uniquely identified by name
 Previously, you could (confusingly) have two timelines with the same name, as long as they had different types (sequence vs temporal).
 This is no longer possible.
@@ -223,7 +229,7 @@ rrb.TimeSeriesView(
     origin="/classification",
     overrides={
         "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/samples": [rrb.VisualizerOverrides("SeriesPoints")], # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -235,16 +241,16 @@ rrb.TimeSeriesView(
     name="Trig",
     origin="/trig",
     overrides={
-        "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
-        "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+        "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
+        "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
     },
 ),
 rrb.TimeSeriesView(
     name="Classification",
     origin="/classification",
     overrides={
-        "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
-        "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
+        "classification/samples": rrb.VisualizerOverrides("SeriesPoints"), # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -346,3 +352,31 @@ overrides={
 }
 # …
 ```
+
+## Types for time series plots are now plural
+
+The `Scalar`/`SeriesPoints`/`SeriesLines` archetypess have been deprecated in favor of
+`Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
+scatter plots or lines on the same archetype.
+
+
+Before:
+```py
+rr.log("trig/sin", rr.SeriesLines(color=[s0, 255, 0], name="cos(0.01t)", width=4), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
+```
+
+After:
+```py
+rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalars(sin(float(t) / 100.0)))
+```
+<!-- This is trivial enough across languages why I left it at a python only example -->
+
+The old types still work for the moment but will be removed in a future release.

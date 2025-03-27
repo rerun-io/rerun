@@ -38,12 +38,15 @@ service FrontendService {
 
   // List partitions in the Dataset
   rpc ListPartitions(ListPartitionsRequest) returns (stream rerun.manifest_registry.v1alpha1.ListPartitionsResponse) {}
+
+  // Fetch partition from the Dataset
+  rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
 }
 
 // --- Manifest Registry ---
 
 message RegisterPartitionsRequest {
-  rerun.common.v1alpha1.Tuid dataset_id = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Partitions to add
   repeated rerun.manifest_registry.v1alpha1.Partition partitions = 2;
@@ -53,7 +56,7 @@ message RegisterPartitionsRequest {
 }
 
 message UnregisterPartitionsRequest {
-  rerun.common.v1alpha1.Tuid dataset_id = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Partitions to remove
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -63,8 +66,15 @@ message UnregisterPartitionsRequest {
 }
 
 message ListPartitionsRequest {
-  rerun.common.v1alpha1.Tuid dataset_id = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message FetchPartitionRequest {
+  rerun.common.v1alpha1.Tuid dataset_id = 1;
+
+  // Partition for which we want to get chunks
+  rerun.common.v1alpha1.PartitionId partition_id = 2;
 }

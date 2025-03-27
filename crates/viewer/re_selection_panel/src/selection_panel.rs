@@ -281,17 +281,46 @@ impl SelectionPanel {
             _ => {}
         }
 
+        let (query, db) = if let Some(entity_path) = item.entity_path() {
+            guess_query_and_db_for_selected_entity(ctx, entity_path)
+        } else {
+            (ctx.current_query(), ctx.recording())
+        };
+
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                let (query, db) = if let Some(entity_path) = item.entity_path() {
-                    guess_query_and_db_for_selected_entity(ctx, entity_path)
-                } else {
-                    (ctx.current_query(), ctx.recording())
-                };
                 data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+            });
+        }
+
+        if let Item::StoreId(_) = item {
+            ui.section_collapsing_header("Properties").show(ui, |ui| {
+                let filtered = db
+                    .entity_paths()
+                    .into_iter()
+                    .filter(|entity_path| {
+                        // Only check for properties, but skip the recording properties,
+                        // because we display them already elsewhere in the UI.
+                        entity_path.is_descendant_of(&EntityPath::properties())
+                    })
+                    .collect::<Vec<_>>();
+
+                if filtered.is_empty() {
+                    ui.label("No properties found for this recording.");
+                } else {
+                    for entity_path in filtered {
+                        // We strip the property part
+                        let name = entity_path
+                            .to_string()
+                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                            .map(re_case::to_human_case)
+                            .unwrap_or("<unknown>".to_owned());
+                        ui.label(name);
+                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
+                    }
+                }
             });
         }
 
@@ -525,8 +554,11 @@ fn entity_path_filter_ui(
     let filter_text_id = ui.id().with("filter_text");
 
     let mut filter_string = ui.data_mut(|data| {
-        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
-            .clone()
+        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || {
+            // We hide the properties filter by default.
+            filter.formatted_without_properties()
+        })
+        .clone()
     });
 
     let response = ui.add(
