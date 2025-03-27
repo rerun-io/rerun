@@ -34,6 +34,7 @@ prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 thiserror.workspace = true
+url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

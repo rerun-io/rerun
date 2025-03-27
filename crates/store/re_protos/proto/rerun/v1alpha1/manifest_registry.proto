@@ -18,6 +18,9 @@ service ManifestRegistryService {
   // the chunks in the partitions.
   rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
 
+  // Fetch the internal state of a Partition Manifest.
+  rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+
   // Query Dataset and return a dataframe containing relevant chunk IDs
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
@@ -133,6 +136,19 @@ message CreatePartitionManifestsRequest {
 }
 
 message CreatePartitionManifestsResponse {
+  // The Arrow schema of this dataframe can be fetched using [`CreatePartitionManifestsResponse::schema`].
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchPartitionManifestRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.PartitionId id = 2;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+}
+
+message FetchPartitionManifestResponse {
+  // Partition manifest as arrow RecordBatches
+  // TODO: indicate where to find the schema
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

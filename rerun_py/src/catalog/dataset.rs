@@ -13,6 +13,6 @@ pub struct PyDataset {
 impl PyDataset {
     #[getter]
     fn manifest_url(&self) -> String {
-        self.dataset_handle.url.clone()
+        self.dataset_handle.url.to_string()
     }
 }

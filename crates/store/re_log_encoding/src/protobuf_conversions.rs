@@ -1,3 +1,5 @@
+// TODO(cmc): this belongs in re_protos::ext
+
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
