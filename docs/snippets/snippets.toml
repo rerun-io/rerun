@@ -74,6 +74,9 @@ features = [
   ],
 ]
 
+
+# --------------------------------------------------------------------------------------------------
+
 # These entries won't run at all.
 #
 # NOTE: Non-runnable python snippets will have to also be added the `rerun_py/pyproject.toml`
@@ -223,6 +226,8 @@ features = [
   "rust", # Not implemented
 ]
 
+# --------------------------------------------------------------------------------------------------
+
 # These entries will run but their results won't be compared to the baseline.
 #
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
@@ -344,4 +349,20 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = [
   "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
+]
+
+"archetypes/scalars_multiple_plots" = [ # TODO(#3235): Slight floating point differences
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/series_lines_style" = [ # TODO(#3235): Slight floating point differences
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/series_points_style" = [ # TODO(#3235): Slight floating point differences
+  "cpp",
+  "py",
+  "rust",
 ]
