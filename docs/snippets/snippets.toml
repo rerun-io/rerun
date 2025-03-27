@@ -340,17 +340,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
 ]
 
-# `$config_dir` will be replaced with the absolute path of `docs/snippets`.
-[extra_args]
-"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
-"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
-"archetypes/video_auto_frames" = [
-  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
-]
-"archetypes/video_manual_frames" = [
-  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
-]
-
 "archetypes/scalars_multiple_plots" = [ # TODO(#3235): Slight floating point differences
   "cpp",
   "py",
@@ -365,4 +354,18 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
+]
+
+
+# -----------------------------------------------------------------------------
+
+# `$config_dir` will be replaced with the absolute path of `docs/snippets`.
+[extra_args]
+"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/video_auto_frames" = [
+  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+]
+"archetypes/video_manual_frames" = [
+  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
 ]
