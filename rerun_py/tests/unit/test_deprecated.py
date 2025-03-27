@@ -5,9 +5,6 @@ import warnings
 import pytest
 from rerun.error_utils import deprecated_param, set_strict_mode, strict_mode
 
-was_strict_mode = strict_mode()
-set_strict_mode(False)
-
 
 # Define a function with a deprecated parameter for testing
 @deprecated_param("old_param", use_instead="new_param", since="1.0")
@@ -16,6 +13,10 @@ def test_function(new_param: str | None = None, old_param: str | None = None) ->
 
 
 def test_deprecated_param_warning() -> None:
+    was_strict_mode = strict_mode()
+    set_strict_mode(False)
+    assert not strict_mode()
+
     # Test that a warning is raised when the deprecated parameter is used
     with pytest.warns(DeprecationWarning) as record:
         result = test_function(old_param="value")
@@ -33,8 +34,14 @@ def test_deprecated_param_warning() -> None:
     # Test that the function still works correctly
     assert result == "value"
 
+    set_strict_mode(was_strict_mode)
+
 
 def test_no_warning_without_deprecated_param() -> None:
+    was_strict_mode = strict_mode()
+    set_strict_mode(False)
+    assert not strict_mode()
+
     # Test that no warning is raised when the deprecated parameter is not used
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter("always")  # Ensure all warnings are shown
@@ -46,8 +53,14 @@ def test_no_warning_without_deprecated_param() -> None:
     # Test that the function still works correctly
     assert result == "new_value"
 
+    set_strict_mode(was_strict_mode)
+
 
 def test_positional_args_handling() -> None:
+    was_strict_mode = strict_mode()
+    set_strict_mode(False)
+    assert not strict_mode()
+
     # Testing with positional arguments (where deprecated param isn't named)
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter("always")
@@ -57,5 +70,4 @@ def test_positional_args_handling() -> None:
     assert len(record) == 0
     assert result == "positional_value"
 
-
-set_strict_mode(was_strict_mode)
+    set_strict_mode(was_strict_mode)
