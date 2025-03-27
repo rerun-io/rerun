@@ -21,13 +21,18 @@ if TYPE_CHECKING:
 # to use the notebook part of rerun, they'll be notified when
 # that it's not installed when they try to init a `Viewer` instance.
 if importlib.util.find_spec("rerun_notebook") is not None:
-    from rerun_notebook import (
-        ContainerSelection as ContainerSelection,
-        EntitySelection as EntitySelection,
-        SelectionItem as SelectionItem,
-        ViewerCallbacks as ViewerCallbacks,
-        ViewSelection as ViewSelection,
-    )
+    try:
+        from rerun_notebook import (
+            ContainerSelection as ContainerSelection,
+            EntitySelection as EntitySelection,
+            SelectionItem as SelectionItem,
+            ViewerCallbacks as ViewerCallbacks,
+            ViewSelection as ViewSelection,
+        )
+    except ImportError:
+        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+    except FileNotFoundError:
+        logging.error("rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env.")
 
 from rerun import bindings
 
