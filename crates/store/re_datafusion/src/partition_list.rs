@@ -31,11 +31,11 @@ pub struct PartitionListProvider {
 }
 
 impl PartitionListProvider {
-    pub fn new(conn: Channel, tuid: Tuid, url: String) -> Self {
+    pub fn new(conn: Channel, tuid: Tuid, url: impl Into<String>) -> Self {
         Self {
             client: ManifestRegistryServiceClient::new(conn),
             tuid,
-            url,
+            url: url.into(),
         }
     }
 
