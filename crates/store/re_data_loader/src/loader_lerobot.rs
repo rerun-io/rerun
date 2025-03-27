@@ -396,7 +396,7 @@ fn load_episode_video(
                 .iter()
                 .take(time_column.num_rows())
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
 
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;

@@ -207,7 +207,7 @@ fn load_video(
             let video_timestamps = frame_timestamps_nanos
                 .iter()
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
             let video_timestamp_list_array = video_timestamp_batch
