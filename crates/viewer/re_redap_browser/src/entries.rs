@@ -13,7 +13,7 @@ use re_protos::common::v1alpha1::ext::EntryId;
 use re_protos::frontend::v1alpha1::ListPartitionsRequest;
 use re_protos::TypeConversionError;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
-use re_ui::{list_item, UiExt as _};
+use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::context::Context;
@@ -112,9 +112,10 @@ impl Entries {
 
             Some(Ok(datasets)) => {
                 for dataset in datasets.values() {
-                    let is_selected = ctx.selected_entry == &Some(dataset.id());
+                    let is_selected = ctx.is_selected(dataset.id());
 
-                    let content = list_item::LabelContent::new(dataset.name());
+                    let content =
+                        list_item::LabelContent::new(dataset.name()).with_icon(&icons::DATASET);
                     let response = ui.list_item().selected(is_selected).show_flat(ui, content);
 
                     if response.clicked() {

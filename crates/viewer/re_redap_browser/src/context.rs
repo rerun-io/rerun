@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use re_protos::common::v1alpha1::ext::EntryId;
 
-use crate::servers::{Command, ServerSelection};
+use crate::servers::{Command, Selection};
 
 /// Context structure for the redap browser.
 pub struct Context<'a> {
@@ -10,15 +10,15 @@ pub struct Context<'a> {
     pub command_sender: &'a Sender<Command>,
 
     /// Currently selected collection.
-    pub selected_collection: &'a Option<ServerSelection>,
+    pub selected_collection: &'a Option<Selection>,
 }
 
 impl Context<'_> {
-    pub fn is_selected(&self, collection_id: CollectionId) -> bool {
+    pub fn is_selected(&self, entry_id: EntryId) -> bool {
         matches!(
             self.selected_collection,
-            Some(ServerSelection::Dataset(selected_collection_id))
-            if *selected_collection_id == collection_id
+            Some(Selection::Dataset(selected_entry_id))
+            if selected_entry_id == &entry_id
         )
     }
 }

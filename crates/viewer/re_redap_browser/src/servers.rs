@@ -71,9 +71,8 @@ impl Server {
     }
 }
 
-pub enum ServerSelection {
-    // TODO: Replace with re_uri::Origin + Dataset Id or something
-    Dataset(CollectionId),
+pub enum Selection {
+    Dataset(EntryId),
     Server(re_uri::Origin),
 }
 
@@ -81,7 +80,7 @@ pub enum ServerSelection {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selection: Option<ServerSelection>,
+    selection: Option<Selection>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -137,7 +136,6 @@ impl Default for RedapServers {
 
 pub enum Command {
     SelectServer(re_uri::Origin),
-    SelectDataset(re_uri::Origin, String),
     SelectEntry(EntryId),
     DeselectEntry,
     AddServer(re_uri::Origin),
@@ -196,14 +194,13 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
+            Command::SelectEntry(entry) => {
+                self.selection = Some(Selection::Dataset(entry));
+            }
             Command::SelectServer(origin) => {
-                self.selection = Some(ServerSelection::Server(origin));
+                self.selection = Some(Selection::Server(origin));
             }
-            Command::SelectDataset(origin, dataset) => {
-                self.selection = Some(ServerSelection::Dataset(CollectionId::from(&origin)));
-            }
-
-            Command::DeselectEntry => self.selected_entry = None,
+            Command::DeselectEntry => self.selection = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -276,18 +273,16 @@ impl RedapServers {
         //TODO(ab): we should display something even if no catalog is currently selected.
 
         match self.selection.as_ref() {
-            Some(ServerSelection::Dataset(id)) => {
+            Some(Selection::Dataset(id)) => {
                 for server in self.servers.values() {
-                    let collection = server.find_collection(*id);
-
-                    if let Some(dataset) = dataset {
+                    if let Some(dataset) = server.find_dataset(*id) {
                         self.with_ctx(|ctx| {
                             super::dataset_ui::dataset_ui(
                                 viewer_ctx,
                                 ctx,
                                 ui,
                                 &server.origin,
-                                dataset
+                                dataset,
                             );
                         });
 
@@ -295,7 +290,7 @@ impl RedapServers {
                     }
                 }
             }
-            Some(ServerSelection::Server(origin)) => {
+            Some(Selection::Server(origin)) => {
                 if origin == &re_uri::Origin::examples_origin() {
                     ui.label("Examples");
                 }
