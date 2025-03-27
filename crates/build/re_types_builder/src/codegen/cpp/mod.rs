@@ -519,10 +519,17 @@ impl QuotedObject {
                 ));
                 let constant_name = archetype_component_descriptor_constant_ident(obj_field);
                 let field_type = obj_field.typ.fqname();
-                let field_type = quote_fqname_as_type_path(
-                    &mut hpp_includes,
-                    field_type.expect("Component field must have a non trivial type"),
-                );
+
+                let field_type = if let Some(field_type) = field_type {
+                    quote_fqname_as_type_path(&mut hpp_includes, field_type)
+                } else {
+                    reporter.error(
+                        &obj_field.virtpath,
+                        &obj_field.fqname,
+                        "Component field must have a non trivial type",
+                    );
+                    TokenStream::new()
+                };
                 quote! {
                     #NEWLINE_TOKEN
                     #comment
@@ -559,10 +566,17 @@ impl QuotedObject {
                     let field_assignments = obj.fields.iter().map(|obj_field| {
                         let field_ident = field_name_ident(obj_field);
                         let field_type = obj_field.typ.fqname();
-                        let field_type = quote_fqname_as_type_path(
-                            &mut hpp_includes,
-                            field_type.expect("Component field must have a non trivial type"),
-                        );
+                        let field_type =
+                            if let Some(field_type) = field_type {
+                                quote_fqname_as_type_path(&mut hpp_includes, field_type)
+                            } else {
+                                reporter.error(
+                                    &obj_field.virtpath,
+                                    &obj_field.fqname,
+                                    "Component field must have a non trivial type",
+                                );
+                                TokenStream::new()
+                            };
                         let descriptor = archetype_component_descriptor_constant_ident(obj_field);
                         quote! {
                             archetype.#field_ident = ComponentBatch::empty<#field_type>(#descriptor).value_or_throw();
