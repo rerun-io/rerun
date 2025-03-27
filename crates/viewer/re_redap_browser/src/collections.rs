@@ -25,6 +25,8 @@ impl From<&re_uri::Origin> for CollectionId {
 
 /// An individual collection of recordings within a catalog.
 pub struct Collection {
+    pub origin: re_uri::Origin,
+
     pub collection_id: CollectionId,
 
     pub name: String,
@@ -83,15 +85,16 @@ impl Collections {
                 }
 
                 Some(Ok(collection)) => {
-                    let is_selected = *ctx.selected_collection == Some(collection.collection_id);
+                    let is_selected = ctx.is_selected(collection.collection_id);
 
                     let content = list_item::LabelContent::new(&collection.name);
                     let response = ui.list_item().selected(is_selected).show_flat(ui, content);
 
                     if response.clicked() {
-                        let _ = ctx
-                            .command_sender
-                            .send(Command::SelectCollection(collection.collection_id));
+                        let _ = ctx.command_sender.send(Command::SelectDataset(
+                            collection.origin.clone(),
+                            "default".to_owned(),
+                        ));
                     }
                 }
 
@@ -150,6 +153,7 @@ async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, Stre
     //TODO(ab): ideally this is provided by the server
     let collection_id = CollectionId::from(&origin);
     let collection = Collection {
+        origin,
         collection_id,
         //TODO(ab): this should be provided by the server
         name: "default".to_owned(),

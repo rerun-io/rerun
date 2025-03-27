@@ -1,4 +1,5 @@
 use crate::context::Context;
+use crate::servers::Command;
 use egui::{Id, Ui};
 use re_log_types::{ApplicationId, StoreKind};
 use re_smart_channel::SmartChannelSource;
@@ -28,20 +29,23 @@ pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
     }
 
     let label = list_item::LabelContent::header("Rerun examples");
-    if datasets.example_recordings.is_empty() {
-        ui.list_item().show_flat(ui, label);
+    let response = if datasets.example_recordings.is_empty() {
+        ui.list_item().show_flat(ui, label)
     } else {
-        ui.list_item().header().show_hierarchical_with_children(
-            ui,
-            Id::new("example_datasets"),
-            true,
-            label,
-            |ui| {
+        ui.list_item()
+            .header()
+            .show_hierarchical_with_children(ui, Id::new("example_datasets"), true, label, |ui| {
                 for (id, entities) in datasets.example_recordings {
                     local_dataset_ui(ui, &id, entities);
                 }
-            },
-        );
+            })
+            .item_response
+    };
+
+    if response.clicked() {
+        ctx.command_sender
+            .send(Command::SelectServer(re_uri::Origin::examples_origin()))
+            .ok();
     }
 }
 

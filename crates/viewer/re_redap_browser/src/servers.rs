@@ -80,11 +80,17 @@ impl Server {
     }
 }
 
+pub enum ServerSelection {
+    // TODO: Replace with re_uri::Origin + Dataset Id or something
+    Dataset(CollectionId),
+    Server(re_uri::Origin),
+}
+
 /// All servers known to the viewer, and their catalog data.
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_collection: Option<CollectionId>,
+    selection: Option<ServerSelection>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -130,7 +136,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_collection: None,
+            selection: None,
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -139,7 +145,8 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
-    SelectCollection(CollectionId),
+    SelectServer(re_uri::Origin),
+    SelectDataset(re_uri::Origin, String),
     DeselectCollection,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
@@ -154,16 +161,14 @@ impl RedapServers {
 
     #[allow(clippy::needless_pass_by_value)]
     pub fn select_server(&self, origin: re_uri::Origin) {
-        let _ = self
-            .command_sender
-            .send(Command::SelectCollection(CollectionId::from(&origin)));
+        let _ = self.command_sender.send(Command::SelectServer(origin));
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    pub fn select_dataset(&self, origin: re_uri::Origin, _dataset: String) {
+    pub fn select_dataset(&self, origin: re_uri::Origin, dataset: String) {
         let _ = self
             .command_sender
-            .send(Command::SelectCollection(CollectionId::from(&origin)));
+            .send(Command::SelectDataset(origin, dataset));
     }
 
     /// Per-frame housekeeping.
@@ -187,11 +192,14 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
-            Command::SelectCollection(collection_handle) => {
-                self.selected_collection = Some(collection_handle);
+            Command::SelectServer(origin) => {
+                self.selection = Some(ServerSelection::Server(origin));
+            }
+            Command::SelectDataset(origin, dataset) => {
+                self.selection = Some(ServerSelection::Dataset(CollectionId::from(&origin)));
             }
 
-            Command::DeselectCollection => self.selected_collection = None,
+            Command::DeselectCollection => self.selection = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -263,24 +271,32 @@ impl RedapServers {
 
         //TODO(ab): we should display something even if no catalog is currently selected.
 
-        if let Some(selected_collection) = self.selected_collection.as_ref() {
-            for server in self.servers.values() {
-                let collection = server.find_collection(*selected_collection);
+        match self.selection.as_ref() {
+            Some(ServerSelection::Dataset(id)) => {
+                for server in self.servers.values() {
+                    let collection = server.find_collection(*id);
 
-                if let Some(collection) = collection {
-                    self.with_ctx(|ctx| {
-                        super::collection_ui::collection_ui(
-                            viewer_ctx,
-                            ctx,
-                            ui,
-                            &server.origin,
-                            collection,
-                        );
-                    });
+                    if let Some(collection) = collection {
+                        self.with_ctx(|ctx| {
+                            super::collection_ui::collection_ui(
+                                viewer_ctx,
+                                ctx,
+                                ui,
+                                &server.origin,
+                                collection,
+                            );
+                        });
 
-                    return;
+                        return;
+                    }
                 }
             }
+            Some(ServerSelection::Server(origin)) => {
+                if origin == &re_uri::Origin::examples_origin() {
+                    ui.label("Examples");
+                }
+            }
+            None => {}
         }
     }
 
@@ -288,7 +304,7 @@ impl RedapServers {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
+            selected_collection: &self.selection,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -298,7 +314,7 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
+            selected_collection: &self.selection,
         };
 
         func(&ctx)

@@ -174,6 +174,14 @@ pub struct Origin {
 }
 
 impl Origin {
+    pub fn examples_origin() -> Self {
+        Self {
+            scheme: Scheme::RerunHttps,
+            host: url::Host::Domain("rerun.io".to_owned()),
+            port: 443,
+        }
+    }
+
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
     pub fn as_url(&self) -> String {
         format!(
