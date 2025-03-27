@@ -190,7 +190,13 @@ pub fn instance_path_icon(
             .store()
             .entity_has_data_on_timeline(timeline, &instance_path.entity_path)
         {
-            &icons::ENTITY
+            if instance_path.entity_path.is_reserved() {
+                &icons::ENTITY_RESERVED
+            } else {
+                &icons::ENTITY
+            }
+        } else if instance_path.entity_path.is_reserved() {
+            &icons::ENTITY_RESERVED_EMPTY
         } else {
             &icons::ENTITY_EMPTY
         }
