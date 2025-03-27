@@ -17,6 +17,7 @@ pub mod grpc_response_provider;
 pub mod grpc_streaming_provider;
 pub mod partition_index_list;
 pub mod partition_list;
+pub mod table_entry_provider;
 
 pub struct DataFusionConnector {
     catalog: CatalogServiceClient<Channel>,
@@ -55,11 +56,15 @@ impl DataFusionConnector {
         Ok(entry)
     }
 
-    pub fn get_partition_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
-        PartitionListProvider::new(self.channel.clone(), tuid, url).into_provider()
+    pub async fn get_partition_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
+        PartitionListProvider::new(self.channel.clone(), tuid, url)
+            .into_provider()
+            .await
     }
 
-    pub fn get_partition_index_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
-        PartitionIndexListProvider::new(self.channel.clone(), tuid, url).into_provider()
+    pub async fn get_partition_index_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
+        PartitionIndexListProvider::new(self.channel.clone(), tuid, url)
+            .into_provider()
+            .await
     }
 }
