@@ -42,7 +42,7 @@ def run(args: Namespace) -> None:
             codec,
             # Note timeline values don't have to be the same as the video timestamps.
             indexes=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
-            columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
+            columns=rr.VideoFrameReference.columns_nanos(frame_timestamps_ns),
         )
 
     # Use the av1 also in a 3D context

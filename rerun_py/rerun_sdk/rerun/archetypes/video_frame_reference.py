@@ -55,7 +55,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
         indexes=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
-        columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
+        columns=rr.VideoFrameReference.columns_nanos(frame_timestamps_ns),
     )
     ```
     <center>
