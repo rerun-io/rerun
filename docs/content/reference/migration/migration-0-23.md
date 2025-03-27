@@ -8,8 +8,19 @@ Previously, you could (confusingly) have two timelines with the same name, as lo
 This is no longer possible.
 Timelines are now uniquely identified by name, and if you use different types on the same timeline, you will get a logged warning, and the _latest_ type will be used to interpret the full set of time data.
 
-## Rename some timeline-related things as "index"
-We're planning on adding support for different types of indices in the future, so to that point we're slowly migrating our API to refer to these things as _indices_ rather than _timelines_.
+## Unify the names of time units
+We have been wildly inconsistent with how we name our time units, and it is time we fixed it. So starting now, we're using:
+
+* `secs` instead  of `s` or `seconds`
+* `nanos` instead of `ns` or `nanoseconds`
+* `millis` instead of `ms` or `milliseconds`
+
+All function and parameters using the old names have been deprecated, and will be removed in a future version.
+
+##### Why these names?
+* They are short without being cryptic
+* They are the ones the Rust standard library (mostly) use: https://doc.rust-lang.org/stable/std/time/struct.Duration.html
+* Anything is better than being inconsistent :)
 
 ## Differentiate between timestamps and durations
 We've added a explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
