@@ -109,3 +109,49 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
         }
     }
 }
+
+// --- TableEntry ---
+
+#[derive(Debug, Clone)]
+pub struct TableEntry {
+    pub details: EntryDetails,
+    pub schema: arrow::datatypes::Schema,
+    pub provider_details: prost_types::Any,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::TableEntry> for TableEntry {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::TableEntry) -> Result<Self, Self::Error> {
+        Ok(Self {
+            details: value
+                .details
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::TableEntry,
+                    "details"
+                ))?
+                .try_into()?,
+            schema: (&value.schema.ok_or(missing_field!(
+                crate::catalog::v1alpha1::TableEntry,
+                "schema"
+            ))?)
+                .try_into()?,
+            provider_details: value.provider_details.ok_or(missing_field!(
+                crate::catalog::v1alpha1::TableEntry,
+                "handle"
+            ))?,
+        })
+    }
+}
+
+impl TryFrom<TableEntry> for crate::catalog::v1alpha1::TableEntry {
+    type Error = TypeConversionError;
+
+    fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
+        Ok(Self {
+            details: Some(value.details.into()),
+            schema: Some((&value.schema).try_into()?),
+            provider_details: Some(value.provider_details),
+        })
+    }
+}
