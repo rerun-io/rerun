@@ -2,9 +2,8 @@
 //! it.
 
 mod add_server_modal;
-mod dataset_ui;
-//mod collections;
 mod context;
+mod dataset_ui;
 mod entries;
 mod requested_object;
 mod servers;

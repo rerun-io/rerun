@@ -62,8 +62,12 @@ impl Dataset {
     }
 }
 
+/// All the entries of a server.
 pub struct Entries {
     //TODO(ab): in the future, there will be more kinds of entries
+
+    // TODO(ab): we currently load the ENTIRE list of datasets, including their partition tables. We
+    // will need to be more granular about this in the future.
     datasets: RequestedObject<Result<HashMap<EntryId, Dataset>, EntryError>>,
 }
 
@@ -73,7 +77,7 @@ impl Entries {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let datasets = find_dataset_entries(origin);
+        let datasets = fetch_dataset_entries(origin);
 
         Self {
             datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets),
@@ -97,7 +101,7 @@ impl Entries {
             .find(|dataset| dataset.name() == dataset_name)
     }
 
-    /// [`list_item::ListItem`]-based UI for the collections.
+    /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
         match self.datasets.try_as_ref() {
             None => {
@@ -130,7 +134,7 @@ impl Entries {
     }
 }
 
-async fn find_dataset_entries(
+async fn fetch_dataset_entries(
     origin: re_uri::Origin,
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
     let mut client = redap::client(origin.clone()).await?;
@@ -161,7 +165,7 @@ async fn find_dataset_entries(
             .ok_or(EntryError::FieldNotSet("dataset"))?
             .try_into()?;
 
-        let partition_table = stream_partition_table(&mut client, entry_details.id).await?;
+        let partition_table = fetch_partition_table(&mut client, entry_details.id).await?;
 
         let entry = Dataset {
             dataset_entry,
@@ -175,7 +179,7 @@ async fn find_dataset_entries(
     Ok(datasets)
 }
 
-async fn stream_partition_table(
+async fn fetch_partition_table(
     client: &mut redap::Client,
     entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
