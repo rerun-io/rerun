@@ -243,6 +243,10 @@ impl SnippetsRefCodeGenerator {
                         return false;
                     }
 
+                    if let Some(deprecation_notice) = obj.deprecation_notice() {
+                        panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_notice}", snippet.name_qualified, obj.fqname);
+                    }
+
                     if obj.kind == ObjectKind::Archetype {
                         if let Some(opt_outs) = archetype_opt_outs.get(&obj.name) {
                             if opt_outs.contains(&snippet.name_qualified) {
