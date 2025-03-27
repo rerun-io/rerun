@@ -571,6 +571,7 @@ fn make_scalar_batch_entity_chunks(
 
     Ok(chunks.into_iter())
 }
+
 fn make_scalar_entity_chunk(
     entity_path: String,
     timelines: &IntMap<TimelineName, TimeColumn>,
