@@ -5,6 +5,7 @@ use crate::{
 
 // --- EntryDetails ---
 
+#[derive(Debug, Clone)]
 pub struct EntryDetails {
     pub id: EntryId,
     pub name: String,
@@ -71,6 +72,7 @@ impl From<EntryDetails> for crate::catalog::v1alpha1::EntryDetails {
 
 // --- DatasetEntry ---
 
+#[derive(Debug, Clone)]
 pub struct DatasetEntry {
     pub details: EntryDetails,
     pub handle: DatasetHandle,
