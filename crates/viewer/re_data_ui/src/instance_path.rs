@@ -180,85 +180,90 @@ fn component_list_ui(
 
     let interactive = ui_layout != UiLayout::Tooltip;
 
-    re_ui::list_item::list_item_scope(ui, "component list", |ui| {
-        for (component_name, unit) in components {
-            let component_name = *component_name;
-            if !show_indicator_comps && component_name.is_indicator_component() {
-                continue;
+    re_ui::list_item::list_item_scope(
+        ui,
+        egui::Id::from("component list").with(entity_path),
+        |ui| {
+            for (component_name, unit) in components {
+                let component_name = *component_name;
+                if !show_indicator_comps && component_name.is_indicator_component() {
+                    continue;
+                }
+
+                let component_path = ComponentPath::new(entity_path.clone(), component_name);
+                let is_static = db
+                    .storage_engine()
+                    .store()
+                    .entity_has_static_component(entity_path, &component_name);
+                let icon = if is_static {
+                    &re_ui::icons::COMPONENT_STATIC
+                } else {
+                    &re_ui::icons::COMPONENT_TEMPORAL
+                };
+                let item = Item::ComponentPath(component_path);
+
+                let mut list_item = ui.list_item().interactive(interactive);
+
+                if interactive {
+                    let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
+                        == HoverHighlight::Hovered;
+                    list_item = list_item.force_hovered(is_hovered);
+                }
+
+                let response = if component_name.is_indicator_component() {
+                    list_item.show_flat(
+                        ui,
+                        re_ui::list_item::LabelContent::new(component_name.short_name())
+                            .with_icon(icon),
+                    )
+                } else {
+                    let content =
+                        re_ui::list_item::PropertyContent::new(component_name.short_name())
+                            .with_icon(icon)
+                            .value_fn(|ui, _| {
+                                if instance.is_all() {
+                                    crate::ComponentPathLatestAtResults {
+                                        component_path: ComponentPath::new(
+                                            entity_path.clone(),
+                                            component_name,
+                                        ),
+                                        unit,
+                                    }
+                                    .data_ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                    );
+                                } else {
+                                    ctx.component_ui_registry().ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                        entity_path,
+                                        component_name,
+                                        unit,
+                                        instance,
+                                    );
+                                }
+                            });
+
+                    list_item.show_flat(ui, content)
+                };
+
+                let response = response.on_hover_ui(|ui| {
+                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                });
+
+                if interactive {
+                    ctx.handle_select_hover_drag_interactions(&response, item, false);
+                }
             }
-
-            let component_path = ComponentPath::new(entity_path.clone(), component_name);
-            let is_static = db
-                .storage_engine()
-                .store()
-                .entity_has_static_component(entity_path, &component_name);
-            let icon = if is_static {
-                &re_ui::icons::COMPONENT_STATIC
-            } else {
-                &re_ui::icons::COMPONENT_TEMPORAL
-            };
-            let item = Item::ComponentPath(component_path);
-
-            let mut list_item = ui.list_item().interactive(interactive);
-
-            if interactive {
-                let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
-                    == HoverHighlight::Hovered;
-                list_item = list_item.force_hovered(is_hovered);
-            }
-
-            let response = if component_name.is_indicator_component() {
-                list_item.show_flat(
-                    ui,
-                    re_ui::list_item::LabelContent::new(component_name.short_name())
-                        .with_icon(icon),
-                )
-            } else {
-                let content = re_ui::list_item::PropertyContent::new(component_name.short_name())
-                    .with_icon(icon)
-                    .value_fn(|ui, _| {
-                        if instance.is_all() {
-                            crate::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    entity_path.clone(),
-                                    component_name,
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                            );
-                        } else {
-                            ctx.component_ui_registry().ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                                entity_path,
-                                component_name,
-                                unit,
-                                instance,
-                            );
-                        }
-                    });
-
-                list_item.show_flat(ui, content)
-            };
-
-            let response = response.on_hover_ui(|ui| {
-                component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-            });
-
-            if interactive {
-                ctx.handle_select_hover_drag_interactions(&response, item, false);
-            }
-        }
-    });
+        },
+    );
 }
 
 /// If this entity is an image, show it together with buttons to download and copy the image.

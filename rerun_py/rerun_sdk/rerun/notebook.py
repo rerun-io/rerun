@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
+
+import numpy as np
+
+from .error_utils import deprecated_param
+from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
@@ -287,41 +293,66 @@ class Viewer:
 
         self._viewer.set_active_recording(recording_id)
 
+    @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
+    @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(
         self,
         *,
         sequence: int | None = None,
-        nanoseconds: int | None = None,
-        seconds: float | None = None,
+        duration: int | float | timedelta | np.timedelta64 | None = None,
+        timestamp: int | float | datetime | np.datetime64 | None = None,
         timeline: str | None = None,
         play: bool = False,
+        # Deprecated parameters:
+        nanoseconds: int | None = None,
+        seconds: float | None = None,
     ) -> None:
         """
         Set the time control for the viewer.
 
+        You are expected to set at most ONE of the arguments `sequence`, `duration`, or `timestamp`.
+
         Parameters
         ----------
-        sequence: int
-            The sequence number to set the viewer to.
-        seconds: float
-            The time in seconds to set the viewer to.
-        nanoseconds: int
-            The time in nanoseconds to set the viewer to.
-        play: bool
+        sequence:
+            Used for sequential indices, like `frame_nr`.
+            Must be an integer.
+        duration:
+            Used for relative times, like `time_since_start`.
+            Must either be in seconds, a [`datetime.timedelta`][], or [`numpy.timedelta64`][].
+            For nanosecond precision, use `numpy.timedelta64(nanoseconds, 'ns')`.
+        timestamp:
+            Used for absolute time indices, like `capture_time`.
+            Must either be in seconds since Unix epoch, a [`datetime.datetime`][], or [`numpy.datetime64`][].
+            For nanosecond precision, use `numpy.datetime64(nanoseconds, 'ns')`.
+        play:
             Whether to start playing from the specified time point. Defaults to paused.
-        timeline : str
+        timeline:
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
+        nanoseconds:
+            DEPRECATED: Use `duration` or 'timestamp` instead, with "seconds" as the unit.
+        seconds:
+            DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
-        if sum([sequence is not None, nanoseconds is not None, seconds is not None]) > 1:
-            raise ValueError("At most one of sequence, nanoseconds, or seconds may be provided")
+
+        # Handle deprecated parameters:
+        if nanoseconds is not None:
+            duration = 1e-9 * nanoseconds
+        if seconds is not None:
+            duration = seconds
+
+        if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
+            raise ValueError(
+                "set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+            )
 
         if sequence is not None:
             time = sequence
-        elif nanoseconds is not None:
-            time = nanoseconds
-        elif seconds is not None:
-            time = int(seconds * 1e9)
+        elif duration is not None:
+            time = to_nanos(duration)
+        elif timestamp is not None:
+            time = to_nanos_since_epoch(timestamp)
         else:
             time = None
 
