@@ -26,11 +26,8 @@ pub struct TableEntryProvider {
 }
 
 impl TableEntryProvider {
-    pub fn new(conn: Channel, table_id: EntryId) -> Self {
-        Self {
-            client: FrontendServiceClient::new(conn),
-            table_id,
-        }
+    pub fn new(client: FrontendServiceClient<Channel>, table_id: EntryId) -> Self {
+        Self { client, table_id }
     }
 
     /// This is a convenience function

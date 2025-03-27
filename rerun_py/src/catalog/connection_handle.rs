@@ -6,7 +6,7 @@ use pyo3::{
 
 use re_grpc_client::redap::client;
 use re_protos::catalog::v1alpha1::{
-    ext::{DatasetEntry, EntryDetails},
+    ext::{DatasetEntry, EntryDetails, TableEntry},
     CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::EntryId;
@@ -34,7 +34,7 @@ impl ConnectionHandle {
         Ok(Self { origin, client })
     }
 
-    pub fn client(&self) -> CatalogServiceClient<tonic::transport::Channel> {
+    pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
         self.client.clone()
     }
 }
@@ -106,6 +106,22 @@ impl ConnectionHandle {
             .into_inner()
             .dataset
             .ok_or(PyRuntimeError::new_err("No dataset in response"))?
+            .try_into()?)
+    }
+
+    pub fn read_table(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
+        let response = wait_for_future(
+            py,
+            self.client.read_table_entry(ReadTableEntryRequest {
+                id: Some(entry_id.into()),
+            }),
+        )
+        .map_err(to_py_err)?;
+
+        Ok(response
+            .into_inner()
+            .table
+            .ok_or(PyRuntimeError::new_err("No table in response"))?
             .try_into()?)
     }
 }
