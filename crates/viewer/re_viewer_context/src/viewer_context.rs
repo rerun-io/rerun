@@ -7,13 +7,13 @@ use re_entity_db::entity_db::EntityDb;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
-use crate::GlobalContext;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
+use crate::{GlobalContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -290,6 +290,15 @@ impl ViewerContext<'_> {
         }
 
         is_safari_browser_inner().unwrap_or(false)
+    }
+
+    /// This returns `true` if we have an active recording.
+    ///
+    /// It excludes the globally hardcoded welcome screen app ID.
+    pub fn has_active_recording(&self) -> bool {
+        self.recording()
+            .app_id()
+            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
     }
 }
 
