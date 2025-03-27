@@ -17,7 +17,7 @@ Timelines are now uniquely identified by name, and if you use different types on
 ## Unify the names of time units
 We have been wildly inconsistent with how we name our time units, and it is time we fixed it. So starting now, we're using:
 
-* `secs` instead  of `s` or `seconds`
+* `secs` instead of `s` or `seconds`
 * `nanos` instead of `ns` or `nanoseconds`
 * `millis` instead of `ms` or `milliseconds`
 
